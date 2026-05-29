@@ -86,6 +86,7 @@
 
 <script>
 
+<script>
 
 function saveProduct(){
 
@@ -99,87 +100,50 @@ function saveProduct(){
         return;
     }
 
-    let barcode;
-
-    // check if already exists
-    if(products[description]){
-        barcode = products[description];
-    }else{
-        productCounter++;
-        barcode = "ITEM-" + productCounter;
-        products[description] = barcode;
-    }
-
-    document.getElementById("barcodeText").innerText = barcode;
-
-    JsBarcode("#barcode", barcode, {
-        format:"CODE128",
-        displayValue:true
-    });
-
     fetch("https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec", {
 
-    method: "POST",
+        method: "POST",
 
-    body: JSON.stringify({
-        description: description,
-        qty: qty,
-        location: location
+        body: JSON.stringify({
+            description: description,
+            qty: qty,
+            location: location
+        })
+
     })
+    .then(res => res.json())
+    .then(data => {
 
-})
-.then(res => res.json())
-.then(data => {
+        const barcode = data.barcode;
 
-    barcode = data.barcode;
+        document.getElementById("barcodeText").innerText = barcode;
 
-    document.getElementById("barcodeText").innerText = barcode;
+        JsBarcode("#barcode", barcode, {
+            format:"CODE128",
+            displayValue:false,
+            width:2,
+            height:70,
+            margin:10
+        });
 
-    JsBarcode("#barcode", barcode, {
-        format:"CODE128",
-        displayValue:false,
-        width:2,
-        height:70,
-        margin:10
+        if(printLabels){
+            window.print();
+        }
+
+        alert("Saved Successfully");
+
+    })
+    .catch(error => {
+
+        console.error(error);
+
+        alert("Error saving product");
+
     });
 
-    if(printLabels){
-        window.print();
-    }
-
-    alert("Saved Successfully");
-
-});
-
-    if(printLabels){
-        window.print();
-      <style> @media print {
-
-  body * {
-    visibility: hidden;
-  }
-
-  #printArea, #printArea * {
-    visibility: visible;
-  }
-
-  #printArea {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    background: white;
-    color: black;
-    padding: 20px;
-  }  
-</style> 
-
 }
-    }
 
-    alert("Product Saved");
-}
-  
+</script>
 
 </script>
 
