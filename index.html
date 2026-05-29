@@ -65,8 +65,11 @@ button{
 
 <div class="box" id="loginBox">
 <h1>Inventory Login</h1>
+
 <input type="password" id="password" placeholder="Enter password">
+
 <button onclick="login()">Login</button>
+
 <p id="loginError"></p>
 </div>
 
@@ -87,8 +90,10 @@ button{
 </div>
 
 <script>
-const PASSWORD = "Sales";
-const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+const PASSWORD = "changeme123";
+
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 function login(){
     const entered = document.getElementById("password").value;
@@ -96,7 +101,7 @@ function login(){
     if(entered === PASSWORD){
         localStorage.setItem("inventoryLoggedIn", "yes");
         showApp();
-    } else {
+    }else{
         document.getElementById("loginError").innerText = "Wrong password";
     }
 }
@@ -113,7 +118,7 @@ function showApp(){
 }
 
 function loadStats(){
-    fetch(API_URL, "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec" {
+    fetch(API_URL, {
         method:"POST",
         body:JSON.stringify({
             action:"STATS"
@@ -121,7 +126,9 @@ function loadStats(){
     })
     .then(res => res.json())
     .then(data => {
+
         if(data.success){
+
             document.getElementById("totalProducts").innerText =
             "Products: " + data.totalProducts;
 
@@ -130,10 +137,20 @@ function loadStats(){
 
             document.getElementById("totalBoxes").innerText =
             "Boxes Used: " + data.totalBoxes;
+
+        }else{
+
+            document.getElementById("totalProducts").innerText =
+            "Could not load stats";
+
         }
+
     })
     .catch(error => {
         console.error(error);
+
+        document.getElementById("totalProducts").innerText =
+        "Could not load stats";
     });
 }
 
