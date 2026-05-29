@@ -3,10 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Djatocare Inventory</title>
-
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<title>Inventory Dashboard</title>
 
 <style>
 body{
@@ -40,179 +37,108 @@ button{
     cursor:pointer;
 }
 
-a{
-    color:#4CAF50;
+.link-button{
+    display:block;
+    background:#333;
+    color:white;
+    padding:14px;
+    margin:12px;
+    border-radius:8px;
     text-decoration:none;
-}
-
-#printArea{
-    background:white;
-    margin-top:20px;
-    padding:5px;
-    width:51mm;
-    margin-left:auto;
-    margin-right:auto;
-    text-align:center;
-}
-
-#barcodeText{
-    color:black;
     font-weight:bold;
-    font-size:13px;
-    margin:0;
-    padding:0;
 }
 
-@media print {
+.stat{
+    background:#2a2a2a;
+    padding:12px;
+    margin:10px;
+    border-radius:8px;
+}
 
-    @page {
-        size: 51mm 25mm;
-        margin: 0;
-    }
-
-    html,
-    body {
-        width: 51mm;
-        height: 25mm;
-        margin: 0;
-        padding: 0;
-        background: white;
-    }
-
-    body * {
-        visibility: hidden;
-    }
-
-    #printArea,
-    #printArea * {
-        visibility: visible;
-    }
-
-    #printArea {
-        position: fixed;
-        left: 0;
-        top: 0;
-        width: 51mm;
-        height: 25mm;
-        padding: 1.5mm;
-        margin: 0;
-        box-sizing: border-box;
-        background: white;
-        text-align: center;
-        overflow: hidden;
-    }
-
-    #barcode {
-        width: 48mm;
-        height: 17mm;
-        display:block;
-        margin:0 auto;
-    }
-
-    #barcodeText {
-        color: black;
-        font-size: 11px;
-        font-weight: bold;
-        margin: 0;
-        padding: 0;
-        line-height: 1;
-    }
+#app{
+    display:none;
 }
 </style>
 </head>
 
 <body>
 
-<div class="box">
-
-<h1>Djatocare Inventory</h1>
-
-<input type="text" id="description" placeholder="Item Description">
-
-<input type="number" id="qty" placeholder="Quantity" value="1">
-
-<input type="text" id="location" placeholder="Current Box (BOX-A1)">
-
-<label>
-<input type="checkbox" id="printLabels" checked>
-Print Labels
-</label>
-
-<br>
-
-<button onclick="saveProduct()">Save Product</button>
-
-<p>
-<a href="remove.html">Go to Remove Stock</a>
-</p>
-    <p>
-<a href="search.html">Go to Search Stock</a>
-</p>
-
-<div id="printArea">
-    <svg id="barcode"></svg>
-    <p id="barcodeText"></p>
+<div class="box" id="loginBox">
+<h1>Inventory Login</h1>
+<input type="password" id="password" placeholder="Enter password">
+<button onclick="login()">Login</button>
+<p id="loginError"></p>
 </div>
+
+<div class="box" id="app">
+
+<h1>Inventory Dashboard</h1>
+
+<div class="stat" id="totalProducts">Products: Loading...</div>
+<div class="stat" id="totalStock">Stock Units: Loading...</div>
+<div class="stat" id="totalBoxes">Boxes Used: Loading...</div>
+
+<a class="link-button" href="add.html">Add Stock</a>
+<a class="link-button" href="remove.html">Remove Stock</a>
+<a class="link-button" href="search.html">Search Stock</a>
+
+<button onclick="logout()">Logout</button>
 
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+const PASSWORD = "Sales";
+const API_URL = "https://djautocare.github.io/scanner-website-/";
 
-function saveProduct(){
+function login(){
+    const entered = document.getElementById("password").value;
 
-    const description = document.getElementById("description").value.trim();
-    const qty = document.getElementById("qty").value;
-    const location = document.getElementById("location").value.trim().toUpperCase();
-    const printLabels = document.getElementById("printLabels").checked;
-
-    if(!description){
-        alert("Enter description");
-        return;
+    if(entered === PASSWORD){
+        localStorage.setItem("inventoryLoggedIn", "yes");
+        showApp();
+    } else {
+        document.getElementById("loginError").innerText = "Wrong password";
     }
+}
 
-    if(!location){
-        alert("Enter location");
-        return;
-    }
+function logout(){
+    localStorage.removeItem("inventoryLoggedIn");
+    location.reload();
+}
 
+function showApp(){
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    loadStats();
+}
+
+function loadStats(){
     fetch(API_URL, {
         method:"POST",
         body:JSON.stringify({
-            action:"ADD",
-            description:description,
-            qty:qty,
-            location:location
+            action:"STATS"
         })
     })
     .then(res => res.json())
     .then(data => {
+        if(data.success){
+            document.getElementById("totalProducts").innerText =
+            "Products: " + data.totalProducts;
 
-        if(!data.success){
-            alert(data.error || "Error");
-            return;
+            document.getElementById("totalStock").innerText =
+            "Stock Units: " + data.totalStock;
+
+            document.getElementById("totalBoxes").innerText =
+            "Boxes Used: " + data.totalBoxes;
         }
-
-        document.getElementById("barcodeText").innerText = data.barcode;
-
-        JsBarcode("#barcode", data.barcode, {
-            format:"CODE128",
-            displayValue:false,
-            width:1.2,
-            height:42,
-            margin:0
-        });
-
-        if(printLabels){
-            window.print();
-        }
-
-        alert("Saved Successfully\n\nBarcode: " + data.barcode);
     })
     .catch(error => {
         console.error(error);
-        alert("Error saving product");
     });
+}
+
+if(localStorage.getItem("inventoryLoggedIn") === "yes"){
+    showApp();
 }
 </script>
 
