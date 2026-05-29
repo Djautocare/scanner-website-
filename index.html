@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,7 +23,7 @@ body{
     background:#1e1e1e;
     padding:20px;
     border-radius:12px;
-    max-width:400px;
+    max-width:450px;
     margin:auto;
 }
 
@@ -42,16 +42,21 @@ button{
     cursor:pointer;
 }
 
-#printArea{
-    background:white;
-    margin-top:20px;
-    padding:20px;
+a{
+    color:#4CAF50;
+    text-decoration:none;
 }
 
 #barcodeText{
     color:black;
-    font-size:20px;
     font-weight:bold;
+    font-size:18px;
+}
+
+#printArea{
+    background:white;
+    margin-top:20px;
+    padding:20px;
 }
 
 @media print {
@@ -84,20 +89,41 @@ button{
 
 <h1>Djatocare Inventory</h1>
 
-<input type="text" id="description" placeholder="Item Description">
+<input
+type="text"
+id="description"
+placeholder="Item Description">
 
-<input type="number" id="qty" placeholder="Quantity">
+<input
+type="number"
+id="qty"
+placeholder="Quantity"
+value="1">
 
-<input type="text" id="location" placeholder="Current Box (BOX-A1)">
+<input
+type="text"
+id="location"
+placeholder="Current Box (BOX-A1)">
 
 <label>
-<input type="checkbox" id="printLabels" checked>
+<input
+type="checkbox"
+id="printLabels"
+checked>
 Print Labels
 </label>
 
 <br>
 
-<button onclick="saveProduct()">Save Product</button>
+<button onclick="saveProduct()">
+Save Product
+</button>
+
+<p>
+<a href="remove.html">
+Go to Remove Stock
+</a>
+</p>
 
 <div id="printArea">
 
@@ -111,16 +137,19 @@ Print Labels
 
 <script>
 
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
 function saveProduct(){
 
     const description =
-    document.getElementById("description").value;
+    document.getElementById("description").value.trim();
 
     const qty =
     document.getElementById("qty").value;
 
     const location =
-    document.getElementById("location").value;
+    document.getElementById("location").value.trim().toUpperCase();
 
     const printLabels =
     document.getElementById("printLabels").checked;
@@ -130,11 +159,17 @@ function saveProduct(){
         return;
     }
 
-    fetch("https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec", {
+    if(!location){
+        alert("Enter location");
+        return;
+    }
+
+    fetch(API_URL, {
 
         method:"POST",
 
         body:JSON.stringify({
+            action:"ADD",
             description:description,
             qty:qty,
             location:location
@@ -146,12 +181,15 @@ function saveProduct(){
 
     .then(data => {
 
-        const barcode = data.barcode;
+        if(!data.success){
+            alert(data.error || "Error");
+            return;
+        }
 
         document.getElementById("barcodeText")
-        .innerText = barcode;
+        .innerText = data.barcode;
 
-        JsBarcode("#barcode", barcode, {
+        JsBarcode("#barcode", data.barcode, {
             format:"CODE128",
             displayValue:false,
             width:2,
@@ -163,7 +201,10 @@ function saveProduct(){
             window.print();
         }
 
-        alert("Saved Successfully");
+        alert(
+            "Saved Successfully\n\nBarcode: " +
+            data.barcode
+        );
 
     })
 
@@ -176,9 +217,9 @@ function saveProduct(){
     });
 
 }
-    <p><a href="remove.html">Go to Remove Stock</a></p>
 
 </script>
 
 </body>
 </html>
+```
