@@ -21,7 +21,7 @@ body{
     background:#1e1e1e;
     padding:20px;
     border-radius:12px;
-    max-width:450px;
+    max-width:500px;
     margin:auto;
 }
 
@@ -48,11 +48,6 @@ button{
     background:#0275d8;
 }
 
-a{
-    color:#4CAF50;
-    text-decoration:none;
-}
-
 #reader{
     width:300px;
     margin:20px auto;
@@ -60,12 +55,18 @@ a{
 }
 
 #result{
-    font-weight:bold;
     margin-top:15px;
+    font-weight:bold;
 }
 
 #locationChoices{
     margin-top:15px;
+}
+
+a{
+    color:#4CAF50;
+    text-decoration:none;
+    font-weight:bold;
 }
 </style>
 </head>
@@ -76,7 +77,7 @@ a{
 
 <h1>Remove Stock</h1>
 
-<input type="text" id="barcode" placeholder="Scan / Enter Barcode">
+<input type="text" id="barcode" placeholder="Scan or Enter Barcode">
 
 <input type="number" id="qty" placeholder="Quantity" value="1">
 
@@ -90,15 +91,15 @@ a{
 
 <p id="result"></p>
 
-<p><a href="index.html">Back to Add Stock</a></p>
-    <p>
-<a href="index.html">Back to Dashboard</a>
+<p style="margin-top:20px;">
+<a href="index.html">← Back to Dashboard</a>
 </p>
 
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 let scannerStarted = false;
 let scanner;
@@ -116,24 +117,25 @@ function startScanner(){
     scanner.start(
         { facingMode: "environment" },
         {
-            fps: 10,
-            qrbox: {
-                width: 250,
-                height: 150
+            fps:10,
+            qrbox:{
+                width:250,
+                height:150
             }
         },
         function(decodedText){
 
-            const cleanBarcode = decodedText.trim().toUpperCase();
+            const barcode = decodedText.trim().toUpperCase();
 
-            document.getElementById("barcode").value = cleanBarcode;
+            document.getElementById("barcode").value = barcode;
 
             document.getElementById("result").innerText =
-            "Scanned: " + cleanBarcode;
+            "Scanned: " + barcode;
 
             stopScanner();
 
             removeStock();
+
         },
         function(errorMessage){}
     );
@@ -144,18 +146,28 @@ function startScanner(){
 function stopScanner(){
 
     if(scannerStarted && scanner){
+
         scanner.stop().then(() => {
+
             scanner.clear();
+
             document.getElementById("reader").style.display = "none";
+
             scannerStarted = false;
+
         });
+
     }
+
 }
 
 function removeStock(locationOverride = ""){
 
-    const barcode = document.getElementById("barcode").value.trim().toUpperCase();
-    const qty = document.getElementById("qty").value || 1;
+    const barcode =
+    document.getElementById("barcode").value.trim().toUpperCase();
+
+    const qty =
+    document.getElementById("qty").value || 1;
 
     if(!barcode){
         alert("Enter or scan barcode");
@@ -178,21 +190,22 @@ function removeStock(locationOverride = ""){
 
         if(data.needsLocation){
 
-            let html = "<p>This item is in multiple locations. Choose one:</p>";
+            let html =
+            "<p>Select location to remove stock from:</p>";
 
             data.locations.forEach(loc => {
+
                 html += `
-                    <button class="location-button"
+                    <button
+                    class="location-button"
                     onclick="removeStock('${loc.location}')">
-                    ${loc.location} — Qty: ${loc.qty}
+                    ${loc.location} (Qty: ${loc.qty})
                     </button>
                 `;
+
             });
 
             document.getElementById("locationChoices").innerHTML = html;
-
-            document.getElementById("result").innerText =
-            "Select location to remove from.";
 
             return;
         }
@@ -200,13 +213,20 @@ function removeStock(locationOverride = ""){
         if(data.success){
 
             document.getElementById("result").innerText =
-            "Removed " + qty + " from " + barcode +
-            " at " + data.location +
-            ". Remaining there: " + data.remainingQty;
+            "Removed " +
+            qty +
+            " from " +
+            barcode +
+            " at " +
+            data.location +
+            ". Remaining there: " +
+            data.remainingQty;
 
             document.getElementById("barcode").value = "";
 
-        } else {
+            document.getElementById("locationChoices").innerHTML = "";
+
+        }else{
 
             document.getElementById("result").innerText =
             data.error || "Remove failed";
