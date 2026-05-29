@@ -56,6 +56,7 @@ button{
 a{
     color:#4CAF50;
     text-decoration:none;
+    font-weight:bold;
 }
 </style>
 </head>
@@ -72,18 +73,15 @@ a{
 
 <div id="results"></div>
 
-<p>
-<a href="add.html">Add Stock</a> |
-<a href="remove.html">Remove Stock</a>
-</p>
-    <p>
-<a href="index.html">Back to Dashboard</a>
+<p style="margin-top:20px;">
+<a href="index.html">← Back to Dashboard</a>
 </p>
 
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 function searchStock(){
 
@@ -94,7 +92,8 @@ function searchStock(){
         return;
     }
 
-    document.getElementById("results").innerHTML = "Searching...";
+    document.getElementById("results").innerHTML =
+    "Searching...";
 
     fetch(API_URL, {
         method:"POST",
@@ -131,15 +130,25 @@ function searchStock(){
             `;
 
             if(item.locations.length === 0){
-                html += `<div class="location">No stock currently available</div>`;
-            } else {
+
+                html += `
+                    <div class="location">
+                    No stock currently available
+                    </div>
+                `;
+
+            }else{
+
                 item.locations.forEach(loc => {
+
                     html += `
                         <div class="location">
-                            ${loc.location} — Qty: ${loc.qty}
+                        ${loc.location} — Qty: ${loc.qty}
                         </div>
                     `;
+
                 });
+
             }
 
             html += `</div>`;
