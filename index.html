@@ -75,13 +75,14 @@
 
 <button onclick="saveProduct()">Save Product</button>
 
-<h2>Generated Barcode</h2>
+<div id="printArea">
 
 <svg id="barcode"></svg>
 
 <p id="barcodeText"></p>
 
 </div>
+
 
 <script>
 
@@ -128,10 +129,33 @@ function saveProduct(){
 
     if(printLabels){
         window.print();
+      <style> @media print {
+
+  body * {
+    visibility: hidden;
+  }
+
+  #printArea, #printArea * {
+    visibility: visible;
+  }
+
+  #printArea {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    color: black;
+    padding: 20px;
+  }  
+</style> 
+
+}
     }
 
     alert("Product Saved");
 }
+  
 
 </script>
 
