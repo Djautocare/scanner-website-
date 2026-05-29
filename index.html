@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +9,6 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
 <style>
-
 body{
     font-family:Arial;
     background:#111;
@@ -47,40 +45,80 @@ a{
     text-decoration:none;
 }
 
-#barcodeText{
-    color:black;
-    font-weight:bold;
-    font-size:18px;
-}
-
 #printArea{
     background:white;
     margin-top:20px;
-    padding:20px;
+    padding:5px;
+    width:51mm;
+    margin-left:auto;
+    margin-right:auto;
+    text-align:center;
+}
+
+#barcodeText{
+    color:black;
+    font-weight:bold;
+    font-size:13px;
+    margin:0;
+    padding:0;
 }
 
 @media print {
 
+    @page {
+        size: 51mm 25mm;
+        margin: 0;
+    }
+
+    html,
+    body {
+        width: 51mm;
+        height: 25mm;
+        margin: 0;
+        padding: 0;
+        background: white;
+    }
+
     body * {
-        visibility:hidden;
+        visibility: hidden;
     }
 
     #printArea,
     #printArea * {
-        visibility:visible;
+        visibility: visible;
     }
 
-    #printArea{
-        position:absolute;
-        left:0;
-        top:0;
-        width:100%;
+    #printArea {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 51mm;
+        height: 25mm;
+        padding: 1.5mm;
+        margin: 0;
+        box-sizing: border-box;
+        background: white;
+        text-align: center;
+        overflow: hidden;
     }
 
+    #barcode {
+        width: 48mm;
+        height: 17mm;
+        display:block;
+        margin:0 auto;
+    }
+
+    #barcodeText {
+        color: black;
+        font-size: 11px;
+        font-weight: bold;
+        margin: 0;
+        padding: 0;
+        line-height: 1;
+    }
 }
-
 </style>
-
 </head>
 
 <body>
@@ -89,70 +127,41 @@ a{
 
 <h1>Djatocare Inventory</h1>
 
-<input
-type="text"
-id="description"
-placeholder="Item Description">
+<input type="text" id="description" placeholder="Item Description">
 
-<input
-type="number"
-id="qty"
-placeholder="Quantity"
-value="1">
+<input type="number" id="qty" placeholder="Quantity" value="1">
 
-<input
-type="text"
-id="location"
-placeholder="Current Box (BOX-A1)">
+<input type="text" id="location" placeholder="Current Box (BOX-A1)">
 
 <label>
-<input
-type="checkbox"
-id="printLabels"
-checked>
+<input type="checkbox" id="printLabels" checked>
 Print Labels
 </label>
 
 <br>
 
-<button onclick="saveProduct()">
-Save Product
-</button>
+<button onclick="saveProduct()">Save Product</button>
 
 <p>
-<a href="remove.html">
-Go to Remove Stock
-</a>
+<a href="remove.html">Go to Remove Stock</a>
 </p>
 
 <div id="printArea">
-
-<svg id="barcode"></svg>
-
-<p id="barcodeText"></p>
-
+    <svg id="barcode"></svg>
+    <p id="barcodeText"></p>
 </div>
 
 </div>
 
 <script>
-
-const API_URL =
-"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 function saveProduct(){
 
-    const description =
-    document.getElementById("description").value.trim();
-
-    const qty =
-    document.getElementById("qty").value;
-
-    const location =
-    document.getElementById("location").value.trim().toUpperCase();
-
-    const printLabels =
-    document.getElementById("printLabels").checked;
+    const description = document.getElementById("description").value.trim();
+    const qty = document.getElementById("qty").value;
+    const location = document.getElementById("location").value.trim().toUpperCase();
+    const printLabels = document.getElementById("printLabels").checked;
 
     if(!description){
         alert("Enter description");
@@ -165,20 +174,15 @@ function saveProduct(){
     }
 
     fetch(API_URL, {
-
         method:"POST",
-
         body:JSON.stringify({
             action:"ADD",
             description:description,
             qty:qty,
             location:location
         })
-
     })
-
     .then(res => res.json())
-
     .then(data => {
 
         if(!data.success){
@@ -186,40 +190,28 @@ function saveProduct(){
             return;
         }
 
-        document.getElementById("barcodeText")
-        .innerText = data.barcode;
+        document.getElementById("barcodeText").innerText = data.barcode;
 
         JsBarcode("#barcode", data.barcode, {
             format:"CODE128",
             displayValue:false,
-            width:2,
-            height:70,
-            margin:10
+            width:1.2,
+            height:42,
+            margin:0
         });
 
         if(printLabels){
             window.print();
         }
 
-        alert(
-            "Saved Successfully\n\nBarcode: " +
-            data.barcode
-        );
-
+        alert("Saved Successfully\n\nBarcode: " + data.barcode);
     })
-
     .catch(error => {
-
         console.error(error);
-
         alert("Error saving product");
-
     });
-
 }
-
 </script>
 
 </body>
 </html>
-```
