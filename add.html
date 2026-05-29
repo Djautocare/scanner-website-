@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Djatocare Inventory</title>
+<title>Add Stock</title>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
@@ -43,6 +43,7 @@ button{
 a{
     color:#4CAF50;
     text-decoration:none;
+    font-weight:bold;
 }
 
 #printArea{
@@ -125,7 +126,7 @@ a{
 
 <div class="box">
 
-<h1>Djatocare Inventory</h1>
+<h1>Add Stock</h1>
 
 <input type="text" id="description" placeholder="Item Description">
 
@@ -142,14 +143,8 @@ Print Labels
 
 <button onclick="saveProduct()">Save Product</button>
 
-<p>
-<a href="index.html">Back to Dashboard</a>
-</p>
-    <p>
-<a href="search.html">Go to Search Stock</a>
-</p>
-    <p>
-<a href="remove.html">remove stock</a>
+<p style="margin-top:20px;">
+<a href="index.html">← Back to Dashboard</a>
 </p>
 
 <div id="printArea">
@@ -160,7 +155,8 @@ Print Labels
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 function saveProduct(){
 
