@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Search Stock</title>
+
+<style>
+body{
+    font-family:Arial;
+    background:#111;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+
+.box{
+    background:#1e1e1e;
+    padding:20px;
+    border-radius:12px;
+    max-width:500px;
+    margin:auto;
+}
+
+input, button{
+    width:90%;
+    padding:12px;
+    margin:10px;
+    border:none;
+    border-radius:8px;
+}
+
+button{
+    background:#4CAF50;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.result-card{
+    background:#2a2a2a;
+    border-radius:10px;
+    padding:15px;
+    margin:15px 0;
+    text-align:left;
+}
+
+.location{
+    background:#111;
+    padding:8px;
+    border-radius:6px;
+    margin-top:6px;
+}
+
+a{
+    color:#4CAF50;
+    text-decoration:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h1>Search Stock</h1>
+
+<input type="text" id="query" placeholder="Search description or barcode">
+
+<button onclick="searchStock()">Search</button>
+
+<div id="results"></div>
+
+<p>
+<a href="index.html">Add Stock</a> |
+<a href="remove.html">Remove Stock</a>
+</p>
+
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+function searchStock(){
+
+    const query = document.getElementById("query").value.trim();
+
+    if(!query){
+        alert("Enter search term");
+        return;
+    }
+
+    document.getElementById("results").innerHTML = "Searching...";
+
+    fetch(API_URL, {
+        method:"POST",
+        body:JSON.stringify({
+            action:"SEARCH",
+            query:query
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if(!data.success){
+            document.getElementById("results").innerHTML =
+            data.error || "Search failed";
+            return;
+        }
+
+        if(data.results.length === 0){
+            document.getElementById("results").innerHTML =
+            "<p>No results found.</p>";
+            return;
+        }
+
+        let html = "";
+
+        data.results.forEach(item => {
+
+            html += `
+                <div class="result-card">
+                    <h3>${item.description}</h3>
+                    <p><strong>Barcode:</strong> ${item.barcode}</p>
+                    <p><strong>Total Qty:</strong> ${item.totalQty}</p>
+                    <p><strong>Locations:</strong></p>
+            `;
+
+            if(item.locations.length === 0){
+                html += `<div class="location">No stock currently available</div>`;
+            } else {
+                item.locations.forEach(loc => {
+                    html += `
+                        <div class="location">
+                            ${loc.location} — Qty: ${loc.qty}
+                        </div>
+                    `;
+                });
+            }
+
+            html += `</div>`;
+        });
+
+        document.getElementById("results").innerHTML = html;
+
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Error searching stock");
+    });
+}
+</script>
+
+</body>
+</html>
