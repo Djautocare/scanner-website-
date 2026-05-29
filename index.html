@@ -86,9 +86,6 @@
 
 <script>
 
-let productCounter = 1000;
-
-const products = {};
 
 function saveProduct(){
 
@@ -120,12 +117,39 @@ function saveProduct(){
         displayValue:true
     });
 
-    console.log({
-        description,
-        qty,
-        location,
-        barcode
+    fetch("https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec", {
+
+    method: "POST",
+
+    body: JSON.stringify({
+        description: description,
+        qty: qty,
+        location: location
+    })
+
+})
+.then(res => res.json())
+.then(data => {
+
+    barcode = data.barcode;
+
+    document.getElementById("barcodeText").innerText = barcode;
+
+    JsBarcode("#barcode", barcode, {
+        format:"CODE128",
+        displayValue:false,
+        width:2,
+        height:70,
+        margin:10
     });
+
+    if(printLabels){
+        window.print();
+    }
+
+    alert("Saved Successfully");
+
+});
 
     if(printLabels){
         window.print();
