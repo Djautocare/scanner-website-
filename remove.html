@@ -6,6 +6,8 @@
 
 <title>Remove Stock</title>
 
+<script src="https://unpkg.com/html5-qrcode"></script>
+
 <style>
 body{
     font-family:Arial;
@@ -19,7 +21,7 @@ body{
     background:#1e1e1e;
     padding:20px;
     border-radius:12px;
-    max-width:400px;
+    max-width:450px;
     margin:auto;
 }
 
@@ -38,8 +40,24 @@ button{
     cursor:pointer;
 }
 
+.scan-button{
+    background:#4CAF50;
+}
+
 a{
     color:#4CAF50;
+    text-decoration:none;
+}
+
+#reader{
+    width:300px;
+    margin:20px auto;
+    display:none;
+}
+
+#result{
+    font-weight:bold;
+    margin-top:15px;
 }
 </style>
 </head>
@@ -54,6 +72,10 @@ a{
 
 <input type="number" id="qty" placeholder="Quantity" value="1">
 
+<button class="scan-button" onclick="startScanner()">Start Camera Scanner</button>
+
+<div id="reader"></div>
+
 <button onclick="removeStock()">Remove Stock</button>
 
 <p id="result"></p>
@@ -63,8 +85,61 @@ a{
 </div>
 
 <script>
-
 const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+let scannerStarted = false;
+let scanner;
+
+function startScanner(){
+
+    document.getElementById("reader").style.display = "block";
+
+    if(scannerStarted){
+        return;
+    }
+
+    scanner = new Html5Qrcode("reader");
+
+    scanner.start(
+        { facingMode: "environment" },
+        {
+            fps: 10,
+            qrbox: {
+                width: 250,
+                height: 150
+            }
+        },
+        function(decodedText){
+
+            const cleanBarcode = decodedText.trim().toUpperCase();
+
+            document.getElementById("barcode").value = cleanBarcode;
+
+            document.getElementById("result").innerText =
+            "Scanned: " + cleanBarcode;
+
+            stopScanner();
+
+            removeStock();
+        },
+        function(errorMessage){
+            // scanning errors ignored
+        }
+    );
+
+    scannerStarted = true;
+}
+
+function stopScanner(){
+
+    if(scannerStarted && scanner){
+        scanner.stop().then(() => {
+            scanner.clear();
+            document.getElementById("reader").style.display = "none";
+            scannerStarted = false;
+        });
+    }
+}
 
 function removeStock(){
 
@@ -72,7 +147,7 @@ function removeStock(){
     const qty = document.getElementById("qty").value || 1;
 
     if(!barcode){
-        alert("Enter barcode");
+        alert("Enter or scan barcode");
         return;
     }
 
@@ -88,14 +163,18 @@ function removeStock(){
     .then(data => {
 
         if(data.success){
+
             document.getElementById("result").innerText =
             "Removed " + qty + " from " + barcode +
             ". Remaining: " + data.remainingQty;
 
             document.getElementById("barcode").value = "";
+
         } else {
+
             document.getElementById("result").innerText =
             data.error || "Remove failed";
+
         }
 
     })
@@ -104,7 +183,6 @@ function removeStock(){
         alert("Error removing stock");
     });
 }
-
 </script>
 
 </body>
