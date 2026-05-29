@@ -1,57 +1,81 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Djatocare Inventory</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<title>Djatocare Inventory</title>
 
-  <style>
-    body{
-      font-family: Arial;
-      background:#111;
-      color:white;
-      text-align:center;
-      padding:20px;
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+
+body{
+    font-family:Arial;
+    background:#111;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+
+.box{
+    background:#1e1e1e;
+    padding:20px;
+    border-radius:12px;
+    max-width:400px;
+    margin:auto;
+}
+
+input, button{
+    width:90%;
+    padding:12px;
+    margin:10px;
+    border:none;
+    border-radius:8px;
+}
+
+button{
+    background:#4CAF50;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+#printArea{
+    background:white;
+    margin-top:20px;
+    padding:20px;
+}
+
+#barcodeText{
+    color:black;
+    font-size:20px;
+    font-weight:bold;
+}
+
+@media print {
+
+    body * {
+        visibility:hidden;
     }
 
-    input, button{
-      padding:12px;
-      margin:10px;
-      width:300px;
-      border-radius:8px;
-      border:none;
+    #printArea,
+    #printArea * {
+        visibility:visible;
     }
 
-    button{
-      cursor:pointer;
-      background:#4CAF50;
-      color:white;
-      font-weight:bold;
+    #printArea{
+        position:absolute;
+        left:0;
+        top:0;
+        width:100%;
     }
 
-    #reader{
-      width:300px;
-      margin:auto;
-      margin-top:20px;
-    }
+}
 
-    #barcode{
-      background:white;
-      padding:10px;
-      margin-top:20px;
-    }
+</style>
 
-    .box{
-      background:#1e1e1e;
-      padding:20px;
-      border-radius:12px;
-      max-width:400px;
-      margin:auto;
-    }
-  </style>
 </head>
 
 <body>
@@ -67,8 +91,8 @@
 <input type="text" id="location" placeholder="Current Box (BOX-A1)">
 
 <label>
-  <input type="checkbox" id="printLabels" checked>
-  Print Labels
+<input type="checkbox" id="printLabels" checked>
+Print Labels
 </label>
 
 <br>
@@ -83,17 +107,23 @@
 
 </div>
 
-
-<script>
+</div>
 
 <script>
 
 function saveProduct(){
 
-    const description = document.getElementById("description").value;
-    const qty = document.getElementById("qty").value;
-    const location = document.getElementById("location").value;
-    const printLabels = document.getElementById("printLabels").checked;
+    const description =
+    document.getElementById("description").value;
+
+    const qty =
+    document.getElementById("qty").value;
+
+    const location =
+    document.getElementById("location").value;
+
+    const printLabels =
+    document.getElementById("printLabels").checked;
 
     if(!description){
         alert("Enter description");
@@ -102,21 +132,24 @@ function saveProduct(){
 
     fetch("https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec", {
 
-        method: "POST",
+        method:"POST",
 
-        body: JSON.stringify({
-            description: description,
-            qty: qty,
-            location: location
+        body:JSON.stringify({
+            description:description,
+            qty:qty,
+            location:location
         })
 
     })
+
     .then(res => res.json())
+
     .then(data => {
 
         const barcode = data.barcode;
 
-        document.getElementById("barcodeText").innerText = barcode;
+        document.getElementById("barcodeText")
+        .innerText = barcode;
 
         JsBarcode("#barcode", barcode, {
             format:"CODE128",
@@ -133,6 +166,7 @@ function saveProduct(){
         alert("Saved Successfully");
 
     })
+
     .catch(error => {
 
         console.error(error);
@@ -145,7 +179,6 @@ function saveProduct(){
 
 </script>
 
-</script>
-
 </body>
 </html>
+```
