@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Remove Stock</title>
+
+<style>
+body{
+    font-family:Arial;
+    background:#111;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+
+.box{
+    background:#1e1e1e;
+    padding:20px;
+    border-radius:12px;
+    max-width:400px;
+    margin:auto;
+}
+
+input, button{
+    width:90%;
+    padding:12px;
+    margin:10px;
+    border:none;
+    border-radius:8px;
+}
+
+button{
+    background:#d9534f;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+a{
+    color:#4CAF50;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h1>Remove Stock</h1>
+
+<input type="text" id="barcode" placeholder="Scan / Enter Barcode">
+
+<input type="number" id="qty" placeholder="Quantity" value="1">
+
+<button onclick="removeStock()">Remove Stock</button>
+
+<p id="result"></p>
+
+<p><a href="index.html">Back to Add Stock</a></p>
+
+</div>
+
+<script>
+
+const API_URL = "PASTE_YOUR_WEBAPP_URL_HERE";
+
+function removeStock(){
+
+    const barcode = document.getElementById("barcode").value.trim().toUpperCase();
+    const qty = document.getElementById("qty").value || 1;
+
+    if(!barcode){
+        alert("Enter barcode");
+        return;
+    }
+
+    fetch(API_URL, {
+        method:"POST",
+        body:JSON.stringify({
+            action:"REMOVE",
+            barcode:barcode,
+            qty:qty
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if(data.success){
+            document.getElementById("result").innerText =
+            "Removed " + qty + " from " + barcode +
+            ". Remaining: " + data.remainingQty;
+
+            document.getElementById("barcode").value = "";
+        } else {
+            document.getElementById("result").innerText =
+            data.error || "Remove failed";
+        }
+
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Error removing stock");
+    });
+}
+
+</script>
+
+</body>
+</html>
