@@ -8,7 +8,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 
 <title>Remove Stock</title>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
 
 <style>
 html{
@@ -57,16 +57,22 @@ button{
     background:#4CAF50;
 }
 
+.stop-button{
+    background:#d9534f;
+}
+
 .location-button{
     background:#0275d8;
 }
 
 #reader{
-    max-width:300px;
+    max-width:320px;
     width:100%;
-    min-height:220px;
+    min-height:240px;
     margin:20px auto;
     display:none;
+    background:#000;
+    border-radius:10px;
 }
 
 #result{
@@ -131,9 +137,11 @@ a{
 
 <input type="number" id="qty" placeholder="Quantity" value="1">
 
-<button class="scan-button" onclick="startScanner()">Start Camera Scanner</button>
+<button class="scan-button" onclick="startScanner()">Start Scanner</button>
 
-<div id="reader"></div>
+<button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
+
+<video id="reader" playsinline></video>
 
 <button onclick="removeStock()">Remove Stock</button>
 
@@ -159,7 +167,8 @@ const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 let scannerStarted = false;
-let scanner;
+let codeReader = null;
+let controls = null;
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -171,11 +180,12 @@ function hideLoading(){
 
 function startScanner(){
 
-    const reader = document.getElementById("reader");
+    const video =
+    document.getElementById("reader");
 
-    reader.style.display = "block";
+    video.style.display = "block";
 
-    reader.scrollIntoView({
+    video.scrollIntoView({
         block:"nearest",
         behavior:"instant"
     });
@@ -184,56 +194,85 @@ function startScanner(){
         return;
     }
 
-    scanner = new Html5Qrcode("reader");
+    codeReader =
+    new ZXingBrowser.BrowserMultiFormatReader();
 
-    scanner.start(
-        { facingMode: "environment" },
-        {
-            fps:10,
-            qrbox:{
-                width:250,
-                height:150
+    codeReader.decodeFromVideoDevice(
+        null,
+        "reader",
+        function(result, error, ctrl){
+
+            if(ctrl){
+                controls = ctrl;
             }
-        },
-        function(decodedText){
 
-            const barcode =
-            decodedText
-            .trim()
-            .toUpperCase();
+            if(result){
 
-            document.getElementById("barcode").value =
-            barcode;
+                const barcode =
+                result
+                .getText()
+                .trim()
+                .toUpperCase();
 
-            document.getElementById("result").innerText =
-            "Scanned successfully. Press Remove Stock.";
+                document.getElementById("barcode")
+                .value = barcode;
 
-            stopScanner();
+                document.getElementById("result")
+                .innerText =
+                "Scanned successfully. Press Remove Stock.";
 
-        },
-        function(errorMessage){}
-    );
+                stopScanner();
+
+            }
+
+        }
+    )
+    .then(function(ctrl){
+
+        controls = ctrl;
+
+    })
+    .catch(function(error){
+
+        console.error(error);
+
+        alert("Could not start scanner. Check camera permissions.");
+
+        scannerStarted = false;
+
+        video.style.display = "none";
+
+    });
 
     scannerStarted = true;
 }
 
 function stopScanner(){
 
-    if(scannerStarted && scanner){
+    if(controls){
 
-        scanner.stop().then(() => {
+        controls.stop();
 
-            scanner.clear();
-
-            document.getElementById("reader")
-            .style.display = "none";
-
-            scannerStarted = false;
-
-        });
+        controls = null;
 
     }
 
+    const video =
+    document.getElementById("reader");
+
+    if(video && video.srcObject){
+
+        video.srcObject
+        .getTracks()
+        .forEach(track => track.stop());
+
+        video.srcObject = null;
+
+    }
+
+    video.style.display = "none";
+
+    scannerStarted = false;
 }
 
 function removeStock(locationOverride = ""){
