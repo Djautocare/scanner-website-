@@ -75,6 +75,41 @@ a{
     font-weight:bold;
     margin-top:15px;
 }
+
+/* Loading overlay */
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{
+    text-align:center;
+    color:white;
+    font-weight:bold;
+}
+
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #4CAF50;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+}
 </style>
 </head>
 
@@ -108,6 +143,13 @@ a{
 
 </div>
 
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Working...</p>
+    </div>
+</div>
+
 <script>
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
@@ -115,7 +157,17 @@ const API_URL =
 let scannerStarted = false;
 let scanner;
 
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display = "none";
+}
+
 function loadBoxes(){
+
+    showLoading();
 
     fetch(API_URL,{
         method:"POST",
@@ -127,6 +179,8 @@ function loadBoxes(){
     .then(res=>res.json())
 
     .then(data=>{
+
+        hideLoading();
 
         if(!data.success){
             return;
@@ -169,6 +223,8 @@ function loadBoxes(){
     })
 
     .catch(error=>{
+
+        hideLoading();
 
         console.error(error);
 
@@ -277,6 +333,8 @@ function moveStock(){
         return;
     }
 
+    showLoading();
+
     fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
@@ -291,6 +349,8 @@ function moveStock(){
     .then(res=>res.json())
 
     .then(data=>{
+
+        hideLoading();
 
         if(data.success){
 
@@ -319,6 +379,8 @@ function moveStock(){
     })
 
     .catch(error=>{
+
+        hideLoading();
 
         console.error(error);
 
