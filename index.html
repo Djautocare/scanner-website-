@@ -2,16 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
 <title>Inventory Dashboard</title>
 
 <style>
+html{
+    touch-action: manipulation;
+}
+
 body{
     font-family:Arial;
     background:#111;
     color:white;
     text-align:center;
     padding:20px;
+    overflow-x:hidden;
+    position:relative;
 }
 
 .box{
@@ -22,12 +31,17 @@ body{
     margin:auto;
 }
 
-input, button{
+input,
+button,
+textarea,
+select{
     width:90%;
     padding:12px;
     margin:10px;
     border:none;
     border-radius:8px;
+    font-size:16px;
+    box-sizing:border-box;
 }
 
 button{
@@ -58,12 +72,53 @@ button{
 #app{
     display:none;
 }
+
+#loginError{
+    color:#ff7777;
+    font-weight:bold;
+}
+
+/* Loading overlay */
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{
+    text-align:center;
+    color:white;
+    font-weight:bold;
+}
+
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #4CAF50;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+}
 </style>
 </head>
 
 <body>
 
 <div class="box" id="loginBox">
+
 <h1>Inventory Login</h1>
 
 <input type="password" id="password" placeholder="Enter password">
@@ -71,6 +126,7 @@ button{
 <button onclick="login()">Login</button>
 
 <p id="loginError"></p>
+
 </div>
 
 <div class="box" id="app">
@@ -84,11 +140,18 @@ button{
 <a class="link-button" href="add.html">Add Stock</a>
 <a class="link-button" href="remove.html">Remove Stock</a>
 <a class="link-button" href="search.html">Search Stock</a>
-    <a class="link-button" href="move.html">Move Stock</a>
+<a class="link-button" href="move.html">Move Stock</a>
 <a class="link-button" href="boxes.html">Create / View Boxes</a>
 
 <button onclick="logout()">Logout</button>
 
+</div>
+
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
 </div>
 
 <script>
@@ -97,63 +160,124 @@ const PASSWORD = "Sales";
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display = "none";
+}
+
 function login(){
-    const entered = document.getElementById("password").value;
+
+    const entered =
+    document.getElementById("password")
+    .value;
 
     if(entered === PASSWORD){
+
         localStorage.setItem("inventoryLoggedIn", "yes");
+
         showApp();
+
     }else{
-        document.getElementById("loginError").innerText = "Wrong password";
+
+        document.getElementById("loginError")
+        .innerText = "Wrong password";
+
     }
+
 }
 
 function logout(){
+
     localStorage.removeItem("inventoryLoggedIn");
+
     location.reload();
+
 }
 
 function showApp(){
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
+
+    document.getElementById("loginBox")
+    .style.display = "none";
+
+    document.getElementById("app")
+    .style.display = "block";
+
     loadStats();
+
 }
 
 function loadStats(){
+
+    showLoading();
+
     fetch(API_URL, {
         method:"POST",
         body:JSON.stringify({
             action:"STATS"
         })
     })
+
     .then(res => res.json())
+
     .then(data => {
+
+        hideLoading();
 
         if(data.success){
 
-            document.getElementById("totalProducts").innerText =
+            document.getElementById("totalProducts")
+            .innerText =
             "Products: " + data.totalProducts;
 
-            document.getElementById("totalStock").innerText =
+            document.getElementById("totalStock")
+            .innerText =
             "Stock Units: " + data.totalStock;
 
-            document.getElementById("totalBoxes").innerText =
+            document.getElementById("totalBoxes")
+            .innerText =
             "Boxes Used: " + data.totalBoxes;
 
         }else{
 
-            document.getElementById("totalProducts").innerText =
+            document.getElementById("totalProducts")
+            .innerText =
             "Could not load stats";
+
+            document.getElementById("totalStock")
+            .innerText =
+            "Stock Units: -";
+
+            document.getElementById("totalBoxes")
+            .innerText =
+            "Boxes Used: -";
 
         }
 
     })
+
     .catch(error => {
+
+        hideLoading();
+
         console.error(error);
 
-        document.getElementById("totalProducts").innerText =
+        document.getElementById("totalProducts")
+        .innerText =
         "Could not load stats";
+
+        document.getElementById("totalStock")
+        .innerText =
+        "Stock Units: -";
+
+        document.getElementById("totalBoxes")
+        .innerText =
+        "Boxes Used: -";
+
     });
+
 }
 
 if(localStorage.getItem("inventoryLoggedIn") === "yes"){
