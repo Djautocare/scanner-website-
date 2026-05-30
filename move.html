@@ -2,27 +2,86 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Move Stock</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-body{font-family:Arial;background:#111;color:white;text-align:center;padding:20px;}
-.box{background:#1e1e1e;padding:20px;border-radius:12px;max-width:500px;margin:auto;}
-input,select,button{width:90%;padding:12px;margin:10px;border:none;border-radius:8px;}
-button{background:#4CAF50;color:white;font-weight:bold;cursor:pointer;}
-.scan-button{background:#0275d8;}
-a{color:#4CAF50;text-decoration:none;font-weight:bold;}
-#reader{width:300px;margin:20px auto;display:none;}
-#result{font-weight:bold;margin-top:15px;}
+html{
+    touch-action: manipulation;
+}
+
+body{
+    font-family:Arial;
+    background:#111;
+    color:white;
+    text-align:center;
+    padding:20px;
+    overflow-x:hidden;
+    position:relative;
+}
+
+.box{
+    background:#1e1e1e;
+    padding:20px;
+    border-radius:12px;
+    max-width:500px;
+    margin:auto;
+}
+
+input,
+select,
+button,
+textarea{
+    width:90%;
+    padding:12px;
+    margin:10px;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
+    box-sizing:border-box;
+}
+
+button{
+    background:#4CAF50;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.scan-button{
+    background:#0275d8;
+}
+
+a{
+    color:#4CAF50;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+#reader{
+    max-width:300px;
+    width:100%;
+    min-height:220px;
+    margin:20px auto;
+    display:none;
+}
+
+#result{
+    font-weight:bold;
+    margin-top:15px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="box">
+
 <h1>Move Stock</h1>
 
 <input type="text" id="barcode" placeholder="Scan / Enter Barcode">
@@ -46,6 +105,7 @@ a{color:#4CAF50;text-decoration:none;font-weight:bold;}
 <p id="result"></p>
 
 <p><a href="index.html">← Back to Dashboard</a></p>
+
 </div>
 
 <script>
@@ -56,47 +116,114 @@ let scannerStarted = false;
 let scanner;
 
 function loadBoxes(){
+
     fetch(API_URL,{
         method:"POST",
-        body:JSON.stringify({action:"GET_BOXES"})
+        body:JSON.stringify({
+            action:"GET_BOXES"
+        })
     })
-    .then(res=>res.json())
-    .then(data=>{
-        if(!data.success) return;
 
-        const fromSelect = document.getElementById("fromLocation");
-        const toSelect = document.getElementById("toLocation");
+    .then(res=>res.json())
+
+    .then(data=>{
+
+        if(!data.success){
+            return;
+        }
+
+        const fromSelect =
+        document.getElementById("fromLocation");
+
+        const toSelect =
+        document.getElementById("toLocation");
+
+        fromSelect.innerHTML =
+        '<option value="">From Location</option>';
+
+        toSelect.innerHTML =
+        '<option value="">To Location</option>';
 
         data.boxes.forEach(item=>{
-            const option1 = document.createElement("option");
+
+            const option1 =
+            document.createElement("option");
+
             option1.value = item.box;
+
             option1.textContent = item.box;
 
-            const option2 = document.createElement("option");
+            const option2 =
+            document.createElement("option");
+
             option2.value = item.box;
+
             option2.textContent = item.box;
 
             fromSelect.appendChild(option1);
+
             toSelect.appendChild(option2);
+
         });
+
+    })
+
+    .catch(error=>{
+
+        console.error(error);
+
+        alert("Could not load boxes");
+
     });
+
 }
 
 function startScanner(){
-    document.getElementById("reader").style.display = "block";
 
-    if(scannerStarted) return;
+    const reader =
+    document.getElementById("reader");
 
-    scanner = new Html5Qrcode("reader");
+    reader.style.display = "block";
+
+    reader.scrollIntoView({
+        block:"nearest",
+        behavior:"instant"
+    });
+
+    if(scannerStarted){
+        return;
+    }
+
+    scanner =
+    new Html5Qrcode("reader");
 
     scanner.start(
-        {facingMode:"environment"},
-        {fps:10, qrbox:{width:250,height:150}},
+        {
+            facingMode:"environment"
+        },
+        {
+            fps:10,
+            qrbox:{
+                width:250,
+                height:150
+            }
+        },
         function(decodedText){
-            const barcode = decodedText.trim().toUpperCase();
-            document.getElementById("barcode").value = barcode;
-            document.getElementById("result").innerText = "Scanned: " + barcode;
+
+            const barcode =
+            decodedText
+            .trim()
+            .toUpperCase();
+
+            document.getElementById("barcode")
+            .value = barcode;
+
+            document.getElementById("result")
+            .innerText =
+            "Scanned: " + barcode;
+
             stopScanner();
+
         },
         function(errorMessage){}
     );
@@ -105,23 +232,48 @@ function startScanner(){
 }
 
 function stopScanner(){
+
     if(scannerStarted && scanner){
+
         scanner.stop().then(()=>{
+
             scanner.clear();
-            document.getElementById("reader").style.display = "none";
+
+            document.getElementById("reader")
+            .style.display = "none";
+
             scannerStarted = false;
+
         });
+
     }
+
 }
 
 function moveStock(){
-    const barcode = document.getElementById("barcode").value.trim().toUpperCase();
-    const fromLocation = document.getElementById("fromLocation").value;
-    const toLocation = document.getElementById("toLocation").value;
-    const qty = document.getElementById("qty").value || 1;
+
+    const barcode =
+    document.getElementById("barcode")
+    .value
+    .trim()
+    .toUpperCase();
+
+    const fromLocation =
+    document.getElementById("fromLocation")
+    .value;
+
+    const toLocation =
+    document.getElementById("toLocation")
+    .value;
+
+    const qty =
+    document.getElementById("qty")
+    .value || 1;
 
     if(!barcode || !fromLocation || !toLocation){
+
         alert("Enter barcode, from location and to location");
+
         return;
     }
 
@@ -135,19 +287,45 @@ function moveStock(){
             qty:qty
         })
     })
-    .then(res=>res.json())
-    .then(data=>{
-        if(data.success){
-            document.getElementById("result").innerText =
-            "Moved " + data.qty + " of " + data.barcode +
-            " from " + data.fromLocation + " to " + data.toLocation;
 
-            document.getElementById("barcode").value = "";
+    .then(res=>res.json())
+
+    .then(data=>{
+
+        if(data.success){
+
+            document.getElementById("result")
+            .innerText =
+            "Moved " +
+            data.qty +
+            " of " +
+            data.barcode +
+            " from " +
+            data.fromLocation +
+            " to " +
+            data.toLocation;
+
+            document.getElementById("barcode")
+            .value = "";
+
         }else{
-            document.getElementById("result").innerText =
+
+            document.getElementById("result")
+            .innerText =
             data.error || "Move failed";
+
         }
+
+    })
+
+    .catch(error=>{
+
+        console.error(error);
+
+        alert("Error moving stock");
+
     });
+
 }
 
 loadBoxes();
