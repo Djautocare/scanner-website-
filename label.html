@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Print Label</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+html, body{
+    margin:0;
+    padding:0;
+    background:white;
+    width:2in;
+    height:1in;
+    overflow:hidden;
+    font-family:Arial;
+}
+
+#printArea{
+    width:2in;
+    height:1in;
+    padding:0.04in;
+    box-sizing:border-box;
+    text-align:center;
+    background:white;
+    overflow:hidden;
+}
+
+#barcode{
+    width:1.72in;
+    height:0.6in;
+    display:block;
+    margin:0 auto;
+}
+
+#barcodeText{
+    color:black;
+    font-size:10pt;
+    font-weight:bold;
+    margin:0;
+    padding:0;
+    line-height:1;
+}
+
+button{
+    margin-top:20px;
+    padding:12px;
+    font-size:16px;
+}
+
+@media print{
+    @page{
+        size:2in 1in;
+        margin:0;
+    }
+
+    button{
+        display:none;
+    }
+
+    html, body{
+        width:2in;
+        height:1in;
+        margin:0;
+        padding:0;
+        overflow:hidden;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div id="printArea">
+    <svg id="barcode"></svg>
+    <p id="barcodeText"></p>
+</div>
+
+<button onclick="window.print()">Print Label</button>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const barcode = params.get("barcode") || "NO-BARCODE";
+
+document.getElementById("barcodeText").innerText = barcode;
+
+JsBarcode("#barcode", barcode, {
+    format:"CODE128",
+    displayValue:false,
+    width:1,
+    height:35,
+    margin:8
+});
+</script>
+
+</body>
+</html>
