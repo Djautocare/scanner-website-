@@ -8,6 +8,8 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 
 <title>Search Stock</title>
 
+<script src="https://unpkg.com/html5-qrcode"></script>
+
 <style>
 html{
     touch-action: manipulation;
@@ -51,6 +53,10 @@ button{
     cursor:pointer;
 }
 
+.scan-button{
+    background:#0275d8;
+}
+
 .result-card{
     background:#2a2a2a;
     border-radius:10px;
@@ -64,6 +70,14 @@ button{
     padding:8px;
     border-radius:6px;
     margin-top:6px;
+}
+
+#reader{
+    max-width:300px;
+    width:100%;
+    min-height:220px;
+    margin:20px auto;
+    display:none;
 }
 
 a{
@@ -117,6 +131,10 @@ a{
 
 <input type="text" id="query" placeholder="Search description or barcode">
 
+<button class="scan-button" onclick="startScanner()">Scan Barcode</button>
+
+<div id="reader"></div>
+
 <button onclick="searchStock()">Search</button>
 
 <div id="results"></div>
@@ -138,12 +156,85 @@ a{
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
+let scannerStarted = false;
+let scanner;
+
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
 }
 
 function hideLoading(){
     document.getElementById("loadingOverlay").style.display = "none";
+}
+
+function startScanner(){
+
+    const reader =
+    document.getElementById("reader");
+
+    reader.style.display = "block";
+
+    reader.scrollIntoView({
+        block:"nearest",
+        behavior:"instant"
+    });
+
+    if(scannerStarted){
+        return;
+    }
+
+    scanner =
+    new Html5Qrcode("reader");
+
+    scanner.start(
+        {
+            facingMode:"environment"
+        },
+        {
+            fps:10,
+            qrbox:{
+                width:250,
+                height:150
+            }
+        },
+        function(decodedText){
+
+            const barcode =
+            decodedText
+            .trim()
+            .toUpperCase();
+
+            document.getElementById("query")
+            .value = barcode;
+
+            stopScanner();
+
+            searchStock();
+
+        },
+        function(errorMessage){}
+    );
+
+    scannerStarted = true;
+}
+
+function stopScanner(){
+
+    if(scannerStarted && scanner){
+
+        scanner.stop().then(()=>{
+
+            scanner.clear();
+
+            document.getElementById("reader")
+            .style.display = "none";
+
+            scannerStarted = false;
+
+        });
+
+    }
+
 }
 
 function searchStock(){
@@ -154,13 +245,12 @@ function searchStock(){
     .trim();
 
     if(!query){
-        alert("Enter search term");
+        alert("Enter search term or scan barcode");
         return;
     }
 
     document.getElementById("results")
-    .innerHTML =
-    "";
+    .innerHTML = "";
 
     showLoading();
 
