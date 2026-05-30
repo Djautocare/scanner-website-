@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Reprint Product Label</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+html{touch-action:manipulation;}
+body{font-family:Arial;background:#111;color:white;text-align:center;padding:20px;overflow-x:hidden;}
+.box{background:#1e1e1e;padding:20px;border-radius:12px;max-width:500px;margin:auto;}
+input,button{width:90%;padding:12px;margin:10px;border:none;border-radius:8px;font-size:16px;box-sizing:border-box;}
+button{background:#4CAF50;color:white;font-weight:bold;cursor:pointer;}
+.result-card{background:#2a2a2a;border-radius:10px;padding:15px;margin:15px 0;text-align:left;}
+a{color:#4CAF50;text-decoration:none;font-weight:bold;}
+
+#printArea{
+    background:white;
+    margin-top:20px;
+    padding:5px;
+    width:51mm;
+    margin-left:auto;
+    margin-right:auto;
+    text-align:center;
+}
+
+#barcodeText{
+    color:black;
+    font-weight:bold;
+    font-size:13px;
+    margin:0;
+    padding:0;
+}
+
+@media print{
+    @page{size:51mm 25mm;margin:0;}
+    html,body{width:51mm;height:25mm;margin:0;padding:0;background:white;}
+    body *{visibility:hidden;}
+    #printArea,#printArea *{visibility:visible;}
+    #printArea{position:fixed;left:0;top:0;width:51mm;height:25mm;padding:1.5mm;margin:0;box-sizing:border-box;background:white;text-align:center;overflow:hidden;}
+    #barcode{width:48mm;height:17mm;display:block;margin:0 auto;}
+    #barcodeText{color:black;font-size:11px;font-weight:bold;margin:0;padding:0;line-height:1;}
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h1>Reprint Product Label</h1>
+
+<input type="text" id="query" placeholder="Search description or barcode">
+
+<button onclick="searchProduct()">Search</button>
+
+<div id="results"></div>
+
+<div id="printArea">
+    <svg id="barcode"></svg>
+    <p id="barcodeText"></p>
+</div>
+
+<p><a href="index.html">← Back to Dashboard</a></p>
+
+</div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+function searchProduct(){
+
+    const query = document.getElementById("query").value.trim();
+
+    if(!query){
+        alert("Enter product description or barcode");
+        return;
+    }
+
+    document.getElementById("results").innerHTML = "Searching...";
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"SEARCH",
+            query:query
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+
+        if(!data.success || data.results.length === 0){
+            document.getElementById("results").innerHTML = "No product found.";
+            return;
+        }
+
+        let html = "";
+
+        data.results.forEach(item=>{
+            html += `
+                <div class="result-card">
+                    <h3>${item.description}</h3>
+                    <p><strong>Barcode:</strong> ${item.barcode}</p>
+                    <p><strong>Total Qty:</strong> ${item.totalQty}</p>
+                    <button onclick="printLabel('${item.barcode}')">
+                        Print Label
+                    </button>
+                </div>
+            `;
+        });
+
+        document.getElementById("results").innerHTML = html;
+    });
+}
+
+function printLabel(barcode){
+
+    document.getElementById("barcodeText").innerText = barcode;
+
+    JsBarcode("#barcode", barcode, {
+        format:"CODE128",
+        displayValue:false,
+        width:1.2,
+        height:42,
+        margin:0
+    });
+
+    window.print();
+}
+</script>
+
+</body>
+</html>
