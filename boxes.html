@@ -4,32 +4,80 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Create Box</title>
+<title>Create / View Boxes</title>
 
 <style>
-body{font-family:Arial;background:#111;color:white;text-align:center;padding:20px;}
-.box{background:#1e1e1e;padding:20px;border-radius:12px;max-width:500px;margin:auto;}
-input,button{width:90%;padding:12px;margin:10px;border:none;border-radius:8px;}
-button{background:#4CAF50;color:white;font-weight:bold;cursor:pointer;}
-a{color:#4CAF50;text-decoration:none;font-weight:bold;}
-.box-card{background:#2a2a2a;padding:10px;margin:10px;border-radius:8px;text-align:left;}
+body{
+    font-family:Arial;
+    background:#111;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+
+.box{
+    background:#1e1e1e;
+    padding:20px;
+    border-radius:12px;
+    max-width:500px;
+    margin:auto;
+}
+
+input,button{
+    width:90%;
+    padding:12px;
+    margin:10px;
+    border:none;
+    border-radius:8px;
+}
+
+button{
+    background:#4CAF50;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.delete-button{
+    background:#d9534f;
+}
+
+.box-card{
+    background:#2a2a2a;
+    padding:12px;
+    margin:10px;
+    border-radius:8px;
+    text-align:left;
+}
+
+a{
+    color:#4CAF50;
+    text-decoration:none;
+    font-weight:bold;
+}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-<h1>Create Box</h1>
+
+<h1>Create / View Boxes</h1>
 
 <input type="text" id="boxName" placeholder="Box name e.g. BOX-A1">
+
 <input type="text" id="notes" placeholder="Notes e.g. Hoodies / Shoes">
 
 <button onclick="createBox()">Create Box</button>
 
 <h2>Existing Boxes</h2>
+
 <div id="boxList">Loading...</div>
 
-<p><a href="index.html">← Back to Dashboard</a></p>
+<p style="margin-top:20px;">
+<a href="index.html">← Back to Dashboard</a>
+</p>
+
 </div>
 
 <script>
@@ -37,8 +85,17 @@ const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 function createBox(){
-    const box = document.getElementById("boxName").value.trim().toUpperCase();
-    const notes = document.getElementById("notes").value.trim();
+
+    const box =
+    document.getElementById("boxName")
+    .value
+    .trim()
+    .toUpperCase();
+
+    const notes =
+    document.getElementById("notes")
+    .value
+    .trim();
 
     if(!box){
         alert("Enter box name");
@@ -55,47 +112,132 @@ function createBox(){
     })
     .then(res=>res.json())
     .then(data=>{
+
         if(data.success){
+
             alert("Box created: " + data.box);
+
             document.getElementById("boxName").value = "";
             document.getElementById("notes").value = "";
+
             loadBoxes();
+
         }else{
+
             alert(data.error || "Could not create box");
+
         }
+
+    })
+    .catch(error=>{
+        console.error(error);
+        alert("Error creating box");
     });
+
 }
 
 function loadBoxes(){
+
     fetch(API_URL,{
         method:"POST",
-        body:JSON.stringify({action:"GET_BOXES"})
+        body:JSON.stringify({
+            action:"GET_BOXES"
+        })
     })
     .then(res=>res.json())
     .then(data=>{
+
         if(!data.success){
-            document.getElementById("boxList").innerHTML = "Could not load boxes";
+
+            document.getElementById("boxList").innerHTML =
+            "Could not load boxes";
+
             return;
         }
 
         if(data.boxes.length === 0){
-            document.getElementById("boxList").innerHTML = "No boxes created yet.";
+
+            document.getElementById("boxList").innerHTML =
+            "No boxes created yet.";
+
             return;
         }
 
         let html = "";
 
         data.boxes.forEach(item=>{
+
             html += `
                 <div class="box-card">
+
                     <strong>${item.box}</strong><br>
+
                     ${item.notes || ""}
+
+                    <br><br>
+
+                    <button
+                    class="delete-button"
+                    onclick="deleteBox('${item.box}')">
+                    Delete Box
+                    </button>
+
                 </div>
             `;
+
         });
 
         document.getElementById("boxList").innerHTML = html;
+
+    })
+    .catch(error=>{
+
+        console.error(error);
+
+        document.getElementById("boxList").innerHTML =
+        "Error loading boxes";
+
     });
+
+}
+
+function deleteBox(box){
+
+    if(!confirm("Delete " + box + "? This only works if the box has no stock.")){
+        return;
+    }
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"DELETE_BOX",
+            box:box
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+
+        if(data.success){
+
+            alert("Box deleted: " + data.box);
+
+            loadBoxes();
+
+        }else{
+
+            alert(data.error || "Could not delete box");
+
+        }
+
+    })
+    .catch(error=>{
+
+        console.error(error);
+
+        alert("Error deleting box");
+
+    });
+
 }
 
 loadBoxes();
