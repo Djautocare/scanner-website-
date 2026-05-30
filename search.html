@@ -61,6 +61,11 @@ button{
     background:#d9534f;
 }
 
+.torch-button{
+    background:#f0ad4e;
+    color:black;
+}
+
 .result-card{
     background:#2a2a2a;
     border-radius:10px;
@@ -138,6 +143,8 @@ a{
 
 <button class="scan-button" onclick="startScanner()">Start Scanner</button>
 
+<button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
+
 <button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
 
 <video id="reader" playsinline></video>
@@ -166,6 +173,7 @@ const API_URL =
 let scannerStarted = false;
 let codeReader = null;
 let controls = null;
+let torchOn = false;
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -173,6 +181,82 @@ function showLoading(){
 
 function hideLoading(){
     document.getElementById("loadingOverlay").style.display = "none";
+}
+
+function beep(){
+    try{
+        const audioCtx =
+        new (window.AudioContext || window.webkitAudioContext)();
+
+        const oscillator =
+        audioCtx.createOscillator();
+
+        const gain =
+        audioCtx.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.value = 900;
+
+        gain.gain.value = 0.15;
+
+        oscillator.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        oscillator.start();
+
+        setTimeout(function(){
+            oscillator.stop();
+            audioCtx.close();
+        }, 120);
+
+    }catch(error){
+        console.log("Beep not supported");
+    }
+}
+
+function scanFeedback(){
+
+    if(navigator.vibrate){
+        navigator.vibrate(100);
+    }
+
+    beep();
+
+}
+
+async function toggleTorch(){
+
+    try{
+
+        const video =
+        document.getElementById("reader");
+
+        if(!video.srcObject){
+            alert("Start scanner first");
+            return;
+        }
+
+        const track =
+        video.srcObject.getVideoTracks()[0];
+
+        torchOn = !torchOn;
+
+        await track.applyConstraints({
+            advanced:[{
+                torch: torchOn
+            }]
+        });
+
+        document.getElementById("results")
+        .innerHTML =
+        torchOn ? "<p>Flashlight on</p>" : "<p>Flashlight off</p>";
+
+    }catch(error){
+
+        alert("Flashlight not supported on this device/browser");
+
+    }
+
 }
 
 function startScanner(){
@@ -210,6 +294,8 @@ function startScanner(){
                 .getText()
                 .trim()
                 .toUpperCase();
+
+                scanFeedback();
 
                 document.getElementById("query")
                 .value = barcode;
@@ -272,6 +358,7 @@ function stopScanner(){
     video.style.display = "none";
 
     scannerStarted = false;
+    torchOn = false;
 }
 
 function searchStock(){
