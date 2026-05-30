@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Move Stock</title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+body{font-family:Arial;background:#111;color:white;text-align:center;padding:20px;}
+.box{background:#1e1e1e;padding:20px;border-radius:12px;max-width:500px;margin:auto;}
+input,select,button{width:90%;padding:12px;margin:10px;border:none;border-radius:8px;}
+button{background:#4CAF50;color:white;font-weight:bold;cursor:pointer;}
+.scan-button{background:#0275d8;}
+a{color:#4CAF50;text-decoration:none;font-weight:bold;}
+#reader{width:300px;margin:20px auto;display:none;}
+#result{font-weight:bold;margin-top:15px;}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+<h1>Move Stock</h1>
+
+<input type="text" id="barcode" placeholder="Scan / Enter Barcode">
+
+<button class="scan-button" onclick="startScanner()">Scan Item Barcode</button>
+
+<div id="reader"></div>
+
+<select id="fromLocation">
+<option value="">From Location</option>
+</select>
+
+<select id="toLocation">
+<option value="">To Location</option>
+</select>
+
+<input type="number" id="qty" placeholder="Quantity" value="1">
+
+<button onclick="moveStock()">Move Stock</button>
+
+<p id="result"></p>
+
+<p><a href="index.html">← Back to Dashboard</a></p>
+</div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+let scannerStarted = false;
+let scanner;
+
+function loadBoxes(){
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({action:"GET_BOXES"})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(!data.success) return;
+
+        const fromSelect = document.getElementById("fromLocation");
+        const toSelect = document.getElementById("toLocation");
+
+        data.boxes.forEach(item=>{
+            const option1 = document.createElement("option");
+            option1.value = item.box;
+            option1.textContent = item.box;
+
+            const option2 = document.createElement("option");
+            option2.value = item.box;
+            option2.textContent = item.box;
+
+            fromSelect.appendChild(option1);
+            toSelect.appendChild(option2);
+        });
+    });
+}
+
+function startScanner(){
+    document.getElementById("reader").style.display = "block";
+
+    if(scannerStarted) return;
+
+    scanner = new Html5Qrcode("reader");
+
+    scanner.start(
+        {facingMode:"environment"},
+        {fps:10, qrbox:{width:250,height:150}},
+        function(decodedText){
+            const barcode = decodedText.trim().toUpperCase();
+            document.getElementById("barcode").value = barcode;
+            document.getElementById("result").innerText = "Scanned: " + barcode;
+            stopScanner();
+        },
+        function(errorMessage){}
+    );
+
+    scannerStarted = true;
+}
+
+function stopScanner(){
+    if(scannerStarted && scanner){
+        scanner.stop().then(()=>{
+            scanner.clear();
+            document.getElementById("reader").style.display = "none";
+            scannerStarted = false;
+        });
+    }
+}
+
+function moveStock(){
+    const barcode = document.getElementById("barcode").value.trim().toUpperCase();
+    const fromLocation = document.getElementById("fromLocation").value;
+    const toLocation = document.getElementById("toLocation").value;
+    const qty = document.getElementById("qty").value || 1;
+
+    if(!barcode || !fromLocation || !toLocation){
+        alert("Enter barcode, from location and to location");
+        return;
+    }
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"MOVE",
+            barcode:barcode,
+            fromLocation:fromLocation,
+            toLocation:toLocation,
+            qty:qty
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.success){
+            document.getElementById("result").innerText =
+            "Moved " + data.qty + " of " + data.barcode +
+            " from " + data.fromLocation + " to " + data.toLocation;
+
+            document.getElementById("barcode").value = "";
+        }else{
+            document.getElementById("result").innerText =
+            data.error || "Move failed";
+        }
+    });
+}
+
+loadBoxes();
+</script>
+
+</body>
+</html>
