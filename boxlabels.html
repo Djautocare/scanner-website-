@@ -70,14 +70,14 @@ a{
 @media print{
 
     @page{
-        size:1in 2in;
+        size:2in 1in;
         margin:0;
     }
 
     html,
     body{
-        width:1in;
-        height:2in;
+        width:2in;
+        height:1in;
         margin:0 !important;
         padding:0 !important;
         background:white !important;
@@ -91,7 +91,6 @@ a{
     #printArea,
     #printArea *{
         display:block !important;
-        visibility:visible !important;
     }
 
     #printArea{
@@ -100,27 +99,25 @@ a{
         top:0 !important;
         width:2in !important;
         height:1in !important;
-        padding:0.04in !important;
+        padding:0.03in !important;
         margin:0 !important;
         box-sizing:border-box !important;
         background:white !important;
         text-align:center !important;
         overflow:hidden !important;
-
-        transform:rotate(90deg) translateY(-1in);
-        transform-origin:top left;
+        transform:none !important;
     }
 
     #barcode{
-        width:1.86in !important;
-        height:0.68in !important;
+        width:1.85in !important;
+        height:0.62in !important;
         display:block !important;
         margin:0 auto !important;
     }
 
     #barcodeText{
         color:black !important;
-        font-size:10pt !important;
+        font-size:9pt !important;
         font-weight:bold !important;
         margin:0 !important;
         padding:0 !important;
