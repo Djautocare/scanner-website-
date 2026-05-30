@@ -6,7 +6,8 @@
 
 <title>Add Stock</title>
 
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script> 
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
 body{
@@ -40,10 +41,20 @@ button{
     cursor:pointer;
 }
 
+.scan-button{
+    background:#0275d8;
+}
+
 a{
     color:#4CAF50;
     text-decoration:none;
     font-weight:bold;
+}
+
+#reader{
+    width:300px;
+    margin:20px auto;
+    display:none;
 }
 
 #printArea{
@@ -65,7 +76,6 @@ a{
 }
 
 @media print {
-
     @page {
         size: 51mm 25mm;
         margin: 0;
@@ -134,6 +144,10 @@ a{
 
 <input type="text" id="location" placeholder="Current Box (BOX-A1)">
 
+<button class="scan-button" onclick="startLocationScanner()">Scan Box / Location</button>
+
+<div id="reader"></div>
+
 <label>
 <input type="checkbox" id="printLabels" checked>
 Print Labels
@@ -158,6 +172,61 @@ Print Labels
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
+let scannerStarted = false;
+let scanner;
+
+function startLocationScanner(){
+
+    document.getElementById("reader").style.display = "block";
+
+    if(scannerStarted){
+        return;
+    }
+
+    scanner = new Html5Qrcode("reader");
+
+    scanner.start(
+        { facingMode: "environment" },
+        {
+            fps:10,
+            qrbox:{
+                width:250,
+                height:150
+            }
+        },
+        function(decodedText){
+
+            const scannedValue = decodedText.trim().toUpperCase();
+
+            document.getElementById("location").value = scannedValue;
+
+            stopScanner();
+
+        },
+        function(errorMessage){}
+    );
+
+    scannerStarted = true;
+}
+
+function stopScanner(){
+
+    if(scannerStarted && scanner){
+
+        scanner.stop().then(() => {
+
+            scanner.clear();
+
+            document.getElementById("reader").style.display = "none";
+
+            scannerStarted = false;
+
+        });
+
+    }
+
+}
+
 function saveProduct(){
 
     const description = document.getElementById("description").value.trim();
@@ -171,7 +240,7 @@ function saveProduct(){
     }
 
     if(!location){
-        alert("Enter location");
+        alert("Enter or scan location");
         return;
     }
 
