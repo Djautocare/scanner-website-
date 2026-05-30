@@ -150,12 +150,12 @@ a{
         overflow:hidden;
     }
 
-    #barcode{
-        width:48mm;
-        height:17mm;
-        display:block;
-        margin:0 auto;
-    }
+#barcode{
+    width:1.7in !important;
+    height:0.6in !important;
+    display:block !important;
+    margin:0 auto !important;
+}
 
     #barcodeText{
         color:black;
@@ -342,13 +342,13 @@ function saveProduct(){
         document.getElementById("barcodeText")
         .innerText = data.barcode;
 
-        JsBarcode("#barcode", data.barcode, {
-            format:"CODE128",
-            displayValue:false,
-            width:1.2,
-            height:42,
-            margin:0
-        });
+ JsBarcode("#barcode", barcode, {
+    format:"CODE128",
+    displayValue:false,
+    width:1,
+    height:35,
+    margin:8
+});
 
         if(printLabels){
 
