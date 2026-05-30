@@ -2,19 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Remove Stock</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
+html{
+    touch-action: manipulation;
+}
+
 body{
     font-family:Arial;
     background:#111;
     color:white;
     text-align:center;
     padding:20px;
+    overflow-x:hidden;
+    position:relative;
 }
 
 .box{
@@ -25,12 +33,17 @@ body{
     margin:auto;
 }
 
-input, button{
+input,
+select,
+button,
+textarea{
     width:90%;
     padding:12px;
     margin:10px;
     border:none;
     border-radius:8px;
+    font-size:16px;
+    box-sizing:border-box;
 }
 
 button{
@@ -49,7 +62,9 @@ button{
 }
 
 #reader{
-    width:300px;
+    max-width:300px;
+    width:100%;
+    min-height:220px;
     margin:20px auto;
     display:none;
 }
@@ -106,7 +121,14 @@ let scanner;
 
 function startScanner(){
 
-    document.getElementById("reader").style.display = "block";
+    const reader = document.getElementById("reader");
+
+    reader.style.display = "block";
+
+    reader.scrollIntoView({
+        block:"nearest",
+        behavior:"instant"
+    });
 
     if(scannerStarted){
         return;
@@ -125,9 +147,13 @@ function startScanner(){
         },
         function(decodedText){
 
-            const barcode = decodedText.trim().toUpperCase();
+            const barcode =
+            decodedText
+            .trim()
+            .toUpperCase();
 
-            document.getElementById("barcode").value = barcode;
+            document.getElementById("barcode").value =
+            barcode;
 
             document.getElementById("result").innerText =
             "Scanned: " + barcode;
@@ -151,7 +177,8 @@ function stopScanner(){
 
             scanner.clear();
 
-            document.getElementById("reader").style.display = "none";
+            document.getElementById("reader")
+            .style.display = "none";
 
             scannerStarted = false;
 
@@ -164,17 +191,24 @@ function stopScanner(){
 function removeStock(locationOverride = ""){
 
     const barcode =
-    document.getElementById("barcode").value.trim().toUpperCase();
+    document.getElementById("barcode")
+    .value
+    .trim()
+    .toUpperCase();
 
     const qty =
-    document.getElementById("qty").value || 1;
+    document.getElementById("qty")
+    .value || 1;
 
     if(!barcode){
+
         alert("Enter or scan barcode");
+
         return;
     }
 
-    document.getElementById("locationChoices").innerHTML = "";
+    document.getElementById("locationChoices")
+    .innerHTML = "";
 
     fetch(API_URL, {
         method:"POST",
@@ -185,7 +219,9 @@ function removeStock(locationOverride = ""){
             location:locationOverride
         })
     })
+
     .then(res => res.json())
+
     .then(data => {
 
         if(data.needsLocation){
@@ -205,14 +241,16 @@ function removeStock(locationOverride = ""){
 
             });
 
-            document.getElementById("locationChoices").innerHTML = html;
+            document.getElementById("locationChoices")
+            .innerHTML = html;
 
             return;
         }
 
         if(data.success){
 
-            document.getElementById("result").innerText =
+            document.getElementById("result")
+            .innerText =
             "Removed " +
             qty +
             " from " +
@@ -224,20 +262,27 @@ function removeStock(locationOverride = ""){
 
             document.getElementById("barcode").value = "";
 
-            document.getElementById("locationChoices").innerHTML = "";
+            document.getElementById("locationChoices")
+            .innerHTML = "";
 
         }else{
 
-            document.getElementById("result").innerText =
+            document.getElementById("result")
+            .innerText =
             data.error || "Remove failed";
 
         }
 
     })
+
     .catch(error => {
+
         console.error(error);
+
         alert("Error removing stock");
+
     });
+
 }
 </script>
 
