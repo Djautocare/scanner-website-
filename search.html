@@ -6,7 +6,7 @@
 <meta name="viewport"
 content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-<title>Search Stock</title>
+<title>Scanner Search</title>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -73,9 +73,9 @@ button{
 }
 
 #reader{
-    max-width:300px;
+    max-width:320px;
     width:100%;
-    min-height:220px;
+    min-height:240px;
     margin:20px auto;
     display:none;
 }
@@ -86,7 +86,6 @@ a{
     font-weight:bold;
 }
 
-/* Loading overlay */
 #loadingOverlay{
     display:none;
     position:fixed;
@@ -127,7 +126,7 @@ a{
 
 <div class="box">
 
-<h1>Search Stock</h1>
+<h1>Scanner Search</h1>
 
 <input type="text" id="query" placeholder="Search description or barcode">
 
@@ -191,12 +190,26 @@ function startScanner(){
             facingMode:"environment"
         },
         {
-            fps:10,
+            fps:15,
+
             qrbox:{
-                width:250,
-                height:150
-            }
+                width:280,
+                height:180
+            },
+
+            aspectRatio:1.777,
+
+            formatsToSupport:[
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.CODE_93,
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E
+            ]
         },
+
         function(decodedText){
 
             const barcode =
@@ -207,13 +220,32 @@ function startScanner(){
             document.getElementById("query")
             .value = barcode;
 
+            document.getElementById("results")
+            .innerHTML =
+            "<p>Barcode scanned: " + barcode + "</p>";
+
             stopScanner();
 
             searchStock();
 
         },
-        function(errorMessage){}
-    );
+
+        function(errorMessage){
+            // ignore scan misses
+        }
+    )
+
+    .catch(error=>{
+
+        console.error(error);
+
+        alert(
+            "Could not start scanner. Make sure camera permissions are allowed."
+        );
+
+        scannerStarted = false;
+
+    });
 
     scannerStarted = true;
 }
@@ -228,6 +260,12 @@ function stopScanner(){
 
             document.getElementById("reader")
             .style.display = "none";
+
+            scannerStarted = false;
+
+        }).catch(error=>{
+
+            console.error(error);
 
             scannerStarted = false;
 
