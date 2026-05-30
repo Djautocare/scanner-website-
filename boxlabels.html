@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Print Box Labels</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+html{touch-action:manipulation;}
+body{font-family:Arial;background:#111;color:white;text-align:center;padding:20px;overflow-x:hidden;}
+.box{background:#1e1e1e;padding:20px;border-radius:12px;max-width:500px;margin:auto;}
+select,button{width:90%;padding:12px;margin:10px;border:none;border-radius:8px;font-size:16px;box-sizing:border-box;}
+button{background:#4CAF50;color:white;font-weight:bold;cursor:pointer;}
+a{color:#4CAF50;text-decoration:none;font-weight:bold;}
+
+#printArea{
+    background:white;
+    margin-top:20px;
+    padding:5px;
+    width:51mm;
+    margin-left:auto;
+    margin-right:auto;
+    text-align:center;
+}
+
+#barcodeText{
+    color:black;
+    font-weight:bold;
+    font-size:13px;
+    margin:0;
+    padding:0;
+}
+
+@media print{
+    @page{size:51mm 25mm;margin:0;}
+    html,body{width:51mm;height:25mm;margin:0;padding:0;background:white;}
+    body *{visibility:hidden;}
+    #printArea,#printArea *{visibility:visible;}
+    #printArea{position:fixed;left:0;top:0;width:51mm;height:25mm;padding:1.5mm;margin:0;box-sizing:border-box;background:white;text-align:center;overflow:hidden;}
+    #barcode{width:48mm;height:17mm;display:block;margin:0 auto;}
+    #barcodeText{color:black;font-size:11px;font-weight:bold;margin:0;padding:0;line-height:1;}
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h1>Print Box Labels</h1>
+
+<select id="boxSelect">
+<option value="">Loading boxes...</option>
+</select>
+
+<button onclick="printSelectedBox()">Print Box Label</button>
+
+<div id="printArea">
+    <svg id="barcode"></svg>
+    <p id="barcodeText"></p>
+</div>
+
+<p><a href="index.html">← Back to Dashboard</a></p>
+
+</div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+function loadBoxes(){
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"GET_BOXES"
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+
+        const select = document.getElementById("boxSelect");
+
+        select.innerHTML = '<option value="">Select Box</option>';
+
+        if(!data.success || data.boxes.length === 0){
+            select.innerHTML = '<option value="">No boxes found</option>';
+            return;
+        }
+
+        data.boxes.forEach(item=>{
+            const option = document.createElement("option");
+            option.value = item.box;
+            option.textContent = item.box;
+            select.appendChild(option);
+        });
+    });
+}
+
+function printSelectedBox(){
+
+    const box = document.getElementById("boxSelect").value;
+
+    if(!box){
+        alert("Select a box first");
+        return;
+    }
+
+    document.getElementById("barcodeText").innerText = box;
+
+    JsBarcode("#barcode", box, {
+        format:"CODE128",
+        displayValue:false,
+        width:1.2,
+        height:42,
+        margin:0
+    });
+
+    window.print();
+}
+
+loadBoxes();
+</script>
+
+</body>
+</html>
