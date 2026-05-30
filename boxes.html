@@ -2,17 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Create / View Boxes</title>
 
 <style>
+html{
+    touch-action: manipulation;
+}
+
 body{
     font-family:Arial;
     background:#111;
     color:white;
     text-align:center;
     padding:20px;
+    overflow-x:hidden;
+    position:relative;
 }
 
 .box{
@@ -23,12 +31,17 @@ body{
     margin:auto;
 }
 
-input,button{
+input,
+select,
+button,
+textarea{
     width:90%;
     padding:12px;
     margin:10px;
     border:none;
     border-radius:8px;
+    font-size:16px;
+    box-sizing:border-box;
 }
 
 button{
@@ -55,6 +68,41 @@ a{
     text-decoration:none;
     font-weight:bold;
 }
+
+/* Loading overlay */
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{
+    text-align:center;
+    color:white;
+    font-weight:bold;
+}
+
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #4CAF50;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+}
 </style>
 </head>
 
@@ -80,9 +128,24 @@ a{
 
 </div>
 
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Working...</p>
+    </div>
+</div>
+
 <script>
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display = "none";
+}
 
 function createBox(){
 
@@ -102,6 +165,8 @@ function createBox(){
         return;
     }
 
+    showLoading();
+
     fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
@@ -110,8 +175,12 @@ function createBox(){
             notes:notes
         })
     })
+
     .then(res=>res.json())
+
     .then(data=>{
+
+        hideLoading();
 
         if(data.success){
 
@@ -129,14 +198,22 @@ function createBox(){
         }
 
     })
+
     .catch(error=>{
+
+        hideLoading();
+
         console.error(error);
+
         alert("Error creating box");
+
     });
 
 }
 
 function loadBoxes(){
+
+    showLoading();
 
     fetch(API_URL,{
         method:"POST",
@@ -144,8 +221,12 @@ function loadBoxes(){
             action:"GET_BOXES"
         })
     })
+
     .then(res=>res.json())
+
     .then(data=>{
+
+        hideLoading();
 
         if(!data.success){
 
@@ -190,7 +271,10 @@ function loadBoxes(){
         document.getElementById("boxList").innerHTML = html;
 
     })
+
     .catch(error=>{
+
+        hideLoading();
 
         console.error(error);
 
@@ -207,6 +291,8 @@ function deleteBox(box){
         return;
     }
 
+    showLoading();
+
     fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
@@ -214,8 +300,12 @@ function deleteBox(box){
             box:box
         })
     })
+
     .then(res=>res.json())
+
     .then(data=>{
+
+        hideLoading();
 
         if(data.success){
 
@@ -230,7 +320,10 @@ function deleteBox(box){
         }
 
     })
+
     .catch(error=>{
+
+        hideLoading();
 
         console.error(error);
 
