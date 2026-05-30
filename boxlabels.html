@@ -70,14 +70,14 @@ a{
 @media print{
 
     @page{
-        size:2in 1in;
+        size:1in 2in;
         margin:0;
     }
 
     html,
     body{
-        width:2in;
-        height:1in;
+        width:1in;
+        height:2in;
         margin:0 !important;
         padding:0 !important;
         background:white !important;
@@ -106,6 +106,9 @@ a{
         background:white !important;
         text-align:center !important;
         overflow:hidden !important;
+
+        transform:rotate(90deg) translateY(-1in);
+        transform-origin:top left;
     }
 
     #barcode{
