@@ -8,7 +8,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 
 <title>Scanner Search</title>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
 
 <style>
 html{
@@ -57,6 +57,10 @@ button{
     background:#0275d8;
 }
 
+.stop-button{
+    background:#d9534f;
+}
+
 .result-card{
     background:#2a2a2a;
     border-radius:10px;
@@ -78,6 +82,8 @@ button{
     min-height:240px;
     margin:20px auto;
     display:none;
+    background:#000;
+    border-radius:10px;
 }
 
 a{
@@ -130,9 +136,11 @@ a{
 
 <input type="text" id="query" placeholder="Search description or barcode">
 
-<button class="scan-button" onclick="startScanner()">Scan Barcode</button>
+<button class="scan-button" onclick="startScanner()">Start Scanner</button>
 
-<div id="reader"></div>
+<button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
+
+<video id="reader" playsinline></video>
 
 <button onclick="searchStock()">Search</button>
 
@@ -156,7 +164,8 @@ const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 let scannerStarted = false;
-let scanner;
+let codeReader = null;
+let controls = null;
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -168,12 +177,12 @@ function hideLoading(){
 
 function startScanner(){
 
-    const reader =
+    const video =
     document.getElementById("reader");
 
-    reader.style.display = "block";
+    video.style.display = "block";
 
-    reader.scrollIntoView({
+    video.scrollIntoView({
         block:"nearest",
         behavior:"instant"
     });
@@ -182,68 +191,55 @@ function startScanner(){
         return;
     }
 
-    scanner =
-    new Html5Qrcode("reader");
+    codeReader =
+    new ZXingBrowser.BrowserMultiFormatReader();
 
-    scanner.start(
-        {
-            facingMode:"environment"
-        },
-        {
-            fps:15,
+    codeReader.decodeFromVideoDevice(
+        null,
+        "reader",
+        function(result, error, ctrl){
 
-            qrbox:{
-                width:280,
-                height:180
-            },
+            if(ctrl){
+                controls = ctrl;
+            }
 
-            aspectRatio:1.777,
+            if(result){
 
-            formatsToSupport:[
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39,
-                Html5QrcodeSupportedFormats.CODE_93,
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E
-            ]
-        },
+                const barcode =
+                result
+                .getText()
+                .trim()
+                .toUpperCase();
 
-        function(decodedText){
+                document.getElementById("query")
+                .value = barcode;
 
-            const barcode =
-            decodedText
-            .trim()
-            .toUpperCase();
+                document.getElementById("results")
+                .innerHTML =
+                "<p>Barcode scanned: " + barcode + "</p>";
 
-            document.getElementById("query")
-            .value = barcode;
+                stopScanner();
 
-            document.getElementById("results")
-            .innerHTML =
-            "<p>Barcode scanned: " + barcode + "</p>";
+                searchStock();
 
-            stopScanner();
+            }
 
-            searchStock();
-
-        },
-
-        function(errorMessage){
-            // ignore scan misses
         }
     )
+    .then(function(ctrl){
 
-    .catch(error=>{
+        controls = ctrl;
+
+    })
+    .catch(function(error){
 
         console.error(error);
 
-        alert(
-            "Could not start scanner. Make sure camera permissions are allowed."
-        );
+        alert("Could not start scanner. Check camera permissions.");
 
         scannerStarted = false;
+
+        video.style.display = "none";
 
     });
 
@@ -252,27 +248,30 @@ function startScanner(){
 
 function stopScanner(){
 
-    if(scannerStarted && scanner){
+    if(controls){
 
-        scanner.stop().then(()=>{
+        controls.stop();
 
-            scanner.clear();
-
-            document.getElementById("reader")
-            .style.display = "none";
-
-            scannerStarted = false;
-
-        }).catch(error=>{
-
-            console.error(error);
-
-            scannerStarted = false;
-
-        });
+        controls = null;
 
     }
 
+    const video =
+    document.getElementById("reader");
+
+    if(video && video.srcObject){
+
+        video.srcObject
+        .getTracks()
+        .forEach(track => track.stop());
+
+        video.srcObject = null;
+
+    }
+
+    video.style.display = "none";
+
+    scannerStarted = false;
 }
 
 function searchStock(){
