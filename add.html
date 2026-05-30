@@ -350,6 +350,8 @@ function saveProduct(){
     margin:8
 });
         
+alert("Saved Successfully\n\nBarcode: " + data.barcode);
+
 if(printLabels){
 
     window.open(
@@ -359,8 +361,7 @@ if(printLabels){
 
 }
 
-        alert("Saved Successfully\n\nBarcode: " + data.barcode);
-
+hideLoading();
     })
 
     .catch(error=>{
