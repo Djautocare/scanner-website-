@@ -349,12 +349,15 @@ function saveProduct(){
     height:35,
     margin:8
 });
+        
+if(printLabels){
 
-        if(printLabels){
+    window.open(
+        "label.html?barcode=" + encodeURIComponent(data.barcode),
+        "_blank"
+    );
 
-            window.print();
-
-        }
+}
 
         alert("Saved Successfully\n\nBarcode: " + data.barcode);
 
