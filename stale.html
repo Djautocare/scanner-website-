@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Stale Stock</title>
+
+<style>
+html{
+    touch-action: manipulation;
+}
+
+body{
+    font-family:Arial;
+    background:#111;
+    color:white;
+    text-align:center;
+    padding:20px;
+    overflow-x:hidden;
+}
+
+.box{
+    background:#1e1e1e;
+    padding:20px;
+    border-radius:12px;
+    max-width:550px;
+    margin:auto;
+}
+
+button{
+    width:90%;
+    padding:12px;
+    margin:10px;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
+    background:#4CAF50;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.item-card{
+    background:#2a2a2a;
+    padding:15px;
+    margin:15px 0;
+    border-radius:10px;
+    text-align:left;
+}
+
+.warning{
+    color:#ffcc00;
+    font-weight:bold;
+}
+
+a{
+    color:#4CAF50;
+    text-decoration:none;
+    font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h1>Stale Stock</h1>
+
+<p>Items added over 14 days ago with no removals or moves.</p>
+
+<button onclick="loadStaleStock()">Refresh List</button>
+
+<div id="results">Loading...</div>
+
+<p style="margin-top:20px;">
+<a href="index.html">← Back to Dashboard</a>
+</p>
+
+</div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+function loadStaleStock(){
+
+    document.getElementById("results")
+    .innerHTML = "Loading...";
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"STALE"
+        })
+    })
+
+    .then(res=>res.json())
+
+    .then(data=>{
+
+        if(!data.success){
+
+            document.getElementById("results")
+            .innerHTML = "Could not load stale stock.";
+
+            return;
+        }
+
+        if(data.results.length === 0){
+
+            document.getElementById("results")
+            .innerHTML =
+            "<p>No stale stock found.</p>";
+
+            return;
+        }
+
+        let html = "";
+
+        data.results.forEach(item=>{
+
+            html += `
+                <div class="item-card">
+                    <h3>${item.description || item.barcode}</h3>
+
+                    <p><strong>Barcode:</strong> ${item.barcode}</p>
+
+                    <p><strong>Location:</strong> ${item.location}</p>
+
+                    <p><strong>Qty:</strong> ${item.qty}</p>
+
+                    <p class="warning">
+                    ${item.daysOld} days since added
+                    </p>
+                </div>
+            `;
+
+        });
+
+        document.getElementById("results")
+        .innerHTML = html;
+
+    })
+
+    .catch(error=>{
+
+        console.error(error);
+
+        document.getElementById("results")
+        .innerHTML =
+        "Error loading stale stock.";
+
+    });
+
+}
+
+loadStaleStock();
+</script>
+
+</body>
+</html>
