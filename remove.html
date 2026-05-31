@@ -527,6 +527,20 @@ function removeStock(locationOverride = ""){
     });
 
 }
+    window.addEventListener("load", function(){
+    const params = new URLSearchParams(window.location.search);
+
+    const barcode = params.get("barcode");
+    const location = params.get("location");
+
+    if(barcode){
+        document.getElementById("barcode").value = barcode.toUpperCase();
+    }
+
+    if(location){
+        window.quickSaleLocation = location.toUpperCase();
+    }
+});
 </script>
 
 </body>
