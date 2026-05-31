@@ -66,6 +66,11 @@ button{
     color:black;
 }
 
+.choice-button{
+    background:#333;
+    text-align:left;
+}
+
 .result-card{
     background:#2a2a2a;
     border-radius:10px;
@@ -139,7 +144,7 @@ a{
 
 <h1>Scanner Search</h1>
 
-<input type="text" id="query" placeholder="Search description or barcode">
+<input type="text" id="query" placeholder="Search keywords or scan barcode">
 
 <button class="scan-button" onclick="startScanner()">Start Scanner</button>
 
@@ -174,6 +179,7 @@ let scannerStarted = false;
 let codeReader = null;
 let controls = null;
 let torchOn = false;
+let searchResultsCache = [];
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -369,7 +375,7 @@ function searchStock(){
     .trim();
 
     if(!query){
-        alert("Enter search term or scan barcode");
+        alert("Enter keywords or scan barcode");
         return;
     }
 
@@ -410,45 +416,9 @@ function searchStock(){
             return;
         }
 
-        let html = "";
+        searchResultsCache = data.results;
 
-        data.results.forEach(item => {
-
-            html += `
-                <div class="result-card">
-                    <h3>${item.description}</h3>
-                    <p><strong>Barcode:</strong> ${item.barcode}</p>
-                    <p><strong>Total Qty:</strong> ${item.totalQty}</p>
-                    <p><strong>Locations:</strong></p>
-            `;
-
-            if(item.locations.length === 0){
-
-                html += `
-                    <div class="location">
-                    No stock currently available
-                    </div>
-                `;
-
-            }else{
-
-                item.locations.forEach(loc => {
-
-                    html += `
-                        <div class="location">
-                        ${loc.location} — Qty: ${loc.qty}
-                        </div>
-                    `;
-
-                });
-
-            }
-
-            html += `</div>`;
-        });
-
-        document.getElementById("results")
-        .innerHTML = html;
+        showItemChoices(data.results);
 
     })
 
@@ -462,6 +432,72 @@ function searchStock(){
 
     });
 
+}
+
+function showItemChoices(items){
+
+    let html = "<h3>Choose item</h3>";
+
+    items.forEach((item, index) => {
+
+        html += `
+            <button class="choice-button" onclick="showSelectedItem(${index})">
+                ${item.description}
+                <br>
+                <small>Barcode: ${item.barcode}</small>
+                <br>
+                <small>Total Qty: ${item.totalQty}</small>
+            </button>
+        `;
+
+    });
+
+    document.getElementById("results").innerHTML = html;
+}
+
+function showSelectedItem(index){
+
+    const item = searchResultsCache[index];
+
+    let html = `
+        <div class="result-card">
+            <h3>${item.description}</h3>
+            <p><strong>Barcode:</strong> ${item.barcode}</p>
+            <p><strong>Total Qty:</strong> ${item.totalQty}</p>
+            <p><strong>Locations:</strong></p>
+    `;
+
+    if(item.locations.length === 0){
+
+        html += `
+            <div class="location">
+            No stock currently available
+            </div>
+        `;
+
+    }else{
+
+        item.locations.forEach(loc => {
+
+            html += `
+                <div class="location">
+                ${loc.location} — Qty: ${loc.qty}
+                </div>
+            `;
+
+        });
+
+    }
+
+    html += `
+        </div>
+
+        <button onclick="showItemChoices(searchResultsCache)">
+            Back to results
+        </button>
+    `;
+
+    document.getElementById("results").innerHTML = html;
 }
 </script>
 
