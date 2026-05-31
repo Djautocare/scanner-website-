@@ -15,48 +15,145 @@ html{
     touch-action: manipulation;
 }
 
-body{
-    font-family:Arial;
-    background:#111;
-    color:white;
-    text-align:center;
-    padding:20px;
-    overflow-x:hidden;
-    position:relative;
+*{
+    box-sizing:border-box;
 }
 
-.box{
-    background:#1e1e1e;
-    padding:20px;
-    border-radius:12px;
-    max-width:450px;
-    margin:auto;
+body{
+    font-family:Arial, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(40,167,69,0.14), transparent 35%),
+        radial-gradient(circle at top right, rgba(32,201,151,0.10), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{
+    max-width:760px;
+    margin:0 auto;
+}
+
+.panel{
+    background:linear-gradient(180deg, #1d1d1d, #151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:34px;
+    margin:12px 0 6px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:15px;
+}
+
+.form-card{
+    background:linear-gradient(145deg, #242424, #191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px 2px;
+    font-size:14px;
 }
 
 input,
 select,
 button,
 textarea{
-    width:90%;
-    padding:12px;
-    margin:10px;
+    width:100%;
+    padding:14px;
+    margin:6px 0 12px 0;
     border:none;
-    border-radius:8px;
+    border-radius:12px;
     font-size:16px;
-    box-sizing:border-box;
+}
+
+input,
+select,
+textarea{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+select{
+    appearance:none;
 }
 
 button{
-    background:#4CAF50;
+    background:#28a745;
     color:white;
     font-weight:bold;
     cursor:pointer;
 }
 
-a{
-    color:#4CAF50;
+.primary-button{
+    background:linear-gradient(135deg, #28a745, #1f8b3a);
+    border:1px solid rgba(40,167,69,0.45);
+    box-shadow:0 10px 30px rgba(40,167,69,0.18);
+}
+
+.links-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:16px;
+}
+
+.link-card{
+    display:block;
     text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg, rgba(32,201,151,0.28), rgba(32,201,151,0.08));
+    border:1px solid rgba(32,201,151,0.35);
+    padding:14px;
+    border-radius:14px;
     font-weight:bold;
+    text-align:center;
+}
+
+.back-card{
+    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
+    border-color:rgba(0,123,255,0.35);
+}
+
+.checkbox-card{
+    background:#2a2a2a;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:12px;
+    margin:10px 0 16px 0;
+    text-align:left;
+}
+
+.checkbox-card label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:bold;
+}
+
+.checkbox-card input{
+    width:auto;
+    margin:0;
 }
 
 #printArea{
@@ -67,6 +164,7 @@ a{
     margin-left:auto;
     margin-right:auto;
     text-align:center;
+    border-radius:6px;
 }
 
 #barcodeText{
@@ -112,6 +210,20 @@ a{
     100%{transform:rotate(360deg);}
 }
 
+@media(max-width:600px){
+    h1{
+        font-size:30px;
+    }
+
+    .panel{
+        padding:18px;
+    }
+
+    .links-grid{
+        grid-template-columns:1fr;
+    }
+}
+
 @media print {
     @page {
         size:51mm 25mm;
@@ -148,14 +260,15 @@ a{
         background:white;
         text-align:center;
         overflow:hidden;
+        border-radius:0;
     }
 
-#barcode{
-    width:1.7in !important;
-    height:0.6in !important;
-    display:block !important;
-    margin:0 auto !important;
-}
+    #barcode{
+        width:1.7in !important;
+        height:0.6in !important;
+        display:block !important;
+        margin:0 auto !important;
+    }
 
     #barcodeText{
         color:black;
@@ -175,34 +288,47 @@ a{
 
 <body>
 
-<div class="box">
+<div class="page">
+
+<div class="panel">
 
 <h1>Add Stock</h1>
+<p class="subtitle">Add new inventory, assign it to a box, and print labels</p>
 
-<input type="text" id="description" placeholder="Item Description">
+<div class="form-card">
 
-<input type="number" id="qty" placeholder="Quantity" value="1">
+<div class="input-label">Item Description</div>
+<input type="text" id="description" placeholder="Example: Dyson charger">
 
+<div class="input-label">Quantity</div>
+<input type="number" id="qty" placeholder="Quantity" value="1" min="1">
+
+<div class="input-label">Box / Location</div>
 <select id="location">
 <option value="">Select Box / Location</option>
 </select>
 
-<label>
-<input type="checkbox" id="printLabels" checked>
-Print Labels
-</label>
+<div class="checkbox-card">
+    <label>
+        <input type="checkbox" id="printLabels" checked>
+        Print labels after saving
+    </label>
+</div>
 
-<br>
+<button class="primary-button" onclick="saveProduct()">＋ Save Product</button>
 
-<button onclick="saveProduct()">Save Product</button>
+</div>
 
-<p><a href="boxes.html">Create New Box</a></p>
-
-<p><a href="index.html">← Back to Dashboard</a></p>
+<div class="links-grid">
+    <a class="link-card" href="boxes.html">Create New Box</a>
+    <a class="link-card back-card" href="index.html">← Back to Dashboard</a>
+</div>
 
 <div id="printArea">
     <svg id="barcode"></svg>
     <p id="barcodeText"></p>
+</div>
+
 </div>
 
 </div>
@@ -342,26 +468,28 @@ function saveProduct(){
         document.getElementById("barcodeText")
         .innerText = data.barcode;
 
- JsBarcode("#barcode", barcode, {
-    format:"CODE128",
-    displayValue:false,
-    width:2,
-    height:35,
-    margin:8
-});
-        
-alert("Saved Successfully\n\nBarcode: " + data.barcode);
+        JsBarcode("#barcode", data.barcode, {
+            format:"CODE128",
+            displayValue:false,
+            width:2,
+            height:35,
+            margin:8
+        });
 
-if(printLabels){
+        alert("Saved Successfully\n\nBarcode: " + data.barcode);
 
-    window.open(
-        "label.html?barcode=" + encodeURIComponent(data.barcode),
-        "_blank"
-    );
+        if(printLabels){
 
-}
+            window.open(
+                "label.html?barcode=" + encodeURIComponent(data.barcode),
+                "_blank"
+            );
 
-hideLoading();
+        }
+
+        document.getElementById("description").value = "";
+        document.getElementById("qty").value = "1";
+
     })
 
     .catch(error=>{
