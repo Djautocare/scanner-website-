@@ -70,6 +70,39 @@ button{
     background:#0275d8;
 }
 
+.remove-button{
+    background:#d9534f;
+}
+
+.toggle-box{
+    background:#2a2a2a;
+    padding:12px;
+    margin:10px auto;
+    border-radius:8px;
+    width:90%;
+    box-sizing:border-box;
+    text-align:left;
+}
+
+.toggle-box label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:15px;
+}
+
+.toggle-box input{
+    width:auto;
+    margin:0;
+}
+
+.helper-text{
+    font-size:13px;
+    color:#ccc;
+    margin-top:8px;
+    line-height:1.4;
+}
+
 #reader{
     max-width:320px;
     width:100%;
@@ -140,7 +173,20 @@ a{
 
 <input type="text" id="barcode" placeholder="Scan or Enter Barcode">
 
-<input type="number" id="qty" placeholder="Quantity" value="1">
+<input type="number" id="qty" placeholder="Quantity" value="1" min="1">
+
+<input type="number" id="saleAmount" placeholder="Sale amount £" step="0.01" min="0">
+
+<div class="toggle-box">
+    <label>
+        <input type="checkbox" id="oneSalesRow">
+        Bundle sale: only add one row to sales tracker
+    </label>
+    <div class="helper-text">
+        Unticked = qty 3 creates 3 sales rows.<br>
+        Ticked = qty 3 removes 3 stock but creates 1 sales row.
+    </div>
+</div>
 
 <button class="scan-button" onclick="startScanner()">Start Scanner</button>
 
@@ -150,7 +196,7 @@ a{
 
 <video id="reader" playsinline></video>
 
-<button onclick="removeStock()">Remove Stock</button>
+<button class="remove-button" onclick="removeStock()">Remove Stock</button>
 
 <div id="locationChoices"></div>
 
@@ -305,7 +351,7 @@ function startScanner(){
 
                 document.getElementById("result")
                 .innerText =
-                "Scanned successfully. Press Remove Stock.";
+                "Scanned successfully. Enter sale amount if needed, then press Remove Stock.";
 
                 stopScanner();
 
@@ -374,6 +420,14 @@ function removeStock(locationOverride = ""){
     document.getElementById("qty")
     .value || 1;
 
+    const saleAmount =
+    document.getElementById("saleAmount")
+    .value;
+
+    const oneSalesRow =
+    document.getElementById("oneSalesRow")
+    .checked;
+
     if(!barcode){
 
         alert("Enter or scan barcode");
@@ -392,7 +446,9 @@ function removeStock(locationOverride = ""){
             action:"REMOVE",
             barcode:barcode,
             qty:qty,
-            location:locationOverride
+            location:locationOverride,
+            saleAmount:saleAmount,
+            oneSalesRow:oneSalesRow
         })
     })
 
@@ -443,6 +499,9 @@ function removeStock(locationOverride = ""){
             data.remainingQty;
 
             document.getElementById("barcode").value = "";
+            document.getElementById("qty").value = "1";
+            document.getElementById("saleAmount").value = "";
+            document.getElementById("oneSalesRow").checked = false;
 
             document.getElementById("locationChoices")
             .innerHTML = "";
