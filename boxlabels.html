@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Print Box Labels</title>
@@ -9,48 +10,116 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
 <style>
-html{
-    touch-action:manipulation;
-}
+*{ box-sizing:border-box; }
+
+html{ touch-action:manipulation; }
 
 body{
-    font-family:Arial;
-    background:#111;
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(23,162,184,0.16), transparent 35%),
+        radial-gradient(circle at top right, rgba(0,123,255,0.10), transparent 35%),
+        #0d0d0d;
     color:white;
-    text-align:center;
-    padding:20px;
+    padding:18px;
+    margin:0;
     overflow-x:hidden;
 }
 
-.box{
-    background:#1e1e1e;
-    padding:20px;
-    border-radius:12px;
-    max-width:500px;
+.page{
+    max-width:700px;
     margin:auto;
+}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:18px;
+    padding:24px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    margin:10px 0 5px 0;
+    font-size:34px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin-bottom:25px;
+}
+
+.form-card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+}
+
+.input-label{
+    text-align:left;
+    margin-bottom:8px;
+    font-size:14px;
+    color:#ddd;
+    font-weight:bold;
 }
 
 select,
 button{
-    width:90%;
-    padding:12px;
-    margin:10px;
+    width:100%;
+    padding:14px;
     border:none;
-    border-radius:8px;
+    border-radius:12px;
     font-size:16px;
-    box-sizing:border-box;
 }
 
-button{
-    background:#4CAF50;
+select{
+    background:#2a2a2a;
+    color:white;
+    margin-bottom:15px;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+.print-button{
+    background:linear-gradient(135deg,#17a2b8,#117a8b);
     color:white;
     font-weight:bold;
     cursor:pointer;
+    border:1px solid rgba(23,162,184,0.4);
 }
 
-a{
-    color:#4CAF50;
+.preview-card{
+    margin-top:20px;
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    text-align:center;
+}
+
+.preview-title{
+    color:#aaa;
+    margin-bottom:10px;
+}
+
+.current-box{
+    font-size:26px;
+    font-weight:bold;
+    color:#17a2b8;
+}
+
+.link-card{
+    display:block;
+    margin-top:20px;
     text-decoration:none;
+    color:white;
+    text-align:center;
+    padding:14px;
+    border-radius:14px;
+    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
     font-weight:bold;
 }
 
@@ -67,8 +136,39 @@ a{
     line-height:1;
 }
 
-@media print{
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
 
+.loaderBox{
+    text-align:center;
+}
+
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #17a2b8;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+}
+
+@media print{
     @page{
         size:2in 1in;
         margin:0;
@@ -105,7 +205,6 @@ a{
         background:white !important;
         text-align:center !important;
         overflow:hidden !important;
-        transform:none !important;
     }
 
     #barcode{
@@ -119,9 +218,6 @@ a{
         color:black !important;
         font-size:9pt !important;
         font-weight:bold !important;
-        margin:0 !important;
-        padding:0 !important;
-        line-height:1 !important;
         text-align:center !important;
     }
 }
@@ -130,18 +226,49 @@ a{
 
 <body>
 
-<div class="box">
+<div class="page">
+
+<div class="panel">
 
 <h1>Print Box Labels</h1>
 
-<select id="boxSelect">
+<p class="subtitle">
+Generate barcode labels for storage boxes
+</p>
+
+<div class="form-card">
+
+<div class="input-label">Select Box</div>
+
+<select id="boxSelect" onchange="updatePreview()">
 <option value="">Loading boxes...</option>
 </select>
 
-<button onclick="printSelectedBox()">Print Box Label</button>
+<button class="print-button" onclick="printSelectedBox()">
+Print Box Label
+</button>
 
-<p><a href="index.html">← Back to Dashboard</a></p>
+</div>
 
+<div class="preview-card">
+
+<div class="preview-title">Selected Box</div>
+
+<div class="current-box" id="previewBox">—</div>
+
+</div>
+
+<a class="link-card" href="index.html">← Back to Dashboard</a>
+
+</div>
+
+</div>
+
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
 </div>
 
 <div id="printArea">
@@ -153,7 +280,16 @@ a{
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display="flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display="none";
+}
+
 function loadBoxes(){
+    showLoading();
 
     fetch(API_URL,{
         method:"POST",
@@ -163,12 +299,13 @@ function loadBoxes(){
     })
     .then(res=>res.json())
     .then(data=>{
+        hideLoading();
 
         const select = document.getElementById("boxSelect");
 
         select.innerHTML = '<option value="">Select Box</option>';
 
-        if(!data.success || data.boxes.length === 0){
+        if(!data.success || data.boxes.length===0){
             select.innerHTML = '<option value="">No boxes found</option>';
             return;
         }
@@ -179,11 +316,21 @@ function loadBoxes(){
             option.textContent = item.box;
             select.appendChild(option);
         });
+    })
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+        alert("Could not load boxes");
     });
 }
 
-function printSelectedBox(){
+function updatePreview(){
+    const box = document.getElementById("boxSelect").value;
 
+    document.getElementById("previewBox").innerText = box || "—";
+}
+
+function printSelectedBox(){
     const box = document.getElementById("boxSelect").value;
 
     if(!box){
@@ -203,7 +350,7 @@ function printSelectedBox(){
 
     setTimeout(function(){
         window.print();
-    }, 200);
+    },200);
 }
 
 loadBoxes();
