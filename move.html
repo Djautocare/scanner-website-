@@ -15,61 +15,115 @@ html{
     touch-action: manipulation;
 }
 
-body{
-    font-family:Arial;
-    background:#111;
-    color:white;
-    text-align:center;
-    padding:20px;
-    overflow-x:hidden;
-    position:relative;
+*{
+    box-sizing:border-box;
 }
 
-.box{
-    background:#1e1e1e;
-    padding:20px;
-    border-radius:12px;
-    max-width:500px;
-    margin:auto;
+body{
+    font-family:Arial, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(253,126,20,0.14), transparent 35%),
+        radial-gradient(circle at top right, rgba(0,123,255,0.10), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{
+    max-width:760px;
+    margin:0 auto;
+}
+
+.panel{
+    background:linear-gradient(180deg, #1d1d1d, #151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:34px;
+    margin:12px 0 6px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:15px;
+}
+
+.form-card{
+    background:linear-gradient(145deg, #242424, #191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px 2px;
+    font-size:14px;
 }
 
 input,
 select,
 button,
 textarea{
-    width:90%;
-    padding:12px;
-    margin:10px;
+    width:100%;
+    padding:14px;
+    margin:6px 0 12px 0;
     border:none;
-    border-radius:8px;
+    border-radius:12px;
     font-size:16px;
-    box-sizing:border-box;
+}
+
+input,
+select,
+textarea{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
 }
 
 button{
-    background:#4CAF50;
     color:white;
     font-weight:bold;
     cursor:pointer;
 }
 
+.button-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin:12px 0;
+}
+
 .scan-button{
-    background:#0275d8;
+    background:linear-gradient(135deg, #0275d8, #025aa5);
 }
 
 .stop-button{
-    background:#d9534f;
+    background:linear-gradient(135deg, #dc3545, #a92735);
 }
 
 .torch-button{
-    background:#f0ad4e;
+    background:linear-gradient(135deg, #ffc107, #d39e00);
     color:black;
 }
 
-a{
-    color:#4CAF50;
-    text-decoration:none;
-    font-weight:bold;
+.move-button{
+    background:linear-gradient(135deg, #fd7e14, #c85f08);
+    border:1px solid rgba(253,126,20,0.45);
+    box-shadow:0 10px 30px rgba(253,126,20,0.16);
 }
 
 #reader{
@@ -79,12 +133,38 @@ a{
     margin:20px auto;
     display:none;
     background:#000;
-    border-radius:10px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.10);
+    overflow:hidden;
 }
 
 #result{
-    font-weight:bold;
     margin-top:15px;
+    font-weight:bold;
+    background:#2a2a2a;
+    border-radius:14px;
+    padding:12px;
+    min-height:45px;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+.links-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+    margin-top:16px;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
 }
 
 /* Loading overlay */
@@ -121,40 +201,70 @@ a{
     0%{transform:rotate(0deg);}
     100%{transform:rotate(360deg);}
 }
+
+@media(max-width:600px){
+    h1{
+        font-size:30px;
+    }
+
+    .panel{
+        padding:18px;
+    }
+
+    .button-grid{
+        grid-template-columns:1fr;
+    }
+}
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<div class="page">
+
+<div class="panel">
 
 <h1>Move Stock</h1>
+<p class="subtitle">Move items between boxes while keeping stock quantities correct</p>
 
+<div class="form-card">
+
+<div class="input-label">Barcode</div>
 <input type="text" id="barcode" placeholder="Scan / Enter Barcode">
 
-<button class="scan-button" onclick="startScanner()">Start Scanner</button>
-
-<button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
+<div class="button-grid">
+    <button class="scan-button" onclick="startScanner()">Start Scanner</button>
+    <button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
+</div>
 
 <button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
 
 <video id="reader" playsinline></video>
 
+<div class="input-label">From Location</div>
 <select id="fromLocation">
 <option value="">From Location</option>
 </select>
 
+<div class="input-label">To Location</div>
 <select id="toLocation">
 <option value="">To Location</option>
 </select>
 
-<input type="number" id="qty" placeholder="Quantity" value="1">
+<div class="input-label">Quantity</div>
+<input type="number" id="qty" placeholder="Quantity" value="1" min="1">
 
-<button onclick="moveStock()">Move Stock</button>
+<button class="move-button" onclick="moveStock()">Move Stock</button>
 
-<p id="result"></p>
+<p id="result">Ready to move stock.</p>
 
-<p><a href="index.html">← Back to Dashboard</a></p>
+</div>
+
+<div class="links-grid">
+    <a class="link-card" href="index.html">← Back to Dashboard</a>
+</div>
+
+</div>
 
 </div>
 
@@ -214,29 +324,23 @@ function beep(){
 }
 
 function scanFeedback(){
-
     if(navigator.vibrate){
         navigator.vibrate(100);
     }
 
     beep();
-
 }
 
 async function toggleTorch(){
-
     try{
-
-        const video =
-        document.getElementById("reader");
+        const video = document.getElementById("reader");
 
         if(!video.srcObject){
             alert("Start scanner first");
             return;
         }
 
-        const track =
-        video.srcObject.getVideoTracks()[0];
+        const track = video.srcObject.getVideoTracks()[0];
 
         torchOn = !torchOn;
 
@@ -246,20 +350,15 @@ async function toggleTorch(){
             }]
         });
 
-        document.getElementById("result")
-        .innerText =
+        document.getElementById("result").innerText =
         torchOn ? "Flashlight on" : "Flashlight off";
 
     }catch(error){
-
         alert("Flashlight not supported on this device/browser");
-
     }
-
 }
 
 function loadBoxes(){
-
     showLoading();
 
     fetch(API_URL,{
@@ -272,65 +371,43 @@ function loadBoxes(){
     .then(res=>res.json())
 
     .then(data=>{
-
         hideLoading();
 
         if(!data.success){
             return;
         }
 
-        const fromSelect =
-        document.getElementById("fromLocation");
+        const fromSelect = document.getElementById("fromLocation");
+        const toSelect = document.getElementById("toLocation");
 
-        const toSelect =
-        document.getElementById("toLocation");
-
-        fromSelect.innerHTML =
-        '<option value="">From Location</option>';
-
-        toSelect.innerHTML =
-        '<option value="">To Location</option>';
+        fromSelect.innerHTML = '<option value="">From Location</option>';
+        toSelect.innerHTML = '<option value="">To Location</option>';
 
         data.boxes.forEach(item=>{
-
-            const option1 =
-            document.createElement("option");
-
+            const option1 = document.createElement("option");
             option1.value = item.box;
-
             option1.textContent = item.box;
 
-            const option2 =
-            document.createElement("option");
-
+            const option2 = document.createElement("option");
             option2.value = item.box;
-
             option2.textContent = item.box;
 
             fromSelect.appendChild(option1);
-
             toSelect.appendChild(option2);
-
         });
-
     })
 
     .catch(error=>{
-
         hideLoading();
 
         console.error(error);
 
         alert("Could not load boxes");
-
     });
-
 }
 
 function startScanner(){
-
-    const video =
-    document.getElementById("reader");
+    const video = document.getElementById("reader");
 
     video.style.display = "block";
 
@@ -356,7 +433,6 @@ function startScanner(){
             }
 
             if(result){
-
                 const barcode =
                 result
                 .getText()
@@ -365,26 +441,19 @@ function startScanner(){
 
                 scanFeedback();
 
-                document.getElementById("barcode")
-                .value = barcode;
+                document.getElementById("barcode").value = barcode;
 
-                document.getElementById("result")
-                .innerText =
+                document.getElementById("result").innerText =
                 "Scanned: " + barcode;
 
                 stopScanner();
-
             }
-
         }
     )
     .then(function(ctrl){
-
         controls = ctrl;
-
     })
     .catch(function(error){
-
         console.error(error);
 
         alert("Could not start scanner. Check camera permissions.");
@@ -392,33 +461,25 @@ function startScanner(){
         scannerStarted = false;
 
         video.style.display = "none";
-
     });
 
     scannerStarted = true;
 }
 
 function stopScanner(){
-
     if(controls){
-
         controls.stop();
-
         controls = null;
-
     }
 
-    const video =
-    document.getElementById("reader");
+    const video = document.getElementById("reader");
 
     if(video && video.srcObject){
-
         video.srcObject
         .getTracks()
         .forEach(track => track.stop());
 
         video.srcObject = null;
-
     }
 
     video.style.display = "none";
@@ -428,7 +489,6 @@ function stopScanner(){
 }
 
 function moveStock(){
-
     const barcode =
     document.getElementById("barcode")
     .value
@@ -448,9 +508,7 @@ function moveStock(){
     .value || 1;
 
     if(!barcode || !fromLocation || !toLocation){
-
         alert("Enter barcode, from location and to location");
-
         return;
     }
 
@@ -470,13 +528,10 @@ function moveStock(){
     .then(res=>res.json())
 
     .then(data=>{
-
         hideLoading();
 
         if(data.success){
-
-            document.getElementById("result")
-            .innerText =
+            document.getElementById("result").innerText =
             "Moved " +
             data.qty +
             " of " +
@@ -486,29 +541,21 @@ function moveStock(){
             " to " +
             data.toLocation;
 
-            document.getElementById("barcode")
-            .value = "";
-
+            document.getElementById("barcode").value = "";
+            document.getElementById("qty").value = "1";
         }else{
-
-            document.getElementById("result")
-            .innerText =
+            document.getElementById("result").innerText =
             data.error || "Move failed";
-
         }
-
     })
 
     .catch(error=>{
-
         hideLoading();
 
         console.error(error);
 
         alert("Error moving stock");
-
     });
-
 }
 
 loadBoxes();
