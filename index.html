@@ -137,14 +137,57 @@ button{
 <div class="stat" id="totalStock">Stock Units: Loading...</div>
 <div class="stat" id="totalBoxes">Boxes Used: Loading...</div>
 
-<a class="link-button" href="add.html">Add Stock</a>
-<a class="link-button" href="remove.html">Remove Stock</a>
-<a class="link-button" href="search.html">Search Stock</a>
-<a class="link-button" href="move.html">Move Stock</a>
-<a class="link-button" href="boxes.html">Create / View Boxes</a>
- <a class="link-button" href="reprint.html">Reprint Product Label</a>
-<a class="link-button" href="boxlabels.html">Print Box Labels</a>   
-    <a class="link-button" href="stale.html">Stale Stock 14+ Days</a>
+<a class="link-button add-btn" href="add.html">Add Stock</a>
+<a class="link-button remove-btn" href="remove.html">Remove Stock</a>
+<a class="link-button search-btn" href="search.html">Search Stock</a>
+<a class="link-button move-btn" href="move.html">Move Stock</a>
+<a class="link-button boxes-btn" href="boxes.html">Create / View Boxes</a>
+<a class="link-button reprint-btn" href="reprint.html">Reprint Product Label</a>
+<a class="link-button labels-btn" href="boxlabels.html">Print Box Labels</a>
+<a class="link-button stale-btn" href="stale.html">Stale Stock 14+ Days</a>
+
+<style>
+.add-btn{
+    background:#28a745 !important;
+    color:white !important;
+}
+
+.remove-btn{
+    background:#dc3545 !important;
+    color:white !important;
+}
+
+.search-btn{
+    background:#007bff !important;
+    color:white !important;
+}
+
+.move-btn{
+    background:#fd7e14 !important;
+    color:white !important;
+}
+
+.boxes-btn{
+    background:#6f42c1 !important;
+    color:white !important;
+}
+
+.reprint-btn{
+    background:#20c997 !important;
+    color:white !important;
+}
+
+.labels-btn{
+    background:#17a2b8 !important;
+    color:white !important;
+}
+
+.stale-btn{
+    background:#ffc107 !important;
+    color:black !important;
+}
+</style>
+    
 
 <button onclick="logout()">Logout</button>
 
