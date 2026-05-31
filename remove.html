@@ -15,72 +15,127 @@ html{
     touch-action: manipulation;
 }
 
-body{
-    font-family:Arial;
-    background:#111;
-    color:white;
-    text-align:center;
-    padding:20px;
-    overflow-x:hidden;
-    position:relative;
+*{
+    box-sizing:border-box;
 }
 
-.box{
-    background:#1e1e1e;
-    padding:20px;
-    border-radius:12px;
-    max-width:500px;
-    margin:auto;
+body{
+    font-family:Arial, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(220,53,69,0.14), transparent 35%),
+        radial-gradient(circle at top right, rgba(253,126,20,0.10), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{
+    max-width:760px;
+    margin:0 auto;
+}
+
+.panel{
+    background:linear-gradient(180deg, #1d1d1d, #151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:34px;
+    margin:12px 0 6px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:15px;
+}
+
+.form-card{
+    background:linear-gradient(145deg, #242424, #191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px 2px;
+    font-size:14px;
 }
 
 input,
 select,
 button,
 textarea{
-    width:90%;
-    padding:12px;
-    margin:10px;
+    width:100%;
+    padding:14px;
+    margin:6px 0 12px 0;
     border:none;
-    border-radius:8px;
+    border-radius:12px;
     font-size:16px;
-    box-sizing:border-box;
+}
+
+input,
+select,
+textarea{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
 }
 
 button{
-    background:#d9534f;
     color:white;
     font-weight:bold;
     cursor:pointer;
 }
 
+.button-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin:12px 0;
+}
+
 .scan-button{
-    background:#4CAF50;
+    background:linear-gradient(135deg, #28a745, #1f8b3a);
 }
 
 .stop-button{
-    background:#d9534f;
+    background:linear-gradient(135deg, #dc3545, #a92735);
 }
 
 .torch-button{
-    background:#f0ad4e;
+    background:linear-gradient(135deg, #ffc107, #d39e00);
     color:black;
 }
 
-.location-button{
-    background:#0275d8;
+.remove-button{
+    background:linear-gradient(135deg, #dc3545, #a92735);
+    border:1px solid rgba(220,53,69,0.45);
+    box-shadow:0 10px 30px rgba(220,53,69,0.18);
 }
 
-.remove-button{
-    background:#d9534f;
+.location-button{
+    background:linear-gradient(135deg, #0275d8, #025aa5);
 }
 
 .toggle-box{
     background:#2a2a2a;
-    padding:12px;
-    margin:10px auto;
-    border-radius:8px;
-    width:90%;
-    box-sizing:border-box;
+    padding:14px;
+    margin:12px 0;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.08);
     text-align:left;
 }
 
@@ -89,6 +144,7 @@ button{
     align-items:center;
     gap:10px;
     font-size:15px;
+    font-weight:bold;
 }
 
 .toggle-box input{
@@ -110,22 +166,50 @@ button{
     margin:20px auto;
     display:none;
     background:#000;
-    border-radius:10px;
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,0.10);
 }
 
 #result{
     margin-top:15px;
     font-weight:bold;
+    background:#2a2a2a;
+    border-radius:14px;
+    padding:12px;
+    min-height:45px;
+    border:1px solid rgba(255,255,255,0.08);
 }
 
 #locationChoices{
     margin-top:15px;
 }
 
-a{
-    color:#4CAF50;
+.location-card{
+    background:#2a2a2a;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:14px;
+    margin:10px 0;
+}
+
+.links-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+    margin-top:16px;
+}
+
+.link-card{
+    display:block;
     text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    padding:14px;
+    border-radius:14px;
     font-weight:bold;
+    text-align:center;
 }
 
 /* Loading overlay */
@@ -162,19 +246,41 @@ a{
     0%{transform:rotate(0deg);}
     100%{transform:rotate(360deg);}
 }
+
+@media(max-width:600px){
+    h1{
+        font-size:30px;
+    }
+
+    .panel{
+        padding:18px;
+    }
+
+    .button-grid{
+        grid-template-columns:1fr;
+    }
+}
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<div class="page">
+
+<div class="panel">
 
 <h1>Remove Stock</h1>
+<p class="subtitle">Scan stock out, record the sale amount, and update your sales tracker</p>
 
+<div class="form-card">
+
+<div class="input-label">Barcode</div>
 <input type="text" id="barcode" placeholder="Scan or Enter Barcode">
 
+<div class="input-label">Quantity</div>
 <input type="number" id="qty" placeholder="Quantity" value="1" min="1">
 
+<div class="input-label">Sale Amount</div>
 <input type="number" id="saleAmount" placeholder="Sale amount £" step="0.01" min="0">
 
 <div class="toggle-box">
@@ -188,9 +294,10 @@ a{
     </div>
 </div>
 
-<button class="scan-button" onclick="startScanner()">Start Scanner</button>
-
-<button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
+<div class="button-grid">
+    <button class="scan-button" onclick="startScanner()">Start Scanner</button>
+    <button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
+</div>
 
 <button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
 
@@ -200,11 +307,15 @@ a{
 
 <div id="locationChoices"></div>
 
-<p id="result"></p>
+<p id="result">Ready to remove stock.</p>
 
-<p style="margin-top:20px;">
-<a href="index.html">← Back to Dashboard</a>
-</p>
+</div>
+
+<div class="links-grid">
+    <a class="link-card" href="index.html">← Back to Dashboard</a>
+</div>
+
+</div>
 
 </div>
 
@@ -264,29 +375,23 @@ function beep(){
 }
 
 function scanFeedback(){
-
     if(navigator.vibrate){
         navigator.vibrate(100);
     }
 
     beep();
-
 }
 
 async function toggleTorch(){
-
     try{
-
-        const video =
-        document.getElementById("reader");
+        const video = document.getElementById("reader");
 
         if(!video.srcObject){
             alert("Start scanner first");
             return;
         }
 
-        const track =
-        video.srcObject.getVideoTracks()[0];
+        const track = video.srcObject.getVideoTracks()[0];
 
         torchOn = !torchOn;
 
@@ -296,22 +401,16 @@ async function toggleTorch(){
             }]
         });
 
-        document.getElementById("result")
-        .innerText =
+        document.getElementById("result").innerText =
         torchOn ? "Flashlight on" : "Flashlight off";
 
     }catch(error){
-
         alert("Flashlight not supported on this device/browser");
-
     }
-
 }
 
 function startScanner(){
-
-    const video =
-    document.getElementById("reader");
+    const video = document.getElementById("reader");
 
     video.style.display = "block";
 
@@ -337,7 +436,6 @@ function startScanner(){
             }
 
             if(result){
-
                 const barcode =
                 result
                 .getText()
@@ -346,26 +444,19 @@ function startScanner(){
 
                 scanFeedback();
 
-                document.getElementById("barcode")
-                .value = barcode;
+                document.getElementById("barcode").value = barcode;
 
-                document.getElementById("result")
-                .innerText =
+                document.getElementById("result").innerText =
                 "Scanned successfully. Enter sale amount if needed, then press Remove Stock.";
 
                 stopScanner();
-
             }
-
         }
     )
     .then(function(ctrl){
-
         controls = ctrl;
-
     })
     .catch(function(error){
-
         console.error(error);
 
         alert("Could not start scanner. Check camera permissions.");
@@ -373,33 +464,25 @@ function startScanner(){
         scannerStarted = false;
 
         video.style.display = "none";
-
     });
 
     scannerStarted = true;
 }
 
 function stopScanner(){
-
     if(controls){
-
         controls.stop();
-
         controls = null;
-
     }
 
-    const video =
-    document.getElementById("reader");
+    const video = document.getElementById("reader");
 
     if(video && video.srcObject){
-
         video.srcObject
         .getTracks()
         .forEach(track => track.stop());
 
         video.srcObject = null;
-
     }
 
     video.style.display = "none";
@@ -409,7 +492,6 @@ function stopScanner(){
 }
 
 function removeStock(locationOverride = ""){
-
     const barcode =
     document.getElementById("barcode")
     .value
@@ -429,14 +511,11 @@ function removeStock(locationOverride = ""){
     .checked;
 
     if(!barcode){
-
         alert("Enter or scan barcode");
-
         return;
     }
 
-    document.getElementById("locationChoices")
-    .innerHTML = "";
+    document.getElementById("locationChoices").innerHTML = "";
 
     showLoading();
 
@@ -455,40 +534,30 @@ function removeStock(locationOverride = ""){
     .then(res => res.json())
 
     .then(data => {
-
         hideLoading();
 
         if(data.needsLocation){
-
             let html =
-            "<p>Select location to remove stock from:</p>";
+            "<div class='location-card'><strong>Select location to remove stock from:</strong></div>";
 
             data.locations.forEach(loc => {
-
                 html += `
                     <button
                     class="location-button"
                     onclick="removeStock('${loc.location}')">
-                    ${loc.location} (Qty: ${loc.qty})
+                    ${loc.location} — Qty: ${loc.qty}
                     </button>
                 `;
-
             });
 
-            document.getElementById("locationChoices")
-            .innerHTML = html;
-
-            document.getElementById("result")
-            .innerText =
-            "Select a location.";
+            document.getElementById("locationChoices").innerHTML = html;
+            document.getElementById("result").innerText = "Select a location.";
 
             return;
         }
 
         if(data.success){
-
-            document.getElementById("result")
-            .innerText =
+            document.getElementById("result").innerText =
             "Removed " +
             qty +
             " from " +
@@ -503,31 +572,24 @@ function removeStock(locationOverride = ""){
             document.getElementById("saleAmount").value = "";
             document.getElementById("oneSalesRow").checked = false;
 
-            document.getElementById("locationChoices")
-            .innerHTML = "";
+            document.getElementById("locationChoices").innerHTML = "";
 
         }else{
-
-            document.getElementById("result")
-            .innerText =
+            document.getElementById("result").innerText =
             data.error || "Remove failed";
-
         }
-
     })
 
     .catch(error => {
-
         hideLoading();
 
         console.error(error);
 
         alert("Error removing stock");
-
     });
-
 }
-    window.addEventListener("load", function(){
+
+window.addEventListener("load", function(){
     const params = new URLSearchParams(window.location.search);
 
     const barcode = params.get("barcode");
@@ -535,6 +597,8 @@ function removeStock(locationOverride = ""){
 
     if(barcode){
         document.getElementById("barcode").value = barcode.toUpperCase();
+        document.getElementById("result").innerText =
+        "Quick sale loaded. Enter sale amount, then press Remove Stock.";
     }
 
     if(location){
