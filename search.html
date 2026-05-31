@@ -71,6 +71,16 @@ button{
     text-align:left;
 }
 
+.quick-sale-button{
+    background:#d9534f;
+}
+
+.location-sale-button{
+    background:#0275d8;
+    width:100%;
+    margin:8px 0 0 0;
+}
+
 .result-card{
     background:#2a2a2a;
     border-radius:10px;
@@ -83,7 +93,7 @@ button{
     background:#111;
     padding:8px;
     border-radius:6px;
-    margin-top:6px;
+    margin-top:8px;
 }
 
 #reader{
@@ -147,9 +157,7 @@ a{
 <input type="text" id="query" placeholder="Search keywords or scan barcode">
 
 <button class="scan-button" onclick="startScanner()">Start Scanner</button>
-
 <button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
-
 <button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
 
 <video id="reader" playsinline></video>
@@ -191,18 +199,12 @@ function hideLoading(){
 
 function beep(){
     try{
-        const audioCtx =
-        new (window.AudioContext || window.webkitAudioContext)();
-
-        const oscillator =
-        audioCtx.createOscillator();
-
-        const gain =
-        audioCtx.createGain();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
 
         oscillator.type = "sine";
         oscillator.frequency.value = 900;
-
         gain.gain.value = 0.15;
 
         oscillator.connect(gain);
@@ -221,29 +223,23 @@ function beep(){
 }
 
 function scanFeedback(){
-
     if(navigator.vibrate){
         navigator.vibrate(100);
     }
 
     beep();
-
 }
 
 async function toggleTorch(){
-
     try{
-
-        const video =
-        document.getElementById("reader");
+        const video = document.getElementById("reader");
 
         if(!video.srcObject){
             alert("Start scanner first");
             return;
         }
 
-        const track =
-        video.srcObject.getVideoTracks()[0];
+        const track = video.srcObject.getVideoTracks()[0];
 
         torchOn = !torchOn;
 
@@ -253,22 +249,16 @@ async function toggleTorch(){
             }]
         });
 
-        document.getElementById("results")
-        .innerHTML =
+        document.getElementById("results").innerHTML =
         torchOn ? "<p>Flashlight on</p>" : "<p>Flashlight off</p>";
 
     }catch(error){
-
         alert("Flashlight not supported on this device/browser");
-
     }
-
 }
 
 function startScanner(){
-
-    const video =
-    document.getElementById("reader");
+    const video = document.getElementById("reader");
 
     video.style.display = "block";
 
@@ -281,8 +271,7 @@ function startScanner(){
         return;
     }
 
-    codeReader =
-    new ZXingBrowser.BrowserMultiFormatReader();
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
 
     codeReader.decodeFromVideoDevice(
         null,
@@ -294,37 +283,28 @@ function startScanner(){
             }
 
             if(result){
-
-                const barcode =
-                result
+                const barcode = result
                 .getText()
                 .trim()
                 .toUpperCase();
 
                 scanFeedback();
 
-                document.getElementById("query")
-                .value = barcode;
+                document.getElementById("query").value = barcode;
 
-                document.getElementById("results")
-                .innerHTML =
+                document.getElementById("results").innerHTML =
                 "<p>Barcode scanned: " + barcode + "</p>";
 
                 stopScanner();
 
                 searchStock();
-
             }
-
         }
     )
     .then(function(ctrl){
-
         controls = ctrl;
-
     })
     .catch(function(error){
-
         console.error(error);
 
         alert("Could not start scanner. Check camera permissions.");
@@ -332,33 +312,25 @@ function startScanner(){
         scannerStarted = false;
 
         video.style.display = "none";
-
     });
 
     scannerStarted = true;
 }
 
 function stopScanner(){
-
     if(controls){
-
         controls.stop();
-
         controls = null;
-
     }
 
-    const video =
-    document.getElementById("reader");
+    const video = document.getElementById("reader");
 
     if(video && video.srcObject){
-
         video.srcObject
         .getTracks()
         .forEach(track => track.stop());
 
         video.srcObject = null;
-
     }
 
     video.style.display = "none";
@@ -368,9 +340,7 @@ function stopScanner(){
 }
 
 function searchStock(){
-
-    const query =
-    document.getElementById("query")
+    const query = document.getElementById("query")
     .value
     .trim();
 
@@ -379,8 +349,7 @@ function searchStock(){
         return;
     }
 
-    document.getElementById("results")
-    .innerHTML = "";
+    document.getElementById("results").innerHTML = "";
 
     showLoading();
 
@@ -395,51 +364,48 @@ function searchStock(){
     .then(res => res.json())
 
     .then(data => {
-
         hideLoading();
 
         if(!data.success){
-
-            document.getElementById("results")
-            .innerHTML =
+            document.getElementById("results").innerHTML =
             data.error || "Search failed";
-
             return;
         }
 
         if(data.results.length === 0){
-
-            document.getElementById("results")
-            .innerHTML =
+            document.getElementById("results").innerHTML =
             "<p>No results found.</p>";
-
             return;
         }
 
         searchResultsCache = data.results;
 
         showItemChoices(data.results);
-
     })
 
     .catch(error => {
-
         hideLoading();
 
         console.error(error);
 
         alert("Error searching stock");
-
     });
+}
 
+function quickSale(barcode, location = ""){
+    let url = "remove.html?barcode=" + encodeURIComponent(barcode);
+
+    if(location){
+        url += "&location=" + encodeURIComponent(location);
+    }
+
+    window.location.href = url;
 }
 
 function showItemChoices(items){
-
     let html = "<h3>Choose item</h3>";
 
     items.forEach((item, index) => {
-
         html += `
             <button class="choice-button" onclick="showSelectedItem(${index})">
                 ${item.description}
@@ -449,14 +415,12 @@ function showItemChoices(items){
                 <small>Total Qty: ${item.totalQty}</small>
             </button>
         `;
-
     });
 
     document.getElementById("results").innerHTML = html;
 }
 
 function showSelectedItem(index){
-
     const item = searchResultsCache[index];
 
     let html = `
@@ -464,29 +428,32 @@ function showSelectedItem(index){
             <h3>${item.description}</h3>
             <p><strong>Barcode:</strong> ${item.barcode}</p>
             <p><strong>Total Qty:</strong> ${item.totalQty}</p>
+
+            <button class="quick-sale-button" onclick="quickSale('${item.barcode}')">
+                Quick Sale
+            </button>
+
             <p><strong>Locations:</strong></p>
     `;
 
     if(item.locations.length === 0){
-
         html += `
             <div class="location">
-            No stock currently available
+                No stock currently available
             </div>
         `;
-
     }else{
-
         item.locations.forEach(loc => {
-
             html += `
                 <div class="location">
-                ${loc.location} — Qty: ${loc.qty}
+                    ${loc.location} — Qty: ${loc.qty}
+
+                    <button class="location-sale-button" onclick="quickSale('${item.barcode}', '${loc.location}')">
+                        Quick Sale From ${loc.location}
+                    </button>
                 </div>
             `;
-
         });
-
     }
 
     html += `
