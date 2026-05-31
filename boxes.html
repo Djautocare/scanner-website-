@@ -13,60 +13,184 @@ html{
     touch-action: manipulation;
 }
 
-body{
-    font-family:Arial;
-    background:#111;
-    color:white;
-    text-align:center;
-    padding:20px;
-    overflow-x:hidden;
-    position:relative;
+*{
+    box-sizing:border-box;
 }
 
-.box{
-    background:#1e1e1e;
-    padding:20px;
-    border-radius:12px;
-    max-width:500px;
-    margin:auto;
+body{
+    font-family:Arial, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(111,66,193,0.16), transparent 35%),
+        radial-gradient(circle at top right, rgba(0,123,255,0.10), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{
+    max-width:850px;
+    margin:0 auto;
+}
+
+.panel{
+    background:linear-gradient(180deg, #1d1d1d, #151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:34px;
+    margin:12px 0 6px 0;
+}
+
+h2{
+    margin:26px 0 12px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:15px;
+}
+
+.form-card{
+    background:linear-gradient(145deg, #242424, #191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px 2px;
+    font-size:14px;
 }
 
 input,
 select,
 button,
 textarea{
-    width:90%;
-    padding:12px;
-    margin:10px;
+    width:100%;
+    padding:14px;
+    margin:6px 0 12px 0;
     border:none;
-    border-radius:8px;
+    border-radius:12px;
     font-size:16px;
-    box-sizing:border-box;
+}
+
+input,
+select,
+textarea{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
 }
 
 button{
-    background:#4CAF50;
     color:white;
     font-weight:bold;
     cursor:pointer;
 }
 
+.create-button{
+    background:linear-gradient(135deg, #6f42c1, #56329b);
+    border:1px solid rgba(111,66,193,0.45);
+    box-shadow:0 10px 30px rgba(111,66,193,0.18);
+}
+
 .delete-button{
-    background:#d9534f;
+    background:linear-gradient(135deg, #dc3545, #a92735);
+    margin-top:12px;
+}
+
+.box-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:14px;
+    margin-top:12px;
 }
 
 .box-card{
-    background:#2a2a2a;
-    padding:12px;
-    margin:10px;
-    border-radius:8px;
+    background:linear-gradient(145deg, #242424, #191919);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:16px;
+    border-radius:16px;
     text-align:left;
 }
 
-a{
-    color:#4CAF50;
-    text-decoration:none;
+.box-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+}
+
+.box-name{
+    font-size:20px;
     font-weight:bold;
+}
+
+.box-icon{
+    background:rgba(111,66,193,0.22);
+    border:1px solid rgba(111,66,193,0.38);
+    color:#c59cff;
+    width:42px;
+    height:42px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    flex-shrink:0;
+}
+
+.box-notes{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:10px;
+    padding:10px;
+    color:#ddd;
+    min-height:42px;
+    line-height:1.35;
+}
+
+.empty-state{
+    background:#2a2a2a;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    color:#ccc;
+    text-align:center;
+}
+
+.links-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+    margin-top:16px;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
 }
 
 /* Loading overlay */
@@ -103,28 +227,55 @@ a{
     0%{transform:rotate(0deg);}
     100%{transform:rotate(360deg);}
 }
+
+@media(max-width:700px){
+    h1{
+        font-size:30px;
+    }
+
+    .panel{
+        padding:18px;
+    }
+
+    .box-grid{
+        grid-template-columns:1fr;
+    }
+}
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<div class="page">
+
+<div class="panel">
 
 <h1>Create / View Boxes</h1>
+<p class="subtitle">Create storage locations and keep notes for what each box contains</p>
 
+<div class="form-card">
+
+<div class="input-label">Box Name</div>
 <input type="text" id="boxName" placeholder="Box name e.g. BOX-A1">
 
+<div class="input-label">Notes</div>
 <input type="text" id="notes" placeholder="Notes e.g. Hoodies / Shoes">
 
-<button onclick="createBox()">Create Box</button>
+<button class="create-button" onclick="createBox()">Create Box</button>
+
+</div>
 
 <h2>Existing Boxes</h2>
 
-<div id="boxList">Loading...</div>
+<div id="boxList">
+    <div class="empty-state">Loading boxes...</div>
+</div>
 
-<p style="margin-top:20px;">
-<a href="index.html">← Back to Dashboard</a>
-</p>
+<div class="links-grid">
+    <a class="link-card" href="index.html">← Back to Dashboard</a>
+</div>
+
+</div>
 
 </div>
 
@@ -148,7 +299,6 @@ function hideLoading(){
 }
 
 function createBox(){
-
     const box =
     document.getElementById("boxName")
     .value
@@ -179,40 +329,30 @@ function createBox(){
     .then(res=>res.json())
 
     .then(data=>{
-
         hideLoading();
 
         if(data.success){
-
             alert("Box created: " + data.box);
 
             document.getElementById("boxName").value = "";
             document.getElementById("notes").value = "";
 
             loadBoxes();
-
         }else{
-
             alert(data.error || "Could not create box");
-
         }
-
     })
 
     .catch(error=>{
-
         hideLoading();
 
         console.error(error);
 
         alert("Error creating box");
-
     });
-
 }
 
 function loadBoxes(){
-
     showLoading();
 
     fetch(API_URL,{
@@ -225,37 +365,34 @@ function loadBoxes(){
     .then(res=>res.json())
 
     .then(data=>{
-
         hideLoading();
 
         if(!data.success){
-
             document.getElementById("boxList").innerHTML =
-            "Could not load boxes";
-
+            "<div class='empty-state'>Could not load boxes</div>";
             return;
         }
 
         if(data.boxes.length === 0){
-
             document.getElementById("boxList").innerHTML =
-            "No boxes created yet.";
-
+            "<div class='empty-state'>No boxes created yet.</div>";
             return;
         }
 
-        let html = "";
+        let html = "<div class='box-grid'>";
 
         data.boxes.forEach(item=>{
-
             html += `
                 <div class="box-card">
 
-                    <strong>${item.box}</strong><br>
+                    <div class="box-title">
+                        <div class="box-name">${item.box}</div>
+                        <div class="box-icon">▱</div>
+                    </div>
 
-                    ${item.notes || ""}
-
-                    <br><br>
+                    <div class="box-notes">
+                        ${item.notes || "No notes added"}
+                    </div>
 
                     <button
                     class="delete-button"
@@ -265,28 +402,24 @@ function loadBoxes(){
 
                 </div>
             `;
-
         });
 
-        document.getElementById("boxList").innerHTML = html;
+        html += "</div>";
 
+        document.getElementById("boxList").innerHTML = html;
     })
 
     .catch(error=>{
-
         hideLoading();
 
         console.error(error);
 
         document.getElementById("boxList").innerHTML =
-        "Error loading boxes";
-
+        "<div class='empty-state'>Error loading boxes</div>";
     });
-
 }
 
 function deleteBox(box){
-
     if(!confirm("Delete " + box + "? This only works if the box has no stock.")){
         return;
     }
@@ -304,33 +437,23 @@ function deleteBox(box){
     .then(res=>res.json())
 
     .then(data=>{
-
         hideLoading();
 
         if(data.success){
-
             alert("Box deleted: " + data.box);
-
             loadBoxes();
-
         }else{
-
             alert(data.error || "Could not delete box");
-
         }
-
     })
 
     .catch(error=>{
-
         hideLoading();
 
         console.error(error);
 
         alert("Error deleting box");
-
     });
-
 }
 
 loadBoxes();
