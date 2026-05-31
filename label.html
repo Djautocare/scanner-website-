@@ -2,31 +2,66 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Print Label</title>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
 <style>
-html, body{
+*{
+    box-sizing:border-box;
+}
+
+body{
     margin:0;
-    padding:0;
-    background:white;
-    width:2in;
-    height:1in;
-    overflow:hidden;
-    font-family:Arial;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:
+        radial-gradient(circle at top left, rgba(32,201,151,0.16), transparent 35%),
+        radial-gradient(circle at top right, rgba(0,123,255,0.10), transparent 35%),
+        #0d0d0d;
+    font-family:Arial, sans-serif;
+    color:white;
+    padding:20px;
+}
+
+.container{
+    max-width:420px;
+    width:100%;
+}
+
+.card{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:18px;
+    padding:24px;
+    text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    margin-top:0;
+    margin-bottom:10px;
+}
+
+.subtitle{
+    color:#aaa;
+    margin-bottom:20px;
 }
 
 #printArea{
+    background:white;
     width:2in;
     height:1in;
     padding:0.04in;
-    box-sizing:border-box;
-    text-align:center;
-    background:white;
+    margin:auto;
     overflow:hidden;
+    border-radius:6px;
 }
 
 #barcode{
@@ -45,28 +80,57 @@ html, body{
     line-height:1;
 }
 
-button{
+.print-button{
+    width:100%;
     margin-top:20px;
-    padding:12px;
+    padding:14px;
+    border:none;
+    border-radius:12px;
     font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+    color:white;
+    background:linear-gradient(135deg,#20c997,#138f6d);
+    border:1px solid rgba(32,201,151,0.45);
+}
+
+.barcode-display{
+    margin-top:15px;
+    color:#ccc;
+    font-size:14px;
 }
 
 @media print{
+
     @page{
         size:2in 1in;
         margin:0;
     }
 
-    button{
-        display:none;
+    body{
+        background:white;
+        padding:0;
+        margin:0;
+        display:block;
     }
 
-    html, body{
+    body *{
+        visibility:hidden;
+    }
+
+    #printArea,
+    #printArea *{
+        visibility:visible;
+    }
+
+    #printArea{
+        position:fixed;
+        top:0;
+        left:0;
         width:2in;
         height:1in;
         margin:0;
-        padding:0;
-        overflow:hidden;
+        border-radius:0;
     }
 }
 </style>
@@ -74,18 +138,42 @@ button{
 
 <body>
 
-<div id="printArea">
-    <svg id="barcode"></svg>
-    <p id="barcodeText"></p>
-</div>
+<div class="container">
 
-<button onclick="window.print()">Print Label</button>
+    <div class="card">
+
+        <h1>Print Label</h1>
+
+        <div class="subtitle">
+            Product barcode label
+        </div>
+
+        <div id="printArea">
+            <svg id="barcode"></svg>
+            <p id="barcodeText"></p>
+        </div>
+
+        <div class="barcode-display" id="barcodeDisplay"></div>
+
+        <button class="print-button" onclick="window.print()">
+            Print Label
+        </button>
+
+    </div>
+
+</div>
 
 <script>
 const params = new URLSearchParams(window.location.search);
-const barcode = params.get("barcode") || "NO-BARCODE";
 
-document.getElementById("barcodeText").innerText = barcode;
+const barcode =
+params.get("barcode") || "NO-BARCODE";
+
+document.getElementById("barcodeText")
+.innerText = barcode;
+
+document.getElementById("barcodeDisplay")
+.innerText = "Barcode: " + barcode;
 
 JsBarcode("#barcode", barcode, {
     format:"CODE128",
