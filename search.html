@@ -15,85 +15,200 @@ html{
     touch-action: manipulation;
 }
 
-body{
-    font-family:Arial;
-    background:#111;
-    color:white;
-    text-align:center;
-    padding:20px;
-    overflow-x:hidden;
-    position:relative;
+*{
+    box-sizing:border-box;
 }
 
-.box{
-    background:#1e1e1e;
-    padding:20px;
-    border-radius:12px;
-    max-width:500px;
-    margin:auto;
+body{
+    font-family:Arial, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(0,123,255,0.14), transparent 35%),
+        radial-gradient(circle at top right, rgba(40,167,69,0.10), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{
+    max-width:850px;
+    margin:0 auto;
+}
+
+.panel{
+    background:linear-gradient(180deg, #1d1d1d, #151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:34px;
+    margin:12px 0 6px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:15px;
+}
+
+.form-card{
+    background:linear-gradient(145deg, #242424, #191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px 2px;
+    font-size:14px;
 }
 
 input,
 select,
 button,
 textarea{
-    width:90%;
-    padding:12px;
-    margin:10px;
+    width:100%;
+    padding:14px;
+    margin:6px 0 12px 0;
     border:none;
-    border-radius:8px;
+    border-radius:12px;
     font-size:16px;
-    box-sizing:border-box;
+}
+
+input,
+select,
+textarea{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
 }
 
 button{
-    background:#4CAF50;
     color:white;
     font-weight:bold;
     cursor:pointer;
 }
 
+.button-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin:12px 0;
+}
+
+.search-button{
+    background:linear-gradient(135deg, #007bff, #0056b3);
+    border:1px solid rgba(0,123,255,0.45);
+    box-shadow:0 10px 30px rgba(0,123,255,0.16);
+}
+
 .scan-button{
-    background:#0275d8;
+    background:linear-gradient(135deg, #0275d8, #025aa5);
 }
 
 .stop-button{
-    background:#d9534f;
+    background:linear-gradient(135deg, #dc3545, #a92735);
 }
 
 .torch-button{
-    background:#f0ad4e;
+    background:linear-gradient(135deg, #ffc107, #d39e00);
     color:black;
 }
 
 .choice-button{
-    background:#333;
+    background:linear-gradient(145deg, #242424, #191919);
     text-align:left;
+    border:1px solid rgba(255,255,255,0.08);
+    margin:8px 0;
+}
+
+.choice-button small{
+    color:#bbb;
 }
 
 .quick-sale-button{
-    background:#d9534f;
+    background:linear-gradient(135deg, #dc3545, #a92735);
+    border:1px solid rgba(220,53,69,0.45);
 }
 
 .location-sale-button{
-    background:#0275d8;
+    background:linear-gradient(135deg, #0275d8, #025aa5);
     width:100%;
-    margin:8px 0 0 0;
+    margin:10px 0 0 0;
+}
+
+.back-button{
+    background:linear-gradient(135deg, #333, #222);
+    border:1px solid rgba(255,255,255,0.10);
 }
 
 .result-card{
-    background:#2a2a2a;
-    border-radius:10px;
-    padding:15px;
-    margin:15px 0;
+    background:linear-gradient(145deg, #242424, #191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin:18px 0;
     text-align:left;
+}
+
+.result-header{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:flex-start;
+    margin-bottom:12px;
+}
+
+.result-title{
+    font-size:22px;
+    font-weight:bold;
+    margin:0;
+}
+
+.badge{
+    background:rgba(0,123,255,0.18);
+    border:1px solid rgba(0,123,255,0.35);
+    color:#66b2ff;
+    padding:7px 10px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:bold;
+    white-space:nowrap;
+}
+
+.info-row{
+    background:#111;
+    padding:10px;
+    border-radius:10px;
+    margin:8px 0;
+    border:1px solid rgba(255,255,255,0.06);
 }
 
 .location{
     background:#111;
-    padding:8px;
-    border-radius:6px;
-    margin-top:8px;
+    padding:12px;
+    border-radius:12px;
+    margin-top:10px;
+    border:1px solid rgba(255,255,255,0.06);
+}
+
+.location-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    font-weight:bold;
 }
 
 #reader{
@@ -103,15 +218,35 @@ button{
     margin:20px auto;
     display:none;
     background:#000;
-    border-radius:10px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.10);
+    overflow:hidden;
 }
 
-a{
-    color:#4CAF50;
+#results{
+    margin-top:16px;
+}
+
+.links-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+    margin-top:16px;
+}
+
+.link-card{
+    display:block;
     text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    padding:14px;
+    border-radius:14px;
     font-weight:bold;
+    text-align:center;
 }
 
+/* Loading overlay */
 #loadingOverlay{
     display:none;
     position:fixed;
@@ -145,30 +280,61 @@ a{
     0%{transform:rotate(0deg);}
     100%{transform:rotate(360deg);}
 }
+
+@media(max-width:600px){
+    h1{
+        font-size:30px;
+    }
+
+    .panel{
+        padding:18px;
+    }
+
+    .button-grid{
+        grid-template-columns:1fr;
+    }
+
+    .result-header{
+        flex-direction:column;
+    }
+}
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<div class="page">
+
+<div class="panel">
 
 <h1>Scanner Search</h1>
+<p class="subtitle">Search stock, check locations, and jump straight into a quick sale</p>
 
+<div class="form-card">
+
+<div class="input-label">Search or Barcode</div>
 <input type="text" id="query" placeholder="Search keywords or scan barcode">
 
-<button class="scan-button" onclick="startScanner()">Start Scanner</button>
-<button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
+<div class="button-grid">
+    <button class="scan-button" onclick="startScanner()">Start Scanner</button>
+    <button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
+</div>
+
 <button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
 
 <video id="reader" playsinline></video>
 
-<button onclick="searchStock()">Search</button>
+<button class="search-button" onclick="searchStock()">Search</button>
+
+</div>
 
 <div id="results"></div>
 
-<p style="margin-top:20px;">
-<a href="index.html">← Back to Dashboard</a>
-</p>
+<div class="links-grid">
+    <a class="link-card" href="index.html">← Back to Dashboard</a>
+</div>
+
+</div>
 
 </div>
 
@@ -250,7 +416,7 @@ async function toggleTorch(){
         });
 
         document.getElementById("results").innerHTML =
-        torchOn ? "<p>Flashlight on</p>" : "<p>Flashlight off</p>";
+        torchOn ? "<div class='result-card'>Flashlight on</div>" : "<div class='result-card'>Flashlight off</div>";
 
     }catch(error){
         alert("Flashlight not supported on this device/browser");
@@ -293,7 +459,7 @@ function startScanner(){
                 document.getElementById("query").value = barcode;
 
                 document.getElementById("results").innerHTML =
-                "<p>Barcode scanned: " + barcode + "</p>";
+                "<div class='result-card'>Barcode scanned: " + barcode + "</div>";
 
                 stopScanner();
 
@@ -368,13 +534,13 @@ function searchStock(){
 
         if(!data.success){
             document.getElementById("results").innerHTML =
-            data.error || "Search failed";
+            "<div class='result-card'>" + (data.error || "Search failed") + "</div>";
             return;
         }
 
         if(data.results.length === 0){
             document.getElementById("results").innerHTML =
-            "<p>No results found.</p>";
+            "<div class='result-card'>No results found.</div>";
             return;
         }
 
@@ -403,12 +569,12 @@ function quickSale(barcode, location = ""){
 }
 
 function showItemChoices(items){
-    let html = "<h3>Choose item</h3>";
+    let html = "<div class='result-card'><h3>Choose item</h3>";
 
     items.forEach((item, index) => {
         html += `
             <button class="choice-button" onclick="showSelectedItem(${index})">
-                ${item.description}
+                <strong>${item.description}</strong>
                 <br>
                 <small>Barcode: ${item.barcode}</small>
                 <br>
@@ -416,6 +582,8 @@ function showItemChoices(items){
             </button>
         `;
     });
+
+    html += "</div>";
 
     document.getElementById("results").innerHTML = html;
 }
@@ -425,15 +593,18 @@ function showSelectedItem(index){
 
     let html = `
         <div class="result-card">
-            <h3>${item.description}</h3>
-            <p><strong>Barcode:</strong> ${item.barcode}</p>
-            <p><strong>Total Qty:</strong> ${item.totalQty}</p>
+            <div class="result-header">
+                <h3 class="result-title">${item.description}</h3>
+                <span class="badge">Qty ${item.totalQty}</span>
+            </div>
+
+            <div class="info-row"><strong>Barcode:</strong> ${item.barcode}</div>
 
             <button class="quick-sale-button" onclick="quickSale('${item.barcode}')">
                 Quick Sale
             </button>
 
-            <p><strong>Locations:</strong></p>
+            <h3>Locations</h3>
     `;
 
     if(item.locations.length === 0){
@@ -446,7 +617,10 @@ function showSelectedItem(index){
         item.locations.forEach(loc => {
             html += `
                 <div class="location">
-                    ${loc.location} — Qty: ${loc.qty}
+                    <div class="location-title">
+                        <span>${loc.location}</span>
+                        <span>Qty ${loc.qty}</span>
+                    </div>
 
                     <button class="location-sale-button" onclick="quickSale('${item.barcode}', '${loc.location}')">
                         Quick Sale From ${loc.location}
@@ -459,7 +633,7 @@ function showSelectedItem(index){
     html += `
         </div>
 
-        <button onclick="showItemChoices(searchResultsCache)">
+        <button class="back-button" onclick="showItemChoices(searchResultsCache)">
             Back to results
         </button>
     `;
