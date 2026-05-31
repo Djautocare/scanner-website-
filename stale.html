@@ -13,72 +13,195 @@ html{
     touch-action: manipulation;
 }
 
+*{
+    box-sizing:border-box;
+}
+
 body{
-    font-family:Arial;
-    background:#111;
+    font-family:Arial, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(255,193,7,0.15), transparent 35%),
+        radial-gradient(circle at top right, rgba(255,87,34,0.10), transparent 35%),
+        #0d0d0d;
     color:white;
-    text-align:center;
-    padding:20px;
+    padding:18px;
+    margin:0;
     overflow-x:hidden;
 }
 
-.box{
-    background:#1e1e1e;
-    padding:20px;
-    border-radius:12px;
-    max-width:550px;
-    margin:auto;
+.page{
+    max-width:950px;
+    margin:0 auto;
+}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:34px;
+    margin:12px 0 6px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:15px;
+}
+
+.summary-card{
+    background:linear-gradient(135deg,#ffc107,#ff9800);
+    color:black;
+    padding:18px;
+    border-radius:16px;
+    font-size:20px;
+    font-weight:bold;
+    margin-bottom:20px;
+    text-align:center;
 }
 
 button{
-    width:90%;
-    padding:12px;
-    margin:10px;
+    width:100%;
+    padding:14px;
     border:none;
-    border-radius:8px;
+    border-radius:12px;
     font-size:16px;
-    background:#4CAF50;
-    color:white;
     font-weight:bold;
     cursor:pointer;
+    margin:8px 0 14px 0;
+}
+
+.refresh-button{
+    background:linear-gradient(135deg,#ffc107,#d39e00);
+    color:black;
+    border:1px solid rgba(255,193,7,0.45);
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:15px;
+    margin-top:20px;
 }
 
 .item-card{
-    background:#2a2a2a;
-    padding:15px;
-    margin:15px 0;
-    border-radius:10px;
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:18px;
+    border-radius:16px;
     text-align:left;
 }
 
-.warning{
-    color:#ffcc00;
+.item-name{
+    font-size:20px;
     font-weight:bold;
+    margin-bottom:12px;
 }
 
-a{
-    color:#4CAF50;
-    text-decoration:none;
+.badge{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:13px;
     font-weight:bold;
+    margin-right:6px;
+    margin-bottom:8px;
+}
+
+.location-badge{
+    background:#007bff;
+}
+
+.qty-badge{
+    background:#6f42c1;
+}
+
+.days-badge{
+    background:#dc3545;
+}
+
+.barcode-box{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:10px;
+    padding:10px;
+    margin-top:10px;
+    color:#ddd;
+    word-break:break-word;
+}
+
+.quick-sale{
+    background:linear-gradient(135deg,#dc3545,#a92735);
+    color:white;
+    margin-top:12px;
+}
+
+.empty-state{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:18px;
+    border-radius:16px;
+    text-align:center;
+    color:#ddd;
+    margin-top:20px;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
+    margin-top:20px;
+}
+
+@media(max-width:600px){
+    h1{
+        font-size:30px;
+    }
+
+    .panel{
+        padding:18px;
+    }
 }
 </style>
 </head>
 
 <body>
 
-<div class="box">
+<div class="page">
 
-<h1>Stale Stock</h1>
+<div class="panel">
 
-<p>Items added over 14 days ago with no removals or moves.</p>
+<h1>Stale Stock Report</h1>
 
-<button onclick="loadStaleStock()">Refresh List</button>
-
-<div id="results">Loading...</div>
-
-<p style="margin-top:20px;">
-<a href="index.html">← Back to Dashboard</a>
+<p class="subtitle">
+Items sitting for 14+ days with no sales recorded.
 </p>
+
+<div id="summary" class="summary-card">
+Loading stale stock...
+</div>
+
+<button class="refresh-button" onclick="loadStaleStock()">
+Refresh Report
+</button>
+
+<div id="results"></div>
+
+<a class="link-card" href="index.html">← Back to Dashboard</a>
+
+</div>
 
 </div>
 
@@ -88,8 +211,11 @@ const API_URL =
 
 function loadStaleStock(){
 
-    document.getElementById("results")
-    .innerHTML = "Loading...";
+    document.getElementById("summary").innerHTML =
+    "Loading stale stock...";
+
+    document.getElementById("results").innerHTML =
+    "";
 
     fetch(API_URL,{
         method:"POST",
@@ -104,45 +230,77 @@ function loadStaleStock(){
 
         if(!data.success){
 
-            document.getElementById("results")
-            .innerHTML = "Could not load stale stock.";
+            document.getElementById("summary").innerHTML =
+            "Could not load stale stock";
+
+            document.getElementById("results").innerHTML =
+            `
+            <div class="empty-state">
+                Something went wrong loading the report.
+            </div>
+            `;
 
             return;
         }
+
+        document.getElementById("summary").innerHTML =
+        "⚠️ " + data.results.length + " stale item(s) found";
 
         if(data.results.length === 0){
 
-            document.getElementById("results")
-            .innerHTML =
-            "<p>No stale stock found.</p>";
+            document.getElementById("results").innerHTML =
+            `
+            <div class="empty-state">
+                <h3>✅ No stale stock found</h3>
+                <p>Everything has had a sale/removal recorded recently.</p>
+            </div>
+            `;
 
             return;
         }
 
-        let html = "";
+        let html = "<div class='grid'>";
 
         data.results.forEach(item=>{
 
             html += `
-                <div class="item-card">
-                    <h3>${item.description || item.barcode}</h3>
+            <div class="item-card">
 
-                    <p><strong>Barcode:</strong> ${item.barcode}</p>
-
-                    <p><strong>Location:</strong> ${item.location}</p>
-
-                    <p><strong>Qty:</strong> ${item.qty}</p>
-
-                    <p class="warning">
-                    ${item.daysOld} days since added
-                    </p>
+                <div class="item-name">
+                    ${item.description || item.barcode}
                 </div>
-            `;
 
+                <div class="badge location-badge">
+                    ${item.location}
+                </div>
+
+                <div class="badge qty-badge">
+                    Qty ${item.qty}
+                </div>
+
+                <div class="badge days-badge">
+                    ${item.daysOld} Days
+                </div>
+
+                <div class="barcode-box">
+                    <strong>Barcode:</strong><br>
+                    ${item.barcode}
+                </div>
+
+                <button
+                class="quick-sale"
+                onclick="window.location.href='remove.html?barcode=${encodeURIComponent(item.barcode)}&location=${encodeURIComponent(item.location)}'">
+                Quick Sale
+                </button>
+
+            </div>
+            `;
         });
 
-        document.getElementById("results")
-        .innerHTML = html;
+        html += "</div>";
+
+        document.getElementById("results").innerHTML =
+        html;
 
     })
 
@@ -150,9 +308,15 @@ function loadStaleStock(){
 
         console.error(error);
 
-        document.getElementById("results")
-        .innerHTML =
-        "Error loading stale stock.";
+        document.getElementById("summary").innerHTML =
+        "Error loading stale stock";
+
+        document.getElementById("results").innerHTML =
+        `
+        <div class="empty-state">
+            Error loading stale stock.
+        </div>
+        `;
 
     });
 
