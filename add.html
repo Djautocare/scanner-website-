@@ -11,16 +11,11 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
 <style>
-html{
-    touch-action: manipulation;
-}
-
-*{
-    box-sizing:border-box;
-}
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
 
 body{
-    font-family:Arial, sans-serif;
+    font-family:Arial,sans-serif;
     background:
         radial-gradient(circle at top left, rgba(40,167,69,0.14), transparent 35%),
         radial-gradient(circle at top right, rgba(32,201,151,0.10), transparent 35%),
@@ -31,24 +26,17 @@ body{
     overflow-x:hidden;
 }
 
-.page{
-    max-width:760px;
-    margin:0 auto;
-}
+.page{max-width:760px;margin:0 auto;}
 
 .panel{
-    background:linear-gradient(180deg, #1d1d1d, #151515);
+    background:linear-gradient(180deg,#1d1d1d,#151515);
     border:1px solid rgba(255,255,255,0.08);
     padding:24px;
     border-radius:18px;
     box-shadow:0 20px 60px rgba(0,0,0,0.35);
 }
 
-h1{
-    text-align:center;
-    font-size:34px;
-    margin:12px 0 6px 0;
-}
+h1{text-align:center;font-size:34px;margin:12px 0 6px 0;}
 
 .subtitle{
     text-align:center;
@@ -58,7 +46,7 @@ h1{
 }
 
 .form-card{
-    background:linear-gradient(145deg, #242424, #191919);
+    background:linear-gradient(145deg,#242424,#191919);
     border:1px solid rgba(255,255,255,0.08);
     border-radius:16px;
     padding:18px;
@@ -73,10 +61,7 @@ h1{
     font-size:14px;
 }
 
-input,
-select,
-button,
-textarea{
+input,select,button,textarea{
     width:100%;
     padding:14px;
     margin:6px 0 12px 0;
@@ -85,40 +70,40 @@ textarea{
     font-size:16px;
 }
 
-input,
-select,
-textarea{
+input,select,textarea{
     background:#2a2a2a;
     color:white;
     outline:none;
     border:1px solid rgba(255,255,255,0.08);
 }
 
-select{
-    appearance:none;
-}
+select{appearance:none;}
 
 button{
-    background:#28a745;
     color:white;
     font-weight:bold;
     cursor:pointer;
 }
 
 .primary-button{
-    background:linear-gradient(135deg, #28a745, #1f8b3a);
+    background:linear-gradient(135deg,#28a745,#1f8b3a);
     border:1px solid rgba(40,167,69,0.45);
     box-shadow:0 10px 30px rgba(40,167,69,0.18);
 }
 
 .search-button{
-    background:linear-gradient(135deg, #0275d8, #025aa5);
+    background:linear-gradient(135deg,#0275d8,#025aa5);
     border:1px solid rgba(0,123,255,0.45);
 }
 
 .clear-button{
-    background:linear-gradient(135deg, #333, #222);
+    background:linear-gradient(135deg,#333,#222);
     border:1px solid rgba(255,255,255,0.10);
+}
+
+.printjob-button{
+    background:linear-gradient(135deg,#6f42c1,#56329b);
+    border:1px solid rgba(111,66,193,0.45);
 }
 
 .result-grid{
@@ -129,7 +114,7 @@ button{
 }
 
 .result-card{
-    background:linear-gradient(145deg, #242424, #191919);
+    background:linear-gradient(145deg,#242424,#191919);
     border:1px solid rgba(255,255,255,0.08);
     border-radius:14px;
     padding:14px;
@@ -152,16 +137,11 @@ button{
     margin-bottom:8px;
 }
 
-.barcode-badge{
-    background:#0275d8;
-}
-
-.qty-badge{
-    background:#6f42c1;
-}
+.barcode-badge{background:#0275d8;}
+.qty-badge{background:#6f42c1;}
 
 .select-existing-button{
-    background:linear-gradient(135deg, #20c997, #138f6d);
+    background:linear-gradient(135deg,#20c997,#138f6d);
     border:1px solid rgba(32,201,151,0.45);
     margin-top:8px;
 }
@@ -174,30 +154,6 @@ button{
     margin-top:10px;
     color:#ddd;
     text-align:center;
-}
-
-.links-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:12px;
-    margin-top:16px;
-}
-
-.link-card{
-    display:block;
-    text-decoration:none;
-    color:white;
-    background:linear-gradient(135deg, rgba(32,201,151,0.28), rgba(32,201,151,0.08));
-    border:1px solid rgba(32,201,151,0.35);
-    padding:14px;
-    border-radius:14px;
-    font-weight:bold;
-    text-align:center;
-}
-
-.back-card{
-    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
-    border-color:rgba(0,123,255,0.35);
 }
 
 .checkbox-card{
@@ -221,6 +177,30 @@ button{
     margin:0;
 }
 
+.links-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:16px;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg,rgba(32,201,151,0.28),rgba(32,201,151,0.08));
+    border:1px solid rgba(32,201,151,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
+}
+
+.back-card{
+    background:linear-gradient(135deg,rgba(0,123,255,0.28),rgba(0,123,255,0.08));
+    border-color:rgba(0,123,255,0.35);
+}
+
 #printArea{
     background:white;
     margin-top:20px;
@@ -240,7 +220,6 @@ button{
     padding:0;
 }
 
-/* Loading overlay */
 #loadingOverlay{
     display:none;
     position:fixed;
@@ -254,11 +233,7 @@ button{
     align-items:center;
 }
 
-.loaderBox{
-    text-align:center;
-    color:white;
-    font-weight:bold;
-}
+.loaderBox{text-align:center;color:white;font-weight:bold;}
 
 .spinner{
     width:55px;
@@ -276,27 +251,15 @@ button{
 }
 
 @media(max-width:600px){
-    h1{
-        font-size:30px;
-    }
-
-    .panel{
-        padding:18px;
-    }
-
-    .links-grid{
-        grid-template-columns:1fr;
-    }
+    h1{font-size:30px;}
+    .panel{padding:18px;}
+    .links-grid{grid-template-columns:1fr;}
 }
 
-@media print {
-    @page {
-        size:51mm 25mm;
-        margin:0;
-    }
+@media print{
+    @page{size:51mm 25mm;margin:0;}
 
-    html,
-    body{
+    html,body{
         width:51mm;
         height:25mm;
         margin:0;
@@ -304,14 +267,9 @@ button{
         background:white;
     }
 
-    body *{
-        visibility:hidden;
-    }
+    body *{visibility:hidden;}
 
-    #printArea,
-    #printArea *{
-        visibility:visible;
-    }
+    #printArea,#printArea *{visibility:visible;}
 
     #printArea{
         position:fixed;
@@ -344,9 +302,7 @@ button{
         line-height:1;
     }
 
-    #loadingOverlay{
-        display:none !important;
-    }
+    #loadingOverlay{display:none !important;}
 }
 </style>
 </head>
@@ -354,11 +310,10 @@ button{
 <body>
 
 <div class="page">
-
 <div class="panel">
 
 <h1>Add Stock</h1>
-<p class="subtitle">Add new inventory, reuse existing product names, assign to a box, and print labels</p>
+<p class="subtitle">Add stock, reuse product names, assign locations, and build print jobs</p>
 
 <div class="form-card">
 
@@ -382,13 +337,30 @@ button{
 
 <div class="input-label">Box / Location</div>
 <select id="location">
-<option value="">Select Box / Location</option>
+<option value="">Loading boxes...</option>
 </select>
 
 <div class="checkbox-card">
     <label>
-        <input type="checkbox" id="printLabels" checked>
-        Print labels after saving
+        <input type="checkbox" id="addToPrintJob">
+        Add labels to print job
+    </label>
+</div>
+
+<div class="input-label">Print Job</div>
+<select id="printJob">
+<option value="">Loading print jobs...</option>
+</select>
+
+<div class="input-label">New Print Job Name</div>
+<input type="text" id="newPrintJobName" placeholder="Example: Mystery Box 1 Labels">
+
+<button class="printjob-button" onclick="createPrintJob()">Create New Print Job</button>
+
+<div class="checkbox-card">
+    <label>
+        <input type="checkbox" id="printLabels">
+        Print label immediately after saving
     </label>
 </div>
 
@@ -407,7 +379,6 @@ button{
 </div>
 
 </div>
-
 </div>
 
 <div id="loadingOverlay">
@@ -431,67 +402,138 @@ function hideLoading(){
     document.getElementById("loadingOverlay").style.display = "none";
 }
 
+function fillBoxDropdown(boxes){
+    const select = document.getElementById("location");
+    select.innerHTML = '<option value="">Select Box / Location</option>';
+
+    if(!boxes || boxes.length === 0){
+        select.innerHTML = '<option value="">No boxes created yet</option>';
+        return;
+    }
+
+    boxes.forEach(item=>{
+        const option = document.createElement("option");
+        option.value = item.box;
+        option.textContent = item.box;
+        select.appendChild(option);
+    });
+}
+
 function loadBoxes(){
+    const cached = localStorage.getItem("inventoryBoxes");
+
+    if(cached){
+        try{
+            fillBoxDropdown(JSON.parse(cached));
+        }catch(e){}
+    }
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({action:"GET_BOXES"})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.success && data.boxes){
+            localStorage.setItem("inventoryBoxes", JSON.stringify(data.boxes));
+            fillBoxDropdown(data.boxes);
+        }
+    })
+    .catch(error=>{
+        console.error(error);
+    });
+}
+
+function fillPrintJobDropdown(jobs){
+    const select = document.getElementById("printJob");
+    select.innerHTML = '<option value="">Select Print Job</option>';
+
+    if(!jobs || jobs.length === 0){
+        select.innerHTML = '<option value="">No print jobs created yet</option>';
+        return;
+    }
+
+    jobs.forEach(job=>{
+        const option = document.createElement("option");
+        option.value = job.printJobId;
+        option.textContent = job.printJobId + " - " + job.name;
+        select.appendChild(option);
+    });
+}
+
+function loadPrintJobs(){
+    const cached = localStorage.getItem("inventoryPrintJobs");
+
+    if(cached){
+        try{
+            fillPrintJobDropdown(JSON.parse(cached));
+        }catch(e){}
+    }
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({action:"GET_PRINT_JOBS"})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.success && data.printJobs){
+            localStorage.setItem("inventoryPrintJobs", JSON.stringify(data.printJobs));
+            fillPrintJobDropdown(data.printJobs);
+        }
+    })
+    .catch(error=>{
+        console.error(error);
+    });
+}
+
+function createPrintJob(){
+    const name = document.getElementById("newPrintJobName").value.trim();
+
+    if(!name){
+        alert("Enter a print job name");
+        return;
+    }
+
+    showLoading();
 
     fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
-            action:"GET_BOXES"
+            action:"CREATE_PRINT_JOB",
+            name:name
         })
     })
-
     .then(res=>res.json())
-
     .then(data=>{
+        hideLoading();
 
-        const select = document.getElementById("location");
-
-        select.innerHTML =
-        '<option value="">Select Box / Location</option>';
-
-        if(!data.success || data.boxes.length === 0){
-
-            const option = document.createElement("option");
-
-            option.value = "";
-
-            option.textContent = "No boxes created yet";
-
-            select.appendChild(option);
-
+        if(!data.success){
+            alert(data.error || "Could not create print job");
             return;
         }
 
-        data.boxes.forEach(item=>{
+        document.getElementById("newPrintJobName").value = "";
+        document.getElementById("addToPrintJob").checked = true;
 
-            const option = document.createElement("option");
+        localStorage.removeItem("inventoryPrintJobs");
 
-            option.value = item.box;
+        loadPrintJobs();
 
-            option.textContent = item.box;
+        setTimeout(function(){
+            document.getElementById("printJob").value = data.printJobId;
+        }, 500);
 
-            select.appendChild(option);
-
-        });
-
+        alert("Created print job: " + data.printJobId);
     })
-
     .catch(error=>{
-
+        hideLoading();
         console.error(error);
-
-        alert("Could not load boxes");
-
+        alert("Error creating print job");
     });
-
 }
 
 function searchExistingProduct(){
-
-    const query =
-    document.getElementById("productSearch")
-    .value
-    .trim();
+    const query = document.getElementById("productSearch").value.trim();
 
     if(!query){
         alert("Enter keywords or barcode to search");
@@ -510,18 +552,13 @@ function searchExistingProduct(){
             query:query
         })
     })
-
     .then(res=>res.json())
-
     .then(data=>{
-
         hideLoading();
 
         if(!data.success || data.results.length === 0){
-
             document.getElementById("searchResults").innerHTML =
             "<div class='empty-state'>No existing products found. You can enter a new description below.</div>";
-
             return;
         }
 
@@ -529,110 +566,71 @@ function searchExistingProduct(){
 
         let html = "<div class='result-grid'>";
 
-        data.results.forEach((item, index)=>{
-
+        data.results.forEach((item,index)=>{
             html += `
                 <div class="result-card">
+                    <div class="result-title">${item.description}</div>
+                    <div class="badge barcode-badge">${item.barcode}</div>
+                    <div class="badge qty-badge">Current Qty ${item.totalQty}</div>
 
-                    <div class="result-title">
-                        ${item.description}
-                    </div>
-
-                    <div class="badge barcode-badge">
-                        ${item.barcode}
-                    </div>
-
-                    <div class="badge qty-badge">
-                        Current Qty ${item.totalQty}
-                    </div>
-
-                    <button
-                    class="select-existing-button"
-                    onclick="selectExistingProduct(${index})">
+                    <button class="select-existing-button" onclick="selectExistingProduct(${index})">
                     Use This Product Name
                     </button>
-
                 </div>
             `;
-
         });
 
         html += "</div>";
-
         document.getElementById("searchResults").innerHTML = html;
-
     })
-
     .catch(error=>{
-
         hideLoading();
-
         console.error(error);
-
         document.getElementById("searchResults").innerHTML =
         "<div class='empty-state'>Error searching existing products.</div>";
-
     });
-
 }
 
 function selectExistingProduct(index){
-
     const item = existingProductResults[index];
 
-    if(!item){
-        return;
-    }
+    if(!item) return;
 
     document.getElementById("description").value = item.description;
-
     document.getElementById("searchResults").innerHTML =
     "<div class='empty-state'>Selected existing product: <strong>" +
     item.description +
     "</strong></div>";
 
     document.getElementById("qty").focus();
-
 }
 
 function clearSearchResults(){
-
     document.getElementById("productSearch").value = "";
     document.getElementById("searchResults").innerHTML = "";
     existingProductResults = [];
-
 }
 
 function saveProduct(){
-
-    const description =
-    document.getElementById("description")
-    .value
-    .trim();
-
-    const qty =
-    document.getElementById("qty")
-    .value;
-
-    const location =
-    document.getElementById("location")
-    .value;
-
-    const printLabels =
-    document.getElementById("printLabels")
-    .checked;
+    const description = document.getElementById("description").value.trim();
+    const qty = document.getElementById("qty").value;
+    const location = document.getElementById("location").value;
+    const printLabels = document.getElementById("printLabels").checked;
+    const addToPrintJob = document.getElementById("addToPrintJob").checked;
+    const printJobId = document.getElementById("printJob").value;
 
     if(!description){
-
         alert("Enter description");
-
         return;
     }
 
     if(!location){
-
         alert("Select a box/location");
+        return;
+    }
 
+    if(addToPrintJob && !printJobId){
+        alert("Select a print job or create one first");
         return;
     }
 
@@ -644,25 +642,21 @@ function saveProduct(){
             action:"ADD",
             description:description,
             qty:qty,
-            location:location
+            location:location,
+            addToPrintJob:addToPrintJob,
+            printJobId:printJobId
         })
     })
-
     .then(res=>res.json())
-
     .then(data=>{
-
         hideLoading();
 
         if(!data.success){
-
             alert(data.error || "Error");
-
             return;
         }
 
-        document.getElementById("barcodeText")
-        .innerText = data.barcode;
+        document.getElementById("barcodeText").innerText = data.barcode;
 
         JsBarcode("#barcode", data.barcode, {
             format:"CODE128",
@@ -672,15 +666,20 @@ function saveProduct(){
             margin:8
         });
 
-        alert("Saved Successfully\n\nBarcode: " + data.barcode);
+        let message = "Saved Successfully\n\nBarcode: " + data.barcode;
+
+        if(addToPrintJob){
+            message += "\nAdded to print job: " + printJobId;
+            message += "\nLabel count added: " + qty;
+        }
+
+        alert(message);
 
         if(printLabels){
-
             window.open(
                 "label.html?barcode=" + encodeURIComponent(data.barcode),
                 "_blank"
             );
-
         }
 
         document.getElementById("description").value = "";
@@ -689,73 +688,52 @@ function saveProduct(){
         document.getElementById("searchResults").innerHTML = "";
         existingProductResults = [];
 
+        document.getElementById("productSearch").focus();
     })
-
     .catch(error=>{
-
         hideLoading();
-
         console.error(error);
-
         alert("Error saving product");
-
     });
-
 }
-// ENTER KEY SHORTCUTS
 
-document.getElementById("productSearch")
-.addEventListener("keydown", function(e){
-
+document.getElementById("productSearch").addEventListener("keydown",function(e){
     if(e.key === "Enter"){
-
         e.preventDefault();
-
         searchExistingProduct();
-
     }
-
 });
 
-document.getElementById("description")
-.addEventListener("keydown", function(e){
-
+document.getElementById("description").addEventListener("keydown",function(e){
     if(e.key === "Enter"){
-
         e.preventDefault();
-
         saveProduct();
-
     }
-
 });
 
-document.getElementById("qty")
-.addEventListener("keydown", function(e){
-
+document.getElementById("qty").addEventListener("keydown",function(e){
     if(e.key === "Enter"){
-
         e.preventDefault();
-
         saveProduct();
-
     }
-
 });
 
-document.getElementById("location")
-.addEventListener("keydown", function(e){
-
+document.getElementById("location").addEventListener("keydown",function(e){
     if(e.key === "Enter"){
-
         e.preventDefault();
-
         saveProduct();
-
     }
-
 });
+
+document.getElementById("newPrintJobName").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+        createPrintJob();
+    }
+});
+
 loadBoxes();
+loadPrintJobs();
 </script>
 
 </body>
