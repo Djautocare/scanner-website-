@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Box Contents</title>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(111,66,193,0.16), transparent 35%),
+        radial-gradient(circle at top right, rgba(0,123,255,0.10), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+}
+
+.page{
+    max-width:900px;
+    margin:auto;
+}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:18px;
+    padding:24px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:34px;
+    margin:10px 0 5px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin-bottom:25px;
+}
+
+.form-card,
+.summary-card,
+.item-card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-top:16px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin-bottom:8px;
+}
+
+select,
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+}
+
+select{
+    background:#2a2a2a;
+    color:white;
+    border:1px solid rgba(255,255,255,0.08);
+    margin-bottom:15px;
+}
+
+.confirm-button{
+    background:linear-gradient(135deg,#6f42c1,#56329b);
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px;
+    margin-top:18px;
+}
+
+.summary-card{
+    text-align:left;
+}
+
+.summary-title{
+    color:#aaa;
+    font-size:14px;
+    margin-bottom:8px;
+}
+
+.summary-value{
+    font-size:30px;
+    font-weight:bold;
+}
+
+.item-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:14px;
+    margin-top:18px;
+}
+
+.item-name{
+    font-size:18px;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+.badge{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:bold;
+    margin-right:6px;
+    margin-bottom:8px;
+}
+
+.qty-badge{
+    background:#6f42c1;
+}
+
+.barcode-badge{
+    background:#0275d8;
+}
+
+.empty-state{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:18px;
+    border-radius:16px;
+    text-align:center;
+    color:#ddd;
+    margin-top:18px;
+}
+
+.link-card{
+    display:block;
+    margin-top:20px;
+    text-decoration:none;
+    color:white;
+    text-align:center;
+    padding:14px;
+    border-radius:14px;
+    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    font-weight:bold;
+}
+
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{
+    text-align:center;
+}
+
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #6f42c1;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+<div class="panel">
+
+<h1>Box Contents</h1>
+
+<p class="subtitle">
+Select one box and view everything currently inside it
+</p>
+
+<div class="form-card">
+    <div class="input-label">Select Box</div>
+
+    <select id="boxSelect">
+        <option value="">Loading boxes...</option>
+    </select>
+
+    <button class="confirm-button" onclick="loadBoxContents()">
+        View Box Contents
+    </button>
+</div>
+
+<div id="summary"></div>
+
+<div id="results"></div>
+
+<a class="link-card" href="index.html">← Back to Dashboard</a>
+
+</div>
+</div>
+
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+</div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display="flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display="none";
+}
+
+function loadBoxes(){
+    showLoading();
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"GET_BOXES"
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        hideLoading();
+
+        const select = document.getElementById("boxSelect");
+
+        select.innerHTML = '<option value="">Select Box</option>';
+
+        if(!data.success || data.boxes.length === 0){
+            select.innerHTML = '<option value="">No boxes found</option>';
+            return;
+        }
+
+        data.boxes.forEach(item=>{
+            const option = document.createElement("option");
+            option.value = item.box;
+            option.textContent = item.box;
+            select.appendChild(option);
+        });
+    })
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+        alert("Could not load boxes");
+    });
+}
+
+function loadBoxContents(){
+    const box = document.getElementById("boxSelect").value;
+
+    if(!box){
+        alert("Select a box first");
+        return;
+    }
+
+    document.getElementById("summary").innerHTML = "";
+    document.getElementById("results").innerHTML = "";
+
+    showLoading();
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"BOX_CONTENTS",
+            box:box
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        hideLoading();
+
+        if(!data.success){
+            document.getElementById("results").innerHTML =
+            "<div class='empty-state'>" + (data.error || "Could not load box contents") + "</div>";
+            return;
+        }
+
+        document.getElementById("summary").innerHTML = `
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-title">Selected Box</div>
+                    <div class="summary-value">${data.box}</div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-title">Total Items Including Qty</div>
+                    <div class="summary-value">${data.totalQty}</div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-title">Different Items</div>
+                    <div class="summary-value">${data.differentItems}</div>
+                </div>
+            </div>
+        `;
+
+        if(data.results.length === 0){
+            document.getElementById("results").innerHTML =
+            "<div class='empty-state'>This box is currently empty.</div>";
+            return;
+        }
+
+        let html = "<div class='item-grid'>";
+
+        data.results.forEach(item=>{
+            html += `
+                <div class="item-card">
+                    <div class="item-name">${item.description}</div>
+
+                    <div class="badge qty-badge">
+                        Qty ${item.qty}
+                    </div>
+
+                    <div class="badge barcode-badge">
+                        ${item.barcode}
+                    </div>
+                </div>
+            `;
+        });
+
+        html += "</div>";
+
+        document.getElementById("results").innerHTML = html;
+    })
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+
+        document.getElementById("results").innerHTML =
+        "<div class='empty-state'>Error loading box contents.</div>";
+    });
+}
+
+loadBoxes();
+</script>
+
+</body>
+</html>
