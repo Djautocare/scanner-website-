@@ -702,7 +702,59 @@ function saveProduct(){
     });
 
 }
+// ENTER KEY SHORTCUTS
 
+document.getElementById("productSearch")
+.addEventListener("keydown", function(e){
+
+    if(e.key === "Enter"){
+
+        e.preventDefault();
+
+        searchExistingProduct();
+
+    }
+
+});
+
+document.getElementById("description")
+.addEventListener("keydown", function(e){
+
+    if(e.key === "Enter"){
+
+        e.preventDefault();
+
+        saveProduct();
+
+    }
+
+});
+
+document.getElementById("qty")
+.addEventListener("keydown", function(e){
+
+    if(e.key === "Enter"){
+
+        e.preventDefault();
+
+        saveProduct();
+
+    }
+
+});
+
+document.getElementById("location")
+.addEventListener("keydown", function(e){
+
+    if(e.key === "Enter"){
+
+        e.preventDefault();
+
+        saveProduct();
+
+    }
+
+});
 loadBoxes();
 </script>
 
