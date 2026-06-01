@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Print Jobs</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(111,66,193,0.16), transparent 35%),
+        radial-gradient(circle at top right, rgba(32,201,151,0.10), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{max-width:900px;margin:0 auto;}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{text-align:center;font-size:34px;margin:12px 0 6px 0;}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:15px;
+}
+
+.form-card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px 2px;
+    font-size:14px;
+}
+
+select,
+button{
+    width:100%;
+    padding:14px;
+    margin:6px 0 12px 0;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+}
+
+select{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+button{
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.load-button{
+    background:linear-gradient(135deg,#0275d8,#025aa5);
+    border:1px solid rgba(0,123,255,0.45);
+}
+
+.print-button{
+    background:linear-gradient(135deg,#20c997,#138f6d);
+    border:1px solid rgba(32,201,151,0.45);
+}
+
+.refresh-button{
+    background:linear-gradient(135deg,#6f42c1,#56329b);
+    border:1px solid rgba(111,66,193,0.45);
+}
+
+.clear-button{
+    background:linear-gradient(135deg,#333,#222);
+    border:1px solid rgba(255,255,255,0.10);
+}
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px;
+    margin-top:12px;
+}
+
+.summary-card{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;
+    padding:14px;
+    text-align:left;
+}
+
+.summary-title{
+    color:#aaa;
+    font-size:13px;
+    margin-bottom:6px;
+}
+
+.summary-value{
+    font-size:22px;
+    font-weight:bold;
+}
+
+.preview-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin-top:16px;
+}
+
+.preview-label{
+    background:white;
+    color:black;
+    border-radius:10px;
+    padding:8px;
+    text-align:center;
+    font-weight:bold;
+    font-size:13px;
+}
+
+.empty-state{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:18px;
+    border-radius:16px;
+    text-align:center;
+    color:#ddd;
+    margin-top:18px;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg,rgba(0,123,255,0.28),rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
+    margin-top:20px;
+}
+
+#printLabels{
+    display:none;
+}
+
+.print-label{
+    background:white;
+    width:51mm;
+    height:25mm;
+    padding:1.5mm;
+    box-sizing:border-box;
+    text-align:center;
+    overflow:hidden;
+    page-break-after:always;
+    break-after:page;
+}
+
+.print-label:last-child{
+    page-break-after:auto;
+    break-after:auto;
+}
+
+.print-label svg{
+    width:48mm;
+    height:17mm;
+    display:block;
+    margin:0 auto;
+}
+
+.label-text{
+    color:black;
+    font-weight:bold;
+    font-size:11px;
+    margin:0;
+    padding:0;
+    line-height:1;
+    text-align:center;
+}
+
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{text-align:center;color:white;font-weight:bold;}
+
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #20c997;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+}
+
+@media(max-width:600px){
+    h1{font-size:30px;}
+    .panel{padding:18px;}
+}
+
+@media print{
+    @page{
+        size:51mm 25mm;
+        margin:0;
+    }
+
+    html,
+    body{
+        width:51mm !important;
+        min-height:25mm !important;
+        margin:0 !important;
+        padding:0 !important;
+        background:white !important;
+        overflow:visible !important;
+    }
+
+    body *{
+        display:none !important;
+    }
+
+    #printLabels,
+    #printLabels *{
+        display:block !important;
+    }
+
+    #printLabels{
+        display:block !important;
+        width:51mm !important;
+        margin:0 !important;
+        padding:0 !important;
+        background:white !important;
+    }
+
+    .print-label{
+        display:block !important;
+        position:relative !important;
+        width:51mm !important;
+        height:25mm !important;
+        padding:1.5mm !important;
+        margin:0 !important;
+        box-sizing:border-box !important;
+        background:white !important;
+        text-align:center !important;
+        overflow:hidden !important;
+        page-break-after:always !important;
+        break-after:page !important;
+    }
+
+    .print-label:last-child{
+        page-break-after:auto !important;
+        break-after:auto !important;
+    }
+
+    .print-label svg{
+        width:48mm !important;
+        height:17mm !important;
+        display:block !important;
+        margin:0 auto !important;
+    }
+
+    .label-text{
+        color:black !important;
+        font-size:11px !important;
+        font-weight:bold !important;
+        margin:0 !important;
+        padding:0 !important;
+        line-height:1 !important;
+        text-align:center !important;
+    }
+
+    #loadingOverlay{
+        display:none !important;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+<div class="panel">
+
+<h1>Print Jobs</h1>
+<p class="subtitle">Select a saved print job and print all its barcode labels</p>
+
+<div class="form-card">
+
+<div class="input-label">Select Print Job</div>
+<select id="printJobSelect">
+<option value="">Loading print jobs...</option>
+</select>
+
+<button class="load-button" onclick="loadSelectedPrintJob()">Load Print Job</button>
+<button class="print-button" onclick="printLoadedLabels()">Print Loaded Labels</button>
+<button class="refresh-button" onclick="loadPrintJobs()">Refresh Print Jobs</button>
+<button class="clear-button" onclick="clearLoadedLabels()">Clear Loaded Labels</button>
+
+</div>
+
+<div id="summary"></div>
+
+<div id="preview"></div>
+
+<a class="link-card" href="index.html">← Back to Dashboard</a>
+
+</div>
+</div>
+
+<div id="printLabels"></div>
+
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Working...</p>
+    </div>
+</div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+let loadedLabels = [];
+
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display = "none";
+}
+
+function loadPrintJobs(){
+    showLoading();
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"GET_PRINT_JOBS"
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        hideLoading();
+
+        const select = document.getElementById("printJobSelect");
+
+        select.innerHTML = '<option value="">Select Print Job</option>';
+
+        if(!data.success || !data.printJobs || data.printJobs.length === 0){
+            select.innerHTML = '<option value="">No print jobs found</option>';
+            return;
+        }
+
+        localStorage.setItem("inventoryPrintJobs", JSON.stringify(data.printJobs));
+
+        data.printJobs.slice().reverse().forEach(job=>{
+            const option = document.createElement("option");
+            option.value = job.printJobId;
+            option.textContent =
+            job.printJobId + " - " + job.name + " (" + job.labelCount + " labels)";
+            select.appendChild(option);
+        });
+    })
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+        alert("Could not load print jobs");
+    });
+}
+
+function loadSelectedPrintJob(){
+    const printJobId = document.getElementById("printJobSelect").value;
+
+    if(!printJobId){
+        alert("Select a print job first");
+        return;
+    }
+
+    showLoading();
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"GET_PRINT_JOB_LABELS",
+            printJobId:printJobId
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        hideLoading();
+
+        if(!data.success){
+            document.getElementById("summary").innerHTML =
+            "<div class='empty-state'>" + (data.error || "Could not load labels") + "</div>";
+            return;
+        }
+
+        loadedLabels = data.labels || [];
+
+        renderPrintableLabels(loadedLabels);
+        renderPreview(printJobId, loadedLabels);
+    })
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+        document.getElementById("summary").innerHTML =
+        "<div class='empty-state'>Error loading print job labels.</div>";
+    });
+}
+
+function renderPrintableLabels(labels){
+    const container = document.getElementById("printLabels");
+
+    let html = "";
+
+    labels.forEach((barcode,index)=>{
+        html += `
+            <div class="print-label">
+                <svg id="job_barcode_${index}"></svg>
+                <p class="label-text">${barcode}</p>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+
+    labels.forEach((barcode,index)=>{
+        JsBarcode("#job_barcode_" + index, barcode, {
+            format:"CODE128",
+            displayValue:false,
+            width:1.2,
+            height:42,
+            margin:0
+        });
+    });
+}
+
+function renderPreview(printJobId, labels){
+    if(labels.length === 0){
+        document.getElementById("summary").innerHTML =
+        "<div class='empty-state'>This print job has no labels.</div>";
+
+        document.getElementById("preview").innerHTML = "";
+        return;
+    }
+
+    const uniqueCount = new Set(labels).size;
+
+    document.getElementById("summary").innerHTML = `
+        <div class="form-card">
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-title">Print Job</div>
+                    <div class="summary-value">${printJobId}</div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-title">Total Labels</div>
+                    <div class="summary-value">${labels.length}</div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-title">Different Barcodes</div>
+                    <div class="summary-value">${uniqueCount}</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    let previewHtml = "<div class='form-card'><div class='input-label'>Preview</div><div class='preview-grid'>";
+
+    labels.forEach(barcode=>{
+        previewHtml += `<div class="preview-label">${barcode}</div>`;
+    });
+
+    previewHtml += "</div></div>";
+
+    document.getElementById("preview").innerHTML = previewHtml;
+}
+
+function printLoadedLabels(){
+    if(!loadedLabels || loadedLabels.length === 0){
+        alert("Load a print job first");
+        return;
+    }
+
+    setTimeout(function(){
+        window.print();
+    }, 200);
+}
+
+function clearLoadedLabels(){
+    loadedLabels = [];
+    document.getElementById("printLabels").innerHTML = "";
+    document.getElementById("summary").innerHTML = "";
+    document.getElementById("preview").innerHTML = "";
+}
+
+loadPrintJobs();
+</script>
+
+</body>
+</html>
