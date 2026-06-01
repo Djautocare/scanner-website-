@@ -111,6 +111,71 @@ button{
     box-shadow:0 10px 30px rgba(40,167,69,0.18);
 }
 
+.search-button{
+    background:linear-gradient(135deg, #0275d8, #025aa5);
+    border:1px solid rgba(0,123,255,0.45);
+}
+
+.clear-button{
+    background:linear-gradient(135deg, #333, #222);
+    border:1px solid rgba(255,255,255,0.10);
+}
+
+.result-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+    margin-top:10px;
+}
+
+.result-card{
+    background:linear-gradient(145deg, #242424, #191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:14px;
+    text-align:left;
+}
+
+.result-title{
+    font-weight:bold;
+    font-size:18px;
+    margin-bottom:8px;
+}
+
+.badge{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:bold;
+    margin-right:6px;
+    margin-bottom:8px;
+}
+
+.barcode-badge{
+    background:#0275d8;
+}
+
+.qty-badge{
+    background:#6f42c1;
+}
+
+.select-existing-button{
+    background:linear-gradient(135deg, #20c997, #138f6d);
+    border:1px solid rgba(32,201,151,0.45);
+    margin-top:8px;
+}
+
+.empty-state{
+    background:#2a2a2a;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:14px;
+    margin-top:10px;
+    color:#ddd;
+    text-align:center;
+}
+
 .links-grid{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -293,7 +358,19 @@ button{
 <div class="panel">
 
 <h1>Add Stock</h1>
-<p class="subtitle">Add new inventory, assign it to a box, and print labels</p>
+<p class="subtitle">Add new inventory, reuse existing product names, assign to a box, and print labels</p>
+
+<div class="form-card">
+
+<div class="input-label">Search Existing Product First</div>
+<input type="text" id="productSearch" placeholder="Search keywords or barcode">
+
+<button class="search-button" onclick="searchExistingProduct()">Search Existing Products</button>
+<button class="clear-button" onclick="clearSearchResults()">Clear Search Results</button>
+
+<div id="searchResults"></div>
+
+</div>
 
 <div class="form-card">
 
@@ -343,6 +420,8 @@ button{
 <script>
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+let existingProductResults = [];
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -404,6 +483,123 @@ function loadBoxes(){
         alert("Could not load boxes");
 
     });
+
+}
+
+function searchExistingProduct(){
+
+    const query =
+    document.getElementById("productSearch")
+    .value
+    .trim();
+
+    if(!query){
+        alert("Enter keywords or barcode to search");
+        return;
+    }
+
+    document.getElementById("searchResults").innerHTML =
+    "<div class='empty-state'>Searching...</div>";
+
+    showLoading();
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"SEARCH",
+            query:query
+        })
+    })
+
+    .then(res=>res.json())
+
+    .then(data=>{
+
+        hideLoading();
+
+        if(!data.success || data.results.length === 0){
+
+            document.getElementById("searchResults").innerHTML =
+            "<div class='empty-state'>No existing products found. You can enter a new description below.</div>";
+
+            return;
+        }
+
+        existingProductResults = data.results;
+
+        let html = "<div class='result-grid'>";
+
+        data.results.forEach((item, index)=>{
+
+            html += `
+                <div class="result-card">
+
+                    <div class="result-title">
+                        ${item.description}
+                    </div>
+
+                    <div class="badge barcode-badge">
+                        ${item.barcode}
+                    </div>
+
+                    <div class="badge qty-badge">
+                        Current Qty ${item.totalQty}
+                    </div>
+
+                    <button
+                    class="select-existing-button"
+                    onclick="selectExistingProduct(${index})">
+                    Use This Product Name
+                    </button>
+
+                </div>
+            `;
+
+        });
+
+        html += "</div>";
+
+        document.getElementById("searchResults").innerHTML = html;
+
+    })
+
+    .catch(error=>{
+
+        hideLoading();
+
+        console.error(error);
+
+        document.getElementById("searchResults").innerHTML =
+        "<div class='empty-state'>Error searching existing products.</div>";
+
+    });
+
+}
+
+function selectExistingProduct(index){
+
+    const item = existingProductResults[index];
+
+    if(!item){
+        return;
+    }
+
+    document.getElementById("description").value = item.description;
+
+    document.getElementById("searchResults").innerHTML =
+    "<div class='empty-state'>Selected existing product: <strong>" +
+    item.description +
+    "</strong></div>";
+
+    document.getElementById("qty").focus();
+
+}
+
+function clearSearchResults(){
+
+    document.getElementById("productSearch").value = "";
+    document.getElementById("searchResults").innerHTML = "";
+    existingProductResults = [];
 
 }
 
@@ -489,6 +685,9 @@ function saveProduct(){
 
         document.getElementById("description").value = "";
         document.getElementById("qty").value = "1";
+        document.getElementById("productSearch").value = "";
+        document.getElementById("searchResults").innerHTML = "";
+        existingProductResults = [];
 
     })
 
