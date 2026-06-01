@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Snapshot Box</title>
+
+<style>
+html{
+    touch-action:manipulation;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Arial, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(255,193,7,0.16), transparent 35%),
+        radial-gradient(circle at top right, rgba(156,39,176,0.12), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{
+    max-width:850px;
+    margin:0 auto;
+}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:34px;
+    margin:12px 0 6px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:15px;
+    line-height:1.4;
+}
+
+.form-card,
+.info-card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:18px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px 2px;
+    font-size:14px;
+}
+
+select,
+button{
+    width:100%;
+    padding:14px;
+    margin:6px 0 12px 0;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+}
+
+select{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+button{
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.snapshot-button{
+    background:linear-gradient(135deg,#ffc107,#d39e00);
+    color:black;
+    border:1px solid rgba(255,193,7,0.45);
+    box-shadow:0 10px 30px rgba(255,193,7,0.16);
+}
+
+.refresh-button{
+    background:linear-gradient(135deg,#9c27b0,#6f1a80);
+    border:1px solid rgba(156,39,176,0.45);
+}
+
+.warning-card{
+    background:rgba(255,193,7,0.12);
+    border:1px solid rgba(255,193,7,0.35);
+    color:#ffd75e;
+    border-radius:14px;
+    padding:14px;
+    line-height:1.45;
+    margin-bottom:18px;
+}
+
+.success-card{
+    background:rgba(40,167,69,0.14);
+    border:1px solid rgba(40,167,69,0.35);
+    color:#61e27a;
+    border-radius:14px;
+    padding:16px;
+    margin-top:16px;
+    font-weight:bold;
+    text-align:center;
+}
+
+.error-card{
+    background:rgba(220,53,69,0.14);
+    border:1px solid rgba(220,53,69,0.35);
+    color:#ff7777;
+    border-radius:14px;
+    padding:16px;
+    margin-top:16px;
+    font-weight:bold;
+    text-align:center;
+}
+
+.preview-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px;
+    margin-top:16px;
+}
+
+.preview-card{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;
+    padding:14px;
+    text-align:left;
+}
+
+.preview-title{
+    color:#aaa;
+    font-size:13px;
+    margin-bottom:6px;
+}
+
+.preview-value{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
+    margin-top:20px;
+}
+
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{
+    text-align:center;
+    color:white;
+    font-weight:bold;
+}
+
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #ffc107;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+}
+
+@media(max-width:600px){
+    h1{
+        font-size:30px;
+    }
+
+    .panel{
+        padding:18px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+<div class="panel">
+
+<h1>Snapshot Box</h1>
+
+<p class="subtitle">
+Copy the current contents of a physical storage box into a Mystery Box ID.
+This records what originally came in that mystery box.
+</p>
+
+<div class="warning-card">
+    Only do this once per mystery box after you have finished adding all the items from that mystery box into one storage box.
+    Moving items later will not affect this snapshot.
+</div>
+
+<div class="form-card">
+
+<div class="input-label">Physical Storage Box</div>
+<select id="boxSelect" onchange="updatePreview()">
+<option value="">Loading storage boxes...</option>
+</select>
+
+<div class="input-label">Mystery Box ID</div>
+<select id="mysteryBoxSelect" onchange="updatePreview()">
+<option value="">Loading mystery boxes...</option>
+</select>
+
+<button class="snapshot-button" onclick="snapshotBox()">
+Snapshot Box To Mystery Box
+</button>
+
+<button class="refresh-button" onclick="loadAllDropdowns()">
+Refresh Lists
+</button>
+
+</div>
+
+<div class="info-card">
+
+<div class="preview-grid">
+
+<div class="preview-card">
+    <div class="preview-title">Selected Storage Box</div>
+    <div class="preview-value" id="previewBox">—</div>
+</div>
+
+<div class="preview-card">
+    <div class="preview-title">Selected Mystery Box</div>
+    <div class="preview-value" id="previewMysteryBox">—</div>
+</div>
+
+</div>
+
+</div>
+
+<div id="result"></div>
+
+<a class="link-card" href="index.html">← Back to Dashboard</a>
+
+</div>
+
+</div>
+
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Working...</p>
+    </div>
+</div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display = "none";
+}
+
+function updatePreview(){
+    const box =
+    document.getElementById("boxSelect").value;
+
+    const mysteryBox =
+    document.getElementById("mysteryBoxSelect").value;
+
+    document.getElementById("previewBox").innerText =
+    box || "—";
+
+    document.getElementById("previewMysteryBox").innerText =
+    mysteryBox || "—";
+}
+
+function loadAllDropdowns(){
+    loadStorageBoxes();
+    loadMysteryBoxes();
+}
+
+function loadStorageBoxes(){
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"GET_BOXES"
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        const select =
+        document.getElementById("boxSelect");
+
+        select.innerHTML =
+        '<option value="">Select Storage Box</option>';
+
+        if(!data.success || data.boxes.length === 0){
+            select.innerHTML =
+            '<option value="">No storage boxes found</option>';
+            return;
+        }
+
+        data.boxes.forEach(item=>{
+            const option =
+            document.createElement("option");
+
+            option.value = item.box;
+            option.textContent = item.box;
+
+            select.appendChild(option);
+        });
+
+        updatePreview();
+    })
+    .catch(error=>{
+        console.error(error);
+        document.getElementById("boxSelect").innerHTML =
+        '<option value="">Could not load boxes</option>';
+    });
+}
+
+function loadMysteryBoxes(){
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"GET_MYSTERY_BOXES"
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        const select =
+        document.getElementById("mysteryBoxSelect");
+
+        select.innerHTML =
+        '<option value="">Select Mystery Box</option>';
+
+        if(!data.success || data.mysteryBoxes.length === 0){
+            select.innerHTML =
+            '<option value="">No mystery boxes found</option>';
+            return;
+        }
+
+        data.mysteryBoxes.forEach(item=>{
+            const option =
+            document.createElement("option");
+
+            option.value = item.mysteryBoxId;
+            option.textContent =
+            item.mysteryBoxId + " - " + item.name;
+
+            select.appendChild(option);
+        });
+
+        updatePreview();
+    })
+    .catch(error=>{
+        console.error(error);
+        document.getElementById("mysteryBoxSelect").innerHTML =
+        '<option value="">Could not load mystery boxes</option>';
+    });
+}
+
+function snapshotBox(){
+    const box =
+    document.getElementById("boxSelect").value;
+
+    const mysteryBoxId =
+    document.getElementById("mysteryBoxSelect").value;
+
+    if(!box){
+        alert("Select a storage box first");
+        return;
+    }
+
+    if(!mysteryBoxId){
+        alert("Select a mystery box first");
+        return;
+    }
+
+    if(!confirm("Snapshot " + box + " into " + mysteryBoxId + "? This should only be done once.")){
+        return;
+    }
+
+    document.getElementById("result").innerHTML = "";
+
+    showLoading();
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"SNAPSHOT_BOX_TO_MYSTERY_BOX",
+            box:box,
+            mysteryBoxId:mysteryBoxId
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        hideLoading();
+
+        if(!data.success){
+            document.getElementById("result").innerHTML =
+            "<div class='error-card'>" + (data.error || "Snapshot failed") + "</div>";
+            return;
+        }
+
+        document.getElementById("result").innerHTML =
+        `
+        <div class="success-card">
+            Snapshot complete<br><br>
+            ${data.box} copied to ${data.mysteryBoxId}<br>
+            Different items: ${data.differentItems}<br>
+            Total quantity: ${data.totalQty}
+        </div>
+        `;
+    })
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+
+        document.getElementById("result").innerHTML =
+        "<div class='error-card'>Error creating snapshot</div>";
+    });
+}
+
+showLoading();
+
+Promise.all([
+    new Promise(resolve=>{
+        loadStorageBoxes();
+        setTimeout(resolve, 600);
+    }),
+    new Promise(resolve=>{
+        loadMysteryBoxes();
+        setTimeout(resolve, 600);
+    })
+]).then(()=>{
+    hideLoading();
+});
+</script>
+
+</body>
+</html>
