@@ -32,7 +32,7 @@ body{
 }
 
 .page{
-    max-width:850px;
+    max-width:900px;
     margin:0 auto;
 }
 
@@ -96,20 +96,26 @@ button{
     cursor:pointer;
 }
 
-.search-button{
+.search-button,
+.print-button{
     background:linear-gradient(135deg,#20c997,#138f6d);
     border:1px solid rgba(32,201,151,0.45);
     box-shadow:0 10px 30px rgba(32,201,151,0.16);
 }
 
-.print-button{
-    background:linear-gradient(135deg,#20c997,#138f6d);
-    border:1px solid rgba(32,201,151,0.45);
-}
-
 .copy-button{
     background:linear-gradient(135deg,#0275d8,#025aa5);
     border:1px solid rgba(0,123,255,0.45);
+}
+
+.range-button{
+    background:linear-gradient(135deg,#6f42c1,#56329b);
+    border:1px solid rgba(111,66,193,0.45);
+}
+
+.clear-button{
+    background:linear-gradient(135deg,#333,#222);
+    border:1px solid rgba(255,255,255,0.10);
 }
 
 .result-grid{
@@ -170,6 +176,22 @@ button{
     margin-top:18px;
 }
 
+.range-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:12px;
+}
+
+.range-preview{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;
+    padding:14px;
+    color:#ddd;
+    margin-top:10px;
+    text-align:center;
+}
+
 .link-card{
     display:block;
     text-decoration:none;
@@ -194,15 +216,49 @@ button{
     border-radius:6px;
 }
 
+#printLabels{
+    display:none;
+}
+
+.print-label{
+    background:white;
+    width:51mm;
+    height:25mm;
+    padding:1.5mm;
+    box-sizing:border-box;
+    text-align:center;
+    overflow:hidden;
+    page-break-after:always;
+    break-after:page;
+}
+
+.print-label:last-child{
+    page-break-after:auto;
+    break-after:auto;
+}
+
+.print-label svg{
+    width:48mm;
+    height:17mm;
+    display:block;
+    margin:0 auto;
+}
+
+.label-text,
 #barcodeText{
     color:black;
     font-weight:bold;
-    font-size:13px;
+    font-size:11px;
     margin:0;
     padding:0;
+    line-height:1;
+    text-align:center;
 }
 
-/* Loading overlay */
+#barcodeText{
+    font-size:13px;
+}
+
 #loadingOverlay{
     display:none;
     position:fixed;
@@ -237,13 +293,17 @@ button{
     100%{transform:rotate(360deg);}
 }
 
-@media(max-width:600px){
+@media(max-width:700px){
     h1{
         font-size:30px;
     }
 
     .panel{
         padding:18px;
+    }
+
+    .range-grid{
+        grid-template-columns:1fr;
     }
 }
 
@@ -255,51 +315,66 @@ button{
 
     html,
     body{
-        width:51mm;
-        height:25mm;
-        margin:0;
-        padding:0;
-        background:white;
+        width:51mm !important;
+        min-height:25mm !important;
+        margin:0 !important;
+        padding:0 !important;
+        background:white !important;
+        overflow:visible !important;
     }
 
     body *{
-        visibility:hidden;
+        display:none !important;
     }
 
-    #printArea,
-    #printArea *{
-        visibility:visible;
+    #printLabels,
+    #printLabels *{
+        display:block !important;
     }
 
-    #printArea{
-        position:fixed;
-        left:0;
-        top:0;
-        width:51mm;
-        height:25mm;
-        padding:1.5mm;
-        margin:0;
-        box-sizing:border-box;
-        background:white;
-        text-align:center;
-        overflow:hidden;
-        border-radius:0;
+    #printLabels{
+        display:block !important;
+        width:51mm !important;
+        margin:0 !important;
+        padding:0 !important;
+        background:white !important;
     }
 
-    #barcode{
-        width:48mm;
-        height:17mm;
-        display:block;
-        margin:0 auto;
+    .print-label{
+        display:block !important;
+        position:relative !important;
+        width:51mm !important;
+        height:25mm !important;
+        padding:1.5mm !important;
+        margin:0 !important;
+        box-sizing:border-box !important;
+        background:white !important;
+        text-align:center !important;
+        overflow:hidden !important;
+        page-break-after:always !important;
+        break-after:page !important;
     }
 
-    #barcodeText{
-        color:black;
-        font-size:11px;
-        font-weight:bold;
-        margin:0;
-        padding:0;
-        line-height:1;
+    .print-label:last-child{
+        page-break-after:auto !important;
+        break-after:auto !important;
+    }
+
+    .print-label svg{
+        width:48mm !important;
+        height:17mm !important;
+        display:block !important;
+        margin:0 auto !important;
+    }
+
+    .label-text{
+        color:black !important;
+        font-size:11px !important;
+        font-weight:bold !important;
+        margin:0 !important;
+        padding:0 !important;
+        line-height:1 !important;
+        text-align:center !important;
     }
 
     #loadingOverlay{
@@ -316,11 +391,11 @@ button{
 <div class="panel">
 
 <h1>Reprint Product Label</h1>
-<p class="subtitle">Search for a product and reprint its barcode label</p>
+<p class="subtitle">Search for one label or print a whole barcode range</p>
 
 <div class="form-card">
 
-<div class="input-label">Product Search</div>
+<div class="input-label">Single Product Search</div>
 <input type="text" id="query" placeholder="Search description or barcode">
 
 <button class="search-button" onclick="searchProduct()">Search Product</button>
@@ -329,9 +404,35 @@ button{
 
 <div id="results"></div>
 
-<div id="printArea">
-    <svg id="barcode"></svg>
-    <p id="barcodeText"></p>
+<div class="form-card">
+
+<div class="input-label">Bulk Barcode Range</div>
+
+<div class="range-grid">
+    <div>
+        <div class="input-label">Prefix</div>
+        <input type="text" id="rangePrefix" value="ITEM-" placeholder="ITEM-">
+    </div>
+
+    <div>
+        <div class="input-label">Start Number</div>
+        <input type="number" id="rangeStart" placeholder="33" min="1">
+    </div>
+
+    <div>
+        <div class="input-label">End Number</div>
+        <input type="number" id="rangeEnd" placeholder="60" min="1">
+    </div>
+</div>
+
+<button class="range-button" onclick="generateRangeLabels()">Generate Range Labels</button>
+<button class="print-button" onclick="printGeneratedLabels()">Print Generated Labels</button>
+<button class="clear-button" onclick="clearGeneratedLabels()">Clear Generated Labels</button>
+
+<div class="range-preview" id="rangePreview">
+No range generated yet.
+</div>
+
 </div>
 
 <a class="link-card" href="index.html">← Back to Dashboard</a>
@@ -339,6 +440,8 @@ button{
 </div>
 
 </div>
+
+<div id="printLabels"></div>
 
 <div id="loadingOverlay">
     <div class="loaderBox">
@@ -350,6 +453,8 @@ button{
 <script>
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+let generatedLabelCount = 0;
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -424,7 +529,7 @@ function searchProduct(){
 
                     ${locationsHtml}
 
-                    <button class="print-button" onclick="printLabel('${item.barcode}')">
+                    <button class="print-button" onclick="printSingleLabel('${item.barcode}')">
                         Print Label
                     </button>
 
@@ -451,18 +556,112 @@ function searchProduct(){
     });
 }
 
-function printLabel(barcode){
-    document.getElementById("barcodeText").innerText = barcode;
+function createLabelHtml(barcode, index){
+    return `
+        <div class="print-label">
+            <svg id="barcode_${index}"></svg>
+            <p class="label-text">${barcode}</p>
+        </div>
+    `;
+}
 
-    JsBarcode("#barcode", barcode, {
-        format:"CODE128",
-        displayValue:false,
-        width:1.2,
-        height:42,
-        margin:0
+function renderBarcodes(barcodes){
+    const container = document.getElementById("printLabels");
+
+    let html = "";
+
+    barcodes.forEach((barcode, index)=>{
+        html += createLabelHtml(barcode, index);
     });
 
-    window.print();
+    container.innerHTML = html;
+
+    barcodes.forEach((barcode, index)=>{
+        JsBarcode("#barcode_" + index, barcode, {
+            format:"CODE128",
+            displayValue:false,
+            width:1.2,
+            height:42,
+            margin:0
+        });
+    });
+
+    generatedLabelCount = barcodes.length;
+}
+
+function printSingleLabel(barcode){
+    renderBarcodes([barcode]);
+
+    setTimeout(function(){
+        window.print();
+    }, 200);
+}
+
+function generateRangeLabels(){
+    const prefix =
+    document.getElementById("rangePrefix")
+    .value
+    .trim()
+    .toUpperCase() || "ITEM-";
+
+    const start =
+    Number(document.getElementById("rangeStart").value);
+
+    const end =
+    Number(document.getElementById("rangeEnd").value);
+
+    if(!start || !end){
+        alert("Enter start and end numbers");
+        return;
+    }
+
+    if(end < start){
+        alert("End number must be higher than start number");
+        return;
+    }
+
+    const total = end - start + 1;
+
+    if(total > 200){
+        alert("Maximum 200 labels at once");
+        return;
+    }
+
+    let barcodes = [];
+
+    for(let i = start; i <= end; i++){
+        barcodes.push(prefix + i);
+    }
+
+    renderBarcodes(barcodes);
+
+    document.getElementById("rangePreview").innerText =
+    "Generated " +
+    total +
+    " labels: " +
+    prefix +
+    start +
+    " to " +
+    prefix +
+    end;
+}
+
+function printGeneratedLabels(){
+    if(generatedLabelCount <= 0){
+        alert("Generate labels first");
+        return;
+    }
+
+    setTimeout(function(){
+        window.print();
+    }, 200);
+}
+
+function clearGeneratedLabels(){
+    document.getElementById("printLabels").innerHTML = "";
+    document.getElementById("rangePreview").innerText =
+    "No range generated yet.";
+    generatedLabelCount = 0;
 }
 
 function copyBarcode(barcode){
