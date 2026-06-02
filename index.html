@@ -2,9 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-
 <title>Inventory Dashboard</title>
 
 <style>
@@ -33,19 +31,10 @@ body{
     box-shadow:0 20px 60px rgba(0,0,0,0.35);
 }
 
-#loginBox{
-    max-width:430px;
-    margin:70px auto;
-    text-align:center;
-}
-
+#loginBox{max-width:430px;margin:70px auto;text-align:center;}
 #app{display:none;}
 
-h1{
-    text-align:center;
-    font-size:34px;
-    margin:12px 0 6px 0;
-}
+h1{text-align:center;font-size:34px;margin:12px 0 6px 0;}
 
 .subtitle{
     text-align:center;
@@ -54,8 +43,7 @@ h1{
     font-size:15px;
 }
 
-input,
-button{
+input,button{
     width:100%;
     padding:14px;
     margin:10px 0;
@@ -64,11 +52,7 @@ button{
     font-size:16px;
 }
 
-input{
-    background:#2a2a2a;
-    color:white;
-    outline:none;
-}
+input{background:#2a2a2a;color:white;outline:none;}
 
 button{
     background:#4CAF50;
@@ -77,10 +61,7 @@ button{
     cursor:pointer;
 }
 
-#loginError{
-    color:#ff7777;
-    font-weight:bold;
-}
+#loginError{color:#ff7777;font-weight:bold;}
 
 .stats-grid{
     display:grid;
@@ -111,41 +92,13 @@ button{
     flex-shrink:0;
 }
 
-.stat-value{
-    font-size:30px;
-    font-weight:bold;
-    line-height:1;
-}
+.stat-value{font-size:30px;font-weight:bold;line-height:1;}
+.stat-label{color:#ddd;margin-top:6px;font-size:15px;}
+.stat-note{color:#888;margin-top:4px;font-size:12px;}
 
-.stat-label{
-    color:#ddd;
-    margin-top:6px;
-    font-size:15px;
-}
-
-.stat-note{
-    color:#888;
-    margin-top:4px;
-    font-size:12px;
-}
-
-.green-icon{
-    background:rgba(40,167,69,0.18);
-    color:#45d36a;
-    border:1px solid rgba(40,167,69,0.35);
-}
-
-.blue-icon{
-    background:rgba(0,123,255,0.18);
-    color:#4da3ff;
-    border:1px solid rgba(0,123,255,0.35);
-}
-
-.purple-icon{
-    background:rgba(156,39,176,0.20);
-    color:#d45cff;
-    border:1px solid rgba(156,39,176,0.35);
-}
+.green-icon{background:rgba(40,167,69,0.18);color:#45d36a;border:1px solid rgba(40,167,69,0.35);}
+.blue-icon{background:rgba(0,123,255,0.18);color:#4da3ff;border:1px solid rgba(0,123,255,0.35);}
+.purple-icon{background:rgba(156,39,176,0.20);color:#d45cff;border:1px solid rgba(156,39,176,0.35);}
 
 .accordion-section{
     margin-top:18px;
@@ -187,10 +140,7 @@ button{
     background:rgba(255,255,255,0.12);
 }
 
-.header-title{
-    font-size:19px;
-    font-weight:bold;
-}
+.header-title{font-size:19px;font-weight:bold;}
 
 .header-subtitle{
     font-size:13px;
@@ -205,23 +155,23 @@ button{
     transition:transform 0.2s ease;
 }
 
-.accordion-section.open .header-arrow{
-    transform:rotate(180deg);
-}
+.accordion-section.open .header-arrow{transform:rotate(180deg);}
 
 .accordion-content{
     display:none;
     padding:0 18px 18px 18px;
 }
 
-.accordion-section.open .accordion-content{
-    display:block;
-}
+.accordion-section.open .accordion-content{display:block;}
 
 .actions-grid{
     display:grid;
     grid-template-columns:repeat(2,1fr);
     gap:16px;
+}
+
+.actions-grid.single{
+    grid-template-columns:1fr;
 }
 
 .action-card{
@@ -249,12 +199,7 @@ button{
 }
 
 .action-text{flex:1;}
-
-.action-title{
-    font-size:18px;
-    font-weight:bold;
-    margin-bottom:6px;
-}
+.action-title{font-size:18px;font-weight:bold;margin-bottom:6px;}
 
 .action-subtitle{
     color:rgba(255,255,255,0.75);
@@ -262,10 +207,7 @@ button{
     line-height:1.35;
 }
 
-.action-arrow{
-    font-size:28px;
-    opacity:0.75;
-}
+.action-arrow{font-size:28px;opacity:0.75;}
 
 .inventory-header{background:linear-gradient(135deg,rgba(40,167,69,0.22),rgba(0,123,255,0.08));}
 .storage-header{background:linear-gradient(135deg,rgba(111,66,193,0.25),rgba(111,66,193,0.08));}
@@ -342,11 +284,11 @@ button{
 <div class="page">
 
 <div class="panel" id="loginBox">
-<h1>Inventory Login</h1>
-<p class="subtitle">Enter your password to access the dashboard</p>
-<input type="password" id="password" placeholder="Enter password">
-<button onclick="login()">Login</button>
-<p id="loginError"></p>
+    <h1>Inventory Login</h1>
+    <p class="subtitle">Enter your password to access the dashboard</p>
+    <input type="password" id="password" placeholder="Enter password">
+    <button onclick="login()">Login</button>
+    <p id="loginError"></p>
 </div>
 
 <div class="panel" id="app">
@@ -519,14 +461,13 @@ button{
     </button>
 
     <div class="accordion-content">
-        <div class="actions-grid">
+        <div class="actions-grid single">
             <a class="action-card reprint-card" href="barcodeprinting.html">
                 <div class="action-icon">🖨️</div>
                 <div class="action-text">
                     <div class="action-title">Barcode Printing</div>
                     <div class="action-subtitle">Print product, box, range and job labels</div>
                 </div>
-                </div></div>
             </a>
         </div>
     </div>
@@ -570,7 +511,6 @@ button{
 <button class="logout-card" onclick="logout()">↪ Logout</button>
 
 </div>
-
 </div>
 
 <div id="loadingOverlay">
