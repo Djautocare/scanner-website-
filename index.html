@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 
-<meta name="viewport"
-content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Inventory Dashboard</title>
 
@@ -235,12 +234,6 @@ button{
     align-items:center;
     gap:16px;
     border:1px solid rgba(255,255,255,0.10);
-    transition:transform 0.15s ease, filter 0.15s ease;
-}
-
-.action-card:hover{
-    transform:translateY(-2px);
-    filter:brightness(1.08);
 }
 
 .action-icon{
@@ -255,9 +248,7 @@ button{
     flex-shrink:0;
 }
 
-.action-text{
-    flex:1;
-}
+.action-text{flex:1;}
 
 .action-title{
     font-size:18px;
@@ -276,80 +267,22 @@ button{
     opacity:0.75;
 }
 
-.inventory-header{
-    background:linear-gradient(135deg,rgba(40,167,69,0.22),rgba(0,123,255,0.08));
-}
+.inventory-header{background:linear-gradient(135deg,rgba(40,167,69,0.22),rgba(0,123,255,0.08));}
+.storage-header{background:linear-gradient(135deg,rgba(111,66,193,0.25),rgba(111,66,193,0.08));}
+.mystery-header{background:linear-gradient(135deg,rgba(156,39,176,0.26),rgba(255,193,7,0.08));}
+.printing-header{background:linear-gradient(135deg,rgba(32,201,151,0.24),rgba(23,162,184,0.08));}
+.reports-header{background:linear-gradient(135deg,rgba(255,193,7,0.22),rgba(156,39,176,0.08));}
 
-.storage-header{
-    background:linear-gradient(135deg,rgba(111,66,193,0.25),rgba(111,66,193,0.08));
-}
-
-.mystery-header{
-    background:linear-gradient(135deg,rgba(156,39,176,0.26),rgba(255,193,7,0.08));
-}
-
-.printing-header{
-    background:linear-gradient(135deg,rgba(32,201,151,0.24),rgba(23,162,184,0.08));
-}
-
-.reports-header{
-    background:linear-gradient(135deg,rgba(255,193,7,0.22),rgba(156,39,176,0.08));
-}
-
-.add-card{
-    background:linear-gradient(135deg,rgba(40,167,69,0.38),rgba(40,167,69,0.10));
-    border-color:rgba(40,167,69,0.45);
-}
-
-.remove-card{
-    background:linear-gradient(135deg,rgba(220,53,69,0.38),rgba(220,53,69,0.10));
-    border-color:rgba(220,53,69,0.45);
-}
-
-.search-card{
-    background:linear-gradient(135deg,rgba(0,123,255,0.38),rgba(0,123,255,0.10));
-    border-color:rgba(0,123,255,0.45);
-}
-
-.move-card{
-    background:linear-gradient(135deg,rgba(253,126,20,0.38),rgba(253,126,20,0.10));
-    border-color:rgba(253,126,20,0.45);
-}
-
-.boxes-card{
-    background:linear-gradient(135deg,rgba(111,66,193,0.38),rgba(111,66,193,0.10));
-    border-color:rgba(111,66,193,0.45);
-}
-
-.mystery-card{
-    background:linear-gradient(135deg,rgba(156,39,176,0.42),rgba(156,39,176,0.12));
-    border-color:rgba(156,39,176,0.50);
-}
-
-.snapshot-card{
-    background:linear-gradient(135deg,rgba(255,193,7,0.38),rgba(255,193,7,0.10));
-    border-color:rgba(255,193,7,0.45);
-}
-
-.reprint-card{
-    background:linear-gradient(135deg,rgba(32,201,151,0.38),rgba(32,201,151,0.10));
-    border-color:rgba(32,201,151,0.45);
-}
-
-.labels-card{
-    background:linear-gradient(135deg,rgba(23,162,184,0.38),rgba(23,162,184,0.10));
-    border-color:rgba(23,162,184,0.45);
-}
-
-.stale-card{
-    background:linear-gradient(135deg,rgba(255,193,7,0.38),rgba(255,193,7,0.10));
-    border-color:rgba(255,193,7,0.45);
-}
-
-.tracker-card{
-    background:linear-gradient(135deg,rgba(156,39,176,0.42),rgba(156,39,176,0.12));
-    border-color:rgba(156,39,176,0.50);
-}
+.add-card{background:linear-gradient(135deg,rgba(40,167,69,0.38),rgba(40,167,69,0.10));border-color:rgba(40,167,69,0.45);}
+.remove-card{background:linear-gradient(135deg,rgba(220,53,69,0.38),rgba(220,53,69,0.10));border-color:rgba(220,53,69,0.45);}
+.search-card{background:linear-gradient(135deg,rgba(0,123,255,0.38),rgba(0,123,255,0.10));border-color:rgba(0,123,255,0.45);}
+.move-card{background:linear-gradient(135deg,rgba(253,126,20,0.38),rgba(253,126,20,0.10));border-color:rgba(253,126,20,0.45);}
+.boxes-card{background:linear-gradient(135deg,rgba(111,66,193,0.38),rgba(111,66,193,0.10));border-color:rgba(111,66,193,0.45);}
+.mystery-card{background:linear-gradient(135deg,rgba(156,39,176,0.42),rgba(156,39,176,0.12));border-color:rgba(156,39,176,0.50);}
+.snapshot-card{background:linear-gradient(135deg,rgba(255,193,7,0.38),rgba(255,193,7,0.10));border-color:rgba(255,193,7,0.45);}
+.reprint-card{background:linear-gradient(135deg,rgba(32,201,151,0.38),rgba(32,201,151,0.10));border-color:rgba(32,201,151,0.45);}
+.stale-card{background:linear-gradient(135deg,rgba(255,193,7,0.38),rgba(255,193,7,0.10));border-color:rgba(255,193,7,0.45);}
+.tracker-card{background:linear-gradient(135deg,rgba(156,39,176,0.42),rgba(156,39,176,0.12));border-color:rgba(156,39,176,0.50);}
 
 .logout-card{
     margin-top:24px;
@@ -361,10 +294,6 @@ button{
     color:white;
     font-size:16px;
     font-weight:bold;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
 }
 
 #loadingOverlay{
@@ -380,11 +309,7 @@ button{
     align-items:center;
 }
 
-.loaderBox{
-    text-align:center;
-    color:white;
-    font-weight:bold;
-}
+.loaderBox{text-align:center;color:white;font-weight:bold;}
 
 .spinner{
     width:55px;
@@ -402,29 +327,12 @@ button{
 }
 
 @media(max-width:760px){
-    .stats-grid{
-        grid-template-columns:1fr;
-    }
-
-    .actions-grid{
-        grid-template-columns:1fr;
-    }
-
-    h1{
-        font-size:30px;
-    }
-
-    .panel{
-        padding:18px;
-    }
-
-    .accordion-header{
-        padding:16px;
-    }
-
-    .accordion-content{
-        padding:0 14px 14px 14px;
-    }
+    .stats-grid{grid-template-columns:1fr;}
+    .actions-grid{grid-template-columns:1fr;}
+    h1{font-size:30px;}
+    .panel{padding:18px;}
+    .accordion-header{padding:16px;}
+    .accordion-content{padding:0 14px 14px 14px;}
 }
 </style>
 </head>
@@ -434,16 +342,11 @@ button{
 <div class="page">
 
 <div class="panel" id="loginBox">
-
 <h1>Inventory Login</h1>
 <p class="subtitle">Enter your password to access the dashboard</p>
-
 <input type="password" id="password" placeholder="Enter password">
-
 <button onclick="login()">Login</button>
-
 <p id="loginError"></p>
-
 </div>
 
 <div class="panel" id="app">
@@ -452,7 +355,6 @@ button{
 <p class="subtitle">Manage your stock, boxes, labels and sales from one place</p>
 
 <div class="stats-grid">
-
     <div class="stat-card">
         <div class="stat-icon green-icon">□</div>
         <div>
@@ -479,7 +381,6 @@ button{
             <div class="stat-note">Active boxes</div>
         </div>
     </div>
-
 </div>
 
 <div class="accordion-section open" id="section_inventory">
@@ -496,7 +397,6 @@ button{
 
     <div class="accordion-content">
         <div class="actions-grid">
-
             <a class="action-card add-card" href="add.html">
                 <div class="action-icon">＋</div>
                 <div class="action-text">
@@ -532,7 +432,6 @@ button{
                 </div>
                 <div class="action-arrow">›</div>
             </a>
-
         </div>
     </div>
 </div>
@@ -551,7 +450,6 @@ button{
 
     <div class="accordion-content">
         <div class="actions-grid">
-
             <a class="action-card boxes-card" href="boxes.html">
                 <div class="action-icon">▱</div>
                 <div class="action-text">
@@ -569,7 +467,6 @@ button{
                 </div>
                 <div class="action-arrow">›</div>
             </a>
-
         </div>
     </div>
 </div>
@@ -588,7 +485,6 @@ button{
 
     <div class="accordion-content">
         <div class="actions-grid">
-
             <a class="action-card mystery-card" href="mysteryboxes.html">
                 <div class="action-icon">MB</div>
                 <div class="action-text">
@@ -606,20 +502,32 @@ button{
                 </div>
                 <div class="action-arrow">›</div>
             </a>
-
         </div>
     </div>
 </div>
 
+<div class="accordion-section" id="section_printing">
+    <button class="accordion-header printing-header" onclick="toggleSection('section_printing')">
+        <div class="header-left">
+            <div class="header-icon">🖨️</div>
+            <div>
+                <div class="header-title">Printing</div>
+                <div class="header-subtitle">Barcode labels and print batches</div>
+            </div>
+        </div>
+        <div class="header-arrow">⌄</div>
+    </button>
 
-<a class="action-card reprint-card" href="barcodeprinting.html">
-    <div class="action-icon">🖨️</div>
-    <div class="action-text">
-        <div class="action-title">Barcode Printing</div>
-        <div class="action-subtitle">Print product, box, range and job labels</div>
-    </div>
-    <div class="action-arrow">›</div>
-</a>
+    <div class="accordion-content">
+        <div class="actions-grid">
+            <a class="action-card reprint-card" href="barcodeprinting.html">
+                <div class="action-icon">🖨️</div>
+                <div class="action-text">
+                    <div class="action-title">Barcode Printing</div>
+                    <div class="action-subtitle">Print product, box, range and job labels</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
         </div>
     </div>
 </div>
@@ -638,7 +546,6 @@ button{
 
     <div class="accordion-content">
         <div class="actions-grid">
-
             <a class="action-card stale-card" href="stale.html">
                 <div class="action-icon">◷</div>
                 <div class="action-text">
@@ -656,7 +563,6 @@ button{
                 </div>
                 <div class="action-arrow">›</div>
             </a>
-
         </div>
     </div>
 </div>
@@ -743,8 +649,7 @@ function restoreSectionStates(){
             return;
         }
 
-        const saved =
-        localStorage.getItem("dashboard_" + sectionId + "_open");
+        const saved = localStorage.getItem("dashboard_" + sectionId + "_open");
 
         if(saved === null){
             if(sectionId === "section_inventory"){
