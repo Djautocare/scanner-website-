@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Barcode Printing</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(32,201,151,0.16), transparent 35%),
+        radial-gradient(circle at top right, rgba(23,162,184,0.10), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{
+    max-width:950px;
+    margin:0 auto;
+}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:34px;
+    margin:12px 0 6px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:15px;
+}
+
+.tab-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px;
+    margin-bottom:18px;
+}
+
+.tab-button{
+    background:linear-gradient(135deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.10);
+    color:white;
+    padding:13px;
+    border-radius:14px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.tab-button.active{
+    background:linear-gradient(135deg,#20c997,#138f6d);
+    border-color:rgba(32,201,151,0.45);
+}
+
+.section{
+    display:none;
+}
+
+.section.active{
+    display:block;
+}
+
+.form-card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px 2px;
+    font-size:14px;
+}
+
+input,
+select,
+button{
+    width:100%;
+    padding:14px;
+    margin:6px 0 12px 0;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+}
+
+input,
+select{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+button{
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.print-button{
+    background:linear-gradient(135deg,#20c997,#138f6d);
+    border:1px solid rgba(32,201,151,0.45);
+}
+
+.search-button{
+    background:linear-gradient(135deg,#0275d8,#025aa5);
+    border:1px solid rgba(0,123,255,0.45);
+}
+
+.range-button{
+    background:linear-gradient(135deg,#6f42c1,#56329b);
+    border:1px solid rgba(111,66,193,0.45);
+}
+
+.box-button{
+    background:linear-gradient(135deg,#17a2b8,#117a8b);
+    border:1px solid rgba(23,162,184,0.45);
+}
+
+.clear-button{
+    background:linear-gradient(135deg,#333,#222);
+    border:1px solid rgba(255,255,255,0.10);
+}
+
+.result-grid,
+.preview-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:12px;
+    margin-top:14px;
+}
+
+.result-card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:16px;
+    text-align:left;
+}
+
+.result-title{
+    font-size:18px;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+.badge{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:bold;
+    margin-right:6px;
+    margin-bottom:8px;
+}
+
+.barcode-badge{
+    background:#0275d8;
+}
+
+.qty-badge{
+    background:#6f42c1;
+}
+
+.preview-label{
+    background:white;
+    color:black;
+    border-radius:10px;
+    padding:8px;
+    text-align:center;
+    font-weight:bold;
+    font-size:13px;
+}
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px;
+    margin-top:12px;
+}
+
+.summary-card{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;
+    padding:14px;
+    text-align:left;
+}
+
+.summary-title{
+    color:#aaa;
+    font-size:13px;
+    margin-bottom:6px;
+}
+
+.summary-value{
+    font-size:22px;
+    font-weight:bold;
+}
+
+.range-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:12px;
+}
+
+.empty-state{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:16px;
+    border-radius:16px;
+    text-align:center;
+    color:#ddd;
+    margin-top:14px;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg,rgba(0,123,255,0.28),rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
+    margin-top:20px;
+}
+
+#printLabels{
+    display:none;
+}
+
+.print-label{
+    background:white;
+    width:51mm;
+    height:25mm;
+    padding:1.5mm;
+    box-sizing:border-box;
+    text-align:center;
+    overflow:hidden;
+    page-break-after:always;
+    break-after:page;
+}
+
+.print-label:last-child{
+    page-break-after:auto;
+    break-after:auto;
+}
+
+.print-label svg{
+    width:48mm;
+    height:17mm;
+    display:block;
+    margin:0 auto;
+}
+
+.label-text{
+    color:black;
+    font-weight:bold;
+    font-size:11px;
+    margin:0;
+    padding:0;
+    line-height:1;
+    text-align:center;
+}
+
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{
+    text-align:center;
+    color:white;
+    font-weight:bold;
+}
+
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #20c997;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+}
+
+@media(max-width:700px){
+    h1{font-size:30px;}
+    .panel{padding:18px;}
+    .range-grid{grid-template-columns:1fr;}
+}
+
+@media print{
+    @page{
+        size:51mm 25mm;
+        margin:0;
+    }
+
+    html,
+    body{
+        width:51mm !important;
+        min-height:25mm !important;
+        margin:0 !important;
+        padding:0 !important;
+        background:white !important;
+        overflow:visible !important;
+    }
+
+    body *{
+        display:none !important;
+    }
+
+    #printLabels,
+    #printLabels *{
+        display:block !important;
+    }
+
+    #printLabels{
+        display:block !important;
+        width:51mm !important;
+        margin:0 !important;
+        padding:0 !important;
+        background:white !important;
+    }
+
+    .print-label{
+        display:block !important;
+        position:relative !important;
+        width:51mm !important;
+        height:25mm !important;
+        padding:1.5mm !important;
+        margin:0 !important;
+        box-sizing:border-box !important;
+        background:white !important;
+        text-align:center !important;
+        overflow:hidden !important;
+        page-break-after:always !important;
+        break-after:page !important;
+    }
+
+    .print-label:last-child{
+        page-break-after:auto !important;
+        break-after:auto !important;
+    }
+
+    .print-label svg{
+        width:48mm !important;
+        height:17mm !important;
+        display:block !important;
+        margin:0 auto !important;
+    }
+
+    .label-text{
+        color:black !important;
+        font-size:11px !important;
+        font-weight:bold !important;
+        margin:0 !important;
+        padding:0 !important;
+        line-height:1 !important;
+        text-align:center !important;
+    }
+
+    #loadingOverlay{
+        display:none !important;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+<div class="panel">
+
+<h1>Barcode Printing</h1>
+<p class="subtitle">Print product labels, box labels, barcode ranges and saved print jobs</p>
+
+<div class="tab-grid">
+    <button class="tab-button active" onclick="showSection('productSection', this)">Product Labels</button>
+    <button class="tab-button" onclick="showSection('boxSection', this)">Box Labels</button>
+    <button class="tab-button" onclick="showSection('rangeSection', this)">Bulk Range</button>
+    <button class="tab-button" onclick="showSection('jobSection', this)">Print Jobs</button>
+    <button class="tab-button" onclick="showSection('quickSection', this)">Quick Print</button>
+</div>
+
+<div id="productSection" class="section active">
+    <div class="form-card">
+        <div class="input-label">Live Product Search</div>
+        <input type="text" id="productSearch" placeholder="Start typing product name or barcode">
+        <div id="productResults"></div>
+    </div>
+</div>
+
+<div id="boxSection" class="section">
+    <div class="form-card">
+        <div class="input-label">Select Box</div>
+        <select id="boxSelect">
+            <option value="">Loading boxes...</option>
+        </select>
+
+        <button class="box-button" onclick="printBoxLabel()">Print Box Label</button>
+    </div>
+</div>
+
+<div id="rangeSection" class="section">
+    <div class="form-card">
+        <div class="input-label">Bulk Barcode Range</div>
+
+        <div class="range-grid">
+            <div>
+                <div class="input-label">Prefix</div>
+                <input type="text" id="rangePrefix" value="ITEM-" placeholder="ITEM-">
+            </div>
+
+            <div>
+                <div class="input-label">Start Number</div>
+                <input type="number" id="rangeStart" placeholder="33" min="1">
+            </div>
+
+            <div>
+                <div class="input-label">End Number</div>
+                <input type="number" id="rangeEnd" placeholder="60" min="1">
+            </div>
+        </div>
+
+        <button class="range-button" onclick="generateRangeLabels()">Generate Range Labels</button>
+        <button class="print-button" onclick="printLoadedLabels()">Print Generated Labels</button>
+        <button class="clear-button" onclick="clearLoadedLabels()">Clear Labels</button>
+
+        <div id="rangePreview" class="empty-state">No range generated yet.</div>
+    </div>
+</div>
+
+<div id="jobSection" class="section">
+    <div class="form-card">
+        <div class="input-label">Select Print Job</div>
+        <select id="printJobSelect">
+            <option value="">Loading print jobs...</option>
+        </select>
+
+        <button class="search-button" onclick="loadSelectedPrintJob()">Load Print Job</button>
+        <button class="print-button" onclick="printLoadedLabels()">Print Loaded Labels</button>
+        <button class="clear-button" onclick="clearLoadedLabels()">Clear Loaded Labels</button>
+
+        <div id="jobSummary"></div>
+        <div id="jobPreview"></div>
+    </div>
+</div>
+
+<div id="quickSection" class="section">
+    <div class="form-card">
+        <div class="input-label">Quick Barcode Print</div>
+        <input type="text" id="quickBarcode" placeholder="Example: ITEM-54 or BOX-1">
+
+        <button class="print-button" onclick="quickPrint()">Print Barcode</button>
+    </div>
+</div>
+
+<a class="link-card" href="index.html">← Back to Dashboard</a>
+
+</div>
+</div>
+
+<div id="printLabels"></div>
+
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Working...</p>
+    </div>
+</div>
+
+<script>
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+let liveSearchTimer = null;
+let loadedLabels = [];
+
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display = "none";
+}
+
+function showSection(sectionId, button){
+    document.querySelectorAll(".section").forEach(section=>{
+        section.classList.remove("active");
+    });
+
+    document.querySelectorAll(".tab-button").forEach(btn=>{
+        btn.classList.remove("active");
+    });
+
+    document.getElementById(sectionId).classList.add("active");
+    button.classList.add("active");
+
+    localStorage.setItem("barcodePrintingActiveTab", sectionId);
+}
+
+function restoreActiveTab(){
+    const saved = localStorage.getItem("barcodePrintingActiveTab");
+
+    if(!saved){
+        return;
+    }
+
+    const buttons = document.querySelectorAll(".tab-button");
+    const sections = {
+        productSection:buttons[0],
+        boxSection:buttons[1],
+        rangeSection:buttons[2],
+        jobSection:buttons[3],
+        quickSection:buttons[4]
+    };
+
+    if(sections[saved]){
+        showSection(saved, sections[saved]);
+    }
+}
+
+function createLabelHtml(barcode, index){
+    return `
+        <div class="print-label">
+            <svg id="barcode_${index}"></svg>
+            <p class="label-text">${barcode}</p>
+        </div>
+    `;
+}
+
+function renderBarcodes(barcodes){
+    const container = document.getElementById("printLabels");
+
+    let html = "";
+
+    barcodes.forEach((barcode,index)=>{
+        html += createLabelHtml(barcode,index);
+    });
+
+    container.innerHTML = html;
+
+    barcodes.forEach((barcode,index)=>{
+        JsBarcode("#barcode_" + index, barcode, {
+            format:"CODE128",
+            displayValue:false,
+            width:1.2,
+            height:42,
+            margin:0
+        });
+    });
+
+    loadedLabels = barcodes;
+}
+
+function printLoadedLabels(){
+    if(!loadedLabels || loadedLabels.length === 0){
+        alert("Generate or load labels first");
+        return;
+    }
+
+    setTimeout(function(){
+        window.print();
+    },200);
+}
+
+function clearLoadedLabels(){
+    loadedLabels = [];
+    document.getElementById("printLabels").innerHTML = "";
+    document.getElementById("rangePreview").innerHTML = "No range generated yet.";
+    document.getElementById("jobSummary").innerHTML = "";
+    document.getElementById("jobPreview").innerHTML = "";
+}
+
+function printSingleBarcode(barcode){
+    if(!barcode){
+        alert("Missing barcode");
+        return;
+    }
+
+    renderBarcodes([barcode]);
+
+    setTimeout(function(){
+        window.print();
+    },200);
+}
+
+/* PRODUCT LIVE SEARCH */
+
+document.getElementById("productSearch").addEventListener("input", function(){
+    const query = this.value.trim();
+
+    clearTimeout(liveSearchTimer);
+
+    if(query.length < 2){
+        document.getElementById("productResults").innerHTML =
+        "<div class='empty-state'>Type at least 2 characters to search.</div>";
+        return;
+    }
+
+    liveSearchTimer = setTimeout(function(){
+        liveSearchProducts(query);
+    },350);
+});
+
+function liveSearchProducts(query){
+    document.getElementById("productResults").innerHTML =
+    "<div class='empty-state'>Searching...</div>";
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"SEARCH",
+            query:query
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(!data.success || !data.results || data.results.length === 0){
+            document.getElementById("productResults").innerHTML =
+            "<div class='empty-state'>No products found.</div>";
+            return;
+        }
+
+        let html = "<div class='result-grid'>";
+
+        data.results.forEach(item=>{
+            html += `
+                <div class="result-card">
+                    <div class="result-title">${item.description}</div>
+                    <div class="badge barcode-badge">${item.barcode}</div>
+                    <div class="badge qty-badge">Qty ${item.totalQty}</div>
+
+                    <button class="print-button" onclick="printSingleBarcode('${item.barcode}')">
+                        Print Product Label
+                    </button>
+                </div>
+            `;
+        });
+
+        html += "</div>";
+
+        document.getElementById("productResults").innerHTML = html;
+    })
+    .catch(error=>{
+        console.error(error);
+
+        document.getElementById("productResults").innerHTML =
+        "<div class='empty-state'>Error searching products.</div>";
+    });
+}
+
+/* BOX LABELS */
+
+function loadBoxes(){
+    const cached = localStorage.getItem("inventoryBoxes");
+
+    if(cached){
+        try{
+            fillBoxes(JSON.parse(cached));
+        }catch(e){}
+    }
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"GET_BOXES"
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.success && data.boxes){
+            localStorage.setItem("inventoryBoxes", JSON.stringify(data.boxes));
+            fillBoxes(data.boxes);
+        }
+    })
+    .catch(error=>{
+        console.error(error);
+    });
+}
+
+function fillBoxes(boxes){
+    const select = document.getElementById("boxSelect");
+
+    select.innerHTML = '<option value="">Select Box</option>';
+
+    if(!boxes || boxes.length === 0){
+        select.innerHTML = '<option value="">No boxes found</option>';
+        return;
+    }
+
+    boxes.forEach(item=>{
+        const option = document.createElement("option");
+        option.value = item.box;
+        option.textContent = item.box;
+        select.appendChild(option);
+    });
+}
+
+function printBoxLabel(){
+    const box = document.getElementById("boxSelect").value;
+
+    if(!box){
+        alert("Select a box first");
+        return;
+    }
+
+    printSingleBarcode(box);
+}
+
+/* RANGE LABELS */
+
+function generateRangeLabels(){
+    const prefix =
+    document.getElementById("rangePrefix")
+    .value
+    .trim()
+    .toUpperCase() || "ITEM-";
+
+    const start = Number(document.getElementById("rangeStart").value);
+    const end = Number(document.getElementById("rangeEnd").value);
+
+    if(!start || !end){
+        alert("Enter start and end numbers");
+        return;
+    }
+
+    if(end < start){
+        alert("End number must be higher than start number");
+        return;
+    }
+
+    const total = end - start + 1;
+
+    if(total > 300){
+        alert("Maximum 300 labels at once");
+        return;
+    }
+
+    let barcodes = [];
+
+    for(let i = start; i <= end; i++){
+        barcodes.push(prefix + i);
+    }
+
+    renderBarcodes(barcodes);
+
+    document.getElementById("rangePreview").innerHTML =
+    "Generated " + total + " labels: " + prefix + start + " to " + prefix + end;
+}
+
+/* PRINT JOBS */
+
+function loadPrintJobs(){
+    const cached = localStorage.getItem("inventoryPrintJobs");
+
+    if(cached){
+        try{
+            fillPrintJobs(JSON.parse(cached));
+        }catch(e){}
+    }
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"GET_PRINT_JOBS"
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.success && data.printJobs){
+            localStorage.setItem("inventoryPrintJobs", JSON.stringify(data.printJobs));
+            fillPrintJobs(data.printJobs);
+        }
+    })
+    .catch(error=>{
+        console.error(error);
+    });
+}
+
+function fillPrintJobs(jobs){
+    const select = document.getElementById("printJobSelect");
+
+    select.innerHTML = '<option value="">Select Print Job</option>';
+
+    if(!jobs || jobs.length === 0){
+        select.innerHTML = '<option value="">No print jobs found</option>';
+        return;
+    }
+
+    jobs.slice().reverse().forEach(job=>{
+        const option = document.createElement("option");
+        option.value = job.printJobId;
+        option.textContent =
+        job.printJobId + " - " + job.name + " (" + job.labelCount + " labels)";
+        select.appendChild(option);
+    });
+}
+
+function loadSelectedPrintJob(){
+    const printJobId = document.getElementById("printJobSelect").value;
+
+    if(!printJobId){
+        alert("Select a print job first");
+        return;
+    }
+
+    showLoading();
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"GET_PRINT_JOB_LABELS",
+            printJobId:printJobId
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        hideLoading();
+
+        if(!data.success){
+            document.getElementById("jobSummary").innerHTML =
+            "<div class='empty-state'>" + (data.error || "Could not load labels") + "</div>";
+            return;
+        }
+
+        const labels = data.labels || [];
+        renderBarcodes(labels);
+        renderJobPreview(printJobId, labels);
+    })
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+
+        document.getElementById("jobSummary").innerHTML =
+        "<div class='empty-state'>Error loading print job.</div>";
+    });
+}
+
+function renderJobPreview(printJobId, labels){
+    if(labels.length === 0){
+        document.getElementById("jobSummary").innerHTML =
+        "<div class='empty-state'>This print job has no labels.</div>";
+        document.getElementById("jobPreview").innerHTML = "";
+        return;
+    }
+
+    const uniqueCount = new Set(labels).size;
+
+    document.getElementById("jobSummary").innerHTML = `
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-title">Print Job</div>
+                <div class="summary-value">${printJobId}</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-title">Total Labels</div>
+                <div class="summary-value">${labels.length}</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-title">Different Barcodes</div>
+                <div class="summary-value">${uniqueCount}</div>
+            </div>
+        </div>
+    `;
+
+    let html = "<div class='preview-grid'>";
+
+    labels.forEach(barcode=>{
+        html += `<div class="preview-label">${barcode}</div>`;
+    });
+
+    html += "</div>";
+
+    document.getElementById("jobPreview").innerHTML = html;
+}
+
+/* QUICK PRINT */
+
+function quickPrint(){
+    const barcode =
+    document.getElementById("quickBarcode")
+    .value
+    .trim()
+    .toUpperCase();
+
+    if(!barcode){
+        alert("Enter a barcode first");
+        return;
+    }
+
+    printSingleBarcode(barcode);
+}
+
+/* ENTER SHORTCUTS */
+
+document.getElementById("quickBarcode").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+        quickPrint();
+    }
+});
+
+document.getElementById("rangeEnd").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+        generateRangeLabels();
+    }
+});
+
+restoreActiveTab();
+loadBoxes();
+loadPrintJobs();
+</script>
+
+</body>
+</html>
