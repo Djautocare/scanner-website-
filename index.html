@@ -148,26 +148,75 @@ button{
     border:1px solid rgba(156,39,176,0.35);
 }
 
-.section-block{
-    margin-top:28px;
+.accordion-section{
+    margin-top:18px;
+    border-radius:18px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,0.08);
+    background:linear-gradient(145deg,#202020,#171717);
 }
 
-.section-title{
+.accordion-header{
+    width:100%;
+    margin:0;
+    padding:18px;
+    border-radius:0;
+    background:transparent;
     display:flex;
     align-items:center;
-    gap:10px;
-    color:#ddd;
-    font-size:18px;
-    font-weight:bold;
-    letter-spacing:0.5px;
-    margin:0 0 12px 0;
+    justify-content:space-between;
+    gap:12px;
+    text-align:left;
+    color:white;
+    border:none;
 }
 
-.section-subtitle{
-    color:#888;
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:14px;
+}
+
+.header-icon{
+    width:48px;
+    height:48px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:24px;
+    background:rgba(255,255,255,0.12);
+}
+
+.header-title{
+    font-size:19px;
+    font-weight:bold;
+}
+
+.header-subtitle{
     font-size:13px;
-    margin-top:-6px;
-    margin-bottom:14px;
+    color:#aaa;
+    margin-top:4px;
+    font-weight:normal;
+}
+
+.header-arrow{
+    font-size:28px;
+    opacity:0.8;
+    transition:transform 0.2s ease;
+}
+
+.accordion-section.open .header-arrow{
+    transform:rotate(180deg);
+}
+
+.accordion-content{
+    display:none;
+    padding:0 18px 18px 18px;
+}
+
+.accordion-section.open .accordion-content{
+    display:block;
 }
 
 .actions-grid{
@@ -181,7 +230,7 @@ button{
     color:white;
     border-radius:16px;
     padding:18px;
-    min-height:110px;
+    min-height:108px;
     display:flex;
     align-items:center;
     gap:16px;
@@ -225,6 +274,26 @@ button{
 .action-arrow{
     font-size:28px;
     opacity:0.75;
+}
+
+.inventory-header{
+    background:linear-gradient(135deg,rgba(40,167,69,0.22),rgba(0,123,255,0.08));
+}
+
+.storage-header{
+    background:linear-gradient(135deg,rgba(111,66,193,0.25),rgba(111,66,193,0.08));
+}
+
+.mystery-header{
+    background:linear-gradient(135deg,rgba(156,39,176,0.26),rgba(255,193,7,0.08));
+}
+
+.printing-header{
+    background:linear-gradient(135deg,rgba(32,201,151,0.24),rgba(23,162,184,0.08));
+}
+
+.reports-header{
+    background:linear-gradient(135deg,rgba(255,193,7,0.22),rgba(156,39,176,0.08));
 }
 
 .add-card{
@@ -283,7 +352,7 @@ button{
 }
 
 .logout-card{
-    margin-top:28px;
+    margin-top:24px;
     width:100%;
     background:linear-gradient(135deg,rgba(76,175,80,0.30),rgba(76,175,80,0.08));
     border:1px solid rgba(76,175,80,0.35);
@@ -348,6 +417,14 @@ button{
     .panel{
         padding:18px;
     }
+
+    .accordion-header{
+        padding:16px;
+    }
+
+    .accordion-content{
+        padding:0 14px 14px 14px;
+    }
 }
 </style>
 </head>
@@ -405,165 +482,215 @@ button{
 
 </div>
 
-<div class="section-block">
-    <div class="section-title">📦 Inventory</div>
-    <div class="section-subtitle">Daily stock actions</div>
-
-    <div class="actions-grid">
-
-        <a class="action-card add-card" href="add.html">
-            <div class="action-icon">＋</div>
-            <div class="action-text">
-                <div class="action-title">Add Stock</div>
-                <div class="action-subtitle">Add new products to inventory</div>
+<div class="accordion-section open" id="section_inventory">
+    <button class="accordion-header inventory-header" onclick="toggleSection('section_inventory')">
+        <div class="header-left">
+            <div class="header-icon">📦</div>
+            <div>
+                <div class="header-title">Inventory</div>
+                <div class="header-subtitle">Daily stock actions</div>
             </div>
-            <div class="action-arrow">›</div>
-        </a>
+        </div>
+        <div class="header-arrow">⌄</div>
+    </button>
 
-        <a class="action-card remove-card" href="remove.html">
-            <div class="action-icon">−</div>
-            <div class="action-text">
-                <div class="action-title">Remove Stock</div>
-                <div class="action-subtitle">Remove sold stock and record sales</div>
-            </div>
-            <div class="action-arrow">›</div>
-        </a>
+    <div class="accordion-content">
+        <div class="actions-grid">
 
-        <a class="action-card search-card" href="search.html">
-            <div class="action-icon">⌕</div>
-            <div class="action-text">
-                <div class="action-title">Search Stock</div>
-                <div class="action-subtitle">Find items, barcodes and locations</div>
-            </div>
-            <div class="action-arrow">›</div>
-        </a>
+            <a class="action-card add-card" href="add.html">
+                <div class="action-icon">＋</div>
+                <div class="action-text">
+                    <div class="action-title">Add Stock</div>
+                    <div class="action-subtitle">Add new products to inventory</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
 
-        <a class="action-card move-card" href="move.html">
-            <div class="action-icon">⇄</div>
-            <div class="action-text">
-                <div class="action-title">Move Stock</div>
-                <div class="action-subtitle">Move items between boxes</div>
-            </div>
-            <div class="action-arrow">›</div>
-        </a>
+            <a class="action-card remove-card" href="remove.html">
+                <div class="action-icon">−</div>
+                <div class="action-text">
+                    <div class="action-title">Remove Stock</div>
+                    <div class="action-subtitle">Remove sold stock and record sales</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
 
+            <a class="action-card search-card" href="search.html">
+                <div class="action-icon">⌕</div>
+                <div class="action-text">
+                    <div class="action-title">Search Stock</div>
+                    <div class="action-subtitle">Find items, barcodes and locations</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+            <a class="action-card move-card" href="move.html">
+                <div class="action-icon">⇄</div>
+                <div class="action-text">
+                    <div class="action-title">Move Stock</div>
+                    <div class="action-subtitle">Move items between boxes</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+        </div>
     </div>
 </div>
 
-<div class="section-block">
-    <div class="section-title">🗃️ Storage</div>
-    <div class="section-subtitle">Manage physical boxes and locations</div>
-
-    <div class="actions-grid">
-
-        <a class="action-card boxes-card" href="boxes.html">
-            <div class="action-icon">▱</div>
-            <div class="action-text">
-                <div class="action-title">Create / View Boxes</div>
-                <div class="action-subtitle">Manage your storage boxes</div>
+<div class="accordion-section" id="section_storage">
+    <button class="accordion-header storage-header" onclick="toggleSection('section_storage')">
+        <div class="header-left">
+            <div class="header-icon">🗃️</div>
+            <div>
+                <div class="header-title">Storage</div>
+                <div class="header-subtitle">Physical boxes and locations</div>
             </div>
-            <div class="action-arrow">›</div>
-        </a>
+        </div>
+        <div class="header-arrow">⌄</div>
+    </button>
 
-        <a class="action-card boxes-card" href="boxcontents.html">
-            <div class="action-icon">▦</div>
-            <div class="action-text">
-                <div class="action-title">Box Contents</div>
-                <div class="action-subtitle">View what is inside each box</div>
-            </div>
-            <div class="action-arrow">›</div>
-        </a>
+    <div class="accordion-content">
+        <div class="actions-grid">
 
+            <a class="action-card boxes-card" href="boxes.html">
+                <div class="action-icon">▱</div>
+                <div class="action-text">
+                    <div class="action-title">Create / View Boxes</div>
+                    <div class="action-subtitle">Manage your storage boxes</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+            <a class="action-card boxes-card" href="boxcontents.html">
+                <div class="action-icon">▦</div>
+                <div class="action-text">
+                    <div class="action-title">Box Contents</div>
+                    <div class="action-subtitle">View what is inside each box</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+        </div>
     </div>
 </div>
 
-<div class="section-block">
-    <div class="section-title">🎁 Mystery Boxes</div>
-    <div class="section-subtitle">Track purchase boxes and original contents</div>
-
-    <div class="actions-grid">
-
-        <a class="action-card mystery-card" href="mysteryboxes.html">
-            <div class="action-icon">MB</div>
-            <div class="action-text">
-                <div class="action-title">Mystery Boxes</div>
-                <div class="action-subtitle">Create MB IDs and track box costs</div>
+<div class="accordion-section" id="section_mystery">
+    <button class="accordion-header mystery-header" onclick="toggleSection('section_mystery')">
+        <div class="header-left">
+            <div class="header-icon">🎁</div>
+            <div>
+                <div class="header-title">Mystery Boxes</div>
+                <div class="header-subtitle">Purchase boxes and original contents</div>
             </div>
-            <div class="action-arrow">›</div>
-        </a>
+        </div>
+        <div class="header-arrow">⌄</div>
+    </button>
 
-        <a class="action-card snapshot-card" href="snapshotbox.html">
-            <div class="action-icon">📸</div>
-            <div class="action-text">
-                <div class="action-title">Snapshot Box</div>
-                <div class="action-subtitle">Copy a storage box into an MB ID</div>
-            </div>
-            <div class="action-arrow">›</div>
-        </a>
+    <div class="accordion-content">
+        <div class="actions-grid">
 
+            <a class="action-card mystery-card" href="mysteryboxes.html">
+                <div class="action-icon">MB</div>
+                <div class="action-text">
+                    <div class="action-title">Mystery Boxes</div>
+                    <div class="action-subtitle">Create MB IDs and track box costs</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+            <a class="action-card snapshot-card" href="snapshotbox.html">
+                <div class="action-icon">📸</div>
+                <div class="action-text">
+                    <div class="action-title">Snapshot Box</div>
+                    <div class="action-subtitle">Copy a storage box into an MB ID</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+        </div>
     </div>
 </div>
 
-<div class="section-block">
-    <div class="section-title">🖨️ Printing</div>
-    <div class="section-subtitle">Print barcode labels and saved batches</div>
-
-    <div class="actions-grid">
-
-        <a class="action-card reprint-card" href="printjobs.html">
-            <div class="action-icon">🖨️</div>
-            <div class="action-text">
-                <div class="action-title">Print Jobs</div>
-                <div class="action-subtitle">Print saved barcode batches</div>
+<div class="accordion-section" id="section_printing">
+    <button class="accordion-header printing-header" onclick="toggleSection('section_printing')">
+        <div class="header-left">
+            <div class="header-icon">🖨️</div>
+            <div>
+                <div class="header-title">Printing</div>
+                <div class="header-subtitle">Labels and saved print batches</div>
             </div>
-            <div class="action-arrow">›</div>
-        </a>
+        </div>
+        <div class="header-arrow">⌄</div>
+    </button>
 
-        <a class="action-card reprint-card" href="reprint.html">
-            <div class="action-icon">▥</div>
-            <div class="action-text">
-                <div class="action-title">Reprint Product Label</div>
-                <div class="action-subtitle">Reprint or bulk-print product labels</div>
-            </div>
-            <div class="action-arrow">›</div>
-        </a>
+    <div class="accordion-content">
+        <div class="actions-grid">
 
-        <a class="action-card labels-card" href="boxlabels.html">
-            <div class="action-icon">▣</div>
-            <div class="action-text">
-                <div class="action-title">Print Box Labels</div>
-                <div class="action-subtitle">Print barcode labels for boxes</div>
-            </div>
-            <div class="action-arrow">›</div>
-        </a>
+            <a class="action-card reprint-card" href="printjobs.html">
+                <div class="action-icon">🖨️</div>
+                <div class="action-text">
+                    <div class="action-title">Print Jobs</div>
+                    <div class="action-subtitle">Print saved barcode batches</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
 
+            <a class="action-card reprint-card" href="reprint.html">
+                <div class="action-icon">▥</div>
+                <div class="action-text">
+                    <div class="action-title">Reprint Product Label</div>
+                    <div class="action-subtitle">Reprint or bulk-print product labels</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+            <a class="action-card labels-card" href="boxlabels.html">
+                <div class="action-icon">▣</div>
+                <div class="action-text">
+                    <div class="action-title">Print Box Labels</div>
+                    <div class="action-subtitle">Print barcode labels for boxes</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+        </div>
     </div>
 </div>
 
-<div class="section-block">
-    <div class="section-title">📊 Reports</div>
-    <div class="section-subtitle">Review old stock, sales and profit</div>
-
-    <div class="actions-grid">
-
-        <a class="action-card stale-card" href="stale.html">
-            <div class="action-icon">◷</div>
-            <div class="action-text">
-                <div class="action-title">Stale Stock 14+ Days</div>
-                <div class="action-subtitle">View products with no removals</div>
+<div class="accordion-section" id="section_reports">
+    <button class="accordion-header reports-header" onclick="toggleSection('section_reports')">
+        <div class="header-left">
+            <div class="header-icon">📊</div>
+            <div>
+                <div class="header-title">Reports</div>
+                <div class="header-subtitle">Sales, stale stock and trends</div>
             </div>
-            <div class="action-arrow">›</div>
-        </a>
+        </div>
+        <div class="header-arrow">⌄</div>
+    </button>
 
-        <a class="action-card tracker-card" href="salestracker.html">
-            <div class="action-icon">↗</div>
-            <div class="action-text">
-                <div class="action-title">Sales Tracker</div>
-                <div class="action-subtitle">View income, expenses, profit and trends</div>
-            </div>
-            <div class="action-arrow">›</div>
-        </a>
+    <div class="accordion-content">
+        <div class="actions-grid">
 
+            <a class="action-card stale-card" href="stale.html">
+                <div class="action-icon">◷</div>
+                <div class="action-text">
+                    <div class="action-title">Stale Stock 14+ Days</div>
+                    <div class="action-subtitle">View products with no removals</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+            <a class="action-card tracker-card" href="salestracker.html">
+                <div class="action-icon">↗</div>
+                <div class="action-text">
+                    <div class="action-title">Sales Tracker</div>
+                    <div class="action-subtitle">View income, expenses, profit and trends</div>
+                </div>
+                <div class="action-arrow">›</div>
+            </a>
+
+        </div>
     </div>
 </div>
 
@@ -585,6 +712,14 @@ const PASSWORD = "Sales";
 
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+
+const SECTION_IDS = [
+    "section_inventory",
+    "section_storage",
+    "section_mystery",
+    "section_printing",
+    "section_reports"
+];
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -614,7 +749,52 @@ function showApp(){
     document.getElementById("loginBox").style.display = "none";
     document.getElementById("app").style.display = "block";
 
+    restoreSectionStates();
     loadStats();
+}
+
+function toggleSection(sectionId){
+    const section = document.getElementById(sectionId);
+
+    if(!section){
+        return;
+    }
+
+    section.classList.toggle("open");
+
+    localStorage.setItem(
+        "dashboard_" + sectionId + "_open",
+        section.classList.contains("open") ? "yes" : "no"
+    );
+}
+
+function restoreSectionStates(){
+    SECTION_IDS.forEach(sectionId=>{
+        const section = document.getElementById(sectionId);
+
+        if(!section){
+            return;
+        }
+
+        const saved =
+        localStorage.getItem("dashboard_" + sectionId + "_open");
+
+        if(saved === null){
+            if(sectionId === "section_inventory"){
+                section.classList.add("open");
+            }else{
+                section.classList.remove("open");
+            }
+
+            return;
+        }
+
+        if(saved === "yes"){
+            section.classList.add("open");
+        }else{
+            section.classList.remove("open");
+        }
+    });
 }
 
 function loadStats(){
