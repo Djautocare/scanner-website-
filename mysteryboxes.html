@@ -8,13 +8,8 @@
 <title>Mystery Boxes</title>
 
 <style>
-html{
-    touch-action:manipulation;
-}
-
-*{
-    box-sizing:border-box;
-}
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
 
 body{
     font-family:Arial, sans-serif;
@@ -28,10 +23,7 @@ body{
     overflow-x:hidden;
 }
 
-.page{
-    max-width:950px;
-    margin:0 auto;
-}
+.page{max-width:1100px;margin:0 auto;}
 
 .panel{
     background:linear-gradient(180deg,#1d1d1d,#151515);
@@ -62,6 +54,12 @@ h1{
     margin-bottom:18px;
 }
 
+.form-grid{
+    display:grid;
+    grid-template-columns:1fr 160px 1fr;
+    gap:12px;
+}
+
 .input-label{
     text-align:left;
     color:#ddd;
@@ -90,7 +88,7 @@ textarea{
 }
 
 textarea{
-    min-height:80px;
+    min-height:52px;
     resize:vertical;
 }
 
@@ -114,7 +112,7 @@ button{
 
 .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
     gap:14px;
     margin-top:18px;
 }
@@ -151,6 +149,79 @@ button{
     font-weight:bold;
 }
 
+.status{
+    display:inline-block;
+    margin-top:10px;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.status-active{
+    background:rgba(40,167,69,0.20);
+    color:#54d86f;
+    border:1px solid rgba(40,167,69,0.35);
+}
+
+.status-closed{
+    background:rgba(220,53,69,0.20);
+    color:#ff7777;
+    border:1px solid rgba(220,53,69,0.35);
+}
+
+.stat-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-top:12px;
+}
+
+.stat-box{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:10px;
+    padding:10px;
+}
+
+.stat-title{
+    color:#aaa;
+    font-size:12px;
+    margin-bottom:5px;
+    font-weight:bold;
+}
+
+.stat-value{
+    font-size:16px;
+    font-weight:bold;
+}
+
+.green{color:#00e676;}
+.red{color:#ff5252;}
+.yellow{color:#ffc107;}
+
+.progress-wrap{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:10px;
+    padding:10px;
+    margin-top:8px;
+}
+
+.progress-bar{
+    height:8px;
+    background:#333;
+    border-radius:999px;
+    overflow:hidden;
+    margin-top:7px;
+}
+
+.progress-fill{
+    height:100%;
+    background:linear-gradient(135deg,#ffc107,#00e676);
+    width:0%;
+}
+
 .info-box{
     background:#111;
     border:1px solid rgba(255,255,255,0.06);
@@ -161,21 +232,52 @@ button{
     line-height:1.35;
 }
 
-.cost{
-    color:#00e676;
+.card-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:12px;
+}
+
+.view-button{
+    background:linear-gradient(135deg,#333,#222);
+    border:1px solid rgba(255,255,255,0.10);
+}
+
+.close-button{
+    background:linear-gradient(135deg,#dc3545,#8d1f2b);
+    border:1px solid rgba(220,53,69,0.45);
+}
+
+.items-list{
+    display:none;
+    margin-top:12px;
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:10px;
+    padding:10px;
+}
+
+.item-row{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+.item-row:last-child{
+    border-bottom:none;
+}
+
+.item-name{
     font-weight:bold;
 }
 
-.status{
-    display:inline-block;
-    margin-top:10px;
-    padding:6px 10px;
-    border-radius:999px;
-    background:rgba(40,167,69,0.20);
-    color:#54d86f;
-    border:1px solid rgba(40,167,69,0.35);
-    font-size:13px;
-    font-weight:bold;
+.item-meta{
+    color:#aaa;
+    font-size:12px;
+    margin-top:3px;
 }
 
 .empty-state{
@@ -207,7 +309,6 @@ button{
     margin-top:10px;
 }
 
-/* Loading overlay */
 #loadingOverlay{
     display:none;
     position:fixed;
@@ -242,18 +343,13 @@ button{
     100%{transform:rotate(360deg);}
 }
 
-@media(max-width:600px){
-    h1{
-        font-size:30px;
-    }
-
-    .panel{
-        padding:18px;
-    }
-
-    .mb-header{
-        flex-direction:column;
-    }
+@media(max-width:760px){
+    h1{font-size:30px;}
+    .panel{padding:18px;}
+    .form-grid{grid-template-columns:1fr;}
+    .stat-grid{grid-template-columns:1fr 1fr;}
+    .mb-header{flex-direction:column;}
+    .card-actions{grid-template-columns:1fr;}
 }
 </style>
 </head>
@@ -265,18 +361,28 @@ button{
 <div class="panel">
 
 <h1>Mystery Boxes</h1>
-<p class="subtitle">Create purchase boxes with auto IDs like MB-1, MB-2 and track their cost</p>
+<p class="subtitle">Create purchase boxes, view profit and manage active/bulk sold status</p>
 
 <div class="form-card">
 
-<div class="input-label">Mystery Box Name</div>
-<input type="text" id="mbName" placeholder="Example: Tech Box June">
+<div class="form-grid">
 
-<div class="input-label">Cost</div>
-<input type="number" id="mbCost" placeholder="Cost £" step="0.01" min="0">
+    <div>
+        <div class="input-label">Mystery Box Name</div>
+        <input type="text" id="mbName" placeholder="Example: Tech Box June">
+    </div>
 
-<div class="input-label">Notes</div>
-<textarea id="mbNotes" placeholder="Example: Mixed tech, clothes, DIY items"></textarea>
+    <div>
+        <div class="input-label">Cost</div>
+        <input type="number" id="mbCost" placeholder="Cost £" step="0.01" min="0">
+    </div>
+
+    <div>
+        <div class="input-label">Notes</div>
+        <textarea id="mbNotes" placeholder="Example: Mixed tech, clothes, DIY items"></textarea>
+    </div>
+
+</div>
 
 <button class="create-button" onclick="createMysteryBox()">Create Mystery Box</button>
 
@@ -317,6 +423,34 @@ function hideLoading(){
 
 function money(value){
     return "£" + Number(value || 0).toFixed(2);
+}
+
+function simpleDate(value){
+    if(!value){
+        return "";
+    }
+
+    const date = new Date(value);
+
+    if(isNaN(date.getTime())){
+        return "";
+    }
+
+    return date.toLocaleDateString("en-GB");
+}
+
+function profitClass(value){
+    const number = Number(value || 0);
+
+    if(number > 0){
+        return "green";
+    }
+
+    if(number < 0){
+        return "red";
+    }
+
+    return "";
 }
 
 function createMysteryBox(){
@@ -376,7 +510,7 @@ function loadMysteryBoxes(){
     fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
-            action:"GET_MYSTERY_BOXES"
+            action:"MYSTERY_BOX_PROFIT"
         })
     })
 
@@ -400,26 +534,75 @@ function loadMysteryBoxes(){
         let html = "<div class='grid'>";
 
         data.mysteryBoxes.slice().reverse().forEach(box=>{
+            const status = box.status || "Active";
+            const statusClass =
+            status.toLowerCase() === "active" ? "status-active" : "status-closed";
+
+            const progress = Math.min(100, Number(box.sellThrough || 0));
+
             html += `
                 <div class="mb-card">
 
                     <div class="mb-header">
                         <div>
                             <div class="mb-name">${box.name}</div>
-                            <div class="status">${box.status || "Active"}</div>
+                            <div class="status ${statusClass}">${status}</div>
                         </div>
 
                         <div class="mb-id">${box.mysteryBoxId}</div>
                     </div>
 
-                    <div class="info-box">
-                        <strong>Cost:</strong>
-                        <span class="cost">${money(box.cost)}</span>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-title">Cost</div>
+                            <div class="stat-value">${money(box.cost)}</div>
+                        </div>
+
+                        <div class="stat-box">
+                            <div class="stat-title">Revenue</div>
+                            <div class="stat-value green">${money(box.revenue)}</div>
+                        </div>
+
+                        <div class="stat-box">
+                            <div class="stat-title">Profit</div>
+                            <div class="stat-value ${profitClass(box.profit)}">${money(box.profit)}</div>
+                        </div>
+
+                        <div class="stat-box">
+                            <div class="stat-title">Sold</div>
+                            <div class="stat-value">${box.soldQty} / ${box.originalQty}</div>
+                        </div>
+
+                        <div class="stat-box">
+                            <div class="stat-title">Remaining</div>
+                            <div class="stat-value">${box.remainingQty}</div>
+                        </div>
+
+                        <div class="stat-box">
+                            <div class="stat-title">Sell-through</div>
+                            <div class="stat-value yellow">${Number(box.sellThrough || 0).toFixed(2)}%</div>
+                        </div>
+                    </div>
+
+                    <div class="progress-wrap">
+                        <strong>Progress</strong>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width:${progress}%"></div>
+                        </div>
                     </div>
 
                     <div class="info-box">
-                        <strong>Notes:</strong><br>
-                        ${box.notes || "No notes added"}
+                        <strong>Created:</strong> ${simpleDate(box.dateCreated) || "Unknown"}<br>
+                        <strong>Notes:</strong> ${box.notes || "No notes added"}
+                    </div>
+
+                    <div class="card-actions">
+                        <button class="view-button" onclick="toggleItems('${box.mysteryBoxId}')">View Items</button>
+                        <button class="close-button" onclick="closeMysteryBox('${box.mysteryBoxId}')">Close / Bulk Sold</button>
+                    </div>
+
+                    <div class="items-list" id="items_${box.mysteryBoxId}">
+                        ${renderItems(box.items || [])}
                     </div>
 
                 </div>
@@ -439,6 +622,88 @@ function loadMysteryBoxes(){
         "<div class='empty-state'>Error loading mystery boxes.</div>";
     });
 }
+
+function renderItems(items){
+    if(!items || items.length === 0){
+        return "<div class='empty-state'>No snapshot items found for this mystery box.</div>";
+    }
+
+    let html = "";
+
+    items.forEach(item=>{
+        html += `
+            <div class="item-row">
+                <div>
+                    <div class="item-name">${item.description || item.barcode}</div>
+                    <div class="item-meta">${item.barcode} — Sold ${item.soldQty}/${item.originalQty} — Revenue ${money(item.revenue)}</div>
+                </div>
+                <div>${item.remainingQty} left</div>
+            </div>
+        `;
+    });
+
+    return html;
+}
+
+function toggleItems(mysteryBoxId){
+    const el = document.getElementById("items_" + mysteryBoxId);
+
+    if(!el){
+        return;
+    }
+
+    el.style.display = el.style.display === "block" ? "none" : "block";
+}
+
+function closeMysteryBox(mysteryBoxId){
+    if(!confirm("Mark " + mysteryBoxId + " as Bulk Sold / Closed? Future removals will not allocate sales to this box.")){
+        return;
+    }
+
+    showLoading();
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"CLOSE_MYSTERY_BOX",
+            mysteryBoxId:mysteryBoxId,
+            status:"Bulk Sold"
+        })
+    })
+
+    .then(res=>res.json())
+
+    .then(data=>{
+        hideLoading();
+
+        if(!data.success){
+            alert(data.error || "Could not close mystery box");
+            return;
+        }
+
+        loadMysteryBoxes();
+    })
+
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+        alert("Error closing mystery box");
+    });
+}
+
+document.getElementById("mbName").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+        createMysteryBox();
+    }
+});
+
+document.getElementById("mbCost").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+        createMysteryBox();
+    }
+});
 
 loadMysteryBoxes();
 </script>
