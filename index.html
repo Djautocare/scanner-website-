@@ -43,7 +43,14 @@ body{
 #loginBox{max-width:430px;margin:70px auto;text-align:center;}
 #app{display:none;}
 
-h1{text-align:center;font-size:34px;margin:12px 0 6px 0;}
+.app-logo{
+    text-align:center;
+    font-size:38px;
+    margin-top:4px;
+    color:#45d36a;
+}
+
+h1{text-align:center;font-size:34px;margin:8px 0 6px 0;}
 
 .subtitle{
     text-align:center;
@@ -87,7 +94,7 @@ button{
     display:flex;
     align-items:center;
     gap:14px;
-    min-height:110px;
+    min-height:104px;
 }
 
 .stat-icon{
@@ -149,18 +156,18 @@ button{
     background:rgba(255,255,255,0.12);
 }
 
-.header-title{font-size:19px;font-weight:bold;}
+.header-title{font-size:21px;font-weight:bold;}
 
 .header-subtitle{
-    font-size:13px;
-    color:#aaa;
+    font-size:14px;
+    color:#ccc;
     margin-top:4px;
     font-weight:normal;
 }
 
 .header-arrow{
     font-size:28px;
-    opacity:0.8;
+    opacity:0.85;
     transition:transform 0.2s ease;
 }
 
@@ -168,77 +175,84 @@ button{
 
 .accordion-content{
     display:none;
-    padding:0 18px 18px 18px;
+    padding:18px 24px 24px 24px;
+    border-top:1px solid rgba(255,255,255,0.06);
 }
 
 .accordion-section.open .accordion-content{display:block;}
 
-.actions-grid{
+.quick-grid{
     display:grid;
-    grid-template-columns:repeat(2,1fr);
+    grid-template-columns:repeat(4,1fr);
     gap:16px;
 }
 
-.actions-grid.single{
+.quick-grid.two{
+    grid-template-columns:repeat(2,1fr);
+}
+
+.quick-grid.one{
     grid-template-columns:1fr;
 }
 
-.action-card{
+.quick-card{
+    min-height:120px;
     text-decoration:none;
     color:white;
-    border-radius:16px;
-    padding:18px;
-    min-height:108px;
+    background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
     display:flex;
+    flex-direction:column;
     align-items:center;
-    gap:16px;
-    border:1px solid rgba(255,255,255,0.10);
+    justify-content:center;
+    gap:12px;
+    text-align:center;
+    padding:16px;
 }
 
-.action-icon{
-    width:56px;
-    height:56px;
-    border-radius:16px;
+.quick-card:hover{
+    filter:brightness(1.08);
+}
+
+.quick-icon{
+    width:58px;
+    height:58px;
+    border-radius:18px;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:28px;
-    background:rgba(255,255,255,0.14);
-    flex-shrink:0;
+    font-size:34px;
+    border:1px solid currentColor;
+    background:rgba(255,255,255,0.06);
 }
 
-.action-text{flex:1;}
-.action-title{font-size:18px;font-weight:bold;margin-bottom:6px;}
-
-.action-subtitle{
-    color:rgba(255,255,255,0.75);
-    font-size:13px;
-    line-height:1.35;
+.quick-title{
+    font-size:17px;
+    font-weight:bold;
 }
 
-.action-arrow{font-size:28px;opacity:0.75;}
+.add-quick{color:#45d36a;}
+.remove-quick{color:#ff5c6c;}
+.search-quick{color:#4da3ff;}
+.move-quick{color:#ffae33;}
+.location-quick{color:#4da3ff;}
+.mystery-quick{color:#c77dff;}
+.snapshot-quick{color:#ffc107;}
+.print-quick{color:#20e0d0;}
+.sales-quick{color:#ffc107;}
+.stale-quick{color:#ffc107;}
 
 .inventory-header{background:linear-gradient(135deg,rgba(40,167,69,0.22),rgba(0,123,255,0.08));}
-.storage-header{background:linear-gradient(135deg,rgba(111,66,193,0.25),rgba(111,66,193,0.08));}
+.locations-header{background:linear-gradient(135deg,rgba(0,123,255,0.22),rgba(0,123,255,0.08));}
 .mystery-header{background:linear-gradient(135deg,rgba(156,39,176,0.26),rgba(255,193,7,0.08));}
 .printing-header{background:linear-gradient(135deg,rgba(32,201,151,0.24),rgba(23,162,184,0.08));}
 .reports-header{background:linear-gradient(135deg,rgba(255,193,7,0.22),rgba(156,39,176,0.08));}
 
-.add-card{background:linear-gradient(135deg,rgba(40,167,69,0.38),rgba(40,167,69,0.10));border-color:rgba(40,167,69,0.45);}
-.remove-card{background:linear-gradient(135deg,rgba(220,53,69,0.38),rgba(220,53,69,0.10));border-color:rgba(220,53,69,0.45);}
-.search-card{background:linear-gradient(135deg,rgba(0,123,255,0.38),rgba(0,123,255,0.10));border-color:rgba(0,123,255,0.45);}
-.move-card{background:linear-gradient(135deg,rgba(253,126,20,0.38),rgba(253,126,20,0.10));border-color:rgba(253,126,20,0.45);}
-.boxes-card{background:linear-gradient(135deg,rgba(111,66,193,0.38),rgba(111,66,193,0.10));border-color:rgba(111,66,193,0.45);}
-.mystery-card{background:linear-gradient(135deg,rgba(156,39,176,0.42),rgba(156,39,176,0.12));border-color:rgba(156,39,176,0.50);}
-.snapshot-card{background:linear-gradient(135deg,rgba(255,193,7,0.38),rgba(255,193,7,0.10));border-color:rgba(255,193,7,0.45);}
-.reprint-card{background:linear-gradient(135deg,rgba(32,201,151,0.38),rgba(32,201,151,0.10));border-color:rgba(32,201,151,0.45);}
-.stale-card{background:linear-gradient(135deg,rgba(255,193,7,0.38),rgba(255,193,7,0.10));border-color:rgba(255,193,7,0.45);}
-.tracker-card{background:linear-gradient(135deg,rgba(156,39,176,0.42),rgba(156,39,176,0.12));border-color:rgba(156,39,176,0.50);}
-
 .logout-card{
     margin-top:24px;
     width:100%;
-    background:linear-gradient(135deg,rgba(76,175,80,0.30),rgba(76,175,80,0.08));
+    background:linear-gradient(135deg,rgba(76,175,80,0.22),rgba(0,123,255,0.06));
     border:1px solid rgba(76,175,80,0.35);
     border-radius:16px;
     padding:18px;
@@ -277,13 +291,17 @@ button{
     100%{transform:rotate(360deg);}
 }
 
+@media(max-width:900px){
+    .quick-grid{grid-template-columns:repeat(2,1fr);}
+}
+
 @media(max-width:760px){
     .stats-grid{grid-template-columns:1fr;}
-    .actions-grid{grid-template-columns:1fr;}
+    .quick-grid,.quick-grid.two,.quick-grid.one{grid-template-columns:1fr;}
     h1{font-size:30px;}
     .panel{padding:18px;}
     .accordion-header{padding:16px;}
-    .accordion-content{padding:0 14px 14px 14px;}
+    .accordion-content{padding:14px;}
 }
 </style>
 </head>
@@ -302,8 +320,9 @@ button{
 
 <div class="panel" id="app">
 
+<div class="app-logo">▱</div>
 <h1>Inventory Dashboard</h1>
-<p class="subtitle">Manage your stock, boxes, labels and sales from one place</p>
+<p class="subtitle">Manage your stock, locations, mystery boxes and sales from one place</p>
 
 <div class="stats-grid">
     <div class="stat-card">
@@ -340,83 +359,54 @@ button{
             <div class="header-icon">📦</div>
             <div>
                 <div class="header-title">Inventory</div>
-                <div class="header-subtitle">Daily stock actions</div>
+                <div class="header-subtitle">Add, remove, search and move stock</div>
             </div>
         </div>
         <div class="header-arrow">⌄</div>
     </button>
 
     <div class="accordion-content">
-        <div class="actions-grid">
-            <a class="action-card add-card" href="add.html">
-                <div class="action-icon">＋</div>
-                <div class="action-text">
-                    <div class="action-title">Add Stock</div>
-                    <div class="action-subtitle">Add new products to inventory</div>
-                </div>
-                <div class="action-arrow">›</div>
+        <div class="quick-grid">
+            <a class="quick-card add-quick" href="add.html">
+                <div class="quick-icon">＋</div>
+                <div class="quick-title">Add Stock</div>
             </a>
 
-            <a class="action-card remove-card" href="remove.html">
-                <div class="action-icon">−</div>
-                <div class="action-text">
-                    <div class="action-title">Remove Stock</div>
-                    <div class="action-subtitle">Remove sold stock and record sales</div>
-                </div>
-                <div class="action-arrow">›</div>
+            <a class="quick-card remove-quick" href="remove.html">
+                <div class="quick-icon">−</div>
+                <div class="quick-title">Remove Stock</div>
             </a>
 
-            <a class="action-card search-card" href="search.html">
-                <div class="action-icon">⌕</div>
-                <div class="action-text">
-                    <div class="action-title">Search Stock</div>
-                    <div class="action-subtitle">Find items, barcodes and locations</div>
-                </div>
-                <div class="action-arrow">›</div>
+            <a class="quick-card search-quick" href="search.html">
+                <div class="quick-icon">⌕</div>
+                <div class="quick-title">Search Stock</div>
             </a>
 
-            <a class="action-card move-card" href="move.html">
-                <div class="action-icon">⇄</div>
-                <div class="action-text">
-                    <div class="action-title">Move Stock</div>
-                    <div class="action-subtitle">Move items between boxes</div>
-                </div>
-                <div class="action-arrow">›</div>
+            <a class="quick-card move-quick" href="move.html">
+                <div class="quick-icon">⇄</div>
+                <div class="quick-title">Move Stock</div>
             </a>
         </div>
     </div>
 </div>
 
-<div class="accordion-section" id="section_storage">
-    <button class="accordion-header storage-header" onclick="toggleSection('section_storage')">
+<div class="accordion-section" id="section_locations">
+    <button class="accordion-header locations-header" onclick="toggleSection('section_locations')">
         <div class="header-left">
             <div class="header-icon">🗃️</div>
             <div>
-                <div class="header-title">Storage</div>
-                <div class="header-subtitle">Physical boxes and locations</div>
+                <div class="header-title">Locations</div>
+                <div class="header-subtitle">Manage your locations and view contents</div>
             </div>
         </div>
         <div class="header-arrow">⌄</div>
     </button>
 
     <div class="accordion-content">
-        <div class="actions-grid">
-            <a class="action-card boxes-card" href="boxes.html">
-                <div class="action-icon">▱</div>
-                <div class="action-text">
-                    <div class="action-title">Create / View Boxes</div>
-                    <div class="action-subtitle">Manage your storage boxes</div>
-                </div>
-                <div class="action-arrow">›</div>
-            </a>
-
-            <a class="action-card boxes-card" href="boxcontents.html">
-                <div class="action-icon">▦</div>
-                <div class="action-text">
-                    <div class="action-title">Box Contents</div>
-                    <div class="action-subtitle">View what is inside each box</div>
-                </div>
-                <div class="action-arrow">›</div>
+        <div class="quick-grid one">
+            <a class="quick-card location-quick" href="boxes.html">
+                <div class="quick-icon">▤</div>
+                <div class="quick-title">Manage Locations</div>
             </a>
         </div>
     </div>
@@ -428,30 +418,22 @@ button{
             <div class="header-icon">🎁</div>
             <div>
                 <div class="header-title">Mystery Boxes</div>
-                <div class="header-subtitle">Purchase boxes and original contents</div>
+                <div class="header-subtitle">Create mystery boxes and snapshot locations</div>
             </div>
         </div>
         <div class="header-arrow">⌄</div>
     </button>
 
     <div class="accordion-content">
-        <div class="actions-grid">
-            <a class="action-card mystery-card" href="mysteryboxes.html">
-                <div class="action-icon">MB</div>
-                <div class="action-text">
-                    <div class="action-title">Mystery Boxes</div>
-                    <div class="action-subtitle">Create MB IDs and track box costs</div>
-                </div>
-                <div class="action-arrow">›</div>
+        <div class="quick-grid two">
+            <a class="quick-card mystery-quick" href="mysteryboxes.html">
+                <div class="quick-icon">🎁</div>
+                <div class="quick-title">Mystery Boxes</div>
             </a>
 
-            <a class="action-card snapshot-card" href="snapshotbox.html">
-                <div class="action-icon">📸</div>
-                <div class="action-text">
-                    <div class="action-title">Snapshot Box</div>
-                    <div class="action-subtitle">Copy a storage box into an MB ID</div>
-                </div>
-                <div class="action-arrow">›</div>
+            <a class="quick-card snapshot-quick" href="snapshotbox.html">
+                <div class="quick-icon">📸</div>
+                <div class="quick-title">Snapshot Box</div>
             </a>
         </div>
     </div>
@@ -463,20 +445,17 @@ button{
             <div class="header-icon">🖨️</div>
             <div>
                 <div class="header-title">Printing</div>
-                <div class="header-subtitle">Barcode labels and print batches</div>
+                <div class="header-subtitle">Print labels, ranges and saved print jobs</div>
             </div>
         </div>
         <div class="header-arrow">⌄</div>
     </button>
 
     <div class="accordion-content">
-        <div class="actions-grid single">
-            <a class="action-card reprint-card" href="barcodeprinting.html">
-                <div class="action-icon">🖨️</div>
-                <div class="action-text">
-                    <div class="action-title">Barcode Printing</div>
-                    <div class="action-subtitle">Print product, box, range and job labels</div>
-                </div>
+        <div class="quick-grid one">
+            <a class="quick-card print-quick" href="barcodeprinting.html">
+                <div class="quick-icon">🖨️</div>
+                <div class="quick-title">Barcode Printing</div>
             </a>
         </div>
     </div>
@@ -488,30 +467,22 @@ button{
             <div class="header-icon">📊</div>
             <div>
                 <div class="header-title">Reports</div>
-                <div class="header-subtitle">Sales, stale stock and trends</div>
+                <div class="header-subtitle">Sales, stale stock and performance</div>
             </div>
         </div>
         <div class="header-arrow">⌄</div>
     </button>
 
     <div class="accordion-content">
-        <div class="actions-grid">
-            <a class="action-card stale-card" href="stale.html">
-                <div class="action-icon">◷</div>
-                <div class="action-text">
-                    <div class="action-title">Stale Stock 14+ Days</div>
-                    <div class="action-subtitle">View products with no removals</div>
-                </div>
-                <div class="action-arrow">›</div>
+        <div class="quick-grid two">
+            <a class="quick-card sales-quick" href="salestracker.html">
+                <div class="quick-icon">↗</div>
+                <div class="quick-title">Sales Tracker</div>
             </a>
 
-            <a class="action-card tracker-card" href="salestracker.html">
-                <div class="action-icon">↗</div>
-                <div class="action-text">
-                    <div class="action-title">Sales Tracker</div>
-                    <div class="action-subtitle">View income, expenses, profit and trends</div>
-                </div>
-                <div class="action-arrow">›</div>
+            <a class="quick-card stale-quick" href="stale.html">
+                <div class="quick-icon">◷</div>
+                <div class="quick-title">Stale Stock 14+ Days</div>
             </a>
         </div>
     </div>
@@ -537,7 +508,7 @@ const API_URL =
 
 const SECTION_IDS = [
     "section_inventory",
-    "section_storage",
+    "section_locations",
     "section_mystery",
     "section_printing",
     "section_reports"
