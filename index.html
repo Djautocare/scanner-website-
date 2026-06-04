@@ -352,7 +352,32 @@ button{
         </div>
     </div>
 </div>
+<div class="stat-card">
+    <div class="stat-icon green-icon">💷</div>
+    <div>
+        <div class="stat-value" id="todayIncomeValue">£0</div>
+        <div class="stat-label">Today's Income</div>
+        <div class="stat-note">Sales value today</div>
+    </div>
+</div>
 
+<div class="stat-card">
+    <div class="stat-icon blue-icon">🛒</div>
+    <div>
+        <div class="stat-value" id="todaySalesValue">0</div>
+        <div class="stat-label">Today's Sales</div>
+        <div class="stat-note">Items sold today</div>
+    </div>
+</div>
+
+<div class="stat-card">
+    <div class="stat-icon purple-icon">📈</div>
+    <div>
+        <div class="stat-value" id="trendValue">0%</div>
+        <div class="stat-label">3 Day Trend</div>
+        <div class="stat-note">vs previous 3 days</div>
+    </div>
+</div>
 <div class="accordion-section open" id="section_inventory">
     <button class="accordion-header inventory-header" onclick="toggleSection('section_inventory')">
         <div class="header-left">
@@ -603,15 +628,30 @@ function loadStats(){
 
     .then(data=>{
         hideLoading();
+if(data.success){
 
-        if(data.success){
-            document.getElementById("productsValue").innerText = data.totalProducts;
-            document.getElementById("stockValue").innerText = data.totalStock;
-            document.getElementById("boxesValue").innerText = data.totalBoxes;
-        }else{
+    document.getElementById("productsValue").innerText = data.totalProducts;
+    document.getElementById("stockValue").innerText = data.totalStock;
+    document.getElementById("boxesValue").innerText = data.totalBoxes;
+
+    document.getElementById("todaySalesValue").innerText =
+        data.todaysSales || 0;
+
+    document.getElementById("todayIncomeValue").innerText =
+        "£" + (data.todaysIncome || 0);
+
+    const trend = Number(data.trendPercent || 0);
+
+    document.getElementById("trendValue").innerText =
+        (trend > 0 ? "+" : "") + trend + "%";
+
+}else{
             document.getElementById("productsValue").innerText = "-";
             document.getElementById("stockValue").innerText = "-";
             document.getElementById("boxesValue").innerText = "-";
+    document.getElementById("todaySalesValue").innerText = "-";
+document.getElementById("todayIncomeValue").innerText = "-";
+document.getElementById("trendValue").innerText = "-";
         }
     })
 
@@ -623,6 +663,9 @@ function loadStats(){
         document.getElementById("productsValue").innerText = "-";
         document.getElementById("stockValue").innerText = "-";
         document.getElementById("boxesValue").innerText = "-";
+        document.getElementById("todaySalesValue").innerText = "-";
+document.getElementById("todayIncomeValue").innerText = "-";
+document.getElementById("trendValue").innerText = "-";
     });
 }
 
