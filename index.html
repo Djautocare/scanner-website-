@@ -640,23 +640,22 @@ function loadStats(){
     .then(data=>{
         hideLoading();
 if(data.success){
-
     document.getElementById("productsValue").innerText = data.totalProducts;
     document.getElementById("stockValue").innerText = data.totalStock;
     document.getElementById("boxesValue").innerText = data.totalBoxes;
 
     document.getElementById("todaySalesValue").innerText =
-        data.todaysSales || 0;
+        data.todaySalesCount || 0;
 
     document.getElementById("todayIncomeValue").innerText =
-        "£" + (data.todaysIncome || 0);
+        "£" + Number(data.todayIncome || 0).toFixed(2);
 
-    const trend = Number(data.trendPercent || 0);
+    const trend = Number(data.rolling3Trend || 0);
 
     document.getElementById("trendValue").innerText =
         (trend > 0 ? "+" : "") + trend + "%";
-
-}else{
+}
+else{
             document.getElementById("productsValue").innerText = "-";
             document.getElementById("stockValue").innerText = "-";
             document.getElementById("boxesValue").innerText = "-";
