@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d0d0d">
 <meta name="viewport"
@@ -93,11 +94,6 @@ button{
     box-shadow:0 10px 30px rgba(40,167,69,0.18);
 }
 
-.search-button{
-    background:linear-gradient(135deg,#0275d8,#025aa5);
-    border:1px solid rgba(0,123,255,0.45);
-}
-
 .clear-button{
     background:linear-gradient(135deg,#333,#222);
     border:1px solid rgba(255,255,255,0.10);
@@ -108,44 +104,62 @@ button{
     border:1px solid rgba(111,66,193,0.45);
 }
 
-.result-grid{
-    display:grid;
-    grid-template-columns:1fr;
+.match-toggle{
+    background:linear-gradient(135deg,rgba(32,201,151,0.26),rgba(32,201,151,0.08));
+    border:1px solid rgba(32,201,151,0.35);
+    color:white;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
     gap:12px;
-    margin-top:10px;
+    margin-bottom:8px;
 }
 
-.result-card{
-    background:linear-gradient(145deg,#242424,#191919);
+.match-toggle span{
+    pointer-events:none;
+}
+
+.match-count{
+    color:#20c997;
+    font-size:13px;
+}
+
+.match-panel{
+    display:none;
+    background:#111;
     border:1px solid rgba(255,255,255,0.08);
     border-radius:14px;
-    padding:14px;
-    text-align:left;
+    overflow:hidden;
+    margin-bottom:14px;
 }
 
-.result-title{
+.match-panel.open{
+    display:block;
+}
+
+.match-item{
+    padding:13px;
+    border-bottom:1px solid rgba(255,255,255,0.07);
+    cursor:pointer;
+}
+
+.match-item:last-child{
+    border-bottom:none;
+}
+
+.match-item:hover{
+    background:#1b1b1b;
+}
+
+.match-title{
     font-weight:bold;
-    font-size:18px;
-    margin-bottom:8px;
+    font-size:16px;
+    margin-bottom:5px;
 }
 
-.badge{
-    display:inline-block;
-    padding:6px 10px;
-    border-radius:999px;
+.match-meta{
+    color:#aaa;
     font-size:13px;
-    font-weight:bold;
-    margin-right:6px;
-    margin-bottom:8px;
-}
-
-.barcode-badge{background:#0275d8;}
-.qty-badge{background:#6f42c1;}
-
-.select-existing-button{
-    background:linear-gradient(135deg,#20c997,#138f6d);
-    border:1px solid rgba(32,201,151,0.45);
-    margin-top:8px;
 }
 
 .empty-state{
@@ -153,7 +167,7 @@ button{
     border:1px solid rgba(255,255,255,0.08);
     border-radius:14px;
     padding:14px;
-    margin-top:10px;
+    margin-bottom:12px;
     color:#ddd;
     text-align:center;
 }
@@ -315,21 +329,18 @@ button{
 <div class="panel">
 
 <h1>Add Stock</h1>
-<p class="subtitle">Add stock, reuse product names, assign locations, and build print jobs</p>
+<p class="subtitle">Type a description, choose a matching product if needed, assign location, and build print jobs</p>
 
 <div class="form-card">
 
-<div class="input-label">Search Existing Product First</div>
-<input type="text" id="productSearch" placeholder="Search keywords or barcode">
+<button class="match-toggle" onclick="toggleMatches()" type="button">
+    <span id="matchToggleText">Matching Existing Products</span>
+    <span class="match-count" id="matchCountText">Type to search ▼</span>
+</button>
 
-<button class="search-button" onclick="searchExistingProduct()">Search Existing Products</button>
-<button class="clear-button" onclick="clearSearchResults()">Clear Search Results</button>
-
-<div id="searchResults"></div>
-
+<div id="matchPanel" class="match-panel">
+    <div class="empty-state">Start typing in the description box to find existing products.</div>
 </div>
-
-<div class="form-card">
 
 <div class="input-label">Item Description</div>
 <input type="text" id="description" placeholder="Example: Dyson charger">
@@ -357,7 +368,7 @@ button{
 <div class="input-label">New Print Job Name</div>
 <input type="text" id="newPrintJobName" placeholder="Example: Mystery Box 1 Labels">
 
-<button class="printjob-button" onclick="createPrintJob()">Create New Print Job</button>
+<button class="printjob-button" onclick="createPrintJob()" type="button">Create New Print Job</button>
 
 <div class="checkbox-card">
     <label>
@@ -366,7 +377,7 @@ button{
     </label>
 </div>
 
-<button class="primary-button" onclick="saveProduct()">＋ Save Product</button>
+<button class="primary-button" onclick="saveProduct()" type="button">＋ Save Product</button>
 
 </div>
 
@@ -395,6 +406,7 @@ const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 let existingProductResults = [];
+let liveSearchTimer = null;
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -526,6 +538,7 @@ function createPrintJob(){
         }, 500);
 
         alert("Created print job: " + data.printJobId);
+        document.getElementById("description").focus();
     })
     .catch(error=>{
         hideLoading();
@@ -534,63 +547,83 @@ function createPrintJob(){
     });
 }
 
-function searchExistingProduct(){
-    const query = document.getElementById("productSearch").value.trim();
+function toggleMatches(){
+    const panel = document.getElementById("matchPanel");
+    panel.classList.toggle("open");
+    updateMatchToggleText();
+}
 
-    if(!query){
-        alert("Enter keywords or barcode to search");
+function updateMatchToggleText(){
+    const panel = document.getElementById("matchPanel");
+    const countText = document.getElementById("matchCountText");
+
+    if(existingProductResults.length === 0){
+        const description = document.getElementById("description").value.trim();
+        countText.innerText = description.length >= 2 ? "No matches ▼" : "Type to search ▼";
         return;
     }
 
-    document.getElementById("searchResults").innerHTML =
-    "<div class='empty-state'>Searching...</div>";
+    countText.innerText = existingProductResults.length + " match" + (existingProductResults.length === 1 ? "" : "es") + (panel.classList.contains("open") ? " ▲" : " ▼");
+}
 
-    showLoading();
+function searchExistingProductsLive(){
+    const query = document.getElementById("description").value.trim();
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"SEARCH",
-            query:query
+    clearTimeout(liveSearchTimer);
+
+    if(query.length < 2){
+        existingProductResults = [];
+        document.getElementById("matchPanel").innerHTML =
+        "<div class='empty-state'>Start typing in the description box to find existing products.</div>";
+        updateMatchToggleText();
+        return;
+    }
+
+    liveSearchTimer = setTimeout(function(){
+        fetch(API_URL,{
+            method:"POST",
+            body:JSON.stringify({
+                action:"SEARCH",
+                query:query
+            })
         })
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        hideLoading();
+        .then(res=>res.json())
+        .then(data=>{
+            if(!data.success || !data.results || data.results.length === 0){
+                existingProductResults = [];
+                document.getElementById("matchPanel").innerHTML =
+                "<div class='empty-state'>No matching existing products found.</div>";
+                updateMatchToggleText();
+                return;
+            }
 
-        if(!data.success || data.results.length === 0){
-            document.getElementById("searchResults").innerHTML =
-            "<div class='empty-state'>No existing products found. You can enter a new description below.</div>";
-            return;
-        }
+            existingProductResults = data.results;
 
-        existingProductResults = data.results;
+            let html = "";
 
-        let html = "<div class='result-grid'>";
+            data.results.slice(0,10).forEach((item,index)=>{
+                const barcode = item.barcode || item.itemId || "";
+                const qty = item.totalQty || 0;
 
-        data.results.forEach((item,index)=>{
-            html += `
-                <div class="result-card">
-                    <div class="result-title">${item.description}</div>
-                    <div class="badge barcode-badge">${item.barcode}</div>
-                    <div class="badge qty-badge">Current Qty ${item.totalQty}</div>
+                html += `
+                    <div class="match-item" onclick="selectExistingProduct(${index})">
+                        <div class="match-title">${item.description}</div>
+                        <div class="match-meta">${barcode} • Current Qty ${qty}</div>
+                    </div>
+                `;
+            });
 
-                    <button class="select-existing-button" onclick="selectExistingProduct(${index})">
-                    Use This Product Name
-                    </button>
-                </div>
-            `;
+            document.getElementById("matchPanel").innerHTML = html;
+            updateMatchToggleText();
+        })
+        .catch(error=>{
+            console.error(error);
+            existingProductResults = [];
+            document.getElementById("matchPanel").innerHTML =
+            "<div class='empty-state'>Error searching existing products.</div>";
+            updateMatchToggleText();
         });
-
-        html += "</div>";
-        document.getElementById("searchResults").innerHTML = html;
-    })
-    .catch(error=>{
-        hideLoading();
-        console.error(error);
-        document.getElementById("searchResults").innerHTML =
-        "<div class='empty-state'>Error searching existing products.</div>";
-    });
+    }, 250);
 }
 
 function selectExistingProduct(index){
@@ -599,18 +632,24 @@ function selectExistingProduct(index){
     if(!item) return;
 
     document.getElementById("description").value = item.description;
-    document.getElementById("searchResults").innerHTML =
+    document.getElementById("matchPanel").classList.remove("open");
+    document.getElementById("matchPanel").innerHTML =
     "<div class='empty-state'>Selected existing product: <strong>" +
     item.description +
     "</strong></div>";
 
+    existingProductResults = [item];
+    updateMatchToggleText();
+
     document.getElementById("qty").focus();
 }
 
-function clearSearchResults(){
-    document.getElementById("productSearch").value = "";
-    document.getElementById("searchResults").innerHTML = "";
+function clearMatchResults(){
     existingProductResults = [];
+    document.getElementById("matchPanel").classList.remove("open");
+    document.getElementById("matchPanel").innerHTML =
+    "<div class='empty-state'>Start typing in the description box to find existing products.</div>";
+    updateMatchToggleText();
 }
 
 function saveProduct(){
@@ -623,16 +662,19 @@ function saveProduct(){
 
     if(!description){
         alert("Enter description");
+        document.getElementById("description").focus();
         return;
     }
 
     if(!location){
         alert("Select a box/location");
+        document.getElementById("location").focus();
         return;
     }
 
     if(addToPrintJob && !printJobId){
         alert("Select a print job or create one first");
+        document.getElementById("printJob").focus();
         return;
     }
 
@@ -686,11 +728,11 @@ function saveProduct(){
 
         document.getElementById("description").value = "";
         document.getElementById("qty").value = "1";
-        document.getElementById("productSearch").value = "";
-        document.getElementById("searchResults").innerHTML = "";
-        existingProductResults = [];
+        clearMatchResults();
 
-        document.getElementById("description").focus();
+        setTimeout(function(){
+            document.getElementById("description").focus();
+        }, 100);
     })
     .catch(error=>{
         hideLoading();
@@ -699,11 +741,35 @@ function saveProduct(){
     });
 }
 
-document.getElementById("productSearch").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        searchExistingProduct();
+function adjustQty(direction){
+    const qtyInput = document.getElementById("qty");
+    let qty = Number(qtyInput.value || 1);
+
+    if(direction === "up"){
+        qty++;
     }
+
+    if(direction === "down"){
+        qty = Math.max(1, qty - 1);
+    }
+
+    qtyInput.value = qty;
+}
+
+document.addEventListener("keydown",function(e){
+    if(e.key === "ArrowUp"){
+        e.preventDefault();
+        adjustQty("up");
+    }
+
+    if(e.key === "ArrowDown"){
+        e.preventDefault();
+        adjustQty("down");
+    }
+});
+
+document.getElementById("description").addEventListener("input",function(){
+    searchExistingProductsLive();
 });
 
 document.getElementById("description").addEventListener("keydown",function(e){
@@ -733,35 +799,13 @@ document.getElementById("newPrintJobName").addEventListener("keydown",function(e
         createPrintJob();
     }
 });
-    function adjustQty(direction){
-    const qtyInput = document.getElementById("qty");
-    let qty = Number(qtyInput.value || 1);
-
-    if(direction === "up"){
-        qty++;
-    }
-
-    if(direction === "down"){
-        qty = Math.max(1, qty - 1);
-    }
-
-    qtyInput.value = qty;
-}
-
-document.addEventListener("keydown",function(e){
-    if(e.key === "ArrowUp"){
-        e.preventDefault();
-        adjustQty("up");
-    }
-
-    if(e.key === "ArrowDown"){
-        e.preventDefault();
-        adjustQty("down");
-    }
-});
 
 loadBoxes();
 loadPrintJobs();
+
+setTimeout(function(){
+    document.getElementById("description").focus();
+}, 300);
 </script>
 
 </body>
