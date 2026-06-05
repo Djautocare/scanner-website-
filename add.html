@@ -690,7 +690,7 @@ function saveProduct(){
         document.getElementById("searchResults").innerHTML = "";
         existingProductResults = [];
 
-        document.getElementById("productSearch").focus();
+        document.getElementById("description").focus();
     })
     .catch(error=>{
         hideLoading();
@@ -731,6 +731,32 @@ document.getElementById("newPrintJobName").addEventListener("keydown",function(e
     if(e.key === "Enter"){
         e.preventDefault();
         createPrintJob();
+    }
+});
+    function adjustQty(direction){
+    const qtyInput = document.getElementById("qty");
+    let qty = Number(qtyInput.value || 1);
+
+    if(direction === "up"){
+        qty++;
+    }
+
+    if(direction === "down"){
+        qty = Math.max(1, qty - 1);
+    }
+
+    qtyInput.value = qty;
+}
+
+document.addEventListener("keydown",function(e){
+    if(e.key === "ArrowUp"){
+        e.preventDefault();
+        adjustQty("up");
+    }
+
+    if(e.key === "ArrowDown"){
+        e.preventDefault();
+        adjustQty("down");
     }
 });
 
