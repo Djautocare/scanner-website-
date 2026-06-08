@@ -249,6 +249,68 @@ button{
     text-align:center;
 }
 
+.live-results{
+    margin-top:10px;
+}
+
+.live-result-button{
+    background:linear-gradient(145deg, #242424, #191919);
+    text-align:left;
+    border:1px solid rgba(0,123,255,0.24);
+    margin:8px 0;
+}
+
+.selected-bundle-box{
+    background:#111;
+    border:1px solid rgba(40,167,69,0.28);
+    border-radius:14px;
+    padding:12px;
+    margin:12px 0;
+}
+
+.selected-bundle-title{
+    font-weight:bold;
+    color:#7CFF9B;
+    margin-bottom:8px;
+}
+
+.selected-bundle-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    background:#1d1d1d;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:12px;
+    padding:10px;
+    margin:8px 0;
+}
+
+.selected-bundle-item span{
+    font-size:14px;
+}
+
+.remove-selected-button{
+    width:auto;
+    padding:8px 10px;
+    margin:0;
+    border-radius:10px;
+    background:linear-gradient(135deg, #dc3545, #a92735);
+    font-size:13px;
+}
+
+.clear-bundle-button{
+    background:linear-gradient(135deg, #555, #333);
+    border:1px solid rgba(255,255,255,0.10);
+}
+
+.helper-text{
+    color:#aaa;
+    font-size:13px;
+    margin:4px 0 10px 0;
+    line-height:1.35;
+}
+
 /* Loading overlay */
 #loadingOverlay{
     display:none;
@@ -316,7 +378,10 @@ button{
 <div class="form-card">
 
 <div class="input-label">Search or Barcode</div>
-<input type="text" id="query" placeholder="Search keywords or scan barcode">
+<input type="text" id="query" placeholder="Type to find items, then tap to add to bundle">
+<p class="helper-text">Type a word, tap an item to add it to your selected bundle, then press Search or Enter to pull them through together.</p>
+<div id="selectedBundleItems"></div>
+<div id="liveResults" class="live-results"></div>
 
 <div class="button-grid">
     <button class="scan-button" onclick="startScanner()">Start Scanner</button>
@@ -357,6 +422,9 @@ let codeReader = null;
 let controls = null;
 let torchOn = false;
 let searchResultsCache = [];
+let selectedBundleItems = [];
+let liveSearchTimer = null;
+let latestLiveSearch = 0;
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -364,6 +432,22 @@ function showLoading(){
 
 function hideLoading(){
     document.getElementById("loadingOverlay").style.display = "none";
+}
+
+function escapeHtml(value){
+    return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function escapeJs(value){
+    return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, "\\\"");
 }
 
 function beep(){
@@ -452,20 +536,16 @@ function startScanner(){
             }
 
             if(result){
-                const barcode = result
-                .getText()
-                .trim()
-                .toUpperCase();
+                const barcode = result.getText().trim().toUpperCase();
 
                 scanFeedback();
 
                 document.getElementById("query").value = barcode;
 
                 document.getElementById("results").innerHTML =
-                "<div class='result-card'>Barcode scanned: " + barcode + "</div>";
+                "<div class='result-card'>Barcode scanned: " + escapeHtml(barcode) + "</div>";
 
                 stopScanner();
-
                 searchStock();
             }
         }
@@ -475,11 +555,8 @@ function startScanner(){
     })
     .catch(function(error){
         console.error(error);
-
         alert("Could not start scanner. Check camera permissions.");
-
         scannerStarted = false;
-
         video.style.display = "none";
     });
 
@@ -495,49 +572,197 @@ function stopScanner(){
     const video = document.getElementById("reader");
 
     if(video && video.srcObject){
-        video.srcObject
-        .getTracks()
-        .forEach(track => track.stop());
-
+        video.srcObject.getTracks().forEach(track => track.stop());
         video.srcObject = null;
     }
 
     video.style.display = "none";
-
     scannerStarted = false;
     torchOn = false;
 }
 
-function searchStock(){
-    const query = document.getElementById("query")
-    .value
-    .trim();
+function runSearch(query, options = {}){
+    const showLoader = options.showLoader === true;
 
-    if(!query){
-        alert("Enter keywords or scan barcode");
-        return;
+    if(showLoader){
+        showLoading();
     }
 
-    document.getElementById("results").innerHTML = "";
-
-    showLoading();
-
-    fetch(API_URL, {
+    return fetch(API_URL, {
         method:"POST",
         body:JSON.stringify({
             action:"SEARCH",
             query:query
         })
     })
-
     .then(res => res.json())
+    .finally(() => {
+        if(showLoader){
+            hideLoading();
+        }
+    });
+}
 
+function setupAutoSearch(){
+    const input = document.getElementById("query");
+
+    input.addEventListener("input", function(){
+        clearTimeout(liveSearchTimer);
+        const query = input.value.trim();
+
+        if(!query){
+            document.getElementById("liveResults").innerHTML = "";
+            return;
+        }
+
+        liveSearchTimer = setTimeout(function(){
+            liveSearch(query);
+        }, 300);
+    });
+
+    input.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){
+            e.preventDefault();
+            searchStock();
+        }
+    });
+}
+
+function liveSearch(query){
+    const searchNumber = Date.now();
+    latestLiveSearch = searchNumber;
+
+    document.getElementById("liveResults").innerHTML =
+    "<div class='result-card'>Finding matches...</div>";
+
+    runSearch(query)
     .then(data => {
-        hideLoading();
+        if(searchNumber !== latestLiveSearch){
+            return;
+        }
 
         if(!data.success){
+            document.getElementById("liveResults").innerHTML = "";
+            return;
+        }
+
+        renderLiveResults(data.results || []);
+    })
+    .catch(error => {
+        console.error(error);
+        document.getElementById("liveResults").innerHTML = "";
+    });
+}
+
+function renderLiveResults(items){
+    if(items.length === 0){
+        document.getElementById("liveResults").innerHTML =
+        "<div class='result-card'>No live matches found.</div>";
+        return;
+    }
+
+    let html = "<div class='result-card'><h3>Tap to add to bundle</h3>";
+
+    items.forEach((item, index) => {
+        const alreadySelected = selectedBundleItems.some(selected => selected.barcode === item.barcode);
+
+        html += `
+            <button class="live-result-button" onclick="addBundleItemFromLive(${index})">
+                <strong>${escapeHtml(item.description)}</strong>
+                <br>
+                <small>Barcode: ${escapeHtml(item.barcode)}</small>
+                <br>
+                <small>Total Qty: ${escapeHtml(item.totalQty)}</small>
+                ${alreadySelected ? "<br><small>Already selected</small>" : ""}
+            </button>
+        `;
+    });
+
+    html += "</div>";
+
+    searchResultsCache = items;
+    document.getElementById("liveResults").innerHTML = html;
+}
+
+function addBundleItemFromLive(index){
+    const item = searchResultsCache[index];
+
+    if(!item){
+        return;
+    }
+
+    if(!selectedBundleItems.some(selected => selected.barcode === item.barcode)){
+        selectedBundleItems.push(item);
+    }
+
+    document.getElementById("query").value = "";
+    document.getElementById("liveResults").innerHTML = "";
+    renderSelectedBundleItems();
+}
+
+function renderSelectedBundleItems(){
+    const box = document.getElementById("selectedBundleItems");
+
+    if(selectedBundleItems.length === 0){
+        box.innerHTML = "";
+        return;
+    }
+
+    let html = `
+        <div class="selected-bundle-box">
+            <div class="selected-bundle-title">Selected bundle items (${selectedBundleItems.length})</div>
+    `;
+
+    selectedBundleItems.forEach((item, index) => {
+        html += `
+            <div class="selected-bundle-item">
+                <span>${escapeHtml(item.description)}<br><small>${escapeHtml(item.barcode)}</small></span>
+                <button class="remove-selected-button" onclick="removeBundleItem(${index})">Remove</button>
+            </div>
+        `;
+    });
+
+    html += `
+            <button class="clear-bundle-button" onclick="clearBundleItems()">Clear selected items</button>
+        </div>
+    `;
+
+    box.innerHTML = html;
+}
+
+function removeBundleItem(index){
+    selectedBundleItems.splice(index, 1);
+    renderSelectedBundleItems();
+}
+
+function clearBundleItems(){
+    selectedBundleItems = [];
+    renderSelectedBundleItems();
+    document.getElementById("results").innerHTML = "";
+}
+
+function searchStock(){
+    const query = document.getElementById("query").value.trim();
+
+    document.getElementById("liveResults").innerHTML = "";
+
+    if(selectedBundleItems.length > 0){
+        showBundleResults();
+        return;
+    }
+
+    if(!query){
+        alert("Enter keywords, scan barcode, or select bundle items first");
+        return;
+    }
+
+    document.getElementById("results").innerHTML = "";
+
+    runSearch(query, {showLoader:true})
+    .then(data => {
+        if(!data.success){
             document.getElementById("results").innerHTML =
-            "<div class='result-card'>" + (data.error || "Search failed") + "</div>";
+            "<div class='result-card'>" + escapeHtml(data.error || "Search failed") + "</div>";
             return;
         }
 
@@ -548,15 +773,10 @@ function searchStock(){
         }
 
         searchResultsCache = data.results;
-
         showItemChoices(data.results);
     })
-
     .catch(error => {
-        hideLoading();
-
         console.error(error);
-
         alert("Error searching stock");
     });
 }
@@ -577,40 +797,52 @@ function showItemChoices(items){
     items.forEach((item, index) => {
         html += `
             <button class="choice-button" onclick="showSelectedItem(${index})">
-                <strong>${item.description}</strong>
+                <strong>${escapeHtml(item.description)}</strong>
                 <br>
-                <small>Barcode: ${item.barcode}</small>
+                <small>Barcode: ${escapeHtml(item.barcode)}</small>
                 <br>
-                <small>Total Qty: ${item.totalQty}</small>
+                <small>Total Qty: ${escapeHtml(item.totalQty)}</small>
             </button>
         `;
     });
 
     html += "</div>";
+    document.getElementById("results").innerHTML = html;
+}
+
+function showBundleResults(){
+    let html = `
+        <div class="result-card">
+            <h3>Bundle items ready</h3>
+            <p class="helper-text">These are the selected items. Use the location buttons to remove/sell the exact item from the right box.</p>
+        </div>
+    `;
+
+    selectedBundleItems.forEach((item, index) => {
+        html += buildItemCard(item, index, true);
+    });
 
     document.getElementById("results").innerHTML = html;
 }
 
-function showSelectedItem(index){
-    const item = searchResultsCache[index];
-
+function buildItemCard(item, index, bundleMode = false){
     let html = `
         <div class="result-card">
             <div class="result-header">
-                <h3 class="result-title">${item.description}</h3>
-                <span class="badge">Qty ${item.totalQty}</span>
+                <h3 class="result-title">${escapeHtml(item.description)}</h3>
+                <span class="badge">Qty ${escapeHtml(item.totalQty)}</span>
             </div>
 
-            <div class="info-row"><strong>Barcode:</strong> ${item.barcode}</div>
+            <div class="info-row"><strong>Barcode:</strong> ${escapeHtml(item.barcode)}</div>
 
-            <button class="quick-sale-button" onclick="quickSale('${item.barcode}')">
+            <button class="quick-sale-button" onclick="quickSale('${escapeJs(item.barcode)}')">
                 Quick Sale
             </button>
 
             <h3>Locations</h3>
     `;
 
-    if(item.locations.length === 0){
+    if(!item.locations || item.locations.length === 0){
         html += `
             <div class="location">
                 No stock currently available
@@ -621,21 +853,35 @@ function showSelectedItem(index){
             html += `
                 <div class="location">
                     <div class="location-title">
-                        <span>${loc.location}</span>
-                        <span>Qty ${loc.qty}</span>
+                        <span>${escapeHtml(loc.location)}</span>
+                        <span>Qty ${escapeHtml(loc.qty)}</span>
                     </div>
 
-                    <button class="location-sale-button" onclick="quickSale('${item.barcode}', '${loc.location}')">
-                        Quick Sale From ${loc.location}
+                    <button class="location-sale-button" onclick="quickSale('${escapeJs(item.barcode)}', '${escapeJs(loc.location)}')">
+                        Quick Sale From ${escapeHtml(loc.location)}
                     </button>
                 </div>
             `;
         });
     }
 
-    html += `
-        </div>
+    if(bundleMode){
+        html += `
+            <button class="remove-selected-button" onclick="removeBundleItem(${index}); showBundleResults();">
+                Remove from bundle
+            </button>
+        `;
+    }
 
+    html += `</div>`;
+    return html;
+}
+
+function showSelectedItem(index){
+    const item = searchResultsCache[index];
+    let html = buildItemCard(item, index, false);
+
+    html += `
         <button class="back-button" onclick="showItemChoices(searchResultsCache)">
             Back to results
         </button>
@@ -643,6 +889,8 @@ function showSelectedItem(index){
 
     document.getElementById("results").innerHTML = html;
 }
+
+setupAutoSearch();
 </script>
 
 </body>
