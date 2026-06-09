@@ -232,16 +232,94 @@ button{
     margin:8px 0 0 0;
 }
 
-#reader{
-    max-width:320px;
+#scannerWrap{
+    position:relative;
+    max-width:380px;
     width:100%;
-    min-height:240px;
     margin:20px auto;
     display:none;
     background:#000;
-    border-radius:14px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,0.12);
     overflow:hidden;
-    border:1px solid rgba(255,255,255,0.10);
+    box-shadow:0 12px 35px rgba(0,0,0,0.35);
+}
+
+#reader{
+    width:100%;
+    min-height:280px;
+    background:#000;
+    display:block;
+    object-fit:cover;
+}
+
+.scan-overlay{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:
+        linear-gradient(to bottom,
+            rgba(0,0,0,0.58) 0%,
+            rgba(0,0,0,0.58) 31%,
+            rgba(0,0,0,0.08) 31%,
+            rgba(0,0,0,0.08) 69%,
+            rgba(0,0,0,0.58) 69%,
+            rgba(0,0,0,0.58) 100%);
+}
+
+.scan-box{
+    width:86%;
+    height:110px;
+    border:3px solid #00e676;
+    border-radius:16px;
+    position:relative;
+    box-shadow:0 0 28px rgba(0,230,118,0.50);
+}
+
+.scan-line{
+    position:absolute;
+    left:9%;
+    right:9%;
+    top:50%;
+    height:3px;
+    background:#ff3333;
+    border-radius:999px;
+    transform:translateY(-50%);
+    box-shadow:0 0 16px rgba(255,51,51,0.85);
+}
+
+.scan-help{
+    position:absolute;
+    left:12px;
+    right:12px;
+    bottom:12px;
+    text-align:center;
+    font-size:13px;
+    color:white;
+    background:rgba(0,0,0,0.55);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:999px;
+    padding:8px 10px;
+}
+
+.camera-tools{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin:0 0 12px 0;
+}
+
+.refocus-button{
+    background:linear-gradient(135deg, #28a745, #1f8b3a);
+    border:1px solid rgba(40,167,69,0.45);
+}
+
+.zoom-button{
+    background:linear-gradient(135deg, #6f42c1, #4c2a8a);
+    border:1px solid rgba(111,66,193,0.45);
 }
 
 #result{
@@ -388,7 +466,22 @@ button{
 
 <button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
 
-<video id="reader" playsinline></video>
+<div id="scannerWrap">
+    <video id="reader" playsinline></video>
+
+    <div class="scan-overlay">
+        <div class="scan-box">
+            <div class="scan-line"></div>
+        </div>
+    </div>
+
+    <div class="scan-help">Line the barcode across the red line. Scans add to the bundle list.</div>
+</div>
+
+<div class="camera-tools">
+    <button class="refocus-button" onclick="refocusCamera()">Refocus</button>
+    <button class="zoom-button" onclick="toggleZoom()" id="zoomButton">Zoom 1x</button>
+</div>
 
 <button class="remove-button" onclick="removeButtonPressed()">Remove Stock</button>
 
@@ -420,7 +513,11 @@ const API_URL =
 let scannerStarted = false;
 let codeReader = null;
 let controls = null;
+let activeTrack = null;
 let torchOn = false;
+let currentZoom = 1;
+let lastScannedBarcode = "";
+let lastScanTime = 0;
 let bundleBarcodes = [];
 let pendingBundleQueue = [];
 let pendingBundleItem = null;
@@ -502,18 +599,23 @@ function scanFeedback(){
 
 async function toggleTorch(){
     try{
-        const video = document.getElementById("reader");
+        activeTrack = getActiveTrack();
 
-        if(!video.srcObject){
+        if(!activeTrack){
             alert("Start scanner first");
             return;
         }
 
-        const track = video.srcObject.getVideoTracks()[0];
+        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+
+        if(!capabilities.torch){
+            alert("Flashlight not supported on this device/browser");
+            return;
+        }
 
         torchOn = !torchOn;
 
-        await track.applyConstraints({
+        await activeTrack.applyConstraints({
             advanced:[{
                 torch: torchOn
             }]
@@ -523,16 +625,42 @@ async function toggleTorch(){
         torchOn ? "Flashlight on" : "Flashlight off";
 
     }catch(error){
+        torchOn = false;
         alert("Flashlight not supported on this device/browser");
     }
 }
 
-function startScanner(){
+function getActiveTrack(){
     const video = document.getElementById("reader");
 
-    video.style.display = "block";
+    if(video && video.srcObject){
+        const tracks = video.srcObject.getVideoTracks();
+        return tracks && tracks.length ? tracks[0] : null;
+    }
 
-    video.scrollIntoView({
+    return activeTrack || null;
+}
+
+function makeCodeReader(){
+    try{
+        if(window.ZXingBrowser && ZXingBrowser.DecodeHintType && ZXingBrowser.BarcodeFormat){
+            const hints = new Map();
+            hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [ZXingBrowser.BarcodeFormat.CODE_128]);
+            return new ZXingBrowser.BrowserMultiFormatReader(hints);
+        }
+    }catch(error){
+        console.log("Code 128 hint not available, using normal ZXing scanner");
+    }
+
+    return new ZXingBrowser.BrowserMultiFormatReader();
+}
+
+function startScanner(){
+    const scannerWrap = document.getElementById("scannerWrap");
+
+    scannerWrap.style.display = "block";
+
+    scannerWrap.scrollIntoView({
         block:"nearest",
         behavior:"instant"
     });
@@ -541,74 +669,208 @@ function startScanner(){
         return;
     }
 
-    codeReader =
-    new ZXingBrowser.BrowserMultiFormatReader();
+    codeReader = makeCodeReader();
 
-    codeReader.decodeFromVideoDevice(
-        null,
+    const constraints = {
+        audio:false,
+        video:{
+            facingMode:{ ideal:"environment" },
+            width:{ ideal:1920 },
+            height:{ ideal:1080 },
+            advanced:[
+                { focusMode:"continuous" },
+                { exposureMode:"continuous" }
+            ]
+        }
+    };
+
+    codeReader.decodeFromConstraints(
+        constraints,
         "reader",
         function(result, error, ctrl){
-
             if(ctrl){
                 controls = ctrl;
             }
 
             if(result){
                 const barcode = normaliseBarcode(result.getText());
+                const now = Date.now();
+
+                if(barcode === lastScannedBarcode && now - lastScanTime < 1400){
+                    return;
+                }
+
+                lastScannedBarcode = barcode;
+                lastScanTime = now;
 
                 scanFeedback();
 
                 document.getElementById("barcode").value = barcode;
+                addBundleBarcode(barcode, true);
 
-                if(bundleBarcodes.length > 0){
-                    addBundleBarcode(barcode);
-                    document.getElementById("result").innerText =
-                    barcode + " added to bundle list.";
-                }else{
-                    document.getElementById("result").innerText =
-                    "Scanned successfully. Add to bundle list or enter sale amount and press Remove Stock.";
-                }
-
-                stopScanner();
+                document.getElementById("result").innerText =
+                barcode + " scanned and added to bundle list. Keep scanning or press Remove Stock.";
             }
         }
     )
     .then(function(ctrl){
         controls = ctrl;
+        scannerStarted = true;
+
+        setTimeout(function(){
+            activeTrack = getActiveTrack();
+            improveCameraSettings();
+        }, 600);
     })
     .catch(function(error){
         console.error(error);
-
         alert("Could not start scanner. Check camera permissions.");
-
         scannerStarted = false;
-
-        video.style.display = "none";
+        activeTrack = null;
+        scannerWrap.style.display = "none";
     });
+}
 
-    scannerStarted = true;
+async function improveCameraSettings(){
+    try{
+        activeTrack = getActiveTrack();
+
+        if(!activeTrack){
+            return;
+        }
+
+        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+        const advanced = [];
+
+        if(capabilities.focusMode && capabilities.focusMode.includes("continuous")){
+            advanced.push({ focusMode:"continuous" });
+        }
+
+        if(capabilities.exposureMode && capabilities.exposureMode.includes("continuous")){
+            advanced.push({ exposureMode:"continuous" });
+        }
+
+        if(capabilities.zoom){
+            const targetZoom = Math.min(Math.max(currentZoom, capabilities.zoom.min || 1), capabilities.zoom.max || currentZoom);
+            advanced.push({ zoom:targetZoom });
+        }
+
+        if(advanced.length > 0){
+            await activeTrack.applyConstraints({ advanced:advanced });
+        }
+    }catch(error){
+        console.log("Camera settings not supported on this device");
+    }
+}
+
+async function refocusCamera(){
+    try{
+        activeTrack = getActiveTrack();
+
+        if(!activeTrack){
+            alert("Start scanner first");
+            return;
+        }
+
+        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+        const advanced = [];
+
+        if(capabilities.focusMode && capabilities.focusMode.includes("continuous")){
+            advanced.push({ focusMode:"continuous" });
+        }
+
+        if(capabilities.exposureMode && capabilities.exposureMode.includes("continuous")){
+            advanced.push({ exposureMode:"continuous" });
+        }
+
+        if(capabilities.zoom){
+            const pulseZoom = Math.min((currentZoom || 1) + 0.1, capabilities.zoom.max || ((currentZoom || 1) + 0.1));
+            await activeTrack.applyConstraints({ advanced:[{ zoom:pulseZoom }] });
+            await new Promise(resolve => setTimeout(resolve, 180));
+            advanced.push({ zoom:currentZoom });
+        }
+
+        if(advanced.length > 0){
+            await activeTrack.applyConstraints({ advanced:advanced });
+        }
+
+        document.getElementById("result").innerText =
+        "Refocus requested. Hold the label steady for a second.";
+
+    }catch(error){
+        console.error(error);
+        document.getElementById("result").innerText =
+        "Refocus is not supported on this device, but the scanner is still running.";
+    }
+}
+
+async function toggleZoom(){
+    try{
+        activeTrack = getActiveTrack();
+
+        if(!activeTrack){
+            alert("Start scanner first");
+            return;
+        }
+
+        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+
+        if(!capabilities.zoom){
+            alert("Camera zoom is not supported on this device/browser");
+            return;
+        }
+
+        const minZoom = capabilities.zoom.min || 1;
+        const maxZoom = capabilities.zoom.max || 1;
+        const wantedZoom = currentZoom > 1 ? 1 : 2;
+        const nextZoom = Math.min(Math.max(wantedZoom, minZoom), maxZoom);
+
+        await activeTrack.applyConstraints({
+            advanced:[{
+                zoom:nextZoom
+            }]
+        });
+
+        currentZoom = nextZoom;
+
+        document.getElementById("zoomButton").innerText =
+        currentZoom > 1 ? "Zoom " + currentZoom.toFixed(1) + "x" : "Zoom 1x";
+
+        document.getElementById("result").innerText =
+        "Camera zoom set to " + currentZoom.toFixed(1) + "x";
+
+    }catch(error){
+        console.error(error);
+        alert("Could not change zoom on this device/browser");
+    }
 }
 
 function stopScanner(){
+    const scannerWrap = document.getElementById("scannerWrap");
+    const video = document.getElementById("reader");
+
     if(controls){
         controls.stop();
         controls = null;
     }
 
-    const video = document.getElementById("reader");
-
     if(video && video.srcObject){
-        video.srcObject
-        .getTracks()
-        .forEach(track => track.stop());
-
+        video.srcObject.getTracks().forEach(track => track.stop());
         video.srcObject = null;
     }
 
-    video.style.display = "none";
-
+    scannerWrap.style.display = "none";
     scannerStarted = false;
+    activeTrack = null;
     torchOn = false;
+    currentZoom = 1;
+    lastScannedBarcode = "";
+    lastScanTime = 0;
+
+    const zoomButton = document.getElementById("zoomButton");
+    if(zoomButton){
+        zoomButton.innerText = "Zoom 1x";
+    }
 }
 
 function addBundleBarcodeFromInput(){
@@ -622,7 +884,7 @@ function addBundleBarcodeFromInput(){
     addBundleBarcode(barcode);
 }
 
-function addBundleBarcode(barcode){
+function addBundleBarcode(barcode, fromScanner = false){
     barcode = normaliseBarcode(barcode);
 
     if(!barcode){
@@ -631,10 +893,14 @@ function addBundleBarcode(barcode){
 
     bundleBarcodes.push(barcode);
 
-    document.getElementById("barcode").value = "";
-    document.getElementById("locationChoices").innerHTML = "";
-    document.getElementById("result").innerText = barcode + " added to bundle list.";
+    if(fromScanner){
+        document.getElementById("barcode").value = "";
+    }else{
+        document.getElementById("barcode").value = "";
+        document.getElementById("result").innerText = barcode + " added to bundle list.";
+    }
 
+    document.getElementById("locationChoices").innerHTML = "";
     renderBundleList();
 }
 
