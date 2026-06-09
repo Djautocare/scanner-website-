@@ -640,21 +640,28 @@ function startScanner(){
         return;
     }
 
-    html5QrCode = new Html5Qrcode("reader");
+    html5QrCode = new Html5Qrcode("reader", {
+        formatsToSupport: [
+            Html5QrcodeSupportedFormats.CODE_128
+        ]
+    });
 
     const config = {
-        fps: 14,
+        fps: 20,
         qrbox: function(viewfinderWidth, viewfinderHeight){
-            const width = Math.floor(Math.min(viewfinderWidth * 0.86, 320));
-            const height = Math.floor(Math.min(viewfinderHeight * 0.34, 120));
+            const width = Math.floor(Math.min(viewfinderWidth * 0.90, 340));
+            const height = Math.floor(Math.min(viewfinderHeight * 0.24, 90));
             return {
                 width: width,
                 height: height
             };
         },
-        aspectRatio: 1.333,
+        aspectRatio: 1.777,
         disableFlip: true,
         rememberLastUsedCamera: true,
+        experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+        },
         supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
     };
 
