@@ -11,7 +11,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 
 <title>Scanner Search</title>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
 
 <style>
 html{
@@ -231,6 +231,8 @@ button{
     width:100%;
     min-height:280px;
     background:#000;
+    display:block;
+    object-fit:cover;
 }
 
 .scan-overlay{
@@ -283,6 +285,23 @@ button{
     border:1px solid rgba(255,255,255,0.12);
     border-radius:999px;
     padding:8px 10px;
+}
+
+.camera-tools{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin:0 0 12px 0;
+}
+
+.refocus-button{
+    background:linear-gradient(135deg, #28a745, #1f8b3a);
+    border:1px solid rgba(40,167,69,0.45);
+}
+
+.zoom-button{
+    background:linear-gradient(135deg, #6f42c1, #4c2a8a);
+    border:1px solid rgba(111,66,193,0.45);
 }
 
 #results{
@@ -450,6 +469,10 @@ button{
         grid-template-columns:1fr;
     }
 
+    .camera-tools{
+        grid-template-columns:1fr;
+    }
+
     .result-header{
         flex-direction:column;
     }
@@ -482,7 +505,7 @@ button{
 <button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
 
 <div id="scannerWrap">
-    <div id="reader"></div>
+    <video id="reader" playsinline muted></video>
 
     <div class="scan-overlay">
         <div class="scan-box">
@@ -491,6 +514,11 @@ button{
     </div>
 
     <div class="scan-help">Line the barcode across the red line</div>
+</div>
+
+<div class="camera-tools">
+    <button class="refocus-button" onclick="refocusCamera()">Refocus Camera</button>
+    <button class="zoom-button" onclick="toggleZoom()" id="zoomButton">Zoom 1x</button>
 </div>
 
 <button class="search-button" onclick="searchStock()">Search</button>
@@ -519,9 +547,11 @@ const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 let scannerStarted = false;
-let html5QrCode = null;
+let codeReader = null;
+let controls = null;
 let activeTrack = null;
 let torchOn = false;
+let currentZoom = 1;
 let searchResultsCache = [];
 let selectedBundleItems = [];
 let liveSearchTimer = null;
@@ -604,8 +634,18 @@ function scanFeedback(){
 
 async function toggleTorch(){
     try{
+        const video = document.getElementById("reader");
+        activeTrack = getActiveTrack();
+
         if(!activeTrack){
             alert("Start scanner first");
+            return;
+        }
+
+        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+
+        if(!capabilities.torch){
+            alert("Flashlight not supported on this device/browser");
             return;
         }
 
@@ -626,8 +666,34 @@ async function toggleTorch(){
     }
 }
 
+function getActiveTrack(){
+    const video = document.getElementById("reader");
+
+    if(video && video.srcObject){
+        const tracks = video.srcObject.getVideoTracks();
+        return tracks && tracks.length ? tracks[0] : null;
+    }
+
+    return activeTrack || null;
+}
+
+function makeCodeReader(){
+    try{
+        if(window.ZXingBrowser && ZXingBrowser.DecodeHintType && ZXingBrowser.BarcodeFormat){
+            const hints = new Map();
+            hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [ZXingBrowser.BarcodeFormat.CODE_128]);
+            return new ZXingBrowser.BrowserMultiFormatReader(hints);
+        }
+    }catch(error){
+        console.log("Code 128 hint not available, using normal ZXing scanner");
+    }
+
+    return new ZXingBrowser.BrowserMultiFormatReader();
+}
+
 function startScanner(){
     const scannerWrap = document.getElementById("scannerWrap");
+    const video = document.getElementById("reader");
 
     scannerWrap.style.display = "block";
 
@@ -640,74 +706,52 @@ function startScanner(){
         return;
     }
 
-    html5QrCode = new Html5Qrcode("reader", {
-        formatsToSupport: [
-            Html5QrcodeSupportedFormats.CODE_128
-        ]
-    });
+    codeReader = makeCodeReader();
 
-    const config = {
-        fps: 10,
-        qrbox: function(viewfinderWidth, viewfinderHeight){
-            const width = Math.floor(Math.min(viewfinderWidth * 0.90, 340));
-            const height = Math.floor(Math.min(viewfinderHeight * 0.24, 90));
-            return {
-                width: width,
-                height: height
-            };
-        },
-        aspectRatio: 1.777,
-        disableFlip: true,
-        rememberLastUsedCamera: true,
-        experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
-        },
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+    const constraints = {
+        audio:false,
+        video:{
+            facingMode:{ ideal:"environment" },
+            width:{ ideal:1920 },
+            height:{ ideal:1080 },
+            advanced:[
+                { focusMode:"continuous" },
+                { exposureMode:"continuous" }
+            ]
+        }
     };
 
-    html5QrCode.start(
-        {
-            facingMode: "environment"
-        },
-        config,
-        function(decodedText){
-            const barcode = normaliseBarcodeShortcut(decodedText);
+    codeReader.decodeFromConstraints(
+        constraints,
+        "reader",
+        function(result, error, ctrl){
+            if(ctrl){
+                controls = ctrl;
+            }
 
-            scanFeedback();
+            if(result){
+                const barcode = normaliseBarcodeShortcut(result.getText());
 
-            document.getElementById("query").value = barcode;
+                scanFeedback();
 
-            document.getElementById("results").innerHTML =
-            "<div class='result-card'>Barcode scanned: " + escapeHtml(barcode) + "</div>";
+                document.getElementById("query").value = barcode;
 
-            stopScanner();
-            searchStock();
-        },
-        function(errorMessage){
-            // Ignore scan misses while camera is running.
+                document.getElementById("results").innerHTML =
+                "<div class='result-card'>Barcode scanned: " + escapeHtml(barcode) + "</div>";
+
+                stopScanner();
+                searchStock();
+            }
         }
     )
-    .then(function(){
+    .then(function(ctrl){
+        controls = ctrl;
         scannerStarted = true;
 
         setTimeout(function(){
-            const video = document.querySelector("#reader video");
-
-            if(video && video.srcObject){
-                activeTrack = video.srcObject.getVideoTracks()[0] || null;
-
-                if(activeTrack){
-                    activeTrack.applyConstraints({
-                        advanced:[
-                            { focusMode:"continuous" },
-                            { exposureMode:"continuous" }
-                        ]
-                    }).catch(function(){
-                        // Some phones/browsers do not allow focus constraints.
-                    });
-                }
-            }
-        }, 500);
+            activeTrack = getActiveTrack();
+            improveCameraSettings();
+        }, 600);
     })
     .catch(function(error){
         console.error(error);
@@ -718,23 +762,144 @@ function startScanner(){
     });
 }
 
+async function improveCameraSettings(){
+    try{
+        activeTrack = getActiveTrack();
+
+        if(!activeTrack){
+            return;
+        }
+
+        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+        const advanced = [];
+
+        if(capabilities.focusMode && capabilities.focusMode.includes("continuous")){
+            advanced.push({ focusMode:"continuous" });
+        }
+
+        if(capabilities.exposureMode && capabilities.exposureMode.includes("continuous")){
+            advanced.push({ exposureMode:"continuous" });
+        }
+
+        if(capabilities.zoom){
+            const targetZoom = Math.min(Math.max(currentZoom, capabilities.zoom.min || 1), capabilities.zoom.max || currentZoom);
+            advanced.push({ zoom:targetZoom });
+        }
+
+        if(advanced.length > 0){
+            await activeTrack.applyConstraints({ advanced:advanced });
+        }
+    }catch(error){
+        console.log("Camera settings not supported on this device");
+    }
+}
+
+async function refocusCamera(){
+    try{
+        activeTrack = getActiveTrack();
+
+        if(!activeTrack){
+            alert("Start scanner first");
+            return;
+        }
+
+        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+        const advanced = [];
+
+        if(capabilities.focusMode && capabilities.focusMode.includes("continuous")){
+            advanced.push({ focusMode:"continuous" });
+        }
+
+        if(capabilities.exposureMode && capabilities.exposureMode.includes("continuous")){
+            advanced.push({ exposureMode:"continuous" });
+        }
+
+        if(capabilities.zoom){
+            const pulseZoom = Math.min((currentZoom || 1) + 0.1, capabilities.zoom.max || ((currentZoom || 1) + 0.1));
+            await activeTrack.applyConstraints({ advanced:[{ zoom:pulseZoom }] });
+            await new Promise(resolve => setTimeout(resolve, 180));
+            advanced.push({ zoom:currentZoom });
+        }
+
+        if(advanced.length > 0){
+            await activeTrack.applyConstraints({ advanced:advanced });
+        }
+
+        document.getElementById("results").innerHTML =
+        "<div class='result-card'>Refocus requested. Hold the label steady for a second.</div>";
+
+    }catch(error){
+        console.error(error);
+        document.getElementById("results").innerHTML =
+        "<div class='result-card'>Refocus is not supported on this device, but the scanner is still running.</div>";
+    }
+}
+
+async function toggleZoom(){
+    try{
+        activeTrack = getActiveTrack();
+
+        if(!activeTrack){
+            alert("Start scanner first");
+            return;
+        }
+
+        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+
+        if(!capabilities.zoom){
+            alert("Camera zoom is not supported on this device/browser");
+            return;
+        }
+
+        const minZoom = capabilities.zoom.min || 1;
+        const maxZoom = capabilities.zoom.max || 1;
+        const wantedZoom = currentZoom > 1 ? 1 : 2;
+        const nextZoom = Math.min(Math.max(wantedZoom, minZoom), maxZoom);
+
+        await activeTrack.applyConstraints({
+            advanced:[{
+                zoom:nextZoom
+            }]
+        });
+
+        currentZoom = nextZoom;
+
+        document.getElementById("zoomButton").innerText =
+        currentZoom > 1 ? "Zoom " + currentZoom.toFixed(1) + "x" : "Zoom 1x";
+
+        document.getElementById("results").innerHTML =
+        "<div class='result-card'>Camera zoom set to " + currentZoom.toFixed(1) + "x</div>";
+
+    }catch(error){
+        console.error(error);
+        alert("Could not change zoom on this device/browser");
+    }
+}
+
 function stopScanner(){
     const scannerWrap = document.getElementById("scannerWrap");
+    const video = document.getElementById("reader");
 
-    if(html5QrCode && scannerStarted){
-        html5QrCode.stop()
-        .then(function(){
-            return html5QrCode.clear();
-        })
-        .catch(function(error){
-            console.error(error);
-        });
+    if(controls){
+        controls.stop();
+        controls = null;
+    }
+
+    if(video && video.srcObject){
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
     }
 
     scannerWrap.style.display = "none";
     scannerStarted = false;
     activeTrack = null;
     torchOn = false;
+    currentZoom = 1;
+
+    const zoomButton = document.getElementById("zoomButton");
+    if(zoomButton){
+        zoomButton.innerText = "Zoom 1x";
+    }
 }
 
 function runSearch(query, options = {}){
