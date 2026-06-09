@@ -11,7 +11,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 
 <title>Scanner Search</title>
 
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
 html{
@@ -214,16 +214,75 @@ button{
     font-weight:bold;
 }
 
-#reader{
-    max-width:320px;
+#scannerWrap{
+    position:relative;
+    max-width:380px;
     width:100%;
-    min-height:240px;
     margin:20px auto;
     display:none;
     background:#000;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,0.10);
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,0.12);
     overflow:hidden;
+    box-shadow:0 12px 35px rgba(0,0,0,0.35);
+}
+
+#reader{
+    width:100%;
+    min-height:280px;
+    background:#000;
+}
+
+.scan-overlay{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:
+        linear-gradient(to bottom,
+            rgba(0,0,0,0.58) 0%,
+            rgba(0,0,0,0.58) 31%,
+            rgba(0,0,0,0.08) 31%,
+            rgba(0,0,0,0.08) 69%,
+            rgba(0,0,0,0.58) 69%,
+            rgba(0,0,0,0.58) 100%);
+}
+
+.scan-box{
+    width:86%;
+    height:110px;
+    border:3px solid #00e676;
+    border-radius:16px;
+    position:relative;
+    box-shadow:0 0 28px rgba(0,230,118,0.50);
+}
+
+.scan-line{
+    position:absolute;
+    left:9%;
+    right:9%;
+    top:50%;
+    height:3px;
+    background:#ff3333;
+    border-radius:999px;
+    transform:translateY(-50%);
+    box-shadow:0 0 16px rgba(255,51,51,0.85);
+}
+
+.scan-help{
+    position:absolute;
+    left:12px;
+    right:12px;
+    bottom:12px;
+    text-align:center;
+    font-size:13px;
+    color:white;
+    background:rgba(0,0,0,0.55);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:999px;
+    padding:8px 10px;
 }
 
 #results{
@@ -422,7 +481,17 @@ button{
 
 <button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
 
-<video id="reader" playsinline></video>
+<div id="scannerWrap">
+    <div id="reader"></div>
+
+    <div class="scan-overlay">
+        <div class="scan-box">
+            <div class="scan-line"></div>
+        </div>
+    </div>
+
+    <div class="scan-help">Line the barcode across the red line</div>
+</div>
 
 <button class="search-button" onclick="searchStock()">Search</button>
 
@@ -450,8 +519,8 @@ const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 let scannerStarted = false;
-let codeReader = null;
-let controls = null;
+let html5QrCode = null;
+let activeTrack = null;
 let torchOn = false;
 let searchResultsCache = [];
 let selectedBundleItems = [];
@@ -480,6 +549,24 @@ function escapeJs(value){
     .replace(/\\/g, "\\\\")
     .replace(/'/g, "\\'")
     .replace(/"/g, "\\\"");
+}
+
+function normaliseBarcodeShortcut(value){
+    const text = String(value || "").trim().toUpperCase();
+
+    if(!text){
+        return "";
+    }
+
+    if(/^ITEM-\d+$/.test(text)){
+        return text;
+    }
+
+    if(/^\d+$/.test(text)){
+        return "ITEM-" + text;
+    }
+
+    return text;
 }
 
 function beep(){
@@ -517,18 +604,14 @@ function scanFeedback(){
 
 async function toggleTorch(){
     try{
-        const video = document.getElementById("reader");
-
-        if(!video.srcObject){
+        if(!activeTrack){
             alert("Start scanner first");
             return;
         }
 
-        const track = video.srcObject.getVideoTracks()[0];
-
         torchOn = !torchOn;
 
-        await track.applyConstraints({
+        await activeTrack.applyConstraints({
             advanced:[{
                 torch: torchOn
             }]
@@ -538,16 +621,17 @@ async function toggleTorch(){
         torchOn ? "<div class='result-card'>Flashlight on</div>" : "<div class='result-card'>Flashlight off</div>";
 
     }catch(error){
+        torchOn = false;
         alert("Flashlight not supported on this device/browser");
     }
 }
 
 function startScanner(){
-    const video = document.getElementById("reader");
+    const scannerWrap = document.getElementById("scannerWrap");
 
-    video.style.display = "block";
+    scannerWrap.style.display = "block";
 
-    video.scrollIntoView({
+    scannerWrap.scrollIntoView({
         block:"nearest",
         behavior:"instant"
     });
@@ -556,60 +640,93 @@ function startScanner(){
         return;
     }
 
-    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+    html5QrCode = new Html5Qrcode("reader");
 
-    codeReader.decodeFromVideoDevice(
-        null,
-        "reader",
-        function(result, error, ctrl){
+    const config = {
+        fps: 14,
+        qrbox: function(viewfinderWidth, viewfinderHeight){
+            const width = Math.floor(Math.min(viewfinderWidth * 0.86, 320));
+            const height = Math.floor(Math.min(viewfinderHeight * 0.34, 120));
+            return {
+                width: width,
+                height: height
+            };
+        },
+        aspectRatio: 1.333,
+        disableFlip: true,
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+    };
 
-            if(ctrl){
-                controls = ctrl;
-            }
+    html5QrCode.start(
+        {
+            facingMode: "environment"
+        },
+        config,
+        function(decodedText){
+            const barcode = normaliseBarcodeShortcut(decodedText);
 
-            if(result){
-                const barcode = result.getText().trim().toUpperCase();
+            scanFeedback();
 
-                scanFeedback();
+            document.getElementById("query").value = barcode;
 
-                document.getElementById("query").value = barcode;
+            document.getElementById("results").innerHTML =
+            "<div class='result-card'>Barcode scanned: " + escapeHtml(barcode) + "</div>";
 
-                document.getElementById("results").innerHTML =
-                "<div class='result-card'>Barcode scanned: " + escapeHtml(barcode) + "</div>";
-
-                stopScanner();
-                searchStock();
-            }
+            stopScanner();
+            searchStock();
+        },
+        function(errorMessage){
+            // Ignore scan misses while camera is running.
         }
     )
-    .then(function(ctrl){
-        controls = ctrl;
+    .then(function(){
+        scannerStarted = true;
+
+        setTimeout(function(){
+            const video = document.querySelector("#reader video");
+
+            if(video && video.srcObject){
+                activeTrack = video.srcObject.getVideoTracks()[0] || null;
+
+                if(activeTrack){
+                    activeTrack.applyConstraints({
+                        advanced:[
+                            { focusMode:"continuous" },
+                            { exposureMode:"continuous" }
+                        ]
+                    }).catch(function(){
+                        // Some phones/browsers do not allow focus constraints.
+                    });
+                }
+            }
+        }, 500);
     })
     .catch(function(error){
         console.error(error);
         alert("Could not start scanner. Check camera permissions.");
         scannerStarted = false;
-        video.style.display = "none";
+        activeTrack = null;
+        scannerWrap.style.display = "none";
     });
-
-    scannerStarted = true;
 }
 
 function stopScanner(){
-    if(controls){
-        controls.stop();
-        controls = null;
+    const scannerWrap = document.getElementById("scannerWrap");
+
+    if(html5QrCode && scannerStarted){
+        html5QrCode.stop()
+        .then(function(){
+            return html5QrCode.clear();
+        })
+        .catch(function(error){
+            console.error(error);
+        });
     }
 
-    const video = document.getElementById("reader");
-
-    if(video && video.srcObject){
-        video.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null;
-    }
-
-    video.style.display = "none";
+    scannerWrap.style.display = "none";
     scannerStarted = false;
+    activeTrack = null;
     torchOn = false;
 }
 
@@ -640,7 +757,8 @@ function setupAutoSearch(){
 
     input.addEventListener("input", function(){
         clearTimeout(liveSearchTimer);
-        const query = input.value.trim();
+        let query = input.value.trim();
+        const liveQuery = normaliseBarcodeShortcut(query);
 
         if(!query){
             document.getElementById("liveResults").innerHTML = "";
@@ -648,7 +766,7 @@ function setupAutoSearch(){
         }
 
         liveSearchTimer = setTimeout(function(){
-            liveSearch(query);
+            liveSearch(liveQuery);
         }, 300);
     });
 
@@ -774,7 +892,9 @@ function clearBundleItems(){
 }
 
 function searchStock(){
-    const query = document.getElementById("query").value.trim();
+    let query = document.getElementById("query").value.trim();
+    query = normaliseBarcodeShortcut(query);
+    document.getElementById("query").value = query;
 
     document.getElementById("liveResults").innerHTML = "";
 
