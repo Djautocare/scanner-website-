@@ -311,6 +311,38 @@ button{
     line-height:1.35;
 }
 
+.box-group-card{
+    background:linear-gradient(145deg, #242424, #191919);
+    border:1px solid rgba(40,167,69,0.24);
+    border-radius:16px;
+    padding:18px;
+    margin:18px 0;
+    text-align:left;
+}
+
+.box-group-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    font-size:20px;
+    font-weight:bold;
+    color:#7CFF9B;
+    margin-bottom:12px;
+}
+
+.box-group-line{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:12px;
+    padding:12px;
+    margin:8px 0;
+}
+
+.box-group-line small{
+    color:#bbb;
+}
+
 /* Loading overlay */
 #loadingOverlay{
     display:none;
@@ -811,16 +843,106 @@ function showItemChoices(items){
 }
 
 function showBundleResults(){
+    const groupedByBox = {};
+    const noLocationItems = [];
+
+    selectedBundleItems.forEach((item, index) => {
+        if(!item.locations || item.locations.length === 0){
+            noLocationItems.push({item:item, index:index});
+            return;
+        }
+
+        item.locations.forEach(loc => {
+            const boxName = loc.location || "Unknown Box";
+
+            if(!groupedByBox[boxName]){
+                groupedByBox[boxName] = [];
+            }
+
+            groupedByBox[boxName].push({
+                item:item,
+                index:index,
+                location:boxName,
+                qty:loc.qty
+            });
+        });
+    });
+
+    const boxNames = Object.keys(groupedByBox).sort((a, b) => {
+        const numA = Number(String(a).match(/\d+/)?.[0] || 0);
+        const numB = Number(String(b).match(/\d+/)?.[0] || 0);
+
+        if(numA && numB && numA !== numB){
+            return numA - numB;
+        }
+
+        return String(a).localeCompare(String(b), undefined, {numeric:true});
+    });
+
     let html = `
         <div class="result-card">
-            <h3>Bundle items ready</h3>
-            <p class="helper-text">These are the selected items. Use the location buttons to remove/sell the exact item from the right box.</p>
+            <h3>Bundle items grouped by box</h3>
+            <p class="helper-text">Pick from the boxes shown below. Each line shows the barcode, item name, and the quick sale button for that exact box.</p>
         </div>
     `;
 
-    selectedBundleItems.forEach((item, index) => {
-        html += buildItemCard(item, index, true);
+    boxNames.forEach(boxName => {
+        const entries = groupedByBox[boxName];
+
+        html += `
+            <div class="box-group-card">
+                <div class="box-group-title">
+                    <span>${escapeHtml(boxName)}</span>
+                    <span class="badge">${entries.length} item${entries.length === 1 ? "" : "s"}</span>
+                </div>
+        `;
+
+        entries.forEach(entry => {
+            html += `
+                <div class="box-group-line">
+                    <strong>${escapeHtml(entry.item.barcode)}</strong> — ${escapeHtml(entry.item.description)}
+                    <br>
+                    <small>Qty in this box: ${escapeHtml(entry.qty)}</small>
+                    <button class="location-sale-button" onclick="quickSale('${escapeJs(entry.item.barcode)}', '${escapeJs(entry.location)}')">
+                        Quick Sale From ${escapeHtml(entry.location)}
+                    </button>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
     });
+
+    if(noLocationItems.length > 0){
+        html += `
+            <div class="box-group-card">
+                <div class="box-group-title">
+                    <span>No stock location found</span>
+                    <span class="badge">${noLocationItems.length}</span>
+                </div>
+        `;
+
+        noLocationItems.forEach(entry => {
+            html += `
+                <div class="box-group-line">
+                    <strong>${escapeHtml(entry.item.barcode)}</strong> — ${escapeHtml(entry.item.description)}
+                    <br>
+                    <small>No stock currently available.</small>
+                    <button class="remove-selected-button" onclick="removeBundleItem(${entry.index}); showBundleResults();">
+                        Remove from bundle
+                    </button>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+    }
+
+    html += `
+        <button class="back-button" onclick="renderSelectedBundleItems(); document.getElementById('results').innerHTML = '';">
+            Back to selected bundle list
+        </button>
+    `;
 
     document.getElementById("results").innerHTML = html;
 }
