@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d0d0d">
 
@@ -129,6 +129,16 @@ button{
     box-shadow:0 10px 30px rgba(220,53,69,0.18);
 }
 
+.add-button{
+    background:linear-gradient(135deg, #6f42c1, #56329b);
+    border:1px solid rgba(111,66,193,0.45);
+}
+
+.clear-button{
+    background:linear-gradient(135deg, #444, #222);
+    border:1px solid rgba(255,255,255,0.10);
+}
+
 .location-button{
     background:linear-gradient(135deg, #0275d8, #025aa5);
 }
@@ -160,6 +170,66 @@ button{
     color:#ccc;
     margin-top:8px;
     line-height:1.4;
+}
+
+.bundle-card{
+    background:#1b1b1b;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:14px;
+    margin:12px 0;
+}
+
+.bundle-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    font-weight:bold;
+    margin-bottom:8px;
+}
+
+.bundle-pill{
+    background:rgba(111,66,193,0.22);
+    border:1px solid rgba(111,66,193,0.40);
+    color:#d8c4ff;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:13px;
+    white-space:nowrap;
+}
+
+.bundle-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    background:#2a2a2a;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:12px;
+    padding:10px;
+    margin:8px 0;
+}
+
+.bundle-item span{
+    font-weight:bold;
+    word-break:break-word;
+}
+
+.small-remove{
+    width:auto;
+    min-width:90px;
+    margin:0;
+    padding:9px 11px;
+    background:linear-gradient(135deg, #dc3545, #a92735);
+    font-size:13px;
+}
+
+.split-preview{
+    color:#d8c4ff;
+    font-size:14px;
+    line-height:1.4;
+    margin:8px 0 0 0;
 }
 
 #reader{
@@ -215,7 +285,6 @@ button{
     text-align:center;
 }
 
-/* Loading overlay */
 #loadingOverlay{
     display:none;
     position:fixed;
@@ -273,27 +342,42 @@ button{
 <div class="panel">
 
 <h1>Remove Stock</h1>
-<p class="subtitle">Scan stock out, record the sale amount, and update your sales tracker</p>
+<p class="subtitle">Remove single items or build a Vinted-style bundle and split the total sale price</p>
 
 <div class="form-card">
 
 <div class="input-label">Barcode</div>
-<input type="text" id="barcode" placeholder="Scan or Enter Barcode">
+<input type="text" id="barcode" placeholder="Scan or enter barcode, e.g. 123 or ITEM-123">
+
+<div class="button-grid">
+    <button class="add-button" onclick="addBundleBarcodeFromInput()">Add to Bundle List</button>
+    <button class="clear-button" onclick="clearBundleList()">Clear Bundle List</button>
+</div>
+
+<div class="helper-text">
+    Tip: you can type just the number. For example, <strong>123</strong> becomes <strong>ITEM-123</strong> automatically. Press Enter to add it to the bundle list.
+</div>
+
+<div id="bundleBox" class="bundle-card" style="display:none;"></div>
 
 <div class="input-label">Quantity</div>
 <input type="number" id="qty" placeholder="Quantity" value="1" min="1">
+<div class="helper-text">
+    For bundles, each barcode in the list removes quantity 1. For a normal single item, use the quantity box as usual.
+</div>
 
 <div class="input-label">Sale Amount</div>
-<input type="number" id="saleAmount" placeholder="Sale amount £" step="0.01" min="0">
+<input type="number" id="saleAmount" placeholder="Sale amount £" step="0.01" min="0" oninput="renderBundleList()">
+<div id="splitPreview" class="split-preview"></div>
 
 <div class="toggle-box">
     <label>
         <input type="checkbox" id="oneSalesRow">
-        Bundle sale: only add one row to sales tracker
+        Single-item quantity bundle: only add one row to sales tracker
     </label>
     <div class="helper-text">
-        Unticked = qty 3 creates 3 sales rows.<br>
-        Ticked = qty 3 removes 3 stock but creates 1 sales row.
+        This only affects normal single-item removals with qty above 1.<br>
+        Bundle list removals always send each barcode as an individual sale row with the total split equally.
     </div>
 </div>
 
@@ -306,7 +390,7 @@ button{
 
 <video id="reader" playsinline></video>
 
-<button class="remove-button" onclick="removeStock(window.quickSaleLocation || '')">Remove Stock</button>
+<button class="remove-button" onclick="removeButtonPressed()">Remove Stock</button>
 
 <div id="locationChoices"></div>
 
@@ -337,6 +421,11 @@ let scannerStarted = false;
 let codeReader = null;
 let controls = null;
 let torchOn = false;
+let bundleBarcodes = [];
+let pendingBundleQueue = [];
+let pendingBundleItem = null;
+let pendingBundleEachAmount = 0;
+let completedBundleRemovals = [];
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -344,6 +433,32 @@ function showLoading(){
 
 function hideLoading(){
     document.getElementById("loadingOverlay").style.display = "none";
+}
+
+function normaliseBarcode(value){
+    let barcode = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+
+    if(!barcode){
+        return "";
+    }
+
+    if(/^\d+$/.test(barcode)){
+        return "ITEM-" + barcode;
+    }
+
+    if(/^ITEM\d+$/.test(barcode)){
+        return barcode.replace("ITEM", "ITEM-");
+    }
+
+    return barcode;
+}
+
+function formatMoney(amount){
+    const number = Number(amount || 0);
+    return number.toFixed(2);
 }
 
 function beep(){
@@ -439,18 +554,20 @@ function startScanner(){
             }
 
             if(result){
-                const barcode =
-                result
-                .getText()
-                .trim()
-                .toUpperCase();
+                const barcode = normaliseBarcode(result.getText());
 
                 scanFeedback();
 
                 document.getElementById("barcode").value = barcode;
 
-                document.getElementById("result").innerText =
-                "Scanned successfully. Enter sale amount if needed, then press Remove Stock.";
+                if(bundleBarcodes.length > 0){
+                    addBundleBarcode(barcode);
+                    document.getElementById("result").innerText =
+                    barcode + " added to bundle list.";
+                }else{
+                    document.getElementById("result").innerText =
+                    "Scanned successfully. Add to bundle list or enter sale amount and press Remove Stock.";
+                }
 
                 stopScanner();
             }
@@ -494,12 +611,105 @@ function stopScanner(){
     torchOn = false;
 }
 
+function addBundleBarcodeFromInput(){
+    const barcode = normaliseBarcode(document.getElementById("barcode").value);
+
+    if(!barcode){
+        alert("Enter or scan a barcode first");
+        return;
+    }
+
+    addBundleBarcode(barcode);
+}
+
+function addBundleBarcode(barcode){
+    barcode = normaliseBarcode(barcode);
+
+    if(!barcode){
+        return;
+    }
+
+    bundleBarcodes.push(barcode);
+
+    document.getElementById("barcode").value = "";
+    document.getElementById("locationChoices").innerHTML = "";
+    document.getElementById("result").innerText = barcode + " added to bundle list.";
+
+    renderBundleList();
+}
+
+function removeBundleBarcode(index){
+    bundleBarcodes.splice(index, 1);
+    renderBundleList();
+}
+
+function clearBundleList(){
+    bundleBarcodes = [];
+    pendingBundleQueue = [];
+    pendingBundleItem = null;
+    completedBundleRemovals = [];
+    document.getElementById("locationChoices").innerHTML = "";
+    document.getElementById("result").innerText = "Bundle list cleared.";
+    renderBundleList();
+}
+
+function renderBundleList(){
+    const bundleBox = document.getElementById("bundleBox");
+    const splitPreview = document.getElementById("splitPreview");
+
+    if(bundleBarcodes.length === 0){
+        bundleBox.style.display = "none";
+        bundleBox.innerHTML = "";
+        splitPreview.innerHTML = "";
+        return;
+    }
+
+    bundleBox.style.display = "block";
+
+    let html = `
+        <div class="bundle-title">
+            <span>Bundle List</span>
+            <span class="bundle-pill">${bundleBarcodes.length} item${bundleBarcodes.length === 1 ? "" : "s"}</span>
+        </div>
+    `;
+
+    bundleBarcodes.forEach((barcode, index) => {
+        html += `
+            <div class="bundle-item">
+                <span>${barcode}</span>
+                <button class="small-remove" onclick="removeBundleBarcode(${index})">Remove</button>
+            </div>
+        `;
+    });
+
+    bundleBox.innerHTML = html;
+
+    const total = Number(document.getElementById("saleAmount").value || 0);
+
+    if(total > 0){
+        const each = total / bundleBarcodes.length;
+        splitPreview.innerHTML =
+        "Bundle split: £" + formatMoney(total) +
+        " ÷ " + bundleBarcodes.length +
+        " item" + (bundleBarcodes.length === 1 ? "" : "s") +
+        " = £" + formatMoney(each) + " each.";
+    }else{
+        splitPreview.innerHTML =
+        "Enter the total bundle price and it will split equally across the items.";
+    }
+}
+
+function removeButtonPressed(){
+    if(bundleBarcodes.length > 0){
+        removeBundleStock();
+        return;
+    }
+
+    removeStock(window.quickSaleLocation || "");
+}
+
 function removeStock(locationOverride = ""){
-    const barcode =
-    document.getElementById("barcode")
-    .value
-    .trim()
-    .toUpperCase();
+    const barcode = normaliseBarcode(document.getElementById("barcode").value);
 
     const qty =
     document.getElementById("qty")
@@ -518,6 +728,7 @@ function removeStock(locationOverride = ""){
         return;
     }
 
+    document.getElementById("barcode").value = barcode;
     document.getElementById("locationChoices").innerHTML = "";
 
     showLoading();
@@ -576,6 +787,7 @@ function removeStock(locationOverride = ""){
             document.getElementById("oneSalesRow").checked = false;
 
             document.getElementById("locationChoices").innerHTML = "";
+            renderBundleList();
 
         }else{
             document.getElementById("result").innerText =
@@ -592,6 +804,161 @@ function removeStock(locationOverride = ""){
     });
 }
 
+function removeBundleStock(){
+    if(bundleBarcodes.length === 0){
+        alert("Add at least one barcode to the bundle list");
+        return;
+    }
+
+    const totalSaleAmount = Number(document.getElementById("saleAmount").value || 0);
+
+    if(totalSaleAmount <= 0){
+        alert("Enter the total bundle sale amount");
+        return;
+    }
+
+    pendingBundleEachAmount = Number((totalSaleAmount / bundleBarcodes.length).toFixed(2));
+    pendingBundleQueue = bundleBarcodes.map(barcode => ({
+        barcode:normaliseBarcode(barcode),
+        location:""
+    }));
+    completedBundleRemovals = [];
+    document.getElementById("locationChoices").innerHTML = "";
+
+    processNextBundleItem();
+}
+
+function processNextBundleItem(){
+    if(pendingBundleQueue.length === 0){
+        hideLoading();
+
+        const totalRemoved = completedBundleRemovals.length;
+        const each = pendingBundleEachAmount;
+
+        document.getElementById("result").innerText =
+        "Bundle removed. " + totalRemoved +
+        " item" + (totalRemoved === 1 ? "" : "s") +
+        " sold at £" + formatMoney(each) + " each.";
+
+        bundleBarcodes = [];
+        pendingBundleItem = null;
+        pendingBundleEachAmount = 0;
+        pendingBundleQueue = [];
+
+        document.getElementById("barcode").value = "";
+        document.getElementById("qty").value = "1";
+        document.getElementById("saleAmount").value = "";
+        document.getElementById("oneSalesRow").checked = false;
+        document.getElementById("locationChoices").innerHTML = "";
+
+        renderBundleList();
+        return;
+    }
+
+    pendingBundleItem = pendingBundleQueue.shift();
+
+    showLoading();
+
+    fetch(API_URL, {
+        method:"POST",
+        body:JSON.stringify({
+            action:"REMOVE",
+            barcode:pendingBundleItem.barcode,
+            qty:1,
+            location:pendingBundleItem.location || "",
+            saleAmount:formatMoney(pendingBundleEachAmount),
+            oneSalesRow:true
+        })
+    })
+
+    .then(res => res.json())
+
+    .then(data => {
+        hideLoading();
+
+        if(data.needsLocation){
+            showBundleLocationChoices(data.locations);
+            return;
+        }
+
+        if(data.success){
+            completedBundleRemovals.push({
+                barcode:pendingBundleItem.barcode,
+                location:data.location,
+                remainingQty:data.remainingQty
+            });
+
+            document.getElementById("result").innerText =
+            "Removed " + pendingBundleItem.barcode +
+            ". Continuing bundle...";
+
+            processNextBundleItem();
+            return;
+        }
+
+        const failedBarcode = pendingBundleItem ? pendingBundleItem.barcode : "item";
+        pendingBundleQueue = [];
+        pendingBundleItem = null;
+
+        document.getElementById("result").innerText =
+        "Bundle stopped at " + failedBarcode + ". " + (data.error || "Remove failed");
+    })
+
+    .catch(error => {
+        hideLoading();
+        pendingBundleQueue = [];
+        pendingBundleItem = null;
+
+        console.error(error);
+
+        alert("Error removing bundle stock");
+    });
+}
+
+function showBundleLocationChoices(locations){
+    let html =
+    "<div class='location-card'><strong>Select location for " +
+    pendingBundleItem.barcode +
+    ":</strong></div>";
+
+    locations.forEach(loc => {
+        html += `
+            <button
+            class="location-button"
+            onclick="continueBundleWithLocation('${loc.location}')">
+            ${loc.location} — Qty: ${loc.qty}
+            </button>
+        `;
+    });
+
+    document.getElementById("locationChoices").innerHTML = html;
+    document.getElementById("result").innerText =
+    "Select a location for " + pendingBundleItem.barcode + " to continue the bundle.";
+}
+
+function continueBundleWithLocation(location){
+    if(!pendingBundleItem){
+        alert("No pending bundle item");
+        return;
+    }
+
+    pendingBundleItem.location = location;
+    pendingBundleQueue.unshift(pendingBundleItem);
+    pendingBundleItem = null;
+    document.getElementById("locationChoices").innerHTML = "";
+    processNextBundleItem();
+}
+
+document.getElementById("barcode").addEventListener("keydown", function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+
+        if(this.value.trim()){
+            addBundleBarcodeFromInput();
+        }
+    }
+});
+
 window.addEventListener("load", function(){
     const params = new URLSearchParams(window.location.search);
 
@@ -599,7 +966,7 @@ window.addEventListener("load", function(){
     const location = params.get("location");
 
     if(barcode){
-        document.getElementById("barcode").value = barcode.toUpperCase();
+        document.getElementById("barcode").value = normaliseBarcode(barcode);
         document.getElementById("result").innerText =
         "Quick sale loaded. Enter sale amount, then press Remove Stock.";
     }
