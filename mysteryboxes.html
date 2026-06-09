@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d0d0d">
 
@@ -17,8 +17,9 @@ html{touch-action:manipulation;}
 body{
     font-family:Arial, sans-serif;
     background:
-        radial-gradient(circle at top left, rgba(156,39,176,0.16), transparent 35%),
-        radial-gradient(circle at top right, rgba(255,193,7,0.10), transparent 35%),
+        radial-gradient(circle at top left, rgba(156,39,176,0.18), transparent 35%),
+        radial-gradient(circle at top right, rgba(255,193,7,0.14), transparent 35%),
+        radial-gradient(circle at bottom, rgba(40,167,69,0.08), transparent 35%),
         #0d0d0d;
     color:white;
     padding:18px;
@@ -26,14 +27,14 @@ body{
     overflow-x:hidden;
 }
 
-.page{max-width:1100px;margin:0 auto;}
+.page{max-width:1150px;margin:0 auto;}
 
 .panel{
     background:linear-gradient(180deg,#1d1d1d,#151515);
     border:1px solid rgba(255,255,255,0.08);
     padding:24px;
-    border-radius:18px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    border-radius:22px;
+    box-shadow:0 24px 70px rgba(0,0,0,0.42);
 }
 
 h1{
@@ -47,75 +48,72 @@ h1{
     color:#aaa;
     margin:0 0 24px 0;
     font-size:15px;
+    line-height:1.4;
 }
 
-.form-card{
-    background:linear-gradient(145deg,#242424,#191919);
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:16px;
-    padding:18px;
+.top-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
     margin-bottom:18px;
 }
 
-.form-grid{
-    display:grid;
-    grid-template-columns:1fr 160px 1fr;
-    gap:12px;
-}
-
-.input-label{
-    text-align:left;
-    color:#ddd;
-    font-weight:bold;
-    margin:14px 0 6px 2px;
-    font-size:14px;
-}
-
-input,
-button,
-textarea{
+.action-link,
+.refresh-button{
+    display:block;
+    text-decoration:none;
     width:100%;
     padding:14px;
-    margin:6px 0 12px 0;
+    margin:0;
     border:none;
-    border-radius:12px;
+    border-radius:14px;
     font-size:16px;
-}
-
-input,
-textarea{
-    background:#2a2a2a;
-    color:white;
-    outline:none;
-    border:1px solid rgba(255,255,255,0.08);
-}
-
-textarea{
-    min-height:52px;
-    resize:vertical;
-}
-
-button{
-    color:white;
     font-weight:bold;
+    text-align:center;
     cursor:pointer;
 }
 
-.create-button{
-    background:linear-gradient(135deg,#9c27b0,#6f1a80);
-    border:1px solid rgba(156,39,176,0.45);
-    box-shadow:0 10px 30px rgba(156,39,176,0.18);
+.action-link{
+    color:black;
+    background:linear-gradient(135deg,#ffc107,#d39e00);
+    border:1px solid rgba(255,193,7,0.45);
 }
 
 .refresh-button{
-    background:linear-gradient(135deg,#ffc107,#d39e00);
-    color:black;
-    border:1px solid rgba(255,193,7,0.45);
+    color:white;
+    background:linear-gradient(135deg,#9c27b0,#6f1a80);
+    border:1px solid rgba(156,39,176,0.45);
+}
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px;
+    margin-bottom:18px;
+}
+
+.summary-card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:14px;
+}
+
+.summary-title{
+    color:#aaa;
+    font-size:12px;
+    font-weight:bold;
+    margin-bottom:6px;
+}
+
+.summary-value{
+    font-size:22px;
+    font-weight:bold;
 }
 
 .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
     gap:14px;
     margin-top:18px;
 }
@@ -123,9 +121,33 @@ button{
 .mb-card{
     background:linear-gradient(145deg,#242424,#191919);
     border:1px solid rgba(255,255,255,0.08);
-    border-radius:16px;
+    border-radius:18px;
     padding:18px;
     text-align:left;
+    position:relative;
+    overflow:hidden;
+}
+
+.mb-card::before{
+    content:"";
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:4px;
+    background:#777;
+}
+
+.mb-card.profit::before{
+    background:linear-gradient(135deg,#00e676,#28a745);
+}
+
+.mb-card.loss::before{
+    background:linear-gradient(135deg,#ff5252,#dc3545);
+}
+
+.mb-card.break-even::before{
+    background:linear-gradient(135deg,#ffc107,#d39e00);
 }
 
 .mb-header{
@@ -150,11 +172,25 @@ button{
 .mb-name{
     font-size:20px;
     font-weight:bold;
+    line-height:1.25;
 }
 
-.status{
+.mb-sub{
+    color:#aaa;
+    font-size:13px;
+    margin-top:5px;
+}
+
+.badge-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:10px 0 4px 0;
+}
+
+.status,
+.profit-badge{
     display:inline-block;
-    margin-top:10px;
     padding:6px 10px;
     border-radius:999px;
     font-size:13px;
@@ -168,9 +204,27 @@ button{
 }
 
 .status-closed{
-    background:rgba(220,53,69,0.20);
+    background:rgba(120,120,120,0.22);
+    color:#bbb;
+    border:1px solid rgba(255,255,255,0.15);
+}
+
+.profit-positive{
+    background:rgba(0,230,118,0.16);
+    color:#00e676;
+    border:1px solid rgba(0,230,118,0.35);
+}
+
+.profit-negative{
+    background:rgba(255,82,82,0.16);
     color:#ff7777;
-    border:1px solid rgba(220,53,69,0.35);
+    border:1px solid rgba(255,82,82,0.35);
+}
+
+.profit-even{
+    background:rgba(255,193,7,0.16);
+    color:#ffc107;
+    border:1px solid rgba(255,193,7,0.35);
 }
 
 .stat-grid{
@@ -183,7 +237,7 @@ button{
 .stat-box{
     background:#111;
     border:1px solid rgba(255,255,255,0.06);
-    border-radius:10px;
+    border-radius:12px;
     padding:10px;
 }
 
@@ -202,21 +256,31 @@ button{
 .green{color:#00e676;}
 .red{color:#ff5252;}
 .yellow{color:#ffc107;}
+.blue{color:#66b2ff;}
+.grey{color:#bbb;}
 
 .progress-wrap{
     background:#111;
     border:1px solid rgba(255,255,255,0.06);
-    border-radius:10px;
-    padding:10px;
-    margin-top:8px;
+    border-radius:12px;
+    padding:12px;
+    margin-top:10px;
+}
+
+.progress-top{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:center;
+    font-weight:bold;
 }
 
 .progress-bar{
-    height:8px;
+    height:10px;
     background:#333;
     border-radius:999px;
     overflow:hidden;
-    margin-top:7px;
+    margin-top:9px;
 }
 
 .progress-fill{
@@ -228,9 +292,9 @@ button{
 .info-box{
     background:#111;
     border:1px solid rgba(255,255,255,0.06);
-    border-radius:10px;
+    border-radius:12px;
     padding:10px;
-    margin-top:8px;
+    margin-top:10px;
     color:#ddd;
     line-height:1.35;
 }
@@ -240,6 +304,18 @@ button{
     grid-template-columns:1fr 1fr;
     gap:8px;
     margin-top:12px;
+}
+
+button{
+    width:100%;
+    padding:14px;
+    margin:0;
+    border:none;
+    border-radius:12px;
+    font-size:15px;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
 }
 
 .view-button{
@@ -257,7 +333,7 @@ button{
     margin-top:12px;
     background:#111;
     border:1px solid rgba(255,255,255,0.06);
-    border-radius:10px;
+    border-radius:12px;
     padding:10px;
 }
 
@@ -265,7 +341,7 @@ button{
     display:grid;
     grid-template-columns:1fr auto;
     gap:10px;
-    padding:8px 0;
+    padding:9px 0;
     border-bottom:1px solid rgba(255,255,255,0.06);
 }
 
@@ -281,6 +357,13 @@ button{
     color:#aaa;
     font-size:12px;
     margin-top:3px;
+    line-height:1.35;
+}
+
+.item-left{
+    font-weight:bold;
+    color:#ffd75e;
+    white-space:nowrap;
 }
 
 .empty-state{
@@ -349,7 +432,7 @@ button{
 @media(max-width:760px){
     h1{font-size:30px;}
     .panel{padding:18px;}
-    .form-grid{grid-template-columns:1fr;}
+    .top-actions{grid-template-columns:1fr;}
     .stat-grid{grid-template-columns:1fr 1fr;}
     .mb-header{flex-direction:column;}
     .card-actions{grid-template-columns:1fr;}
@@ -364,34 +447,14 @@ button{
 <div class="panel">
 
 <h1>Mystery Boxes</h1>
-<p class="subtitle">Create purchase boxes, view profit and manage active/bulk sold status</p>
+<p class="subtitle">View profit by MB snapshot batch, track sell-through, and manage active/bulk sold status.</p>
 
-<div class="form-card">
-
-<div class="form-grid">
-
-    <div>
-        <div class="input-label">Mystery Box Name</div>
-        <input type="text" id="mbName" placeholder="Example: Tech Box June">
-    </div>
-
-    <div>
-        <div class="input-label">Cost</div>
-        <input type="number" id="mbCost" placeholder="Cost £" step="0.01" min="0">
-    </div>
-
-    <div>
-        <div class="input-label">Notes</div>
-        <textarea id="mbNotes" placeholder="Example: Mixed tech, clothes, DIY items"></textarea>
-    </div>
-
+<div class="top-actions">
+    <a class="action-link" href="snapshot-box.html">Create MB Snapshot Batch</a>
+    <button class="refresh-button" onclick="loadMysteryBoxes()">Refresh Profit Page</button>
 </div>
 
-<button class="create-button" onclick="createMysteryBox()">Create Mystery Box</button>
-
-</div>
-
-<button class="refresh-button" onclick="loadMysteryBoxes()">Refresh Mystery Boxes</button>
+<div id="summary"></div>
 
 <div id="result"></div>
 
@@ -453,58 +516,113 @@ function profitClass(value){
         return "red";
     }
 
-    return "";
+    return "yellow";
 }
 
-function createMysteryBox(){
-    const name = document.getElementById("mbName").value.trim();
-    const cost = document.getElementById("mbCost").value;
-    const notes = document.getElementById("mbNotes").value.trim();
+function cardClass(value){
+    const number = Number(value || 0);
 
-    if(!name){
-        alert("Enter a mystery box name");
-        return;
+    if(number > 0){
+        return "profit";
     }
 
-    showLoading();
+    if(number < 0){
+        return "loss";
+    }
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"CREATE_MYSTERY_BOX",
-            name:name,
-            cost:cost,
-            notes:notes
-        })
-    })
+    return "break-even";
+}
 
-    .then(res=>res.json())
+function profitBadge(value){
+    const number = Number(value || 0);
 
-    .then(data=>{
-        hideLoading();
+    if(number > 0){
+        return '<span class="profit-badge profit-positive">In Profit</span>';
+    }
 
-        if(!data.success){
-            document.getElementById("result").innerText =
-            data.error || "Could not create mystery box";
-            return;
+    if(number < 0){
+        return '<span class="profit-badge profit-negative">Loss</span>';
+    }
+
+    return '<span class="profit-badge profit-even">Break Even</span>';
+}
+
+function sellThroughClass(value){
+    const number = Number(value || 0);
+
+    if(number >= 80){
+        return "green";
+    }
+
+    if(number >= 50){
+        return "yellow";
+    }
+
+    return "blue";
+}
+
+function renderSummary(boxes){
+    let activeCount = 0;
+    let closedCount = 0;
+    let totalCost = 0;
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    let totalOriginal = 0;
+    let totalSold = 0;
+
+    boxes.forEach(box=>{
+        const status = String(box.status || "Active").toLowerCase();
+
+        if(status === "active"){
+            activeCount++;
+        }else{
+            closedCount++;
         }
 
-        document.getElementById("result").innerText =
-        "Created " + data.mysteryBoxId + " - " + data.name;
-
-        document.getElementById("mbName").value = "";
-        document.getElementById("mbCost").value = "";
-        document.getElementById("mbNotes").value = "";
-
-        loadMysteryBoxes();
-    })
-
-    .catch(error=>{
-        hideLoading();
-        console.error(error);
-        document.getElementById("result").innerText =
-        "Error creating mystery box";
+        totalCost += Number(box.cost || 0);
+        totalRevenue += Number(box.revenue || 0);
+        totalProfit += Number(box.profit || 0);
+        totalOriginal += Number(box.originalQty || 0);
+        totalSold += Number(box.soldQty || 0);
     });
+
+    const overallSellThrough =
+    totalOriginal > 0 ? (totalSold / totalOriginal) * 100 : 0;
+
+    document.getElementById("summary").innerHTML =
+    `
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-title">Total MB Batches</div>
+            <div class="summary-value">${boxes.length}</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Active / Closed</div>
+            <div class="summary-value"><span class="green">${activeCount}</span> / <span class="grey">${closedCount}</span></div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Total Cost</div>
+            <div class="summary-value">${money(totalCost)}</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Total Revenue</div>
+            <div class="summary-value green">${money(totalRevenue)}</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Total Profit</div>
+            <div class="summary-value ${profitClass(totalProfit)}">${money(totalProfit)}</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-title">Overall Sell-through</div>
+            <div class="summary-value ${sellThroughClass(overallSellThrough)}">${overallSellThrough.toFixed(2)}%</div>
+        </div>
+    </div>
+    `;
 }
 
 function loadMysteryBoxes(){
@@ -529,10 +647,13 @@ function loadMysteryBoxes(){
         }
 
         if(data.mysteryBoxes.length === 0){
+            document.getElementById("summary").innerHTML = "";
             document.getElementById("mysteryBoxList").innerHTML =
             "<div class='empty-state'>No mystery boxes created yet.</div>";
             return;
         }
+
+        renderSummary(data.mysteryBoxes);
 
         let html = "<div class='grid'>";
 
@@ -542,14 +663,19 @@ function loadMysteryBoxes(){
             status.toLowerCase() === "active" ? "status-active" : "status-closed";
 
             const progress = Math.min(100, Number(box.sellThrough || 0));
+            const created = simpleDate(box.dateCreated) || "Unknown";
 
             html += `
-                <div class="mb-card">
+                <div class="mb-card ${cardClass(box.profit)}">
 
                     <div class="mb-header">
                         <div>
-                            <div class="mb-name">${box.name}</div>
-                            <div class="status ${statusClass}">${status}</div>
+                            <div class="mb-name">${box.mysteryBoxId} | ${box.name}</div>
+                            <div class="mb-sub">Created ${created}</div>
+                            <div class="badge-row">
+                                <span class="status ${statusClass}">${status}</span>
+                                ${profitBadge(box.profit)}
+                            </div>
                         </div>
 
                         <div class="mb-id">${box.mysteryBoxId}</div>
@@ -572,35 +698,37 @@ function loadMysteryBoxes(){
                         </div>
 
                         <div class="stat-box">
-                            <div class="stat-title">Sold</div>
-                            <div class="stat-value">${box.soldQty} / ${box.originalQty}</div>
+                            <div class="stat-title">Original Items</div>
+                            <div class="stat-value blue">${box.originalQty}</div>
+                        </div>
+
+                        <div class="stat-box">
+                            <div class="stat-title">Sold Items</div>
+                            <div class="stat-value green">${box.soldQty}</div>
                         </div>
 
                         <div class="stat-box">
                             <div class="stat-title">Remaining</div>
-                            <div class="stat-value">${box.remainingQty}</div>
-                        </div>
-
-                        <div class="stat-box">
-                            <div class="stat-title">Sell-through</div>
-                            <div class="stat-value yellow">${Number(box.sellThrough || 0).toFixed(2)}%</div>
+                            <div class="stat-value yellow">${box.remainingQty}</div>
                         </div>
                     </div>
 
                     <div class="progress-wrap">
-                        <strong>Progress</strong>
+                        <div class="progress-top">
+                            <span>Sell-through</span>
+                            <span class="${sellThroughClass(box.sellThrough)}">${Number(box.sellThrough || 0).toFixed(2)}%</span>
+                        </div>
                         <div class="progress-bar">
                             <div class="progress-fill" style="width:${progress}%"></div>
                         </div>
                     </div>
 
                     <div class="info-box">
-                        <strong>Created:</strong> ${simpleDate(box.dateCreated) || "Unknown"}<br>
                         <strong>Notes:</strong> ${box.notes || "No notes added"}
                     </div>
 
                     <div class="card-actions">
-                        <button class="view-button" onclick="toggleItems('${box.mysteryBoxId}')">View Items</button>
+                        <button class="view-button" onclick="toggleItems('${box.mysteryBoxId}')">View Item Breakdown</button>
                         <button class="close-button" onclick="closeMysteryBox('${box.mysteryBoxId}')">Close / Bulk Sold</button>
                     </div>
 
@@ -634,13 +762,21 @@ function renderItems(items){
     let html = "";
 
     items.forEach(item=>{
+        const itemSellThrough =
+        Number(item.originalQty || 0) > 0
+        ? (Number(item.soldQty || 0) / Number(item.originalQty || 0)) * 100
+        : 0;
+
         html += `
             <div class="item-row">
                 <div>
                     <div class="item-name">${item.description || item.barcode}</div>
-                    <div class="item-meta">${item.barcode} — Sold ${item.soldQty}/${item.originalQty} — Revenue ${money(item.revenue)}</div>
+                    <div class="item-meta">
+                        ${item.barcode}<br>
+                        Sold ${item.soldQty}/${item.originalQty} • Revenue ${money(item.revenue)} • ${itemSellThrough.toFixed(0)}% sold
+                    </div>
                 </div>
-                <div>${item.remainingQty} left</div>
+                <div class="item-left">${item.remainingQty} left</div>
             </div>
         `;
     });
@@ -693,20 +829,6 @@ function closeMysteryBox(mysteryBoxId){
         alert("Error closing mystery box");
     });
 }
-
-document.getElementById("mbName").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        createMysteryBox();
-    }
-});
-
-document.getElementById("mbCost").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        createMysteryBox();
-    }
-});
 
 loadMysteryBoxes();
 </script>
