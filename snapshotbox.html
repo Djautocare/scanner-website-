@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0d0d0d">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
@@ -19,8 +22,9 @@ html{
 body{
     font-family:Arial, sans-serif;
     background:
-        radial-gradient(circle at top left, rgba(255,193,7,0.16), transparent 35%),
-        radial-gradient(circle at top right, rgba(156,39,176,0.12), transparent 35%),
+        radial-gradient(circle at top left, rgba(255,193,7,0.18), transparent 36%),
+        radial-gradient(circle at top right, rgba(156,39,176,0.16), transparent 34%),
+        radial-gradient(circle at bottom, rgba(0,123,255,0.10), transparent 34%),
         #0d0d0d;
     color:white;
     padding:18px;
@@ -29,7 +33,7 @@ body{
 }
 
 .page{
-    max-width:850px;
+    max-width:900px;
     margin:0 auto;
 }
 
@@ -37,8 +41,8 @@ body{
     background:linear-gradient(180deg,#1d1d1d,#151515);
     border:1px solid rgba(255,255,255,0.08);
     padding:24px;
-    border-radius:18px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    border-radius:22px;
+    box-shadow:0 24px 70px rgba(0,0,0,0.42);
 }
 
 h1{
@@ -52,16 +56,34 @@ h1{
     color:#aaa;
     margin:0 0 24px 0;
     font-size:15px;
-    line-height:1.4;
+    line-height:1.45;
 }
 
 .form-card,
 .info-card{
     background:linear-gradient(145deg,#242424,#191919);
     border:1px solid rgba(255,255,255,0.08);
-    border-radius:16px;
+    border-radius:18px;
     padding:18px;
     margin-bottom:18px;
+}
+
+.hero-card{
+    background:
+        linear-gradient(135deg, rgba(255,193,7,0.18), rgba(156,39,176,0.14)),
+        linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,193,7,0.25);
+    border-radius:18px;
+    padding:16px;
+    margin-bottom:18px;
+    line-height:1.45;
+}
+
+.hero-title{
+    font-size:18px;
+    font-weight:bold;
+    color:#ffd75e;
+    margin-bottom:6px;
 }
 
 .input-label{
@@ -73,7 +95,9 @@ h1{
 }
 
 select,
-button{
+input,
+button,
+textarea{
     width:100%;
     padding:14px;
     margin:6px 0 12px 0;
@@ -82,11 +106,18 @@ button{
     font-size:16px;
 }
 
-select{
+select,
+input,
+textarea{
     background:#2a2a2a;
     color:white;
     outline:none;
     border:1px solid rgba(255,255,255,0.08);
+}
+
+textarea{
+    min-height:70px;
+    resize:vertical;
 }
 
 button{
@@ -95,11 +126,17 @@ button{
     cursor:pointer;
 }
 
+.form-grid{
+    display:grid;
+    grid-template-columns:1fr 160px;
+    gap:12px;
+}
+
 .snapshot-button{
     background:linear-gradient(135deg,#ffc107,#d39e00);
     color:black;
     border:1px solid rgba(255,193,7,0.45);
-    box-shadow:0 10px 30px rgba(255,193,7,0.16);
+    box-shadow:0 12px 34px rgba(255,193,7,0.16);
 }
 
 .refresh-button{
@@ -107,41 +144,9 @@ button{
     border:1px solid rgba(156,39,176,0.45);
 }
 
-.warning-card{
-    background:rgba(255,193,7,0.12);
-    border:1px solid rgba(255,193,7,0.35);
-    color:#ffd75e;
-    border-radius:14px;
-    padding:14px;
-    line-height:1.45;
-    margin-bottom:18px;
-}
-
-.success-card{
-    background:rgba(40,167,69,0.14);
-    border:1px solid rgba(40,167,69,0.35);
-    color:#61e27a;
-    border-radius:14px;
-    padding:16px;
-    margin-top:16px;
-    font-weight:bold;
-    text-align:center;
-}
-
-.error-card{
-    background:rgba(220,53,69,0.14);
-    border:1px solid rgba(220,53,69,0.35);
-    color:#ff7777;
-    border-radius:14px;
-    padding:16px;
-    margin-top:16px;
-    font-weight:bold;
-    text-align:center;
-}
-
 .preview-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
     gap:14px;
     margin-top:16px;
 }
@@ -161,8 +166,63 @@ button{
 }
 
 .preview-value{
-    font-size:20px;
+    font-size:19px;
     font-weight:bold;
+    word-break:break-word;
+}
+
+.preview-value.gold{
+    color:#ffd75e;
+}
+
+.preview-value.purple{
+    color:#e58cff;
+}
+
+.preview-value.blue{
+    color:#66b2ff;
+}
+
+.success-card{
+    background:rgba(40,167,69,0.14);
+    border:1px solid rgba(40,167,69,0.35);
+    color:#61e27a;
+    border-radius:16px;
+    padding:18px;
+    margin-top:16px;
+    font-weight:bold;
+    text-align:center;
+    line-height:1.5;
+}
+
+.error-card{
+    background:rgba(220,53,69,0.14);
+    border:1px solid rgba(220,53,69,0.35);
+    color:#ff7777;
+    border-radius:16px;
+    padding:18px;
+    margin-top:16px;
+    font-weight:bold;
+    text-align:center;
+    line-height:1.5;
+}
+
+.step-list{
+    display:grid;
+    gap:10px;
+    margin-top:12px;
+}
+
+.step{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:12px;
+    padding:12px;
+    color:#ddd;
+}
+
+.step strong{
+    color:#ffd75e;
 }
 
 .link-card{
@@ -185,7 +245,7 @@ button{
     left:0;
     width:100%;
     height:100%;
-    background:rgba(0,0,0,0.85);
+    background:rgba(0,0,0,0.86);
     z-index:9999;
     justify-content:center;
     align-items:center;
@@ -212,13 +272,17 @@ button{
     100%{transform:rotate(360deg);}
 }
 
-@media(max-width:600px){
+@media(max-width:650px){
     h1{
         font-size:30px;
     }
 
     .panel{
         padding:18px;
+    }
+
+    .form-grid{
+        grid-template-columns:1fr;
     }
 }
 </style>
@@ -233,13 +297,17 @@ button{
 <h1>Snapshot Box</h1>
 
 <p class="subtitle">
-Copy the current contents of a physical storage box into a Mystery Box ID.
-This records what originally came in that mystery box.
+Create a new MB profit batch from whatever is currently inside a physical storage box.
 </p>
 
-<div class="warning-card">
-    Only do this once per mystery box after you have finished adding all the items from that mystery box into one storage box.
-    Moving items later will not affect this snapshot.
+<div class="hero-card">
+    <div class="hero-title">New workflow</div>
+    Select a storage box, enter the cost, then press snapshot. The system will auto-create the next MB number and copy the box contents into it.
+    <div class="step-list">
+        <div class="step"><strong>1.</strong> Choose BOX 6, BOX 12, etc.</div>
+        <div class="step"><strong>2.</strong> Enter the purchase cost for this batch.</div>
+        <div class="step"><strong>3.</strong> Snapshot creates MB-11, MB-12, MB-13 automatically.</div>
+    </div>
 </div>
 
 <div class="form-card">
@@ -249,17 +317,27 @@ This records what originally came in that mystery box.
 <option value="">Loading storage boxes...</option>
 </select>
 
-<div class="input-label">Mystery Box ID</div>
-<select id="mysteryBoxSelect" onchange="updatePreview()">
-<option value="">Loading mystery boxes...</option>
-</select>
+<div class="form-grid">
+    <div>
+        <div class="input-label">Batch Name</div>
+        <input type="text" id="batchName" placeholder="Auto-fills from selected box">
+    </div>
 
-<button class="snapshot-button" onclick="snapshotBox()">
-Snapshot Box To Mystery Box
+    <div>
+        <div class="input-label">Cost</div>
+        <input type="number" id="batchCost" placeholder="Cost £" step="0.01" min="0" oninput="updatePreview()">
+    </div>
+</div>
+
+<div class="input-label">Notes</div>
+<textarea id="batchNotes" placeholder="Example: Wholesale lot, Vinted batch, mixed tech/clothes/DIY" oninput="updatePreview()"></textarea>
+
+<button class="snapshot-button" onclick="createSnapshotBatch()">
+Create MB + Snapshot Box
 </button>
 
-<button class="refresh-button" onclick="loadAllDropdowns()">
-Refresh Lists
+<button class="refresh-button" onclick="loadStorageBoxes()">
+Refresh Storage Boxes
 </button>
 
 </div>
@@ -270,12 +348,22 @@ Refresh Lists
 
 <div class="preview-card">
     <div class="preview-title">Selected Storage Box</div>
-    <div class="preview-value" id="previewBox">—</div>
+    <div class="preview-value gold" id="previewBox">—</div>
 </div>
 
 <div class="preview-card">
-    <div class="preview-title">Selected Mystery Box</div>
-    <div class="preview-value" id="previewMysteryBox">—</div>
+    <div class="preview-title">MB Number</div>
+    <div class="preview-value purple">Auto-created</div>
+</div>
+
+<div class="preview-card">
+    <div class="preview-title">Batch Name</div>
+    <div class="preview-value blue" id="previewName">—</div>
+</div>
+
+<div class="preview-card">
+    <div class="preview-title">Cost</div>
+    <div class="preview-value" id="previewCost">£0.00</div>
 </div>
 
 </div>
@@ -284,6 +372,7 @@ Refresh Lists
 
 <div id="result"></div>
 
+<a class="link-card" href="mystery-boxes.html">View Mystery Box Profit →</a>
 <a class="link-card" href="index.html">← Back to Dashboard</a>
 
 </div>
@@ -309,26 +398,63 @@ function hideLoading(){
     document.getElementById("loadingOverlay").style.display = "none";
 }
 
+function todayText(){
+    const date = new Date();
+
+    return date.toLocaleDateString("en-GB",{
+        day:"2-digit",
+        month:"2-digit",
+        year:"numeric"
+    });
+}
+
+function money(value){
+    return "£" + Number(value || 0).toFixed(2);
+}
+
+function defaultBatchName(box){
+    if(!box){
+        return "";
+    }
+
+    return box + " - " + todayText();
+}
+
 function updatePreview(){
     const box =
     document.getElementById("boxSelect").value;
 
-    const mysteryBox =
-    document.getElementById("mysteryBoxSelect").value;
+    const nameInput =
+    document.getElementById("batchName");
+
+    if(box && !nameInput.dataset.userEdited){
+        nameInput.value = defaultBatchName(box);
+    }
+
+    const name =
+    nameInput.value.trim();
+
+    const cost =
+    document.getElementById("batchCost").value;
 
     document.getElementById("previewBox").innerText =
     box || "—";
 
-    document.getElementById("previewMysteryBox").innerText =
-    mysteryBox || "—";
+    document.getElementById("previewName").innerText =
+    name || "—";
+
+    document.getElementById("previewCost").innerText =
+    money(cost);
 }
 
-function loadAllDropdowns(){
-    loadStorageBoxes();
-    loadMysteryBoxes();
-}
+document.getElementById("batchName").addEventListener("input",function(){
+    this.dataset.userEdited = "true";
+    updatePreview();
+});
 
 function loadStorageBoxes(){
+    showLoading();
+
     fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
@@ -337,6 +463,8 @@ function loadStorageBoxes(){
     })
     .then(res=>res.json())
     .then(data=>{
+        hideLoading();
+
         const select =
         document.getElementById("boxSelect");
 
@@ -346,6 +474,7 @@ function loadStorageBoxes(){
         if(!data.success || data.boxes.length === 0){
             select.innerHTML =
             '<option value="">No storage boxes found</option>';
+            updatePreview();
             return;
         }
 
@@ -362,71 +491,34 @@ function loadStorageBoxes(){
         updatePreview();
     })
     .catch(error=>{
+        hideLoading();
         console.error(error);
+
         document.getElementById("boxSelect").innerHTML =
         '<option value="">Could not load boxes</option>';
     });
 }
 
-function loadMysteryBoxes(){
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"GET_MYSTERY_BOXES"
-        })
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        const select =
-        document.getElementById("mysteryBoxSelect");
-
-        select.innerHTML =
-        '<option value="">Select Mystery Box</option>';
-
-        if(!data.success || data.mysteryBoxes.length === 0){
-            select.innerHTML =
-            '<option value="">No mystery boxes found</option>';
-            return;
-        }
-
-        data.mysteryBoxes.forEach(item=>{
-            const option =
-            document.createElement("option");
-
-            option.value = item.mysteryBoxId;
-            option.textContent =
-            item.mysteryBoxId + " - " + item.name;
-
-            select.appendChild(option);
-        });
-
-        updatePreview();
-    })
-    .catch(error=>{
-        console.error(error);
-        document.getElementById("mysteryBoxSelect").innerHTML =
-        '<option value="">Could not load mystery boxes</option>';
-    });
-}
-
-function snapshotBox(){
+function createSnapshotBatch(){
     const box =
     document.getElementById("boxSelect").value;
 
-    const mysteryBoxId =
-    document.getElementById("mysteryBoxSelect").value;
+    const name =
+    document.getElementById("batchName").value.trim() ||
+    defaultBatchName(box);
+
+    const cost =
+    document.getElementById("batchCost").value || 0;
+
+    const notes =
+    document.getElementById("batchNotes").value.trim();
 
     if(!box){
         alert("Select a storage box first");
         return;
     }
 
-    if(!mysteryBoxId){
-        alert("Select a mystery box first");
-        return;
-    }
-
-    if(!confirm("Snapshot " + box + " into " + mysteryBoxId + "? This should only be done once.")){
+    if(!confirm("Create a new MB for " + box + " and snapshot the current contents?")){
         return;
     }
 
@@ -437,54 +529,82 @@ function snapshotBox(){
     fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
-            action:"SNAPSHOT_BOX_TO_MYSTERY_BOX",
-            box:box,
-            mysteryBoxId:mysteryBoxId
+            action:"CREATE_MYSTERY_BOX",
+            name:name,
+            cost:cost,
+            notes:notes
         })
     })
     .then(res=>res.json())
-    .then(data=>{
+    .then(created=>{
+        if(!created.success){
+            throw new Error(created.error || "Could not create mystery box");
+        }
+
+        return fetch(API_URL,{
+            method:"POST",
+            body:JSON.stringify({
+                action:"SNAPSHOT_BOX_TO_MYSTERY_BOX",
+                box:box,
+                mysteryBoxId:created.mysteryBoxId
+            })
+        })
+        .then(res=>res.json())
+        .then(snapshot=>{
+            return {
+                created:created,
+                snapshot:snapshot
+            };
+        });
+    })
+    .then(result=>{
         hideLoading();
 
-        if(!data.success){
+        if(!result.snapshot.success){
             document.getElementById("result").innerHTML =
-            "<div class='error-card'>" + (data.error || "Snapshot failed") + "</div>";
+            "<div class='error-card'>Created " + result.created.mysteryBoxId + ", but snapshot failed:<br><br>" +
+            (result.snapshot.error || "Snapshot failed") +
+            "</div>";
             return;
         }
 
         document.getElementById("result").innerHTML =
         `
         <div class="success-card">
-            Snapshot complete<br><br>
-            ${data.box} copied to ${data.mysteryBoxId}<br>
-            Different items: ${data.differentItems}<br>
-            Total quantity: ${data.totalQty}
+            Snapshot batch created<br><br>
+            ${result.created.mysteryBoxId} — ${result.created.name}<br>
+            Cost: ${money(result.created.cost)}<br><br>
+            ${result.snapshot.box} copied into ${result.snapshot.mysteryBoxId}<br>
+            Different items: ${result.snapshot.differentItems}<br>
+            Total quantity: ${result.snapshot.totalQty}
         </div>
         `;
+
+        document.getElementById("batchCost").value = "";
+        document.getElementById("batchNotes").value = "";
+        document.getElementById("batchName").value = "";
+        document.getElementById("batchName").dataset.userEdited = "";
+        document.getElementById("boxSelect").value = "";
+
+        updatePreview();
     })
     .catch(error=>{
         hideLoading();
         console.error(error);
 
         document.getElementById("result").innerHTML =
-        "<div class='error-card'>Error creating snapshot</div>";
+        "<div class='error-card'>" + error.message + "</div>";
     });
 }
 
-showLoading();
-
-Promise.all([
-    new Promise(resolve=>{
-        loadStorageBoxes();
-        setTimeout(resolve, 600);
-    }),
-    new Promise(resolve=>{
-        loadMysteryBoxes();
-        setTimeout(resolve, 600);
-    })
-]).then(()=>{
-    hideLoading();
+document.getElementById("batchCost").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+        createSnapshotBatch();
+    }
 });
+
+loadStorageBoxes();
 </script>
 
 </body>
