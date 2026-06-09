@@ -58,6 +58,10 @@ h1{
     margin-bottom:18px;
 }
 
+.top-actions.single-action{
+    grid-template-columns:1fr;
+}
+
 .action-link,
 .refresh-button{
     display:block;
@@ -449,8 +453,7 @@ button{
 <h1>Mystery Boxes</h1>
 <p class="subtitle">View profit by MB snapshot batch, track sell-through, and manage active/bulk sold status.</p>
 
-<div class="top-actions">
-    <a class="action-link" href="snapshot-box.html">Create MB Snapshot Batch</a>
+<div class="top-actions single-action">
     <button class="refresh-button" onclick="loadMysteryBoxes()">Refresh Profit Page</button>
 </div>
 
@@ -561,6 +564,24 @@ function sellThroughClass(value){
     return "blue";
 }
 
+function mbNumber(value){
+    const match = String(value || "").toUpperCase().match(/MB-(\d+)/);
+    return match ? Number(match[1]) : 0;
+}
+
+function sortByMbNumber(boxes){
+    return boxes.slice().sort((a,b) => {
+        const aNum = mbNumber(a.mysteryBoxId);
+        const bNum = mbNumber(b.mysteryBoxId);
+
+        if(aNum !== bNum){
+            return aNum - bNum;
+        }
+
+        return String(a.mysteryBoxId || "").localeCompare(String(b.mysteryBoxId || ""));
+    });
+}
+
 function renderSummary(boxes){
     let activeCount = 0;
     let closedCount = 0;
@@ -653,11 +674,13 @@ function loadMysteryBoxes(){
             return;
         }
 
-        renderSummary(data.mysteryBoxes);
+        const sortedBoxes = sortByMbNumber(data.mysteryBoxes);
+
+        renderSummary(sortedBoxes);
 
         let html = "<div class='grid'>";
 
-        data.mysteryBoxes.slice().reverse().forEach(box=>{
+        sortedBoxes.forEach(box=>{
             const status = box.status || "Active";
             const statusClass =
             status.toLowerCase() === "active" ? "status-active" : "status-closed";
