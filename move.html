@@ -2,31 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d0d0d">
 
-<meta name="viewport"
-content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Move Stock</title>
 
 <script src="https://unpkg.com/@zxing/browser@latest"></script>
 
 <style>
-html{
-    touch-action: manipulation;
-}
-
-*{
-    box-sizing:border-box;
-}
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
 
 body{
     font-family:Arial, sans-serif;
     background:
-        radial-gradient(circle at top left, rgba(253,126,20,0.14), transparent 35%),
-        radial-gradient(circle at top right, rgba(0,123,255,0.10), transparent 35%),
+        radial-gradient(circle at top left, rgba(253,126,20,0.16), transparent 35%),
+        radial-gradient(circle at top right, rgba(0,123,255,0.12), transparent 35%),
         #0d0d0d;
     color:white;
     padding:18px;
@@ -34,52 +28,50 @@ body{
     overflow-x:hidden;
 }
 
-.page{
-    max-width:760px;
-    margin:0 auto;
-}
+.page{max-width:860px;margin:0 auto;}
 
 .panel{
-    background:linear-gradient(180deg, #1d1d1d, #151515);
+    background:linear-gradient(180deg,#1d1d1d,#151515);
     border:1px solid rgba(255,255,255,0.08);
     padding:24px;
     border-radius:18px;
     box-shadow:0 20px 60px rgba(0,0,0,0.35);
 }
 
-h1{
-    text-align:center;
-    font-size:34px;
-    margin:12px 0 6px 0;
-}
-
-.subtitle{
-    text-align:center;
-    color:#aaa;
-    margin:0 0 24px 0;
-    font-size:15px;
-}
+h1{text-align:center;font-size:34px;margin:12px 0 6px 0;}
+.subtitle{text-align:center;color:#aaa;margin:0 0 24px 0;font-size:15px;line-height:1.4;}
 
 .form-card{
-    background:linear-gradient(145deg, #242424, #191919);
+    background:linear-gradient(145deg,#242424,#191919);
     border:1px solid rgba(255,255,255,0.08);
     border-radius:16px;
     padding:18px;
     margin-bottom:16px;
 }
 
-.input-label{
-    text-align:left;
-    color:#ddd;
+.section-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    font-size:19px;
     font-weight:bold;
-    margin:14px 0 6px 2px;
-    font-size:14px;
+    margin-bottom:8px;
 }
 
-input,
-select,
-button,
-textarea{
+.section-badge{
+    background:rgba(253,126,20,0.20);
+    border:1px solid rgba(253,126,20,0.38);
+    color:#ffb36b;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    white-space:nowrap;
+}
+
+.input-label{text-align:left;color:#ddd;font-weight:bold;margin:14px 0 6px 2px;font-size:14px;}
+
+input,select,button,textarea{
     width:100%;
     padding:14px;
     margin:6px 0 12px 0;
@@ -88,187 +80,232 @@ textarea{
     font-size:16px;
 }
 
-input,
-select,
-textarea{
+input,select,textarea{
     background:#2a2a2a;
     color:white;
     outline:none;
     border:1px solid rgba(255,255,255,0.08);
 }
 
-button{
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
+button{color:white;font-weight:bold;cursor:pointer;}
+
+.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;}
+.button-grid-three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0;}
+
+.scan-button{background:linear-gradient(135deg,#0275d8,#025aa5);}
+.stop-button{background:linear-gradient(135deg,#dc3545,#a92735);}
+.torch-button{background:linear-gradient(135deg,#ffc107,#d39e00);color:black;}
+.focus-button{background:linear-gradient(135deg,#28a745,#1f8b3a);}
+.zoom-button{background:linear-gradient(135deg,#6f42c1,#56329b);}
+.move-button{background:linear-gradient(135deg,#fd7e14,#c85f08);border:1px solid rgba(253,126,20,0.45);box-shadow:0 10px 30px rgba(253,126,20,0.16);}
+.bulk-button{background:linear-gradient(135deg,#17a2b8,#0f7180);border:1px solid rgba(23,162,184,0.45);}
+.add-button{background:linear-gradient(135deg,#6f42c1,#56329b);border:1px solid rgba(111,66,193,0.45);}
+.clear-button{background:linear-gradient(135deg,#444,#222);border:1px solid rgba(255,255,255,0.10);}
+
+.helper-text{font-size:13px;color:#ccc;margin:4px 0 10px 0;line-height:1.4;}
+.warning-text{
+    background:rgba(255,193,7,0.12);
+    border:1px solid rgba(255,193,7,0.35);
+    color:#ffd75e;
+    border-radius:12px;
+    padding:12px;
+    line-height:1.4;
+    font-size:13px;
+    margin:10px 0;
 }
 
-.button-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:12px;
+.toggle-box{
+    background:#2a2a2a;
+    padding:14px;
+    margin:12px 0;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.08);
+    text-align:left;
+}
+.toggle-box label{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:bold;}
+.toggle-box input{width:auto;margin:0;}
+
+.bundle-card{
+    background:#111;
+    border:1px solid rgba(111,66,193,0.35);
+    border-radius:14px;
+    padding:14px;
     margin:12px 0;
 }
+.bundle-title{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:bold;margin-bottom:8px;}
+.bundle-pill{background:rgba(111,66,193,0.22);border:1px solid rgba(111,66,193,0.40);color:#d8c4ff;padding:6px 10px;border-radius:999px;font-size:13px;white-space:nowrap;}
+.bundle-item{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#202020;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px;margin:8px 0;}
+.bundle-item span{font-weight:bold;word-break:break-word;}
+.small-remove{width:auto;min-width:90px;margin:0;padding:9px 11px;background:linear-gradient(135deg,#dc3545,#a92735);font-size:13px;}
 
-.scan-button{
-    background:linear-gradient(135deg, #0275d8, #025aa5);
-}
-
-.stop-button{
-    background:linear-gradient(135deg, #dc3545, #a92735);
-}
-
-.torch-button{
-    background:linear-gradient(135deg, #ffc107, #d39e00);
-    color:black;
-}
-
-.move-button{
-    background:linear-gradient(135deg, #fd7e14, #c85f08);
-    border:1px solid rgba(253,126,20,0.45);
-    box-shadow:0 10px 30px rgba(253,126,20,0.16);
-}
-
-#reader{
-    max-width:320px;
+#scannerWrap{
+    position:relative;
+    max-width:380px;
     width:100%;
-    min-height:240px;
+    min-height:280px;
     margin:20px auto;
     display:none;
     background:#000;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,0.10);
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,0.12);
     overflow:hidden;
+    box-shadow:0 12px 35px rgba(0,0,0,0.35);
 }
 
-#result{
-    margin-top:15px;
-    font-weight:bold;
-    background:#2a2a2a;
-    border-radius:14px;
-    padding:12px;
-    min-height:45px;
-    border:1px solid rgba(255,255,255,0.08);
-}
-
-.links-grid{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:12px;
-    margin-top:16px;
-}
-
-.link-card{
-    display:block;
-    text-decoration:none;
-    color:white;
-    background:linear-gradient(135deg, rgba(0,123,255,0.28), rgba(0,123,255,0.08));
-    border:1px solid rgba(0,123,255,0.35);
-    padding:14px;
-    border-radius:14px;
-    font-weight:bold;
-    text-align:center;
-}
-
-/* Loading overlay */
-#loadingOverlay{
-    display:none;
-    position:fixed;
-    top:0;
-    left:0;
+#reader{
     width:100%;
-    height:100%;
-    background:rgba(0,0,0,0.85);
-    z-index:9999;
+    min-height:280px;
+    display:block;
+    background:#000;
+}
+
+.scan-overlay{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    display:flex;
     justify-content:center;
     align-items:center;
+    background:linear-gradient(to bottom,rgba(0,0,0,0.58) 0%,rgba(0,0,0,0.58) 31%,rgba(0,0,0,0.08) 31%,rgba(0,0,0,0.08) 69%,rgba(0,0,0,0.58) 69%,rgba(0,0,0,0.58) 100%);
 }
+.scan-box{width:86%;height:110px;border:3px solid #00e676;border-radius:16px;position:relative;box-shadow:0 0 28px rgba(0,230,118,0.50);}
+.scan-line{position:absolute;left:9%;right:9%;top:50%;height:3px;background:#ff3333;border-radius:999px;transform:translateY(-50%);box-shadow:0 0 16px rgba(255,51,51,0.85);}
+.scan-help{position:absolute;left:12px;right:12px;bottom:12px;text-align:center;font-size:13px;color:white;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.12);border-radius:999px;padding:8px 10px;}
 
-.loaderBox{
-    text-align:center;
-    color:white;
-    font-weight:bold;
-}
+#result{margin-top:15px;font-weight:bold;background:#2a2a2a;border-radius:14px;padding:12px;min-height:45px;border:1px solid rgba(255,255,255,0.08);line-height:1.45;}
+#progressBox{display:none;margin-top:12px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px;color:#ddd;line-height:1.45;}
 
-.spinner{
-    width:55px;
-    height:55px;
-    border:6px solid #333;
-    border-top:6px solid #4CAF50;
-    border-radius:50%;
-    animation:spin 1s linear infinite;
-    margin:0 auto 15px auto;
-}
+.links-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:16px;}
+.link-card{display:block;text-decoration:none;color:white;background:linear-gradient(135deg,rgba(0,123,255,0.28),rgba(0,123,255,0.08));border:1px solid rgba(0,123,255,0.35);padding:14px;border-radius:14px;font-weight:bold;text-align:center;}
 
-@keyframes spin{
-    0%{transform:rotate(0deg);}
-    100%{transform:rotate(360deg);}
-}
+#loadingOverlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;justify-content:center;align-items:center;}
+.loaderBox{text-align:center;color:white;font-weight:bold;}
+.spinner{width:55px;height:55px;border:6px solid #333;border-top:6px solid #fd7e14;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px auto;}
+@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
 
 @media(max-width:600px){
-    h1{
-        font-size:30px;
-    }
-
-    .panel{
-        padding:18px;
-    }
-
-    .button-grid{
-        grid-template-columns:1fr;
-    }
+    h1{font-size:30px;}
+    .panel{padding:18px;}
+    .button-grid,.button-grid-three{grid-template-columns:1fr;}
 }
 </style>
 </head>
 
 <body>
-
 <div class="page">
-
 <div class="panel">
 
 <h1>Move Stock</h1>
-<p class="subtitle">Move items between boxes while keeping stock quantities correct</p>
+<p class="subtitle">Move single items, scanned bundles, or the full remaining contents of one box into another box</p>
 
 <div class="form-card">
+    <div class="section-title">
+        <span>Scanner</span>
+        <span class="section-badge">ZXing</span>
+    </div>
 
-<div class="input-label">Barcode</div>
-<input type="text" id="barcode" placeholder="Scan / Enter Barcode">
+    <div class="button-grid">
+        <button class="scan-button" onclick="startScanner()">Start Scanner</button>
+        <button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
+    </div>
 
-<div class="button-grid">
-    <button class="scan-button" onclick="startScanner()">Start Scanner</button>
-    <button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
+    <div class="button-grid-three">
+        <button class="focus-button" onclick="refocusCamera()">Refocus</button>
+        <button class="zoom-button" onclick="toggleZoom()" id="zoomButton">Zoom 1x</button>
+        <button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
+    </div>
+
+    <div class="toggle-box">
+        <label>
+            <input type="checkbox" id="scanToBundle" checked>
+            Scanner adds items straight to bundle move list
+        </label>
+        <div class="helper-text">Untick this if you only want the scanner to fill the single barcode box.</div>
+    </div>
+
+    <div id="scannerWrap">
+        <video id="reader" playsinline muted></video>
+        <div class="scan-overlay">
+            <div class="scan-box"><div class="scan-line"></div></div>
+        </div>
+        <div class="scan-help">Line barcode across the red line</div>
+    </div>
 </div>
 
-<button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
+<div class="form-card">
+    <div class="section-title">
+        <span>Single Item Move</span>
+        <span class="section-badge">1 barcode</span>
+    </div>
 
-<video id="reader" playsinline></video>
+    <div class="input-label">Barcode</div>
+    <input type="text" id="barcode" placeholder="Scan or enter barcode, e.g. 123 or ITEM-123">
+    <div class="helper-text">Typing <strong>123</strong> becomes <strong>ITEM-123</strong> automatically.</div>
 
-<div class="input-label">From Location</div>
-<select id="fromLocation">
-<option value="">From Location</option>
-</select>
+    <div class="input-label">From Location</div>
+    <select id="fromLocation"><option value="">From Location</option></select>
 
-<div class="input-label">To Location</div>
-<select id="toLocation">
-<option value="">To Location</option>
-</select>
+    <div class="input-label">To Location</div>
+    <select id="toLocation"><option value="">To Location</option></select>
 
-<div class="input-label">Quantity</div>
-<input type="number" id="qty" placeholder="Quantity" value="1" min="1">
+    <div class="input-label">Quantity</div>
+    <input type="number" id="qty" placeholder="Quantity" value="1" min="1">
 
-<button class="move-button" onclick="moveStock()">Move Stock</button>
+    <button class="move-button" onclick="moveStock()">Move Single Item</button>
+</div>
 
+<div class="form-card">
+    <div class="section-title">
+        <span>Bundle Move</span>
+        <span class="section-badge">multiple barcodes</span>
+    </div>
+
+    <div class="input-label">Add Barcode To Bundle</div>
+    <input type="text" id="bundleBarcodeInput" placeholder="Type barcode then press Enter, e.g. 301">
+
+    <div class="button-grid">
+        <button class="add-button" onclick="addBundleBarcodeFromInput()">Add to Bundle Move List</button>
+        <button class="clear-button" onclick="clearBundleList()">Clear Bundle List</button>
+    </div>
+
+    <div id="bundleBox" class="bundle-card" style="display:none;"></div>
+
+    <div class="input-label">Bundle From Location</div>
+    <select id="bundleFromLocation"><option value="">From Location</option></select>
+
+    <div class="input-label">Bundle To Location</div>
+    <select id="bundleToLocation"><option value="">To Location</option></select>
+
+    <button class="move-button" onclick="moveBundleStock()">Move Bundle List</button>
+</div>
+
+<div class="form-card">
+    <div class="section-title">
+        <span>Bulk Box Move</span>
+        <span class="section-badge">whole box</span>
+    </div>
+
+    <div class="warning-text">
+        This moves everything currently left in the selected box into another box. Example: move all remaining stock from BOX 2 to BOX 3.
+    </div>
+
+    <div class="input-label">Move Everything From</div>
+    <select id="bulkFromLocation"><option value="">From Box</option></select>
+
+    <div class="input-label">Move Everything To</div>
+    <select id="bulkToLocation"><option value="">To Box</option></select>
+
+    <button class="bulk-button" onclick="moveWholeBox()">Move Whole Box</button>
+</div>
+
+<div id="progressBox"></div>
 <p id="result">Ready to move stock.</p>
-
-</div>
 
 <div class="links-grid">
     <a class="link-card" href="index.html">← Back to Dashboard</a>
 </div>
 
 </div>
-
 </div>
 
 <div id="loadingOverlay">
@@ -286,238 +323,278 @@ let scannerStarted = false;
 let codeReader = null;
 let controls = null;
 let torchOn = false;
+let activeTrack = null;
+let currentZoom = 1;
+let lastScannedBarcode = "";
+let lastScanTime = 0;
+let bundleBarcodes = [];
 
-function showLoading(){
-    document.getElementById("loadingOverlay").style.display = "flex";
-}
+function showLoading(){document.getElementById("loadingOverlay").style.display = "flex";}
+function hideLoading(){document.getElementById("loadingOverlay").style.display = "none";}
 
-function hideLoading(){
-    document.getElementById("loadingOverlay").style.display = "none";
+function normaliseBarcode(value){
+    let barcode = String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+    if(!barcode) return "";
+    if(/^\d+$/.test(barcode)) return "ITEM-" + barcode;
+    if(/^ITEM\d+$/.test(barcode)) return barcode.replace("ITEM", "ITEM-");
+    return barcode;
 }
 
 function beep(){
     try{
-        const audioCtx =
-        new (window.AudioContext || window.webkitAudioContext)();
-
-        const oscillator =
-        audioCtx.createOscillator();
-
-        const gain =
-        audioCtx.createGain();
-
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
         oscillator.type = "sine";
         oscillator.frequency.value = 900;
-
         gain.gain.value = 0.15;
-
         oscillator.connect(gain);
         gain.connect(audioCtx.destination);
-
         oscillator.start();
-
-        setTimeout(function(){
-            oscillator.stop();
-            audioCtx.close();
-        }, 120);
-
-    }catch(error){
-        console.log("Beep not supported");
-    }
+        setTimeout(function(){oscillator.stop();audioCtx.close();},120);
+    }catch(error){console.log("Beep not supported");}
 }
 
 function scanFeedback(){
-    if(navigator.vibrate){
-        navigator.vibrate(100);
-    }
-
+    if(navigator.vibrate) navigator.vibrate(100);
     beep();
+}
+
+function setResult(message){document.getElementById("result").innerHTML = message;}
+function setProgress(message){
+    const box = document.getElementById("progressBox");
+    box.style.display = "block";
+    box.innerHTML = message;
+}
+function clearProgress(){
+    const box = document.getElementById("progressBox");
+    box.style.display = "none";
+    box.innerHTML = "";
+}
+
+function copyOptions(sourceSelect, targetSelect){
+    targetSelect.innerHTML = sourceSelect.innerHTML;
+}
+
+function loadBoxes(){
+    showLoading();
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({action:"GET_BOXES"})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        hideLoading();
+        if(!data.success){setResult(data.error || "Could not load boxes");return;}
+
+        const selects = [
+            document.getElementById("fromLocation"),
+            document.getElementById("toLocation"),
+            document.getElementById("bundleFromLocation"),
+            document.getElementById("bundleToLocation"),
+            document.getElementById("bulkFromLocation"),
+            document.getElementById("bulkToLocation")
+        ];
+
+        selects.forEach(select=>{
+            const firstText = select.id.toLowerCase().includes("to") ? "To Location" : "From Location";
+            select.innerHTML = '<option value="">' + firstText + '</option>';
+        });
+
+        data.boxes.forEach(item=>{
+            selects.forEach(select=>{
+                const option = document.createElement("option");
+                option.value = item.box;
+                option.textContent = item.box;
+                select.appendChild(option);
+            });
+        });
+    })
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+        alert("Could not load boxes");
+    });
 }
 
 async function toggleTorch(){
     try{
         const video = document.getElementById("reader");
-
-        if(!video.srcObject){
-            alert("Start scanner first");
-            return;
-        }
-
+        if(!video.srcObject){alert("Start scanner first");return;}
         const track = video.srcObject.getVideoTracks()[0];
-
+        activeTrack = track;
         torchOn = !torchOn;
+        await track.applyConstraints({advanced:[{torch:torchOn}]});
+        setResult(torchOn ? "Flashlight on" : "Flashlight off");
+    }catch(error){torchOn = false;alert("Flashlight not supported on this device/browser");}
+}
 
-        await track.applyConstraints({
-            advanced:[{
-                torch: torchOn
-            }]
-        });
-
-        document.getElementById("result").innerText =
-        torchOn ? "Flashlight on" : "Flashlight off";
-
+async function refocusCamera(){
+    try{
+        const video = document.getElementById("reader");
+        if(!video.srcObject){alert("Start scanner first");return;}
+        const track = video.srcObject.getVideoTracks()[0];
+        activeTrack = track;
+        await track.applyConstraints({advanced:[{focusMode:"continuous"}]});
+        setResult("Refocus requested. Hold the barcode steady on the red line.");
     }catch(error){
-        alert("Flashlight not supported on this device/browser");
+        setResult("Refocus not supported on this device/browser, but you can still move the phone back slightly to refocus.");
     }
 }
 
-function loadBoxes(){
-    showLoading();
+async function toggleZoom(){
+    try{
+        const video = document.getElementById("reader");
+        if(!video.srcObject){alert("Start scanner first");return;}
+        const track = video.srcObject.getVideoTracks()[0];
+        activeTrack = track;
+        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+        const maxZoom = capabilities.zoom && capabilities.zoom.max ? capabilities.zoom.max : 1;
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"GET_BOXES"
-        })
-    })
+        currentZoom = currentZoom === 1 ? Math.min(2, maxZoom) : 1;
 
-    .then(res=>res.json())
-
-    .then(data=>{
-        hideLoading();
-
-        if(!data.success){
+        if(maxZoom <= 1){
+            setResult("Zoom not supported on this device/browser.");
+            currentZoom = 1;
             return;
         }
 
-        const fromSelect = document.getElementById("fromLocation");
-        const toSelect = document.getElementById("toLocation");
-
-        fromSelect.innerHTML = '<option value="">From Location</option>';
-        toSelect.innerHTML = '<option value="">To Location</option>';
-
-        data.boxes.forEach(item=>{
-            const option1 = document.createElement("option");
-            option1.value = item.box;
-            option1.textContent = item.box;
-
-            const option2 = document.createElement("option");
-            option2.value = item.box;
-            option2.textContent = item.box;
-
-            fromSelect.appendChild(option1);
-            toSelect.appendChild(option2);
-        });
-    })
-
-    .catch(error=>{
-        hideLoading();
-
-        console.error(error);
-
-        alert("Could not load boxes");
-    });
+        await track.applyConstraints({advanced:[{zoom:currentZoom}]});
+        document.getElementById("zoomButton").innerText = "Zoom " + currentZoom + "x";
+        setResult("Zoom set to " + currentZoom + "x");
+    }catch(error){
+        currentZoom = 1;
+        document.getElementById("zoomButton").innerText = "Zoom 1x";
+        setResult("Zoom not supported on this device/browser.");
+    }
 }
 
 function startScanner(){
     const video = document.getElementById("reader");
+    const scannerWrap = document.getElementById("scannerWrap");
+    scannerWrap.style.display = "block";
+    scannerWrap.scrollIntoView({block:"nearest",behavior:"instant"});
 
-    video.style.display = "block";
+    if(scannerStarted) return;
 
-    video.scrollIntoView({
-        block:"nearest",
-        behavior:"instant"
-    });
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
 
-    if(scannerStarted){
-        return;
-    }
+    codeReader.decodeFromVideoDevice(null,"reader",function(result,error,ctrl){
+        if(ctrl) controls = ctrl;
 
-    codeReader =
-    new ZXingBrowser.BrowserMultiFormatReader();
+        if(result){
+            const barcode = normaliseBarcode(result.getText());
+            const now = Date.now();
 
-    codeReader.decodeFromVideoDevice(
-        null,
-        "reader",
-        function(result, error, ctrl){
-
-            if(ctrl){
-                controls = ctrl;
+            if(barcode === lastScannedBarcode && now - lastScanTime < 1400){
+                return;
             }
 
-            if(result){
-                const barcode =
-                result
-                .getText()
-                .trim()
-                .toUpperCase();
+            lastScannedBarcode = barcode;
+            lastScanTime = now;
+            scanFeedback();
 
-                scanFeedback();
-
+            if(document.getElementById("scanToBundle").checked){
+                addBundleBarcode(barcode);
+                setResult(barcode + " added to bundle move list. Scanner is still open for the next item.");
+            }else{
                 document.getElementById("barcode").value = barcode;
-
-                document.getElementById("result").innerText =
-                "Scanned: " + barcode;
-
+                setResult("Scanned: " + barcode);
                 stopScanner();
             }
         }
-    )
+    })
     .then(function(ctrl){
         controls = ctrl;
+        scannerStarted = true;
+        setTimeout(function(){
+            if(video && video.srcObject){
+                activeTrack = video.srcObject.getVideoTracks()[0] || null;
+                if(activeTrack){
+                    activeTrack.applyConstraints({advanced:[{focusMode:"continuous"},{exposureMode:"continuous"}]}).catch(function(){});
+                }
+            }
+        },500);
     })
     .catch(function(error){
         console.error(error);
-
         alert("Could not start scanner. Check camera permissions.");
-
         scannerStarted = false;
-
-        video.style.display = "none";
+        scannerWrap.style.display = "none";
     });
-
-    scannerStarted = true;
 }
 
 function stopScanner(){
-    if(controls){
-        controls.stop();
-        controls = null;
-    }
-
+    if(controls){controls.stop();controls = null;}
     const video = document.getElementById("reader");
-
     if(video && video.srcObject){
-        video.srcObject
-        .getTracks()
-        .forEach(track => track.stop());
-
+        video.srcObject.getTracks().forEach(track=>track.stop());
         video.srcObject = null;
     }
-
-    video.style.display = "none";
-
+    document.getElementById("scannerWrap").style.display = "none";
     scannerStarted = false;
     torchOn = false;
+    activeTrack = null;
+    currentZoom = 1;
+    document.getElementById("zoomButton").innerText = "Zoom 1x";
 }
 
-function moveStock(){
-    const barcode =
-    document.getElementById("barcode")
-    .value
-    .trim()
-    .toUpperCase();
+function addBundleBarcodeFromInput(){
+    const input = document.getElementById("bundleBarcodeInput");
+    const barcode = normaliseBarcode(input.value);
+    if(!barcode){alert("Enter or scan a barcode first");return;}
+    addBundleBarcode(barcode);
+    input.value = "";
+}
 
-    const fromLocation =
-    document.getElementById("fromLocation")
-    .value;
+function addBundleBarcode(barcode){
+    barcode = normaliseBarcode(barcode);
+    if(!barcode) return;
+    bundleBarcodes.push(barcode);
+    renderBundleList();
+}
 
-    const toLocation =
-    document.getElementById("toLocation")
-    .value;
+function removeBundleBarcode(index){
+    bundleBarcodes.splice(index,1);
+    renderBundleList();
+}
 
-    const qty =
-    document.getElementById("qty")
-    .value || 1;
+function clearBundleList(){
+    bundleBarcodes = [];
+    renderBundleList();
+    setResult("Bundle move list cleared.");
+}
 
-    if(!barcode || !fromLocation || !toLocation){
-        alert("Enter barcode, from location and to location");
+function renderBundleList(){
+    const bundleBox = document.getElementById("bundleBox");
+    if(bundleBarcodes.length === 0){
+        bundleBox.style.display = "none";
+        bundleBox.innerHTML = "";
         return;
     }
 
-    showLoading();
+    bundleBox.style.display = "block";
+    let html = `
+        <div class="bundle-title">
+            <span>Bundle Move List</span>
+            <span class="bundle-pill">${bundleBarcodes.length} item${bundleBarcodes.length === 1 ? "" : "s"}</span>
+        </div>
+    `;
 
-    fetch(API_URL,{
+    bundleBarcodes.forEach((barcode,index)=>{
+        html += `
+            <div class="bundle-item">
+                <span>${barcode}</span>
+                <button class="small-remove" onclick="removeBundleBarcode(${index})">Remove</button>
+            </div>
+        `;
+    });
+
+    bundleBox.innerHTML = html;
+}
+
+function moveRequest(barcode, fromLocation, toLocation, qty){
+    return fetch(API_URL,{
         method:"POST",
         body:JSON.stringify({
             action:"MOVE",
@@ -526,40 +603,187 @@ function moveStock(){
             toLocation:toLocation,
             qty:qty
         })
-    })
+    }).then(res=>res.json());
+}
 
-    .then(res=>res.json())
+function moveStock(){
+    const barcode = normaliseBarcode(document.getElementById("barcode").value);
+    const fromLocation = document.getElementById("fromLocation").value;
+    const toLocation = document.getElementById("toLocation").value;
+    const qty = document.getElementById("qty").value || 1;
 
+    if(!barcode || !fromLocation || !toLocation){alert("Enter barcode, from location and to location");return;}
+    if(fromLocation === toLocation){alert("From and To locations are the same");return;}
+
+    document.getElementById("barcode").value = barcode;
+    showLoading();
+
+    moveRequest(barcode,fromLocation,toLocation,qty)
     .then(data=>{
         hideLoading();
-
         if(data.success){
-            document.getElementById("result").innerText =
-            "Moved " +
-            data.qty +
-            " of " +
-            data.barcode +
-            " from " +
-            data.fromLocation +
-            " to " +
-            data.toLocation;
-
+            setResult("Moved " + data.qty + " of " + data.barcode + " from " + data.fromLocation + " to " + data.toLocation);
             document.getElementById("barcode").value = "";
             document.getElementById("qty").value = "1";
         }else{
-            document.getElementById("result").innerText =
-            data.error || "Move failed";
+            setResult(data.error || "Move failed");
         }
     })
-
-    .catch(error=>{
-        hideLoading();
-
-        console.error(error);
-
-        alert("Error moving stock");
-    });
+    .catch(error=>{hideLoading();console.error(error);alert("Error moving stock");});
 }
+
+async function moveBundleStock(){
+    const fromLocation = document.getElementById("bundleFromLocation").value;
+    const toLocation = document.getElementById("bundleToLocation").value;
+
+    if(bundleBarcodes.length === 0){alert("Add at least one barcode to the bundle move list");return;}
+    if(!fromLocation || !toLocation){alert("Select bundle from and to locations");return;}
+    if(fromLocation === toLocation){alert("From and To locations are the same");return;}
+
+    const counts = {};
+    bundleBarcodes.forEach(barcode=>{
+        const normal = normaliseBarcode(barcode);
+        counts[normal] = (counts[normal] || 0) + 1;
+    });
+
+    const items = Object.keys(counts).map(barcode=>({barcode:barcode,qty:counts[barcode]}));
+
+    showLoading();
+    clearProgress();
+
+    let moved = 0;
+    let failed = [];
+
+    for(let i = 0; i < items.length; i++){
+        const item = items[i];
+        setProgress("Moving bundle item " + (i + 1) + " of " + items.length + "<br>" + item.barcode + " x " + item.qty);
+
+        try{
+            const data = await moveRequest(item.barcode,fromLocation,toLocation,item.qty);
+            if(data.success){
+                moved += item.qty;
+            }else{
+                failed.push(item.barcode + " — " + (data.error || "Move failed"));
+            }
+        }catch(error){
+            console.error(error);
+            failed.push(item.barcode + " — request error");
+        }
+    }
+
+    hideLoading();
+
+    if(failed.length === 0){
+        setResult("Bundle move complete. Moved " + moved + " item" + (moved === 1 ? "" : "s") + " from " + fromLocation + " to " + toLocation + ".");
+        bundleBarcodes = [];
+        renderBundleList();
+        document.getElementById("bundleBarcodeInput").value = "";
+    }else{
+        setResult("Bundle move partly completed. Moved " + moved + " item" + (moved === 1 ? "" : "s") + ".<br><br>Failed:<br>" + failed.join("<br>"));
+    }
+
+    clearProgress();
+}
+
+function getBoxContents(box){
+    return fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({
+            action:"BOX_CONTENTS",
+            box:box
+        })
+    }).then(res=>res.json());
+}
+
+async function moveWholeBox(){
+    const fromLocation = document.getElementById("bulkFromLocation").value;
+    const toLocation = document.getElementById("bulkToLocation").value;
+
+    if(!fromLocation || !toLocation){alert("Select from and to boxes");return;}
+    if(fromLocation === toLocation){alert("From and To boxes are the same");return;}
+
+    if(!confirm("Move everything currently left in " + fromLocation + " to " + toLocation + "?")){
+        return;
+    }
+
+    showLoading();
+    clearProgress();
+
+    try{
+        const contents = await getBoxContents(fromLocation);
+
+        if(!contents.success){
+            hideLoading();
+            setResult(contents.error || "Could not load box contents");
+            return;
+        }
+
+        if(!contents.results || contents.results.length === 0){
+            hideLoading();
+            setResult("No stock found in " + fromLocation + ".");
+            return;
+        }
+
+        let movedQty = 0;
+        let movedLines = 0;
+        let failed = [];
+
+        for(let i = 0; i < contents.results.length; i++){
+            const item = contents.results[i];
+            const barcode = normaliseBarcode(item.barcode);
+            const qty = Number(item.qty || 0);
+
+            if(!barcode || qty <= 0) continue;
+
+            setProgress("Moving box item " + (i + 1) + " of " + contents.results.length + "<br>" + barcode + " x " + qty + "<br>From " + fromLocation + " to " + toLocation);
+
+            try{
+                const data = await moveRequest(barcode,fromLocation,toLocation,qty);
+                if(data.success){
+                    movedQty += qty;
+                    movedLines++;
+                }else{
+                    failed.push(barcode + " — " + (data.error || "Move failed"));
+                }
+            }catch(error){
+                console.error(error);
+                failed.push(barcode + " — request error");
+            }
+        }
+
+        hideLoading();
+        clearProgress();
+
+        if(failed.length === 0){
+            setResult("Whole box move complete. Moved " + movedQty + " total item" + (movedQty === 1 ? "" : "s") + " across " + movedLines + " product line" + (movedLines === 1 ? "" : "s") + " from " + fromLocation + " to " + toLocation + ".");
+        }else{
+            setResult("Box move partly completed. Moved " + movedQty + " item" + (movedQty === 1 ? "" : "s") + ".<br><br>Failed:<br>" + failed.join("<br>"));
+        }
+
+        loadBoxes();
+
+    }catch(error){
+        hideLoading();
+        clearProgress();
+        console.error(error);
+        alert("Error moving whole box");
+    }
+}
+
+document.getElementById("barcode").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+        document.getElementById("barcode").value = normaliseBarcode(this.value);
+        moveStock();
+    }
+});
+
+document.getElementById("bundleBarcodeInput").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        e.preventDefault();
+        addBundleBarcodeFromInput();
+    }
+});
 
 loadBoxes();
 </script>
