@@ -386,8 +386,9 @@ button{
 </div>
 
 <div class="empty-state" style="font-size:13px;text-align:left;">
-    QZ Tray printer set to <strong>JD-668BT</strong>.<br>
-    <button class="printjob-button" onclick="testQzPrint()" type="button" style="margin-top:10px;">TEST QZ AUTO PRINT</button>
+    QZ image-print mode for <strong>JD-668BT</strong>.<br>
+    This uses the Windows printer driver, not raw ZPL commands.<br>
+    <button class="printjob-button" onclick="testQzImagePrint()" type="button" style="margin-top:10px;">TEST QZ IMAGE PRINT</button>
     <div id="qzStatus" style="margin-top:8px;color:#aaa;">QZ Tray not tested yet.</div>
 </div>
 
@@ -677,14 +678,6 @@ function escapeHtml(value){
         .replace(/'/g,"&#039;");
 }
 
-/*
-    QZ TRAY DIRECT PRINTING
-    Printer name: JD-668BT
-    This sends ZPL-style label commands directly to the printer without Chrome print popup.
-
-    If the label prints as text/code instead of a barcode, your Jadens driver may not accept raw ZPL.
-    In that case we will switch this to image/HTML printing through QZ instead.
-*/
 const QZ_PRINTER_NAME = "JD-668BT";
 
 function setQzStatus(message){
@@ -704,39 +697,108 @@ function connectQz(){
 
     setQzStatus("Connecting to QZ Tray...");
 
-    return qz.websocket.connect()
-        .then(function(){
-            setQzStatus("Connected to QZ Tray.");
-        });
+    return qz.websocket.connect().then(function(){
+        setQzStatus("Connected to QZ Tray.");
+    });
 }
 
-function makeZplLabel(barcode, description){
-    const safeBarcode = String(barcode || "").replace(/[^A-Za-z0-9\-_.]/g, "");
-    const safeDescription = String(description || "")
-        .replace(/[\^~]/g, "")
-        .substring(0, 34);
+function buildQzLabelHtml(barcode, description){
+    const safeBarcode = escapeHtml(barcode);
+    const safeDescription = escapeHtml(description);
 
     /*
-        2 inch x 1 inch label at 203dpi = about 406 x 203 dots.
-        This layout gives:
-        - description at top
-        - Code 128 barcode in middle
-        - barcode number underneath
+        This is printed as HTML/image through the Windows JD-668BT driver.
+        It should work even when the printer does not understand raw/ZPL commands.
     */
-    return [
-        "^XA",
-        "^PW406",
-        "^LL203",
-        "^LH0,0",
-        "^CI28",
-        "^FO18,12^A0N,20,20^FD" + safeDescription + "^FS",
-        "^FO25,48^BY2,2,82^BCN,82,N,N,N^FD" + safeBarcode + "^FS",
-        "^FO125,142^A0N,24,24^FD" + safeBarcode + "^FS",
-        "^XZ"
-    ].join("\n");
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<style>
+@page{
+    size:51mm 25mm;
+    margin:0;
 }
 
-function qzPrintOneLabel(barcode, description){
+html,body{
+    margin:0;
+    padding:0;
+    width:51mm;
+    height:25mm;
+    background:white;
+    overflow:hidden;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Arial,sans-serif;
+}
+
+.label{
+    width:51mm;
+    height:25mm;
+    padding:1.3mm 1.8mm 1mm 1.8mm;
+    overflow:hidden;
+    text-align:center;
+    background:white;
+}
+
+.desc{
+    color:black;
+    font-weight:bold;
+    font-size:7.5px;
+    line-height:1;
+    height:8px;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    margin:0 0 0.5mm 0;
+}
+
+#qzBarcode{
+    display:block;
+    width:47mm;
+    height:14mm;
+    margin:0 auto;
+}
+
+.barcodeNumber{
+    color:black;
+    font-size:8px;
+    line-height:1;
+    font-weight:bold;
+    margin-top:0.3mm;
+}
+</style>
+</head>
+<body>
+<div class="label">
+    <div class="desc">${safeDescription}</div>
+    <svg id="qzBarcode"></svg>
+    <div class="barcodeNumber">${safeBarcode}</div>
+</div>
+
+<script>
+window.onload = function(){
+    JsBarcode("#qzBarcode", "${safeBarcode}", {
+        format:"CODE128",
+        displayValue:false,
+        width:1.55,
+        height:40,
+        margin:0
+    });
+};
+<\/script>
+</body>
+</html>`;
+}
+
+function qzPrintOneImageLabel(barcode, description){
     return connectQz()
         .then(function(){
             return qz.printers.find(QZ_PRINTER_NAME);
@@ -747,21 +809,21 @@ function qzPrintOneLabel(barcode, description){
                 units: "in",
                 margins: 0,
                 copies: 1,
-                density: 203
+                scaleContent: false
             });
 
             const data = [{
-                type: "raw",
-                format: "command",
+                type: "pixel",
+                format: "html",
                 flavor: "plain",
-                data: makeZplLabel(barcode, description)
+                data: buildQzLabelHtml(barcode, description)
             }];
 
-            setQzStatus("Sending label to " + QZ_PRINTER_NAME + "...");
+            setQzStatus("Sending image label to " + QZ_PRINTER_NAME + "...");
             return qz.print(config, data);
         })
         .then(function(){
-            setQzStatus("Label sent to " + QZ_PRINTER_NAME + ".");
+            setQzStatus("Image label sent to " + QZ_PRINTER_NAME + ".");
         });
 }
 
@@ -771,25 +833,22 @@ function printBarcodeLabelQz(barcode, description, quantity){
 
     for(let i = 0; i < qty; i++){
         chain = chain.then(function(){
-            return qzPrintOneLabel(barcode, description);
+            return qzPrintOneImageLabel(barcode, description);
         });
     }
 
     return chain;
 }
 
-function testQzPrint(){
-    const testBarcode = "TEST-123";
-    const testDescription = "TEST LABEL";
-
-    printBarcodeLabelQz(testBarcode, testDescription, 1)
+function testQzImagePrint(){
+    printBarcodeLabelQz("TEST-123", "TEST LABEL", 1)
         .then(function(){
-            alert("Test label sent to JD-668BT");
+            alert("Test image label sent to JD-668BT");
         })
         .catch(function(error){
             console.error(error);
-            setQzStatus("QZ print error: " + error);
-            alert("QZ print error: " + error);
+            setQzStatus("QZ image print error: " + error);
+            alert("QZ image print error: " + error);
         });
 }
 
@@ -865,8 +924,8 @@ function saveProduct(){
             printBarcodeLabelQz(data.barcode, description, qty)
                 .catch(function(error){
                     console.error(error);
-                    setQzStatus("QZ print error: " + error);
-                    alert("Saved, but QZ printing failed: " + error);
+                    setQzStatus("QZ image print error: " + error);
+                    alert("Saved, but QZ image printing failed: " + error);
                 });
         }
 
