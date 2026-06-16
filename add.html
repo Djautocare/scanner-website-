@@ -6,8 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d0d0d">
-<meta name="viewport"
-content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Add Stock</title>
 
@@ -22,54 +21,59 @@ html{touch-action:manipulation;}
 body{
     font-family:Arial,sans-serif;
     background:
-        radial-gradient(circle at top left, rgba(40,167,69,0.14), transparent 35%),
-        radial-gradient(circle at top right, rgba(32,201,151,0.10), transparent 35%),
+        radial-gradient(circle at top left, rgba(40,167,69,0.14), transparent 34%),
+        radial-gradient(circle at top right, rgba(111,66,193,0.12), transparent 36%),
         #0d0d0d;
     color:white;
     padding:18px;
     margin:0;
     overflow-x:hidden;
+    transition:background 0.35s ease, box-shadow 0.35s ease;
 }
 
-.page{max-width:760px;margin:0 auto;}
+body.success-flash{
+    background:#0f3d1f !important;
+    box-shadow:inset 0 0 120px rgba(40,167,69,0.65);
+}
+
+body.error-flash{
+    background:#4a1010 !important;
+    box-shadow:inset 0 0 120px rgba(220,53,69,0.65);
+}
+
+.page{max-width:740px;margin:0 auto;}
 
 .panel{
     background:linear-gradient(180deg,#1d1d1d,#151515);
     border:1px solid rgba(255,255,255,0.08);
-    padding:24px;
+    padding:22px;
     border-radius:18px;
     box-shadow:0 20px 60px rgba(0,0,0,0.35);
 }
 
-h1{text-align:center;font-size:34px;margin:12px 0 6px 0;}
-
-.subtitle{
-    text-align:center;
-    color:#aaa;
-    margin:0 0 24px 0;
-    font-size:15px;
-}
+h1{text-align:center;font-size:34px;margin:10px 0 6px 0;}
+.subtitle{text-align:center;color:#aaa;margin:0 0 20px 0;font-size:14px;}
 
 .form-card{
     background:linear-gradient(145deg,#242424,#191919);
     border:1px solid rgba(255,255,255,0.08);
     border-radius:16px;
-    padding:18px;
-    margin-bottom:16px;
+    padding:16px;
+    margin-bottom:14px;
 }
 
 .input-label{
     text-align:left;
     color:#ddd;
     font-weight:bold;
-    margin:14px 0 6px 2px;
+    margin:12px 0 6px 2px;
     font-size:14px;
 }
 
 input,select,button,textarea{
     width:100%;
-    padding:14px;
-    margin:6px 0 12px 0;
+    padding:13px;
+    margin:5px 0 11px 0;
     border:none;
     border-radius:12px;
     font-size:16px;
@@ -82,23 +86,21 @@ input,select,textarea{
     border:1px solid rgba(255,255,255,0.08);
 }
 
-select{appearance:none;}
-
-button{
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
-}
+button{color:white;font-weight:bold;cursor:pointer;}
 
 .primary-button{
     background:linear-gradient(135deg,#28a745,#1f8b3a);
     border:1px solid rgba(40,167,69,0.45);
     box-shadow:0 10px 30px rgba(40,167,69,0.18);
+    font-size:17px;
+    padding:15px;
 }
 
-.clear-button{
+.minor-button{
     background:linear-gradient(135deg,#333,#222);
-    border:1px solid rgba(255,255,255,0.10);
+    border:1px solid rgba(255,255,255,0.12);
+    font-size:13px;
+    padding:10px;
 }
 
 .printjob-button{
@@ -106,80 +108,63 @@ button{
     border:1px solid rgba(111,66,193,0.45);
 }
 
-.match-toggle{
-    background:linear-gradient(135deg,rgba(32,201,151,0.26),rgba(32,201,151,0.08));
-    border:1px solid rgba(32,201,151,0.35);
-    color:white;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-    margin-bottom:8px;
-}
-
-.match-toggle span{
-    pointer-events:none;
-}
-
-.match-count{
-    color:#20c997;
-    font-size:13px;
-}
-
-.match-panel{
+.matches-box{
     display:none;
     background:#111;
-    border:1px solid rgba(255,255,255,0.08);
+    border:1px solid rgba(32,201,151,0.35);
     border-radius:14px;
     overflow:hidden;
-    margin-bottom:14px;
+    margin:8px 0 12px 0;
 }
 
-.match-panel.open{
-    display:block;
+.matches-box.show{display:block;}
+
+.match-summary{
+    padding:10px 12px;
+    color:#20c997;
+    font-size:13px;
+    font-weight:bold;
+    border-bottom:1px solid rgba(255,255,255,0.07);
 }
 
 .match-item{
-    padding:13px;
+    padding:11px 12px;
     border-bottom:1px solid rgba(255,255,255,0.07);
     cursor:pointer;
 }
 
-.match-item:last-child{
-    border-bottom:none;
+.match-item:last-child{border-bottom:none;}
+.match-item:hover{background:#1b1b1b;}
+
+.match-title{font-weight:bold;font-size:15px;margin-bottom:4px;}
+.match-meta{color:#aaa;font-size:12px;}
+
+.row-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
 }
 
-.match-item:hover{
-    background:#1b1b1b;
-}
-
-.match-title{
-    font-weight:bold;
-    font-size:16px;
-    margin-bottom:5px;
-}
-
-.match-meta{
+.small-note{
     color:#aaa;
-    font-size:13px;
+    font-size:12px;
+    line-height:1.35;
+    margin:-4px 0 10px 0;
 }
 
-.empty-state{
-    background:#2a2a2a;
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:14px;
-    padding:14px;
-    margin-bottom:12px;
-    color:#ddd;
-    text-align:center;
+.status-line{
+    min-height:18px;
+    color:#aaa;
+    font-size:12px;
+    margin:4px 0 10px 0;
 }
 
 .checkbox-card{
     background:#2a2a2a;
     border:1px solid rgba(255,255,255,0.08);
     border-radius:14px;
-    padding:12px;
-    margin:10px 0 16px 0;
+    padding:11px;
+    margin:8px 0 12px 0;
     text-align:left;
 }
 
@@ -188,25 +173,50 @@ button{
     align-items:center;
     gap:10px;
     font-weight:bold;
+    font-size:14px;
 }
 
-.checkbox-card input{
-    width:auto;
-    margin:0;
+.checkbox-card input{width:auto;margin:0;}
+
+details{
+    background:linear-gradient(145deg,#222,#181818);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    margin:14px 0;
+    overflow:hidden;
+}
+
+summary{
+    cursor:pointer;
+    padding:14px;
+    font-weight:bold;
+    list-style:none;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+summary::-webkit-details-marker{display:none;}
+summary:after{content:"▼";color:#aaa;font-size:12px;}
+details[open] summary:after{content:"▲";}
+
+.details-body{
+    padding:0 14px 14px 14px;
+    border-top:1px solid rgba(255,255,255,0.07);
 }
 
 .links-grid{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:12px;
-    margin-top:16px;
+    margin-top:14px;
 }
 
 .link-card{
     display:block;
     text-decoration:none;
     color:white;
-    background:linear-gradient(135deg,rgba(32,201,151,0.28),rgba(32,201,151,0.08));
+    background:linear-gradient(135deg,rgba(32,201,151,0.22),rgba(32,201,151,0.06));
     border:1px solid rgba(32,201,151,0.35);
     padding:14px;
     border-radius:14px;
@@ -215,7 +225,7 @@ button{
 }
 
 .back-card{
-    background:linear-gradient(135deg,rgba(0,123,255,0.28),rgba(0,123,255,0.08));
+    background:linear-gradient(135deg,rgba(0,123,255,0.22),rgba(0,123,255,0.06));
     border-color:rgba(0,123,255,0.35);
 }
 
@@ -232,6 +242,8 @@ button{
     overflow:hidden;
 }
 
+#printArea.hidden-preview{position:absolute;left:-9999px;top:-9999px;}
+
 #barcodeText{
     color:black;
     font-weight:bold;
@@ -244,10 +256,7 @@ button{
 #loadingOverlay{
     display:none;
     position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
+    inset:0;
     background:rgba(0,0,0,0.85);
     z-index:9999;
     justify-content:center;
@@ -255,7 +264,6 @@ button{
 }
 
 .loaderBox{text-align:center;color:white;font-weight:bold;}
-
 .spinner{
     width:55px;
     height:55px;
@@ -266,36 +274,24 @@ button{
     margin:0 auto 15px auto;
 }
 
-@keyframes spin{
-    0%{transform:rotate(0deg);}
-    100%{transform:rotate(360deg);}
-}
+@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
 
 @media(max-width:600px){
     h1{font-size:30px;}
-    .panel{padding:18px;}
+    .panel{padding:16px;}
+    .row-2{grid-template-columns:1fr;gap:0;}
     .links-grid{grid-template-columns:1fr;}
 }
 
 @media print{
     @page{size:51mm 25mm;margin:0;}
-
-    html,body{
-        width:51mm;
-        height:25mm;
-        margin:0;
-        padding:0;
-        background:white;
-    }
-
+    html,body{width:51mm;height:25mm;margin:0;padding:0;background:white;}
     body *{visibility:hidden;}
-
     #printArea,#printArea *{visibility:visible;}
-
     #printArea{
-        position:fixed;
-        left:0;
-        top:0;
+        position:fixed !important;
+        left:0 !important;
+        top:0 !important;
         width:51mm;
         height:25mm;
         padding:1.5mm;
@@ -306,94 +302,84 @@ button{
         overflow:hidden;
         border-radius:0;
     }
-
-    #barcode{
-        width:1.7in !important;
-        height:0.6in !important;
-        display:block !important;
-        margin:0 auto !important;
-    }
-
-    #barcodeText{
-        color:black;
-        font-size:11px;
-        font-weight:bold;
-        margin:0;
-        padding:0;
-        line-height:1;
-    }
-
+    #barcode{width:1.7in !important;height:0.6in !important;display:block !important;margin:0 auto !important;}
+    #barcodeText{color:black;font-size:11px;font-weight:bold;margin:0;padding:0;line-height:1;}
     #loadingOverlay{display:none !important;}
 }
 </style>
 </head>
 
 <body>
-
 <div class="page">
 <div class="panel">
 
 <h1>Add Stock</h1>
-<p class="subtitle">Type a description, choose a matching product if needed, assign location, and print 2×1 barcode labels</p>
+<p class="subtitle">Add item, choose box, print barcode.</p>
 
 <div class="form-card">
-
-<button class="match-toggle" onclick="toggleMatches()" type="button">
-    <span id="matchToggleText">Matching Existing Products</span>
-    <span class="match-count" id="matchCountText">Type to search ▼</span>
-</button>
-
-<div id="matchPanel" class="match-panel">
-    <div class="empty-state">Start typing in the description box to find existing products.</div>
-</div>
 
 <div class="input-label">Item Description</div>
 <input type="text" id="description" placeholder="Example: Dyson charger">
 
-<div class="input-label">Quantity</div>
-<input type="number" id="qty" placeholder="Quantity" value="1" min="1">
+<div id="matchesBox" class="matches-box">
+    <div class="match-summary" id="matchSummary">Type to search existing products</div>
+    <div id="matchResults"></div>
+</div>
 
-<div class="input-label">Box / Location</div>
-<select id="location">
+<div class="row-2">
+    <div>
+        <div class="input-label">Quantity</div>
+        <input type="number" id="qty" placeholder="Quantity" value="1" min="1">
+        <div class="small-note">Arrow up/down changes quantity.</div>
+    </div>
+    <div>
+        <div class="input-label">Box Number</div>
+        <input type="number" id="boxNumberInput" placeholder="Example: 16" inputmode="numeric">
+        <div class="small-note" id="boxHint">Type a box number and the closest available box will be selected.</div>
+    </div>
+</div>
+
+<select id="location" style="display:none;">
 <option value="">Loading boxes...</option>
 </select>
 
 <div class="checkbox-card">
     <label>
-        <input type="checkbox" id="addToPrintJob">
-        Add labels to print job
-    </label>
-</div>
-
-<div class="input-label">Print Job</div>
-<select id="printJob">
-<option value="">Loading print jobs...</option>
-</select>
-
-<div class="input-label">New Print Job Name</div>
-<input type="text" id="newPrintJobName" placeholder="Example: Mystery Box 1 Labels">
-
-<button class="printjob-button" onclick="createPrintJob()" type="button">Create New Print Job</button>
-
-<div class="checkbox-card">
-    <label>
         <input type="checkbox" id="printLabels" checked>
-        Print 2×1 label immediately after saving
+        Auto print 2×1 label
     </label>
-</div>
-
-<div class="empty-state" style="font-size:13px;text-align:left;">
-    Label size is set to <strong>51mm × 25mm</strong> for 2×1 inch labels. For best results, set your Jadens printer paper size to 2×1 / 51mm × 25mm in the print settings.
-</div>
-
-<div class="empty-state" style="font-size:13px;text-align:left;">
-    QZ image-print mode for <strong>JD-668BT</strong>.<br>
-    This uses the Windows printer driver, not raw ZPL commands.<br>
-    <button class="printjob-button" onclick="testQzImagePrint()" type="button" style="margin-top:10px;">TEST QZ IMAGE PRINT</button>
-    <div id="qzStatus" style="margin-top:8px;color:#aaa;">QZ Tray not tested yet.</div>
+    <div class="small-note" style="margin:8px 0 0 25px;">For Windows only.</div>
 </div>
 
 <button class="primary-button" onclick="saveProduct()" type="button">＋ Save Product</button>
+<div class="status-line" id="saveStatus"></div>
+
+<details>
+    <summary>Printing Options</summary>
+    <div class="details-body">
+
+        <div class="checkbox-card">
+            <label>
+                <input type="checkbox" id="addToPrintJob">
+                Add labels to print job
+            </label>
+        </div>
+
+        <div class="input-label">Print Job</div>
+        <select id="printJob">
+            <option value="">Loading print jobs...</option>
+        </select>
+
+        <div class="input-label">New Print Job Name</div>
+        <input type="text" id="newPrintJobName" placeholder="Example: Mystery Box 1 Labels">
+
+        <button class="printjob-button" onclick="createPrintJob()" type="button">Create New Print Job</button>
+
+        <button class="minor-button" onclick="testQzImagePrint()" type="button">Test Auto Print Only</button>
+        <div class="status-line" id="qzStatus">QZ Tray ready for JD-668BT.</div>
+
+    </div>
+</details>
 
 </div>
 
@@ -402,7 +388,7 @@ button{
     <a class="link-card back-card" href="index.html">← Back to Dashboard</a>
 </div>
 
-<div id="printArea">
+<div id="printArea" class="hidden-preview">
     <svg id="barcode"></svg>
     <p id="barcodeText"></p>
 </div>
@@ -418,275 +404,16 @@ button{
 </div>
 
 <script>
-const API_URL =
-"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 let existingProductResults = [];
 let liveSearchTimer = null;
-
-function showLoading(){
-    document.getElementById("loadingOverlay").style.display = "flex";
-}
-
-function hideLoading(){
-    document.getElementById("loadingOverlay").style.display = "none";
-}
-
-function fillBoxDropdown(boxes){
-    const select = document.getElementById("location");
-    select.innerHTML = '<option value="">Select Box / Location</option>';
-
-    if(!boxes || boxes.length === 0){
-        select.innerHTML = '<option value="">No boxes created yet</option>';
-        return;
-    }
-
-    boxes.forEach(item=>{
-        const option = document.createElement("option");
-        option.value = item.box;
-        option.textContent = item.box;
-        select.appendChild(option);
-    });
-}
-
-function loadBoxes(){
-    const cached = localStorage.getItem("inventoryBoxes");
-
-    if(cached){
-        try{
-            fillBoxDropdown(JSON.parse(cached));
-        }catch(e){}
-    }
-
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({action:"GET_BOXES"})
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        if(data.success && data.boxes){
-            localStorage.setItem("inventoryBoxes", JSON.stringify(data.boxes));
-            fillBoxDropdown(data.boxes);
-        }
-    })
-    .catch(error=>{
-        console.error(error);
-    });
-}
-
-function fillPrintJobDropdown(jobs){
-    const select = document.getElementById("printJob");
-    select.innerHTML = '<option value="">Select Print Job</option>';
-
-    if(!jobs || jobs.length === 0){
-        select.innerHTML = '<option value="">No print jobs created yet</option>';
-        return;
-    }
-
-    jobs.forEach(job=>{
-        const option = document.createElement("option");
-        option.value = job.printJobId;
-        option.textContent = job.printJobId + " - " + job.name;
-        select.appendChild(option);
-    });
-}
-
-function loadPrintJobs(){
-    const cached = localStorage.getItem("inventoryPrintJobs");
-
-    if(cached){
-        try{
-            fillPrintJobDropdown(JSON.parse(cached));
-        }catch(e){}
-    }
-
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({action:"GET_PRINT_JOBS"})
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        if(data.success && data.printJobs){
-            localStorage.setItem("inventoryPrintJobs", JSON.stringify(data.printJobs));
-            fillPrintJobDropdown(data.printJobs);
-        }
-    })
-    .catch(error=>{
-        console.error(error);
-    });
-}
-
-function createPrintJob(){
-    const name = document.getElementById("newPrintJobName").value.trim();
-
-    if(!name){
-        alert("Enter a print job name");
-        return;
-    }
-
-    showLoading();
-
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"CREATE_PRINT_JOB",
-            name:name
-        })
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        hideLoading();
-
-        if(!data.success){
-            alert(data.error || "Could not create print job");
-            return;
-        }
-
-        document.getElementById("newPrintJobName").value = "";
-        document.getElementById("addToPrintJob").checked = true;
-
-        localStorage.removeItem("inventoryPrintJobs");
-
-        loadPrintJobs();
-
-        setTimeout(function(){
-            document.getElementById("printJob").value = data.printJobId;
-        }, 500);
-
-        alert("Created print job: " + data.printJobId);
-        document.getElementById("description").focus();
-    })
-    .catch(error=>{
-        hideLoading();
-        console.error(error);
-        alert("Error creating print job");
-    });
-}
-
-function toggleMatches(){
-    const panel = document.getElementById("matchPanel");
-    panel.classList.toggle("open");
-    updateMatchToggleText();
-}
-
-function updateMatchToggleText(){
-    const panel = document.getElementById("matchPanel");
-    const countText = document.getElementById("matchCountText");
-
-    if(existingProductResults.length === 0){
-        const description = document.getElementById("description").value.trim();
-        countText.innerText = description.length >= 2 ? "No matches ▼" : "Type to search ▼";
-        return;
-    }
-
-    countText.innerText = existingProductResults.length + " match" + (existingProductResults.length === 1 ? "" : "es") + (panel.classList.contains("open") ? " ▲" : " ▼");
-}
-
-function searchExistingProductsLive(){
-    const query = document.getElementById("description").value.trim();
-
-    clearTimeout(liveSearchTimer);
-
-    if(query.length < 2){
-        existingProductResults = [];
-        document.getElementById("matchPanel").innerHTML =
-        "<div class='empty-state'>Start typing in the description box to find existing products.</div>";
-        updateMatchToggleText();
-        return;
-    }
-
-    liveSearchTimer = setTimeout(function(){
-        fetch(API_URL,{
-            method:"POST",
-            body:JSON.stringify({
-                action:"SEARCH",
-                query:query
-            })
-        })
-        .then(res=>res.json())
-        .then(data=>{
-            if(!data.success || !data.results || data.results.length === 0){
-                existingProductResults = [];
-                document.getElementById("matchPanel").innerHTML =
-                "<div class='empty-state'>No matching existing products found.</div>";
-                updateMatchToggleText();
-                return;
-            }
-
-            existingProductResults = data.results;
-
-            let html = "";
-
-            data.results.slice(0,10).forEach((item,index)=>{
-                const barcode = item.barcode || item.itemId || "";
-                const qty = item.totalQty || 0;
-
-                html += `
-                    <div class="match-item" onclick="selectExistingProduct(${index})">
-                        <div class="match-title">${item.description}</div>
-                        <div class="match-meta">${barcode} • Current Qty ${qty}</div>
-                    </div>
-                `;
-            });
-
-            document.getElementById("matchPanel").innerHTML = html;
-            updateMatchToggleText();
-        })
-        .catch(error=>{
-            console.error(error);
-            existingProductResults = [];
-            document.getElementById("matchPanel").innerHTML =
-            "<div class='empty-state'>Error searching existing products.</div>";
-            updateMatchToggleText();
-        });
-    }, 250);
-}
-
-function selectExistingProduct(index){
-    const item = existingProductResults[index];
-
-    if(!item) return;
-
-    document.getElementById("description").value = item.description;
-    document.getElementById("matchPanel").classList.remove("open");
-    document.getElementById("matchPanel").innerHTML =
-    "<div class='empty-state'>Selected existing product: <strong>" +
-    item.description +
-    "</strong></div>";
-
-    existingProductResults = [item];
-    updateMatchToggleText();
-
-    document.getElementById("qty").focus();
-}
-
-function clearMatchResults(){
-    existingProductResults = [];
-    document.getElementById("matchPanel").classList.remove("open");
-    document.getElementById("matchPanel").innerHTML =
-    "<div class='empty-state'>Start typing in the description box to find existing products.</div>";
-    updateMatchToggleText();
-}
-
-
-
-function escapeHtml(value){
-    return String(value || "")
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#039;");
-}
-
+let boxSearchTimer = null;
+let allBoxes = [];
 
 /*
     QZ TRUSTED SIGNING SETUP
     This certificate must be imported into QZ Tray on your laptop.
-    This should let "Remember this decision" work and stop repeated prompts.
-
-    Important: this private key is embedded for your own private inventory site only.
-    Do not use this file on a public/shared system where other people can copy it.
 */
 const QZ_CERTIFICATE = `-----BEGIN CERTIFICATE-----
 MIIDaTCCAlGgAwIBAgIUEYjhN8XGDWd4zQ/41gWdGPPJOBUwDQYJKoZIhvcNAQEL
@@ -763,9 +490,44 @@ qz.security.setSignaturePromise(function(toSign){
 
 const QZ_PRINTER_NAME = "JD-668BT";
 
+function showLoading(){document.getElementById("loadingOverlay").style.display = "flex";}
+function hideLoading(){document.getElementById("loadingOverlay").style.display = "none";}
+
 function setQzStatus(message){
     const box = document.getElementById("qzStatus");
     if(box) box.innerText = message;
+}
+
+function setSaveStatus(message){
+    document.getElementById("saveStatus").innerText = message || "";
+}
+
+function flashSuccess(){
+    document.body.classList.remove("error-flash");
+    document.body.classList.add("success-flash");
+    setTimeout(function(){
+        document.body.classList.remove("success-flash");
+    }, 4000);
+}
+
+function flashError(message){
+    document.body.classList.remove("success-flash");
+    document.body.classList.add("error-flash");
+    setSaveStatus(message || "Something went wrong.");
+}
+
+function clearErrorOnNewProduct(){
+    document.body.classList.remove("error-flash");
+    setSaveStatus("");
+}
+
+function escapeHtml(value){
+    return String(value || "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
 }
 
 function connectQz(){
@@ -774,12 +536,9 @@ function connectQz(){
         return Promise.reject("QZ Tray library did not load");
     }
 
-    if(qz.websocket.isActive()){
-        return Promise.resolve();
-    }
+    if(qz.websocket.isActive()) return Promise.resolve();
 
     setQzStatus("Connecting to QZ Tray...");
-
     return qz.websocket.connect().then(function(){
         setQzStatus("Connected to QZ Tray.");
     });
@@ -789,10 +548,6 @@ function buildQzLabelHtml(barcode, description){
     const safeBarcode = escapeHtml(barcode);
     const safeDescription = escapeHtml(description);
 
-    /*
-        This is printed as HTML/image through the Windows JD-668BT driver.
-        It should work even when the printer does not understand raw/ZPL commands.
-    */
     return `
 <!DOCTYPE html>
 <html>
@@ -800,63 +555,14 @@ function buildQzLabelHtml(barcode, description){
 <meta charset="UTF-8">
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
-@page{
-    size:51mm 25mm;
-    margin:0;
-}
-
-html,body{
-    margin:0;
-    padding:0;
-    width:51mm;
-    height:25mm;
-    background:white;
-    overflow:hidden;
-}
-
-*{
-    box-sizing:border-box;
-}
-
-body{
-    font-family:Arial,sans-serif;
-}
-
-.label{
-    width:51mm;
-    height:25mm;
-    padding:1.3mm 1.8mm 1mm 1.8mm;
-    overflow:hidden;
-    text-align:center;
-    background:white;
-}
-
-.desc{
-    color:black;
-    font-weight:bold;
-    font-size:7.5px;
-    line-height:1;
-    height:8px;
-    overflow:hidden;
-    white-space:nowrap;
-    text-overflow:ellipsis;
-    margin:0 0 0.5mm 0;
-}
-
-#qzBarcode{
-    display:block;
-    width:47mm;
-    height:14mm;
-    margin:0 auto;
-}
-
-.barcodeNumber{
-    color:black;
-    font-size:8px;
-    line-height:1;
-    font-weight:bold;
-    margin-top:0.3mm;
-}
+@page{size:51mm 25mm;margin:0;}
+html,body{margin:0;padding:0;width:51mm;height:25mm;background:white;overflow:hidden;}
+*{box-sizing:border-box;}
+body{font-family:Arial,sans-serif;}
+.label{width:51mm;height:25mm;padding:1.3mm 1.8mm 1mm 1.8mm;overflow:hidden;text-align:center;background:white;}
+.desc{color:black;font-weight:bold;font-size:7.5px;line-height:1;height:8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin:0 0 0.5mm 0;}
+#qzBarcode{display:block;width:47mm;height:14mm;margin:0 auto;}
+.barcodeNumber{color:black;font-size:8px;line-height:1;font-weight:bold;margin-top:0.3mm;}
 </style>
 </head>
 <body>
@@ -865,7 +571,6 @@ body{
     <svg id="qzBarcode"></svg>
     <div class="barcodeNumber">${safeBarcode}</div>
 </div>
-
 <script>
 window.onload = function(){
     JsBarcode("#qzBarcode", "${safeBarcode}", {
@@ -883,9 +588,7 @@ window.onload = function(){
 
 function qzPrintOneImageLabel(barcode, description){
     return connectQz()
-        .then(function(){
-            return qz.printers.find(QZ_PRINTER_NAME);
-        })
+        .then(function(){return qz.printers.find(QZ_PRINTER_NAME);})
         .then(function(printer){
             const config = qz.configs.create(printer, {
                 size: { width: 2, height: 1 },
@@ -902,11 +605,11 @@ function qzPrintOneImageLabel(barcode, description){
                 data: buildQzLabelHtml(barcode, description)
             }];
 
-            setQzStatus("Sending image label to " + QZ_PRINTER_NAME + "...");
+            setQzStatus("Sending label to " + QZ_PRINTER_NAME + "...");
             return qz.print(config, data);
         })
         .then(function(){
-            setQzStatus("Image label sent to " + QZ_PRINTER_NAME + ".");
+            setQzStatus("Label sent to " + QZ_PRINTER_NAME + ".");
         });
 }
 
@@ -925,16 +628,279 @@ function printBarcodeLabelQz(barcode, description, quantity){
 
 function testQzImagePrint(){
     printBarcodeLabelQz("TEST-123", "TEST LABEL", 1)
-        .then(function(){
-            alert("Test image label sent to JD-668BT");
-        })
+        .then(function(){setQzStatus("Test label sent to JD-668BT.");})
         .catch(function(error){
             console.error(error);
-            setQzStatus("QZ image print error: " + error);
-            alert("QZ image print error: " + error);
+            setQzStatus("QZ print error: " + error);
+            flashError("Auto print test failed.");
         });
 }
 
+function getBoxNumber(boxName){
+    const match = String(boxName || "").match(/(\d+)/);
+    return match ? Number(match[1]) : null;
+}
+
+function fillBoxDropdown(boxes){
+    allBoxes = boxes || [];
+
+    const select = document.getElementById("location");
+    select.innerHTML = '<option value="">Select Box / Location</option>';
+
+    if(!allBoxes.length){
+        select.innerHTML = '<option value="">No boxes created yet</option>';
+        return;
+    }
+
+    allBoxes.sort(function(a,b){
+        const an = getBoxNumber(a.box);
+        const bn = getBoxNumber(b.box);
+        if(an !== null && bn !== null) return an - bn;
+        return String(a.box).localeCompare(String(b.box));
+    });
+
+    allBoxes.forEach(item=>{
+        const option = document.createElement("option");
+        option.value = item.box;
+        option.textContent = item.box;
+        select.appendChild(option);
+    });
+
+    const savedLocation = localStorage.getItem("lastAddLocation");
+    if(savedLocation){
+        select.value = savedLocation;
+        const n = getBoxNumber(savedLocation);
+        if(n !== null) document.getElementById("boxNumberInput").value = n;
+        document.getElementById("boxHint").innerText = "Selected " + savedLocation;
+    }
+}
+
+function loadBoxes(){
+    const cached = localStorage.getItem("inventoryBoxes");
+    if(cached){
+        try{fillBoxDropdown(JSON.parse(cached));}catch(e){}
+    }
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({action:"GET_BOXES"})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.success && data.boxes){
+            localStorage.setItem("inventoryBoxes", JSON.stringify(data.boxes));
+            fillBoxDropdown(data.boxes);
+        }
+    })
+    .catch(error=>console.error(error));
+}
+
+function chooseClosestBox(){
+    const raw = document.getElementById("boxNumberInput").value.trim();
+    const hint = document.getElementById("boxHint");
+    const select = document.getElementById("location");
+
+    if(!raw){
+        select.value = "";
+        hint.innerText = "Type a box number and the closest available box will be selected.";
+        return;
+    }
+
+    const wanted = Number(raw);
+    if(!allBoxes.length || isNaN(wanted)){
+        hint.innerText = "No boxes available yet.";
+        return;
+    }
+
+    let best = null;
+    let bestDistance = Infinity;
+
+    allBoxes.forEach(function(item){
+        const n = getBoxNumber(item.box);
+        if(n === null) return;
+
+        const distance = Math.abs(n - wanted);
+        if(distance < bestDistance){
+            best = item;
+            bestDistance = distance;
+        }
+    });
+
+    if(best){
+        select.value = best.box;
+        localStorage.setItem("lastAddLocation", best.box);
+        if(getBoxNumber(best.box) === wanted){
+            hint.innerText = "Selected " + best.box;
+        }else{
+            hint.innerText = "Closest available: " + best.box;
+        }
+    }
+}
+
+function boxNumberChanged(){
+    clearErrorOnNewProduct();
+    clearTimeout(boxSearchTimer);
+    boxSearchTimer = setTimeout(chooseClosestBox, 500);
+}
+
+function fillPrintJobDropdown(jobs){
+    const select = document.getElementById("printJob");
+    select.innerHTML = '<option value="">Select Print Job</option>';
+
+    if(!jobs || jobs.length === 0){
+        select.innerHTML = '<option value="">No print jobs created yet</option>';
+        return;
+    }
+
+    jobs.forEach(job=>{
+        const option = document.createElement("option");
+        option.value = job.printJobId;
+        option.textContent = job.printJobId + " - " + job.name;
+        select.appendChild(option);
+    });
+}
+
+function loadPrintJobs(){
+    const cached = localStorage.getItem("inventoryPrintJobs");
+    if(cached){
+        try{fillPrintJobDropdown(JSON.parse(cached));}catch(e){}
+    }
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({action:"GET_PRINT_JOBS"})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.success && data.printJobs){
+            localStorage.setItem("inventoryPrintJobs", JSON.stringify(data.printJobs));
+            fillPrintJobDropdown(data.printJobs);
+        }
+    })
+    .catch(error=>console.error(error));
+}
+
+function createPrintJob(){
+    const name = document.getElementById("newPrintJobName").value.trim();
+
+    if(!name){
+        flashError("Enter a print job name.");
+        return;
+    }
+
+    showLoading();
+
+    fetch(API_URL,{
+        method:"POST",
+        body:JSON.stringify({action:"CREATE_PRINT_JOB", name:name})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        hideLoading();
+
+        if(!data.success){
+            flashError(data.error || "Could not create print job.");
+            return;
+        }
+
+        document.getElementById("newPrintJobName").value = "";
+        document.getElementById("addToPrintJob").checked = true;
+
+        localStorage.removeItem("inventoryPrintJobs");
+        loadPrintJobs();
+
+        setTimeout(function(){
+            document.getElementById("printJob").value = data.printJobId;
+        }, 500);
+
+        flashSuccess();
+        setSaveStatus("Created print job: " + data.printJobId);
+        document.getElementById("description").focus();
+    })
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+        flashError("Error creating print job.");
+    });
+}
+
+function searchExistingProductsLive(){
+    const query = document.getElementById("description").value.trim();
+    const box = document.getElementById("matchesBox");
+    const summary = document.getElementById("matchSummary");
+    const results = document.getElementById("matchResults");
+
+    clearErrorOnNewProduct();
+    clearTimeout(liveSearchTimer);
+
+    if(query.length < 2){
+        existingProductResults = [];
+        box.classList.remove("show");
+        summary.innerText = "Type to search existing products";
+        results.innerHTML = "";
+        return;
+    }
+
+    box.classList.add("show");
+    summary.innerText = "Searching...";
+    results.innerHTML = "";
+
+    liveSearchTimer = setTimeout(function(){
+        fetch(API_URL,{
+            method:"POST",
+            body:JSON.stringify({action:"SEARCH", query:query})
+        })
+        .then(res=>res.json())
+        .then(data=>{
+            if(!data.success || !data.results || data.results.length === 0){
+                existingProductResults = [];
+                summary.innerText = "No existing matches found.";
+                results.innerHTML = "";
+                return;
+            }
+
+            existingProductResults = data.results;
+            summary.innerText = data.results.length + " existing match" + (data.results.length === 1 ? "" : "es") + " found";
+
+            let html = "";
+            data.results.slice(0,8).forEach((item,index)=>{
+                const barcode = item.barcode || item.itemId || "";
+                const qty = item.totalQty || 0;
+                html += `
+                    <div class="match-item" onclick="selectExistingProduct(${index})">
+                        <div class="match-title">${escapeHtml(item.description)}</div>
+                        <div class="match-meta">${escapeHtml(barcode)} • Current Qty ${qty}</div>
+                    </div>
+                `;
+            });
+
+            results.innerHTML = html;
+        })
+        .catch(error=>{
+            console.error(error);
+            existingProductResults = [];
+            summary.innerText = "Error searching existing products.";
+            results.innerHTML = "";
+        });
+    }, 250);
+}
+
+function selectExistingProduct(index){
+    const item = existingProductResults[index];
+    if(!item) return;
+
+    document.getElementById("description").value = item.description;
+    document.getElementById("matchSummary").innerText = "Selected existing product";
+    document.getElementById("matchResults").innerHTML = "";
+    document.getElementById("qty").focus();
+}
+
+function clearMatchResults(){
+    existingProductResults = [];
+    document.getElementById("matchesBox").classList.remove("show");
+    document.getElementById("matchSummary").innerText = "Type to search existing products";
+    document.getElementById("matchResults").innerHTML = "";
+}
 
 function saveProduct(){
     const description = document.getElementById("description").value.trim();
@@ -945,24 +911,29 @@ function saveProduct(){
     const printJobId = document.getElementById("printJob").value;
 
     if(!description){
-        alert("Enter description");
+        flashError("Enter description.");
         document.getElementById("description").focus();
         return;
     }
 
-    if(!location){
-        alert("Select a box/location");
-        document.getElementById("location").focus();
+    chooseClosestBox();
+
+    if(!document.getElementById("location").value){
+        flashError("Enter/select a box number.");
+        document.getElementById("boxNumberInput").focus();
         return;
     }
 
+    const finalLocation = document.getElementById("location").value;
+
     if(addToPrintJob && !printJobId){
-        alert("Select a print job or create one first");
+        flashError("Select a print job or create one first.");
         document.getElementById("printJob").focus();
         return;
     }
 
     showLoading();
+    setSaveStatus("Saving...");
 
     fetch(API_URL,{
         method:"POST",
@@ -970,7 +941,7 @@ function saveProduct(){
             action:"ADD",
             description:description,
             qty:qty,
-            location:location,
+            location:finalLocation,
             addToPrintJob:addToPrintJob,
             printJobId:printJobId
         })
@@ -980,7 +951,7 @@ function saveProduct(){
         hideLoading();
 
         if(!data.success){
-            alert(data.error || "Error");
+            flashError(data.error || "Error saving product.");
             return;
         }
 
@@ -994,21 +965,15 @@ function saveProduct(){
             margin:2
         });
 
-        let message = "Saved Successfully\n\nBarcode: " + data.barcode;
-
-        if(addToPrintJob){
-            message += "\nAdded to print job: " + printJobId;
-            message += "\nLabel count added: " + qty;
-        }
-
-        alert(message);
+        flashSuccess();
+        setSaveStatus("Saved: " + data.barcode);
 
         if(printLabels){
             printBarcodeLabelQz(data.barcode, description, qty)
                 .catch(function(error){
                     console.error(error);
-                    setQzStatus("QZ image print error: " + error);
-                    alert("Saved, but QZ image printing failed: " + error);
+                    setQzStatus("QZ print error: " + error);
+                    flashError("Saved, but auto print failed.");
                 });
         }
 
@@ -1023,7 +988,7 @@ function saveProduct(){
     .catch(error=>{
         hideLoading();
         console.error(error);
-        alert("Error saving product");
+        flashError("Error saving product.");
     });
 }
 
@@ -1031,13 +996,8 @@ function adjustQty(direction){
     const qtyInput = document.getElementById("qty");
     let qty = Number(qtyInput.value || 1);
 
-    if(direction === "up"){
-        qty++;
-    }
-
-    if(direction === "down"){
-        qty = Math.max(1, qty - 1);
-    }
+    if(direction === "up") qty++;
+    if(direction === "down") qty = Math.max(1, qty - 1);
 
     qtyInput.value = qty;
 }
@@ -1052,32 +1012,21 @@ document.addEventListener("keydown",function(e){
         e.preventDefault();
         adjustQty("down");
     }
-});
 
-document.getElementById("description").addEventListener("input",function(){
-    searchExistingProductsLive();
-});
+    if(e.key === "Enter" && !e.shiftKey){
+        const active = document.activeElement;
+        const activeId = active ? active.id : "";
 
-document.getElementById("description").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        saveProduct();
+        if(activeId !== "newPrintJobName"){
+            e.preventDefault();
+            saveProduct();
+        }
     }
 });
 
-document.getElementById("qty").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        saveProduct();
-    }
-});
-
-document.getElementById("location").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        saveProduct();
-    }
-});
+document.getElementById("description").addEventListener("input",searchExistingProductsLive);
+document.getElementById("boxNumberInput").addEventListener("input",boxNumberChanged);
+document.getElementById("qty").addEventListener("input",clearErrorOnNewProduct);
 
 document.getElementById("newPrintJobName").addEventListener("keydown",function(e){
     if(e.key === "Enter"){
