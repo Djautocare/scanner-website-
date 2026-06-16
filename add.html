@@ -385,6 +385,7 @@ button{
 </div>
 
 <button class="primary-button" onclick="saveProduct()" type="button">＋ Save Product</button>
+<button class="clear-button" onclick="testPrintLabel()" type="button">TEST PRINT 2×1 LABEL</button>
 
 </div>
 
@@ -660,154 +661,22 @@ function clearMatchResults(){
 }
 
 
-function escapeHtml(value){
-    return String(value || "")
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#039;");
-}
+function testPrintLabel(){
+    const testBarcode = "TEST-123";
 
-function buildPrintableLabelHtml(barcode, description, quantity){
-    const safeBarcode = escapeHtml(barcode);
-    const safeDescription = escapeHtml(description);
-    const qty = Math.max(1, Number(quantity || 1));
+    document.getElementById("barcodeText").innerText = testBarcode;
 
-    let labelsHtml = "";
-
-    for(let i = 0; i < qty; i++){
-        labelsHtml += `
-            <div class="label">
-                <div class="desc">${safeDescription}</div>
-                <svg class="barcodeSvg"></svg>
-                <div class="barcodeNumber">${safeBarcode}</div>
-            </div>
-        `;
-    }
-
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Print Label</title>
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
-<style>
-@page{
-    size:51mm 25mm;
-    margin:0;
-}
-
-html,body{
-    margin:0;
-    padding:0;
-    background:white;
-    width:51mm;
-}
-
-*{
-    box-sizing:border-box;
-}
-
-body{
-    font-family:Arial,sans-serif;
-}
-
-.label{
-    width:51mm;
-    height:25mm;
-    padding:1.2mm 1.8mm 1mm 1.8mm;
-    margin:0;
-    overflow:hidden;
-    page-break-after:always;
-    break-after:page;
-    background:white;
-    text-align:center;
-}
-
-.label:last-child{
-    page-break-after:auto;
-    break-after:auto;
-}
-
-.desc{
-    color:black;
-    font-weight:bold;
-    font-size:7.5px;
-    line-height:1;
-    height:8px;
-    overflow:hidden;
-    white-space:nowrap;
-    text-overflow:ellipsis;
-    margin:0 0 0.5mm 0;
-}
-
-.barcodeSvg{
-    display:block;
-    width:47mm;
-    height:14mm;
-    margin:0 auto;
-}
-
-.barcodeNumber{
-    color:black;
-    font-size:8px;
-    line-height:1;
-    font-weight:bold;
-    margin-top:0.3mm;
-}
-
-@media print{
-    html,body{
-        width:51mm;
-        margin:0;
-        padding:0;
-    }
-
-    .label{
-        width:51mm;
-        height:25mm;
-    }
-}
-</style>
-</head>
-<body>
-${labelsHtml}
-<script>
-window.onload = function(){
-    document.querySelectorAll(".barcodeSvg").forEach(function(svg){
-        JsBarcode(svg, "${safeBarcode}", {
-            format:"CODE128",
-            displayValue:false,
-            width:1.55,
-            height:40,
-            margin:0
-        });
+    JsBarcode("#barcode", testBarcode, {
+        format:"CODE128",
+        displayValue:false,
+        width:1.8,
+        height:38,
+        margin:2
     });
 
     setTimeout(function(){
-        window.focus();
         window.print();
-    }, 300);
-};
-<\/script>
-</body>
-</html>
-`;
-}
-
-function printBarcodeLabel(barcode, description, quantity){
-    const printWindow = window.open("", "_blank", "width=420,height=320");
-
-    if(!printWindow){
-        alert("Pop-up blocked. Allow pop-ups for this site so the label print window can open.");
-        return;
-    }
-
-    printWindow.document.open();
-    printWindow.document.write(buildPrintableLabelHtml(barcode, description, quantity));
-    printWindow.document.close();
+    },300);
 }
 
 
@@ -879,7 +748,9 @@ function saveProduct(){
         alert(message);
 
         if(printLabels){
-            printBarcodeLabel(data.barcode, description, qty);
+            setTimeout(function(){
+                window.print();
+            },300);
         }
 
         document.getElementById("description").value = "";
