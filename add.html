@@ -12,6 +12,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 <title>Add Stock</title>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
 
 <style>
 html{touch-action:manipulation;}
@@ -384,8 +385,13 @@ button{
     Label size is set to <strong>51mm × 25mm</strong> for 2×1 inch labels. For best results, set your Jadens printer paper size to 2×1 / 51mm × 25mm in the print settings.
 </div>
 
+<div class="empty-state" style="font-size:13px;text-align:left;">
+    QZ Tray printer set to <strong>JD-668BT</strong>.<br>
+    <button class="printjob-button" onclick="testQzPrint()" type="button" style="margin-top:10px;">TEST QZ AUTO PRINT</button>
+    <div id="qzStatus" style="margin-top:8px;color:#aaa;">QZ Tray not tested yet.</div>
+</div>
+
 <button class="primary-button" onclick="saveProduct()" type="button">＋ Save Product</button>
-<button class="clear-button" onclick="testPrintLabel()" type="button">TEST PRINT 2×1 LABEL</button>
 
 </div>
 
@@ -661,22 +667,130 @@ function clearMatchResults(){
 }
 
 
-function testPrintLabel(){
+
+function escapeHtml(value){
+    return String(value || "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+/*
+    QZ TRAY DIRECT PRINTING
+    Printer name: JD-668BT
+    This sends ZPL-style label commands directly to the printer without Chrome print popup.
+
+    If the label prints as text/code instead of a barcode, your Jadens driver may not accept raw ZPL.
+    In that case we will switch this to image/HTML printing through QZ instead.
+*/
+const QZ_PRINTER_NAME = "JD-668BT";
+
+function setQzStatus(message){
+    const box = document.getElementById("qzStatus");
+    if(box) box.innerText = message;
+}
+
+function connectQz(){
+    if(!window.qz){
+        setQzStatus("QZ Tray library did not load.");
+        return Promise.reject("QZ Tray library did not load");
+    }
+
+    if(qz.websocket.isActive()){
+        return Promise.resolve();
+    }
+
+    setQzStatus("Connecting to QZ Tray...");
+
+    return qz.websocket.connect()
+        .then(function(){
+            setQzStatus("Connected to QZ Tray.");
+        });
+}
+
+function makeZplLabel(barcode, description){
+    const safeBarcode = String(barcode || "").replace(/[^A-Za-z0-9\-_.]/g, "");
+    const safeDescription = String(description || "")
+        .replace(/[\^~]/g, "")
+        .substring(0, 34);
+
+    /*
+        2 inch x 1 inch label at 203dpi = about 406 x 203 dots.
+        This layout gives:
+        - description at top
+        - Code 128 barcode in middle
+        - barcode number underneath
+    */
+    return [
+        "^XA",
+        "^PW406",
+        "^LL203",
+        "^LH0,0",
+        "^CI28",
+        "^FO18,12^A0N,20,20^FD" + safeDescription + "^FS",
+        "^FO25,48^BY2,2,82^BCN,82,N,N,N^FD" + safeBarcode + "^FS",
+        "^FO125,142^A0N,24,24^FD" + safeBarcode + "^FS",
+        "^XZ"
+    ].join("\n");
+}
+
+function qzPrintOneLabel(barcode, description){
+    return connectQz()
+        .then(function(){
+            return qz.printers.find(QZ_PRINTER_NAME);
+        })
+        .then(function(printer){
+            const config = qz.configs.create(printer, {
+                size: { width: 2, height: 1 },
+                units: "in",
+                margins: 0,
+                copies: 1,
+                density: 203
+            });
+
+            const data = [{
+                type: "raw",
+                format: "command",
+                flavor: "plain",
+                data: makeZplLabel(barcode, description)
+            }];
+
+            setQzStatus("Sending label to " + QZ_PRINTER_NAME + "...");
+            return qz.print(config, data);
+        })
+        .then(function(){
+            setQzStatus("Label sent to " + QZ_PRINTER_NAME + ".");
+        });
+}
+
+function printBarcodeLabelQz(barcode, description, quantity){
+    const qty = Math.max(1, Number(quantity || 1));
+    let chain = Promise.resolve();
+
+    for(let i = 0; i < qty; i++){
+        chain = chain.then(function(){
+            return qzPrintOneLabel(barcode, description);
+        });
+    }
+
+    return chain;
+}
+
+function testQzPrint(){
     const testBarcode = "TEST-123";
+    const testDescription = "TEST LABEL";
 
-    document.getElementById("barcodeText").innerText = testBarcode;
-
-    JsBarcode("#barcode", testBarcode, {
-        format:"CODE128",
-        displayValue:false,
-        width:1.8,
-        height:38,
-        margin:2
-    });
-
-    setTimeout(function(){
-        window.print();
-    },300);
+    printBarcodeLabelQz(testBarcode, testDescription, 1)
+        .then(function(){
+            alert("Test label sent to JD-668BT");
+        })
+        .catch(function(error){
+            console.error(error);
+            setQzStatus("QZ print error: " + error);
+            alert("QZ print error: " + error);
+        });
 }
 
 
@@ -748,9 +862,12 @@ function saveProduct(){
         alert(message);
 
         if(printLabels){
-            setTimeout(function(){
-                window.print();
-            },300);
+            printBarcodeLabelQz(data.barcode, description, qty)
+                .catch(function(error){
+                    console.error(error);
+                    setQzStatus("QZ print error: " + error);
+                    alert("Saved, but QZ printing failed: " + error);
+                });
         }
 
         document.getElementById("description").value = "";
