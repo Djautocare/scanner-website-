@@ -11,7 +11,6 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 
 <title>Remove Stock</title>
 
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
 
 <style>
 html{
@@ -103,25 +102,6 @@ button{
     cursor:pointer;
 }
 
-.button-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:12px;
-    margin:12px 0;
-}
-
-.scan-button{
-    background:linear-gradient(135deg, #28a745, #1f8b3a);
-}
-
-.stop-button{
-    background:linear-gradient(135deg, #dc3545, #a92735);
-}
-
-.torch-button{
-    background:linear-gradient(135deg, #ffc107, #d39e00);
-    color:black;
-}
 
 .remove-button{
     background:linear-gradient(135deg, #dc3545, #a92735);
@@ -232,94 +212,60 @@ button{
     margin:8px 0 0 0;
 }
 
-#scannerWrap{
-    position:relative;
-    max-width:380px;
-    width:100%;
-    margin:20px auto;
-    display:none;
-    background:#000;
-    border-radius:16px;
-    border:1px solid rgba(255,255,255,0.12);
-    overflow:hidden;
-    box-shadow:0 12px 35px rgba(0,0,0,0.35);
-}
 
-#reader{
-    width:100%;
-    min-height:280px;
-    background:#000;
-    display:block;
-    object-fit:cover;
-}
 
-.scan-overlay{
-    position:absolute;
-    inset:0;
-    pointer-events:none;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background:
-        linear-gradient(to bottom,
-            rgba(0,0,0,0.58) 0%,
-            rgba(0,0,0,0.58) 31%,
-            rgba(0,0,0,0.08) 31%,
-            rgba(0,0,0,0.08) 69%,
-            rgba(0,0,0,0.58) 69%,
-            rgba(0,0,0,0.58) 100%);
-}
-
-.scan-box{
-    width:86%;
-    height:110px;
-    border:3px solid #00e676;
-    border-radius:16px;
-    position:relative;
-    box-shadow:0 0 28px rgba(0,230,118,0.50);
-}
-
-.scan-line{
-    position:absolute;
-    left:9%;
-    right:9%;
-    top:50%;
-    height:3px;
-    background:#ff3333;
-    border-radius:999px;
-    transform:translateY(-50%);
-    box-shadow:0 0 16px rgba(255,51,51,0.85);
-}
-
-.scan-help{
-    position:absolute;
-    left:12px;
-    right:12px;
-    bottom:12px;
-    text-align:center;
-    font-size:13px;
-    color:white;
-    background:rgba(0,0,0,0.55);
-    border:1px solid rgba(255,255,255,0.12);
-    border-radius:999px;
-    padding:8px 10px;
-}
-
-.camera-tools{
+.button-grid{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:12px;
-    margin:0 0 12px 0;
+    margin:12px 0;
 }
 
-.refocus-button{
-    background:linear-gradient(135deg, #28a745, #1f8b3a);
-    border:1px solid rgba(40,167,69,0.45);
+.suggest-toggle{
+    background:linear-gradient(135deg, rgba(111,66,193,0.28), rgba(111,66,193,0.08));
+    border:1px solid rgba(111,66,193,0.35);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
 }
 
-.zoom-button{
-    background:linear-gradient(135deg, #6f42c1, #4c2a8a);
-    border:1px solid rgba(111,66,193,0.45);
+.suggest-toggle span{pointer-events:none;}
+
+.suggest-count{
+    color:#d8c4ff;
+    font-size:13px;
+}
+
+.suggest-panel{
+    display:none;
+    background:#111;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    overflow:hidden;
+    margin-bottom:14px;
+}
+
+.suggest-panel.open{display:block;}
+
+.suggest-item{
+    padding:13px;
+    border-bottom:1px solid rgba(255,255,255,0.07);
+    cursor:pointer;
+}
+
+.suggest-item:last-child{border-bottom:none;}
+.suggest-item:hover{background:#1b1b1b;}
+
+.suggest-title{
+    font-weight:bold;
+    font-size:16px;
+    margin-bottom:5px;
+}
+
+.suggest-meta{
+    color:#aaa;
+    font-size:13px;
 }
 
 #result{
@@ -420,12 +366,21 @@ button{
 <div class="panel">
 
 <h1>Remove Stock</h1>
-<p class="subtitle">Remove single items or build a Vinted-style bundle and split the total sale price</p>
+<p class="subtitle">Type a barcode or item name, remove single items, or build a Vinted-style bundle</p>
 
 <div class="form-card">
 
-<div class="input-label">Barcode</div>
-<input type="text" id="barcode" placeholder="Scan or enter barcode, e.g. 123 or ITEM-123">
+<div class="input-label">Barcode or Item Name</div>
+<input type="text" id="barcode" placeholder="Type barcode, number, or item words">
+
+<button class="suggest-toggle" onclick="toggleSuggestions()" type="button">
+    <span>Suggested Items</span>
+    <span class="suggest-count" id="suggestCountText">Type 2+ letters ▼</span>
+</button>
+
+<div id="suggestPanel" class="suggest-panel">
+    <div class="helper-text" style="padding:13px;margin:0;">Type item words above, then open this dropdown to choose a matching product.</div>
+</div>
 
 <div class="button-grid">
     <button class="add-button" onclick="addBundleBarcodeFromInput()">Add to Bundle List</button>
@@ -433,7 +388,7 @@ button{
 </div>
 
 <div class="helper-text">
-    Tip: you can type just the number. For example, <strong>123</strong> becomes <strong>ITEM-123</strong> automatically. Press Enter to add it to the bundle list.
+    Tip: type a barcode number such as <strong>123</strong>, or type item words such as <strong>Dyson charger</strong> and pick a suggested item from the dropdown. Press Enter to add the current barcode to the bundle list.
 </div>
 
 <div id="bundleBox" class="bundle-card" style="display:none;"></div>
@@ -457,30 +412,6 @@ button{
         This only affects normal single-item removals with qty above 1.<br>
         Bundle list removals always send each barcode as an individual sale row with the total split equally.
     </div>
-</div>
-
-<div class="button-grid">
-    <button class="scan-button" onclick="startScanner()">Start Scanner</button>
-    <button class="torch-button" onclick="toggleTorch()">Toggle Flashlight</button>
-</div>
-
-<button class="stop-button" onclick="stopScanner()">Stop Scanner</button>
-
-<div id="scannerWrap">
-    <video id="reader" playsinline></video>
-
-    <div class="scan-overlay">
-        <div class="scan-box">
-            <div class="scan-line"></div>
-        </div>
-    </div>
-
-    <div class="scan-help">Line the barcode across the red line. Scans add to the bundle list.</div>
-</div>
-
-<div class="camera-tools">
-    <button class="refocus-button" onclick="refocusCamera()">Refocus</button>
-    <button class="zoom-button" onclick="toggleZoom()" id="zoomButton">Zoom 1x</button>
 </div>
 
 <button class="remove-button" onclick="removeButtonPressed()">Remove Stock</button>
@@ -510,15 +441,9 @@ button{
 const API_URL =
 "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
-let scannerStarted = false;
-let codeReader = null;
-let controls = null;
-let activeTrack = null;
-let torchOn = false;
-let currentZoom = 1;
-let lastScannedBarcode = "";
-let lastScanTime = 0;
 let bundleBarcodes = [];
+let suggestedItems = [];
+let suggestSearchTimer = null;
 let pendingBundleQueue = [];
 let pendingBundleItem = null;
 let pendingBundleEachAmount = 0;
@@ -558,326 +483,130 @@ function formatMoney(amount){
     return number.toFixed(2);
 }
 
-function beep(){
-    try{
-        const audioCtx =
-        new (window.AudioContext || window.webkitAudioContext)();
 
-        const oscillator =
-        audioCtx.createOscillator();
-
-        const gain =
-        audioCtx.createGain();
-
-        oscillator.type = "sine";
-        oscillator.frequency.value = 900;
-
-        gain.gain.value = 0.15;
-
-        oscillator.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        oscillator.start();
-
-        setTimeout(function(){
-            oscillator.stop();
-            audioCtx.close();
-        }, 120);
-
-    }catch(error){
-        console.log("Beep not supported");
-    }
+function escapeHtml(value){
+    return String(value || "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
 }
 
-function scanFeedback(){
-    if(navigator.vibrate){
-        navigator.vibrate(100);
-    }
-
-    beep();
+function looksLikeBarcodeInput(value){
+    const raw = String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+    return /^\d+$/.test(raw) || /^ITEM-?\d+$/.test(raw);
 }
 
-async function toggleTorch(){
-    try{
-        activeTrack = getActiveTrack();
-
-        if(!activeTrack){
-            alert("Start scanner first");
-            return;
-        }
-
-        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
-
-        if(!capabilities.torch){
-            alert("Flashlight not supported on this device/browser");
-            return;
-        }
-
-        torchOn = !torchOn;
-
-        await activeTrack.applyConstraints({
-            advanced:[{
-                torch: torchOn
-            }]
-        });
-
-        document.getElementById("result").innerText =
-        torchOn ? "Flashlight on" : "Flashlight off";
-
-    }catch(error){
-        torchOn = false;
-        alert("Flashlight not supported on this device/browser");
-    }
+function toggleSuggestions(){
+    const panel = document.getElementById("suggestPanel");
+    panel.classList.toggle("open");
+    updateSuggestToggleText();
 }
 
-function getActiveTrack(){
-    const video = document.getElementById("reader");
+function updateSuggestToggleText(){
+    const input = document.getElementById("barcode").value.trim();
+    const panel = document.getElementById("suggestPanel");
+    const countText = document.getElementById("suggestCountText");
 
-    if(video && video.srcObject){
-        const tracks = video.srcObject.getVideoTracks();
-        return tracks && tracks.length ? tracks[0] : null;
-    }
-
-    return activeTrack || null;
-}
-
-function makeCodeReader(){
-    try{
-        if(window.ZXingBrowser && ZXingBrowser.DecodeHintType && ZXingBrowser.BarcodeFormat){
-            const hints = new Map();
-            hints.set(ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS, [ZXingBrowser.BarcodeFormat.CODE_128]);
-            return new ZXingBrowser.BrowserMultiFormatReader(hints);
-        }
-    }catch(error){
-        console.log("Code 128 hint not available, using normal ZXing scanner");
-    }
-
-    return new ZXingBrowser.BrowserMultiFormatReader();
-}
-
-function startScanner(){
-    const scannerWrap = document.getElementById("scannerWrap");
-
-    scannerWrap.style.display = "block";
-
-    scannerWrap.scrollIntoView({
-        block:"nearest",
-        behavior:"instant"
-    });
-
-    if(scannerStarted){
+    if(input.length < 2 || looksLikeBarcodeInput(input)){
+        countText.innerText = "Type 2+ letters ▼";
         return;
     }
 
-    codeReader = makeCodeReader();
+    if(suggestedItems.length === 0){
+        countText.innerText = "No matches ▼";
+        return;
+    }
 
-    const constraints = {
-        audio:false,
-        video:{
-            facingMode:{ ideal:"environment" },
-            width:{ ideal:1920 },
-            height:{ ideal:1080 },
-            advanced:[
-                { focusMode:"continuous" },
-                { exposureMode:"continuous" }
-            ]
-        }
-    };
+    countText.innerText =
+        suggestedItems.length +
+        " match" +
+        (suggestedItems.length === 1 ? "" : "es") +
+        (panel.classList.contains("open") ? " ▲" : " ▼");
+}
 
-    codeReader.decodeFromConstraints(
-        constraints,
-        "reader",
-        function(result, error, ctrl){
-            if(ctrl){
-                controls = ctrl;
+function searchSuggestedItems(){
+    const query = document.getElementById("barcode").value.trim();
+
+    clearTimeout(suggestSearchTimer);
+
+    if(query.length < 2 || looksLikeBarcodeInput(query)){
+        suggestedItems = [];
+        document.getElementById("suggestPanel").innerHTML =
+            "<div class='helper-text' style='padding:13px;margin:0;'>Type item words above, then open this dropdown to choose a matching product.</div>";
+        updateSuggestToggleText();
+        return;
+    }
+
+    suggestSearchTimer = setTimeout(function(){
+        fetch(API_URL,{
+            method:"POST",
+            body:JSON.stringify({
+                action:"SEARCH",
+                query:query
+            })
+        })
+        .then(res=>res.json())
+        .then(data=>{
+            if(!data.success || !data.results || data.results.length === 0){
+                suggestedItems = [];
+                document.getElementById("suggestPanel").innerHTML =
+                    "<div class='helper-text' style='padding:13px;margin:0;'>No matching items found.</div>";
+                updateSuggestToggleText();
+                return;
             }
 
-            if(result){
-                const barcode = normaliseBarcode(result.getText());
-                const now = Date.now();
+            suggestedItems = data.results.slice(0, 12);
 
-                if(barcode === lastScannedBarcode && now - lastScanTime < 1400){
-                    return;
-                }
+            let html = "";
+            suggestedItems.forEach((item,index)=>{
+                const barcode = item.barcode || item.itemId || "";
+                const qty = item.totalQty || 0;
 
-                lastScannedBarcode = barcode;
-                lastScanTime = now;
+                html += `
+                    <div class="suggest-item" onclick="selectSuggestedItem(${index})">
+                        <div class="suggest-title">${escapeHtml(item.description || "")}</div>
+                        <div class="suggest-meta">${escapeHtml(barcode)} • Current Qty ${qty}</div>
+                    </div>
+                `;
+            });
 
-                scanFeedback();
-
-                document.getElementById("barcode").value = barcode;
-                addBundleBarcode(barcode, true);
-
-                document.getElementById("result").innerText =
-                barcode + " scanned and added to bundle list. Keep scanning or press Remove Stock.";
-            }
-        }
-    )
-    .then(function(ctrl){
-        controls = ctrl;
-        scannerStarted = true;
-
-        setTimeout(function(){
-            activeTrack = getActiveTrack();
-            improveCameraSettings();
-        }, 600);
-    })
-    .catch(function(error){
-        console.error(error);
-        alert("Could not start scanner. Check camera permissions.");
-        scannerStarted = false;
-        activeTrack = null;
-        scannerWrap.style.display = "none";
-    });
-}
-
-async function improveCameraSettings(){
-    try{
-        activeTrack = getActiveTrack();
-
-        if(!activeTrack){
-            return;
-        }
-
-        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
-        const advanced = [];
-
-        if(capabilities.focusMode && capabilities.focusMode.includes("continuous")){
-            advanced.push({ focusMode:"continuous" });
-        }
-
-        if(capabilities.exposureMode && capabilities.exposureMode.includes("continuous")){
-            advanced.push({ exposureMode:"continuous" });
-        }
-
-        if(capabilities.zoom){
-            const targetZoom = Math.min(Math.max(currentZoom, capabilities.zoom.min || 1), capabilities.zoom.max || currentZoom);
-            advanced.push({ zoom:targetZoom });
-        }
-
-        if(advanced.length > 0){
-            await activeTrack.applyConstraints({ advanced:advanced });
-        }
-    }catch(error){
-        console.log("Camera settings not supported on this device");
-    }
-}
-
-async function refocusCamera(){
-    try{
-        activeTrack = getActiveTrack();
-
-        if(!activeTrack){
-            alert("Start scanner first");
-            return;
-        }
-
-        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
-        const advanced = [];
-
-        if(capabilities.focusMode && capabilities.focusMode.includes("continuous")){
-            advanced.push({ focusMode:"continuous" });
-        }
-
-        if(capabilities.exposureMode && capabilities.exposureMode.includes("continuous")){
-            advanced.push({ exposureMode:"continuous" });
-        }
-
-        if(capabilities.zoom){
-            const pulseZoom = Math.min((currentZoom || 1) + 0.1, capabilities.zoom.max || ((currentZoom || 1) + 0.1));
-            await activeTrack.applyConstraints({ advanced:[{ zoom:pulseZoom }] });
-            await new Promise(resolve => setTimeout(resolve, 180));
-            advanced.push({ zoom:currentZoom });
-        }
-
-        if(advanced.length > 0){
-            await activeTrack.applyConstraints({ advanced:advanced });
-        }
-
-        document.getElementById("result").innerText =
-        "Refocus requested. Hold the label steady for a second.";
-
-    }catch(error){
-        console.error(error);
-        document.getElementById("result").innerText =
-        "Refocus is not supported on this device, but the scanner is still running.";
-    }
-}
-
-async function toggleZoom(){
-    try{
-        activeTrack = getActiveTrack();
-
-        if(!activeTrack){
-            alert("Start scanner first");
-            return;
-        }
-
-        const capabilities = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
-
-        if(!capabilities.zoom){
-            alert("Camera zoom is not supported on this device/browser");
-            return;
-        }
-
-        const minZoom = capabilities.zoom.min || 1;
-        const maxZoom = capabilities.zoom.max || 1;
-        const wantedZoom = currentZoom > 1 ? 1 : 2;
-        const nextZoom = Math.min(Math.max(wantedZoom, minZoom), maxZoom);
-
-        await activeTrack.applyConstraints({
-            advanced:[{
-                zoom:nextZoom
-            }]
+            document.getElementById("suggestPanel").innerHTML = html;
+            updateSuggestToggleText();
+        })
+        .catch(error=>{
+            console.error(error);
+            suggestedItems = [];
+            document.getElementById("suggestPanel").innerHTML =
+                "<div class='helper-text' style='padding:13px;margin:0;'>Error searching items.</div>";
+            updateSuggestToggleText();
         });
-
-        currentZoom = nextZoom;
-
-        document.getElementById("zoomButton").innerText =
-        currentZoom > 1 ? "Zoom " + currentZoom.toFixed(1) + "x" : "Zoom 1x";
-
-        document.getElementById("result").innerText =
-        "Camera zoom set to " + currentZoom.toFixed(1) + "x";
-
-    }catch(error){
-        console.error(error);
-        alert("Could not change zoom on this device/browser");
-    }
+    }, 300);
 }
 
-function stopScanner(){
-    const scannerWrap = document.getElementById("scannerWrap");
-    const video = document.getElementById("reader");
+function selectSuggestedItem(index){
+    const item = suggestedItems[index];
+    if(!item) return;
 
-    if(controls){
-        controls.stop();
-        controls = null;
-    }
+    const barcode = item.barcode || item.itemId || "";
+    document.getElementById("barcode").value = normaliseBarcode(barcode);
+    document.getElementById("suggestPanel").classList.remove("open");
+    document.getElementById("suggestPanel").innerHTML =
+        "<div class='helper-text' style='padding:13px;margin:0;'>Selected: <strong>" +
+        escapeHtml(item.description || "") +
+        "</strong></div>";
 
-    if(video && video.srcObject){
-        video.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null;
-    }
-
-    scannerWrap.style.display = "none";
-    scannerStarted = false;
-    activeTrack = null;
-    torchOn = false;
-    currentZoom = 1;
-    lastScannedBarcode = "";
-    lastScanTime = 0;
-
-    const zoomButton = document.getElementById("zoomButton");
-    if(zoomButton){
-        zoomButton.innerText = "Zoom 1x";
-    }
+    document.getElementById("result").innerText =
+        "Selected " + normaliseBarcode(barcode) + ". Press Add to Bundle List or Remove Stock.";
+    updateSuggestToggleText();
 }
 
 function addBundleBarcodeFromInput(){
     const barcode = normaliseBarcode(document.getElementById("barcode").value);
 
     if(!barcode){
-        alert("Enter or scan a barcode first");
+        alert("Enter a barcode or choose a suggested item first");
         return;
     }
 
@@ -990,7 +719,7 @@ function removeStock(locationOverride = ""){
     .checked;
 
     if(!barcode){
-        alert("Enter or scan barcode");
+        alert("Enter a barcode or choose a suggested item");
         return;
     }
 
@@ -1214,6 +943,10 @@ function continueBundleWithLocation(location){
     document.getElementById("locationChoices").innerHTML = "";
     processNextBundleItem();
 }
+
+document.getElementById("barcode").addEventListener("input", function(){
+    searchSuggestedItems();
+});
 
 document.getElementById("barcode").addEventListener("keydown", function(e){
     if(e.key === "Enter"){
