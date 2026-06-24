@@ -275,6 +275,23 @@ button{
 .voice-on{color:#20c997;font-weight:bold;}
 .scanner-mode-pill{color:#20c997;font-size:13px;font-weight:bold;margin-top:6px;}
 
+
+body.success-flash{background:#0f3d1f !important;box-shadow:inset 0 0 120px rgba(40,167,69,0.65);transition:background .25s ease,box-shadow .25s ease;}
+body.error-flash{background:#4a1010 !important;box-shadow:inset 0 0 120px rgba(220,53,69,0.65);transition:background .25s ease,box-shadow .25s ease;}
+.warehouse-only{display:none;}
+body.warehouse-mode .warehouse-hidden{display:none !important;}
+body.warehouse-mode .warehouse-only{display:block;}
+body.warehouse-mode .panel{max-width:760px;margin:0 auto;}
+body.warehouse-mode h1{font-size:30px;margin-bottom:4px;}
+body.warehouse-mode .subtitle{margin-bottom:14px;}
+.warehouse-price-card{position:sticky;top:8px;z-index:50;background:linear-gradient(145deg,#18251d,#101b14);border:1px solid rgba(40,167,69,.38);border-radius:16px;padding:14px;margin:10px 0 14px 0;box-shadow:0 12px 35px rgba(0,0,0,.35);}
+.warehouse-price-card .input-label{margin-top:0;}
+body.warehouse-mode #saleAmount{font-size:30px;font-weight:bold;text-align:center;padding:16px;border:2px solid rgba(40,167,69,.45);}
+body.warehouse-mode #barcode{font-size:22px;padding:16px;text-align:center;}
+body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
+.warehouse-status{font-size:13px;color:#20c997;font-weight:bold;text-align:center;margin-top:6px;}
+.confirm-hint{background:rgba(40,167,69,.12);border:1px solid rgba(40,167,69,.32);color:#d8ffe2;padding:12px;border-radius:14px;font-size:13px;line-height:1.4;margin:10px 0;text-align:center;}
+
 #result{
     margin-top:15px;
     font-weight:bold;
@@ -380,27 +397,27 @@ button{
 <div class="input-label">Barcode or Item Name</div>
 <input type="text" id="barcode" placeholder="Type barcode, number, or item words">
 
-<button class="suggest-toggle" onclick="toggleSuggestions()" type="button">
+<button class="suggest-toggle warehouse-hidden" onclick="toggleSuggestions()" type="button">
     <span>Suggested Items</span>
     <span class="suggest-count" id="suggestCountText">Type 2+ letters ▼</span>
 </button>
 
-<div id="suggestPanel" class="suggest-panel">
+<div id="suggestPanel" class="suggest-panel warehouse-hidden">
     <div class="helper-text" style="padding:13px;margin:0;">Type item words above, then open this dropdown to choose a matching product.</div>
 </div>
 
-<div class="button-grid">
+<div class="button-grid warehouse-hidden">
     <button class="add-button" onclick="addBundleBarcodeFromInput()">Add to Bundle List</button>
     <button class="clear-button" onclick="clearBundleList()">Clear Bundle List</button>
 </div>
 
-<div class="helper-text">
+<div class="helper-text warehouse-hidden">
     Tip: type a barcode number such as <strong>123</strong>, or type item words such as <strong>Dyson charger</strong> and pick a suggested item from the dropdown. Press Enter to add the current barcode to the bundle list.
 </div>
 
 <div class="toggle-box">
     <label>
-        <input type="checkbox" id="usbScannerMode" checked>
+        <input type="checkbox" id="usbScannerMode" checked onchange="toggleUsbScannerMode()">
         USB scanner bundle mode
     </label>
     <div class="helper-text">
@@ -408,8 +425,9 @@ button{
     </div>
     <div class="scanner-mode-pill" id="scannerModeStatus">Scanner mode on — barcode box stays focused.</div>
 </div>
+<div class="confirm-hint warehouse-only">Scan items into the bundle. Say a price like <strong>three fifty</strong>, then say <strong>confirm sale</strong> or <strong>complete sale</strong>.</div>
 
-<div class="voice-card">
+<div class="voice-card warehouse-hidden">
     <div class="toggle-box" style="margin:0;">
         <label>
             <input type="checkbox" id="voicePriceMode" onchange="toggleVoicePriceMode()">
@@ -429,17 +447,22 @@ button{
 
 <div id="bundleBox" class="bundle-card" style="display:none;"></div>
 
+<div class="warehouse-hidden">
 <div class="input-label">Quantity</div>
 <input type="number" id="qty" placeholder="Quantity" value="1" min="1">
 <div class="helper-text">
     For bundles, each barcode in the list removes quantity 1. For a normal single item, use the quantity box as usual.
 </div>
+</div>
 
-<div class="input-label">Sale Amount</div>
-<input type="number" id="saleAmount" placeholder="Sale amount £" step="0.01" min="0" oninput="renderBundleList()">
-<div id="splitPreview" class="split-preview"></div>
+<div class="warehouse-price-card">
+    <div class="input-label">Sale Amount</div>
+    <input type="number" id="saleAmount" placeholder="Sale amount £" step="0.01" min="0" oninput="renderBundleList()">
+    <div id="splitPreview" class="split-preview"></div>
+    <div class="warehouse-status warehouse-only" id="warehouseStatus">Listening is on. Say a price, then say confirm sale.</div>
+</div>
 
-<div class="toggle-box">
+<div class="toggle-box warehouse-hidden">
     <label>
         <input type="checkbox" id="oneSalesRow">
         Single-item quantity bundle: only add one row to sales tracker
@@ -450,7 +473,7 @@ button{
     </div>
 </div>
 
-<button class="remove-button" onclick="removeButtonPressed()">Remove Stock</button>
+<button class="remove-button warehouse-hidden" onclick="removeButtonPressed()">Remove Stock</button>
 
 <div id="locationChoices"></div>
 
@@ -650,6 +673,7 @@ function addBundleBarcodeFromInput(){
 }
 
 function addBundleBarcode(barcode, fromScanner = false){
+    clearReactiveBackground();
     barcode = normaliseBarcode(barcode);
 
     if(!barcode){
@@ -802,6 +826,9 @@ function removeStock(locationOverride = ""){
         }
 
         if(data.success){
+            flashSuccess();
+            speakText("Sale complete");
+            setWarehouseStatus("Sale complete. Ready for next sale.");
             document.getElementById("result").innerText =
             "Removed " +
             qty +
@@ -821,6 +848,9 @@ function removeStock(locationOverride = ""){
             renderBundleList();
 
         }else{
+            flashError();
+            speakText("Remove failed");
+            setWarehouseStatus("Remove failed.");
             document.getElementById("result").innerText =
             data.error || "Remove failed";
         }
@@ -831,6 +861,9 @@ function removeStock(locationOverride = ""){
 
         console.error(error);
 
+        flashError();
+        speakText("Remove failed");
+        setWarehouseStatus("Remove failed.");
         alert("Error removing stock");
     });
 }
@@ -865,6 +898,10 @@ function processNextBundleItem(){
 
         const totalRemoved = completedBundleRemovals.length;
         const each = pendingBundleEachAmount;
+
+        flashSuccess();
+        speakText("Sale complete");
+        setWarehouseStatus("Sale complete. Ready for next sale.");
 
         document.getElementById("result").innerText =
         "Bundle removed. " + totalRemoved +
@@ -931,6 +968,10 @@ function processNextBundleItem(){
         pendingBundleQueue = [];
         pendingBundleItem = null;
 
+        flashError();
+        speakText("Remove failed");
+        setWarehouseStatus("Bundle stopped at " + failedBarcode + ".");
+
         document.getElementById("result").innerText =
         "Bundle stopped at " + failedBarcode + ". " + (data.error || "Remove failed");
     })
@@ -942,6 +983,9 @@ function processNextBundleItem(){
 
         console.error(error);
 
+        flashError();
+        speakText("Remove failed");
+        setWarehouseStatus("Remove failed.");
         alert("Error removing bundle stock");
     });
 }
@@ -984,6 +1028,47 @@ function continueBundleWithLocation(location){
 let speechRecognition = null;
 let voiceListening = false;
 let refocusTimer = null;
+
+
+function flashSuccess(){
+    document.body.classList.remove("error-flash");
+    document.body.classList.add("success-flash");
+    setTimeout(function(){ document.body.classList.remove("success-flash"); }, 4000);
+}
+function flashError(){
+    document.body.classList.remove("success-flash");
+    document.body.classList.add("error-flash");
+}
+function clearReactiveBackground(){ document.body.classList.remove("error-flash"); }
+function speakText(text){
+    try{ if(!window.speechSynthesis) return; const u=new SpeechSynthesisUtterance(text); u.lang="en-GB"; u.rate=1.05; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }catch(e){}
+}
+function setWarehouseStatus(message){ const el=document.getElementById("warehouseStatus"); if(el) el.innerHTML=message; }
+function isConfirmSaleCommand(text){
+    const p=String(text||"").toLowerCase();
+    return p.includes("complete sale") || p.includes("confirm sale") || p.includes("complete the sale") || p.includes("confirm the sale");
+}
+function completeSaleByVoice(){
+    const saleAmount=Number(document.getElementById("saleAmount").value||0);
+    if(bundleBarcodes.length===0){ setVoiceStatus("No items in bundle. Scan items first.", true); setWarehouseStatus("No items in bundle. Scan items first."); speakText("No items in bundle"); return; }
+    if(saleAmount<=0){ setVoiceStatus("No sale price set. Say the price first.", true); setWarehouseStatus("No sale price set. Say the price first."); speakText("No sale price set"); return; }
+    setVoiceStatus("Confirm command heard. Removing stock...", true);
+    setWarehouseStatus("Confirm command heard. Removing stock...");
+    speakText("Removing stock");
+    removeButtonPressed();
+}
+function toggleUsbScannerMode(){
+    const checked=document.getElementById("usbScannerMode").checked;
+    if(checked){
+        document.body.classList.add("warehouse-mode");
+        setWarehouseStatus("Listening is on. Say a price, then say confirm sale.");
+        startVoicePrice();
+        setTimeout(function(){ const b=document.getElementById("barcode"); if(b) b.focus(); },100);
+    }else{
+        document.body.classList.remove("warehouse-mode");
+        stopVoicePrice();
+    }
+}
 
 function keepBarcodeFocused(){
     const scannerMode = document.getElementById("usbScannerMode");
@@ -1125,6 +1210,7 @@ function speakPriceSet(price){
 }
 
 function fillSalePriceFromSpeech(transcript){
+    if(isConfirmSaleCommand(transcript)){ completeSaleByVoice(); return true; }
     const price = parseSpokenPrice(transcript);
 
     if(price !== null){
@@ -1136,6 +1222,7 @@ function fillSalePriceFromSpeech(transcript){
 
         renderBundleList();
         setVoiceStatus("Heard: '" + transcript + "' → Price set to £" + price, true);
+        setWarehouseStatus("Price set to £" + price + ". Say confirm sale or complete sale.");
         speakPriceSet(price);
         scheduleBarcodeRefocus();
         return true;
@@ -1284,6 +1371,8 @@ window.addEventListener("load", function(){
     setTimeout(function(){
         const barcodeInput = document.getElementById("barcode");
         if(barcodeInput) barcodeInput.focus();
+        const usbMode=document.getElementById("usbScannerMode");
+        if(usbMode && usbMode.checked){ toggleUsbScannerMode(); }
     }, 250);
 });
 </script>
