@@ -268,6 +268,13 @@ button{
     font-size:13px;
 }
 
+
+.voice-card{background:#202020;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px;margin:10px 0 12px 0;}
+.voice-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.voice-status{color:#aaa;font-size:13px;line-height:1.4;margin-top:6px;}
+.voice-on{color:#20c997;font-weight:bold;}
+.scanner-mode-pill{color:#20c997;font-size:13px;font-weight:bold;margin-top:6px;}
+
 #result{
     margin-top:15px;
     font-weight:bold;
@@ -389,6 +396,34 @@ button{
 
 <div class="helper-text">
     Tip: type a barcode number such as <strong>123</strong>, or type item words such as <strong>Dyson charger</strong> and pick a suggested item from the dropdown. Press Enter to add the current barcode to the bundle list.
+</div>
+
+<div class="toggle-box">
+    <label>
+        <input type="checkbox" id="usbScannerMode" checked>
+        USB scanner bundle mode
+    </label>
+    <div class="helper-text">
+        Each scan auto-adds to the bundle list when the scanner sends Enter.
+    </div>
+    <div class="scanner-mode-pill" id="scannerModeStatus">Scanner mode on — barcode box stays focused.</div>
+</div>
+
+<div class="voice-card">
+    <div class="toggle-box" style="margin:0;">
+        <label>
+            <input type="checkbox" id="voicePriceMode" onchange="toggleVoicePriceMode()">
+            Voice price mode
+        </label>
+        <div class="helper-text">
+            Say <strong>price three fifty</strong>, <strong>price £3.50</strong>, or <strong>price twelve pounds</strong>.
+        </div>
+    </div>
+    <div class="voice-row">
+        <button class="add-button" onclick="startVoicePrice()" type="button">Start Listening</button>
+        <button class="clear-button" onclick="stopVoicePrice()" type="button">Stop Listening</button>
+    </div>
+    <div class="voice-status" id="voiceStatus">Voice price is off.</div>
 </div>
 
 <div id="bundleBox" class="bundle-card" style="display:none;"></div>
@@ -626,7 +661,7 @@ function addBundleBarcode(barcode, fromScanner = false){
         document.getElementById("barcode").value = "";
     }else{
         document.getElementById("barcode").value = "";
-        document.getElementById("result").innerText = barcode + " added to bundle list.";
+        document.getElementById("result").innerText = barcode + " added to bundle list. Ready for next scan.";
     }
 
     document.getElementById("locationChoices").innerHTML = "";
@@ -944,6 +979,133 @@ function continueBundleWithLocation(location){
     processNextBundleItem();
 }
 
+
+let speechRecognition = null;
+let voiceListening = false;
+let refocusTimer = null;
+
+function keepBarcodeFocused(){
+    const scannerMode = document.getElementById("usbScannerMode");
+    const barcodeInput = document.getElementById("barcode");
+    if(!scannerMode || !scannerMode.checked || !barcodeInput) return;
+
+    const active = document.activeElement;
+    const activeId = active ? active.id : "";
+
+    if(activeId !== "saleAmount" && activeId !== "qty"){
+        barcodeInput.focus();
+    }
+}
+
+function scheduleBarcodeRefocus(){
+    clearTimeout(refocusTimer);
+    refocusTimer = setTimeout(keepBarcodeFocused, 150);
+}
+
+function parseSpokenPrice(text){
+    let phrase = String(text || "").toLowerCase();
+    if(!phrase.includes("price")) return null;
+
+    phrase = phrase.replace(/price/g,"").replace(/pounds?/g,"").replace(/quid/g,"").replace(/gbp/g,"").replace(/£/g,"").replace(/,/g,"").trim();
+
+    const direct = phrase.match(/(\d+)(?:\s*(?:\.|:|point)\s*|\s+)?(\d{1,2})?/);
+    if(direct){
+        const pounds = Number(direct[1]);
+        let pence = direct[2] || "";
+        if(!pence) return pounds.toFixed(2);
+        if(pence.length === 1) pence += "0";
+        return (pounds + Number(pence)/100).toFixed(2);
+    }
+
+    const nums = {zero:0,oh:0,one:1,two:2,to:2,too:2,three:3,four:4,for:4,five:5,six:6,seven:7,eight:8,ate:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+    const vals = phrase.split(/\s+/).filter(w => nums.hasOwnProperty(w)).map(w => nums[w]);
+    if(!vals.length) return null;
+    if(vals.length === 1) return Number(vals[0]).toFixed(2);
+
+    let pounds = vals[0];
+    let pence = vals[1];
+    if(vals.length >= 3 && vals[1] >= 20) pence = vals[1] + vals[2];
+    if(pence < 10) pence *= 10;
+    return (pounds + pence/100).toFixed(2);
+}
+
+function setVoiceStatus(message, on){
+    const el = document.getElementById("voiceStatus");
+    if(!el) return;
+    el.innerHTML = on ? "<span class='voice-on'>" + message + "</span>" : message;
+}
+
+function toggleVoicePriceMode(){
+    if(document.getElementById("voicePriceMode").checked) startVoicePrice();
+    else stopVoicePrice();
+}
+
+function startVoicePrice(){
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRecognition){
+        document.getElementById("voicePriceMode").checked = false;
+        setVoiceStatus("Voice recognition is not supported here. Use Chrome on Windows for best results.", false);
+        return;
+    }
+
+    if(speechRecognition && voiceListening){
+        setVoiceStatus("Listening... say price three fifty.", true);
+        return;
+    }
+
+    speechRecognition = new SpeechRecognition();
+    speechRecognition.continuous = true;
+    speechRecognition.interimResults = false;
+    speechRecognition.lang = "en-GB";
+
+    speechRecognition.onstart = function(){
+        voiceListening = true;
+        document.getElementById("voicePriceMode").checked = true;
+        setVoiceStatus("Listening... say price three fifty.", true);
+    };
+
+    speechRecognition.onresult = function(event){
+        const transcript = event.results[event.results.length - 1][0].transcript || "";
+        const price = parseSpokenPrice(transcript);
+
+        if(price !== null){
+            document.getElementById("saleAmount").value = price;
+            renderBundleList();
+            setVoiceStatus("Heard: '" + transcript + "' → £" + price, true);
+            scheduleBarcodeRefocus();
+        }else{
+            setVoiceStatus("Heard: '" + transcript + "'. Say price before the amount.", true);
+        }
+    };
+
+    speechRecognition.onerror = function(event){
+        setVoiceStatus("Voice error: " + event.error, false);
+    };
+
+    speechRecognition.onend = function(){
+        voiceListening = false;
+        if(document.getElementById("voicePriceMode").checked){
+            setTimeout(function(){ try{ speechRecognition.start(); }catch(e){} }, 500);
+        }else{
+            setVoiceStatus("Voice price is off.", false);
+        }
+    };
+
+    try{ speechRecognition.start(); }catch(e){ setVoiceStatus("Could not start voice recognition.", false); }
+}
+
+function stopVoicePrice(){
+    document.getElementById("voicePriceMode").checked = false;
+    if(speechRecognition){ try{ speechRecognition.stop(); }catch(e){} }
+    voiceListening = false;
+    setVoiceStatus("Voice price is off.", false);
+    scheduleBarcodeRefocus();
+}
+
+document.addEventListener("click", scheduleBarcodeRefocus);
+setInterval(keepBarcodeFocused, 1200);
+
+
 document.getElementById("barcode").addEventListener("input", function(){
     searchSuggestedItems();
 });
@@ -954,6 +1116,7 @@ document.getElementById("barcode").addEventListener("keydown", function(e){
 
         if(this.value.trim()){
             addBundleBarcodeFromInput();
+            scheduleBarcodeRefocus();
         }
     }
 });
@@ -973,6 +1136,11 @@ window.addEventListener("load", function(){
     if(location){
         window.quickSaleLocation = location.toUpperCase();
     }
+
+    setTimeout(function(){
+        const barcodeInput = document.getElementById("barcode");
+        if(barcodeInput) barcodeInput.focus();
+    }, 250);
 });
 </script>
 
