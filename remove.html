@@ -413,17 +413,17 @@ button{
     <div class="toggle-box" style="margin:0;">
         <label>
             <input type="checkbox" id="voicePriceMode" onchange="toggleVoicePriceMode()">
-            Voice price mode
+            Listening mode
         </label>
         <div class="helper-text">
-            Say <strong>price three fifty</strong>, <strong>price £3.50</strong>, or <strong>price twelve pounds</strong>.
+            Say <strong>three fifty</strong>, <strong>£3.50</strong>, or <strong>twelve pounds</strong>. You can still say “price” if you want.
         </div>
     </div>
     <div class="voice-row">
-        <button class="add-button" onclick="startVoicePrice()" type="button">Start Listening</button>
-        <button class="clear-button" onclick="stopVoicePrice()" type="button">Stop Listening</button>
+        <button class="add-button" onclick="startVoicePrice()" type="button">Activate Listening Mode</button>
+        <button class="clear-button" onclick="stopVoicePrice()" type="button">Stop Listening Mode</button>
     </div>
-    <div class="voice-status" id="voiceStatus">Voice price is off.</div>
+    <div class="voice-status" id="voiceStatus">Listening mode is off.</div>
 </div>
 
 <div id="bundleBox" class="bundle-card" style="display:none;"></div>
@@ -1004,29 +1004,111 @@ function scheduleBarcodeRefocus(){
 
 function parseSpokenPrice(text){
     let phrase = String(text || "").toLowerCase();
-    if(!phrase.includes("price")) return null;
 
-    phrase = phrase.replace(/price/g,"").replace(/pounds?/g,"").replace(/quid/g,"").replace(/gbp/g,"").replace(/£/g,"").replace(/,/g,"").trim();
+    // Optional trigger word. It works with or without saying "price".
+    phrase = phrase
+        .replace(/price/g,"")
+        .replace(/set/g,"")
+        .replace(/to/g,"")
+        .replace(/at/g,"")
+        .replace(/pounds?/g,"")
+        .replace(/quid/g,"")
+        .replace(/gbp/g,"")
+        .replace(/£/g,"")
+        .replace(/,/g,"")
+        .trim();
 
-    const direct = phrase.match(/(\d+)(?:\s*(?:\.|:|point)\s*|\s+)?(\d{1,2})?/);
-    if(direct){
-        const pounds = Number(direct[1]);
-        let pence = direct[2] || "";
-        if(!pence) return pounds.toFixed(2);
+    if(!phrase){
+        return null;
+    }
+
+    // Handles: 3.50, 3:50, 3 point 50, 12, 12.99
+    const decimal = phrase.match(/(\d+)\s*(?:\.|:|point)\s*(\d{1,2})/);
+    if(decimal){
+        let pounds = Number(decimal[1]);
+        let pence = decimal[2];
         if(pence.length === 1) pence += "0";
         return (pounds + Number(pence)/100).toFixed(2);
     }
 
-    const nums = {zero:0,oh:0,one:1,two:2,to:2,too:2,three:3,four:4,for:4,five:5,six:6,seven:7,eight:8,ate:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
-    const vals = phrase.split(/\s+/).filter(w => nums.hasOwnProperty(w)).map(w => nums[w]);
-    if(!vals.length) return null;
-    if(vals.length === 1) return Number(vals[0]).toFixed(2);
+    // Handles: "three fifty", "12 50", "seven 99"
+    const twoNumbers = phrase.match(/\b(\d+)\s+(\d{1,2})\b/);
+    if(twoNumbers){
+        let pounds = Number(twoNumbers[1]);
+        let pence = twoNumbers[2];
+        if(pence.length === 1) pence += "0";
+        return (pounds + Number(pence)/100).toFixed(2);
+    }
 
-    let pounds = vals[0];
+    // Handles: "12" as £12.00
+    const whole = phrase.match(/\b(\d+)\b/);
+    if(whole){
+        return Number(whole[1]).toFixed(2);
+    }
+
+    const nums = {
+        zero:0, oh:0,
+        one:1, won:1,
+        two:2, too:2,
+        three:3,
+        four:4, for:4,
+        five:5,
+        six:6,
+        seven:7,
+        eight:8, ate:8,
+        nine:9,
+        ten:10,
+        eleven:11,
+        twelve:12,
+        thirteen:13,
+        fourteen:14,
+        fifteen:15,
+        sixteen:16,
+        seventeen:17,
+        eighteen:18,
+        nineteen:19,
+        twenty:20,
+        thirty:30,
+        forty:40,
+        fifty:50,
+        sixty:60,
+        seventy:70,
+        eighty:80,
+        ninety:90
+    };
+
+    const words = phrase.split(/\s+/).filter(Boolean);
+    const vals = [];
+
+    words.forEach(function(word){
+        if(nums.hasOwnProperty(word)){
+            vals.push(nums[word]);
+        }
+    });
+
+    if(vals.length === 0){
+        return null;
+    }
+
+    // "twelve" = 12.00
+    if(vals.length === 1){
+        return Number(vals[0]).toFixed(2);
+    }
+
+    // "three fifty" = 3.50
+    // "seven ninety nine" = 7.99
+    const pounds = vals[0];
     let pence = vals[1];
-    if(vals.length >= 3 && vals[1] >= 20) pence = vals[1] + vals[2];
-    if(pence < 10) pence *= 10;
-    return (pounds + pence/100).toFixed(2);
+
+    if(vals.length >= 3 && vals[1] >= 20 && vals[2] < 10){
+        pence = vals[1] + vals[2];
+    }
+
+    if(pence < 10){
+        pence = pence * 10;
+    }
+
+    return (Number(pounds) + (Number(pence) / 100)).toFixed(2);
 }
 
 function setVoiceStatus(message, on){
@@ -1040,6 +1122,18 @@ function toggleVoicePriceMode(){
     else stopVoicePrice();
 }
 
+
+function speakPriceSet(price){
+    try{
+        if(!window.speechSynthesis) return;
+        const utterance = new SpeechSynthesisUtterance("Price set to " + price + " pounds");
+        utterance.lang = "en-GB";
+        utterance.rate = 1.05;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+    }catch(error){}
+}
+
 function startVoicePrice(){
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SpeechRecognition){
@@ -1049,7 +1143,7 @@ function startVoicePrice(){
     }
 
     if(speechRecognition && voiceListening){
-        setVoiceStatus("Listening... say price three fifty.", true);
+        setVoiceStatus("Listening... say three fifty or twelve pounds.", true);
         return;
     }
 
@@ -1061,7 +1155,7 @@ function startVoicePrice(){
     speechRecognition.onstart = function(){
         voiceListening = true;
         document.getElementById("voicePriceMode").checked = true;
-        setVoiceStatus("Listening... say price three fifty.", true);
+        setVoiceStatus("Listening... say three fifty or twelve pounds.", true);
     };
 
     speechRecognition.onresult = function(event){
@@ -1072,9 +1166,10 @@ function startVoicePrice(){
             document.getElementById("saleAmount").value = price;
             renderBundleList();
             setVoiceStatus("Heard: '" + transcript + "' → £" + price, true);
+            speakPriceSet(price);
             scheduleBarcodeRefocus();
         }else{
-            setVoiceStatus("Heard: '" + transcript + "'. Say price before the amount.", true);
+            setVoiceStatus("Heard: '" + transcript + "'. Could not understand price. Try saying three fifty or twelve pounds.", true);
         }
     };
 
@@ -1087,7 +1182,7 @@ function startVoicePrice(){
         if(document.getElementById("voicePriceMode").checked){
             setTimeout(function(){ try{ speechRecognition.start(); }catch(e){} }, 500);
         }else{
-            setVoiceStatus("Voice price is off.", false);
+            setVoiceStatus("Listening mode is off.", false);
         }
     };
 
@@ -1098,7 +1193,7 @@ function stopVoicePrice(){
     document.getElementById("voicePriceMode").checked = false;
     if(speechRecognition){ try{ speechRecognition.stop(); }catch(e){} }
     voiceListening = false;
-    setVoiceStatus("Voice price is off.", false);
+    setVoiceStatus("Listening mode is off.", false);
     scheduleBarcodeRefocus();
 }
 
