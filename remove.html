@@ -423,6 +423,7 @@ button{
         <button class="add-button" onclick="startVoicePrice()" type="button">Activate Listening Mode</button>
         <button class="clear-button" onclick="stopVoicePrice()" type="button">Stop Listening Mode</button>
     </div>
+    <button class="clear-button" onclick="testFillPrice()" type="button" style="font-size:13px;padding:10px;">Test Fill £3.50</button>
     <div class="voice-status" id="voiceStatus">Listening mode is off.</div>
 </div>
 
@@ -1002,15 +1003,41 @@ function scheduleBarcodeRefocus(){
     refocusTimer = setTimeout(keepBarcodeFocused, 150);
 }
 
-function parseSpokenPrice(text){
-    let phrase = String(text || "").toLowerCase();
+function wordsToNumber(words){
+    const small = {
+        zero:0, oh:0, one:1, won:1, two:2, too:2, to:2, three:3,
+        four:4, for:4, five:5, six:6, seven:7, eight:8, ate:8,
+        nine:9, ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14,
+        fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19
+    };
 
-    // Optional trigger word. It works with or without saying "price".
-    phrase = phrase
+    const tens = {
+        twenty:20, thirty:30, forty:40, fourty:40, fifty:50,
+        sixty:60, seventy:70, eighty:80, ninety:90
+    };
+
+    let total = 0;
+
+    words.forEach(function(word){
+        if(small.hasOwnProperty(word)){
+            total += small[word];
+        }else if(tens.hasOwnProperty(word)){
+            total += tens[word];
+        }
+    });
+
+    return total;
+}
+
+function parseSpokenPrice(text){
+    let original = String(text || "").toLowerCase();
+
+    // Remove common speech-recognition filler words but DO NOT remove "to", because it can mean "two".
+    let phrase = original
         .replace(/price/g,"")
         .replace(/set/g,"")
-        .replace(/to/g,"")
-        .replace(/at/g,"")
+        .replace(/amount/g,"")
+        .replace(/sale/g,"")
         .replace(/pounds?/g,"")
         .replace(/quid/g,"")
         .replace(/gbp/g,"")
@@ -1022,93 +1049,62 @@ function parseSpokenPrice(text){
         return null;
     }
 
-    // Handles: 3.50, 3:50, 3 point 50, 12, 12.99
-    const decimal = phrase.match(/(\d+)\s*(?:\.|:|point)\s*(\d{1,2})/);
+    // £3.50 / 3.50 / 3:50 / 3 point 50
+    let decimal = phrase.match(/(\d+)\s*(?:\.|:|point)\s*(\d{1,2})/);
     if(decimal){
         let pounds = Number(decimal[1]);
         let pence = decimal[2];
         if(pence.length === 1) pence += "0";
-        return (pounds + Number(pence)/100).toFixed(2);
+        return (pounds + Number(pence) / 100).toFixed(2);
     }
 
-    // Handles: "three fifty", "12 50", "seven 99"
-    const twoNumbers = phrase.match(/\b(\d+)\s+(\d{1,2})\b/);
-    if(twoNumbers){
-        let pounds = Number(twoNumbers[1]);
-        let pence = twoNumbers[2];
+    // 3 50 / 7 99
+    let twoDigits = phrase.match(/\b(\d+)\s+(\d{1,2})\b/);
+    if(twoDigits){
+        let pounds = Number(twoDigits[1]);
+        let pence = twoDigits[2];
         if(pence.length === 1) pence += "0";
-        return (pounds + Number(pence)/100).toFixed(2);
+        return (pounds + Number(pence) / 100).toFixed(2);
     }
 
-    // Handles: "12" as £12.00
-    const whole = phrase.match(/\b(\d+)\b/);
+    // Just 12 = £12.00
+    let whole = phrase.match(/\b(\d+)\b/);
     if(whole){
         return Number(whole[1]).toFixed(2);
     }
 
-    const nums = {
-        zero:0, oh:0,
-        one:1, won:1,
-        two:2, too:2,
-        three:3,
-        four:4, for:4,
-        five:5,
-        six:6,
-        seven:7,
-        eight:8, ate:8,
-        nine:9,
-        ten:10,
-        eleven:11,
-        twelve:12,
-        thirteen:13,
-        fourteen:14,
-        fifteen:15,
-        sixteen:16,
-        seventeen:17,
-        eighteen:18,
-        nineteen:19,
-        twenty:20,
-        thirty:30,
-        forty:40,
-        fifty:50,
-        sixty:60,
-        seventy:70,
-        eighty:80,
-        ninety:90
-    };
+    const validWords = [
+        "zero","oh","one","won","two","too","to","three","four","for","five","six",
+        "seven","eight","ate","nine","ten","eleven","twelve","thirteen","fourteen",
+        "fifteen","sixteen","seventeen","eighteen","nineteen","twenty","thirty",
+        "forty","fourty","fifty","sixty","seventy","eighty","ninety"
+    ];
 
-    const words = phrase.split(/\s+/).filter(Boolean);
-    const vals = [];
-
-    words.forEach(function(word){
-        if(nums.hasOwnProperty(word)){
-            vals.push(nums[word]);
-        }
+    const words = phrase.split(/\s+/).filter(function(word){
+        return validWords.includes(word);
     });
 
-    if(vals.length === 0){
+    if(words.length === 0){
         return null;
     }
 
-    // "twelve" = 12.00
-    if(vals.length === 1){
-        return Number(vals[0]).toFixed(2);
+    // one word: "twelve" = £12.00
+    if(words.length === 1){
+        return wordsToNumber(words).toFixed(2);
     }
 
-    // "three fifty" = 3.50
-    // "seven ninety nine" = 7.99
-    const pounds = vals[0];
-    let pence = vals[1];
+    // two/three words: "three fifty" = £3.50, "seven ninety nine" = £7.99
+    const poundWords = [words[0]];
+    const penceWords = words.slice(1);
 
-    if(vals.length >= 3 && vals[1] >= 20 && vals[2] < 10){
-        pence = vals[1] + vals[2];
-    }
+    let pounds = wordsToNumber(poundWords);
+    let pence = wordsToNumber(penceWords);
 
     if(pence < 10){
         pence = pence * 10;
     }
 
-    return (Number(pounds) + (Number(pence) / 100)).toFixed(2);
+    return (pounds + pence / 100).toFixed(2);
 }
 
 function setVoiceStatus(message, on){
@@ -1116,12 +1112,6 @@ function setVoiceStatus(message, on){
     if(!el) return;
     el.innerHTML = on ? "<span class='voice-on'>" + message + "</span>" : message;
 }
-
-function toggleVoicePriceMode(){
-    if(document.getElementById("voicePriceMode").checked) startVoicePrice();
-    else stopVoicePrice();
-}
-
 
 function speakPriceSet(price){
     try{
@@ -1134,8 +1124,38 @@ function speakPriceSet(price){
     }catch(error){}
 }
 
+function fillSalePriceFromSpeech(transcript){
+    const price = parseSpokenPrice(transcript);
+
+    if(price !== null){
+        const saleInput = document.getElementById("saleAmount");
+        saleInput.value = price;
+
+        // Fire an input event so your bundle split preview updates properly.
+        saleInput.dispatchEvent(new Event("input", { bubbles:true }));
+
+        renderBundleList();
+        setVoiceStatus("Heard: '" + transcript + "' → Price set to £" + price, true);
+        speakPriceSet(price);
+        scheduleBarcodeRefocus();
+        return true;
+    }
+
+    setVoiceStatus("Heard: '" + transcript + "' but could not read a price. Try 'three fifty' or 'twelve pounds'.", true);
+    return false;
+}
+
+function toggleVoicePriceMode(){
+    if(document.getElementById("voicePriceMode").checked){
+        startVoicePrice();
+    }else{
+        stopVoicePrice();
+    }
+}
+
 function startVoicePrice(){
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
     if(!SpeechRecognition){
         document.getElementById("voicePriceMode").checked = false;
         setVoiceStatus("Voice recognition is not supported here. Use Chrome on Windows for best results.", false);
@@ -1143,58 +1163,87 @@ function startVoicePrice(){
     }
 
     if(speechRecognition && voiceListening){
-        setVoiceStatus("Listening... say three fifty or twelve pounds.", true);
+        setVoiceStatus("Already listening. Say three fifty or twelve pounds.", true);
         return;
     }
 
     speechRecognition = new SpeechRecognition();
     speechRecognition.continuous = true;
-    speechRecognition.interimResults = false;
+    speechRecognition.interimResults = true;
     speechRecognition.lang = "en-GB";
+    speechRecognition.maxAlternatives = 3;
 
     speechRecognition.onstart = function(){
         voiceListening = true;
         document.getElementById("voicePriceMode").checked = true;
-        setVoiceStatus("Listening... say three fifty or twelve pounds.", true);
+        setVoiceStatus("Listening... say three fifty, seven ninety nine, or twelve pounds.", true);
     };
 
     speechRecognition.onresult = function(event){
-        const transcript = event.results[event.results.length - 1][0].transcript || "";
-        const price = parseSpokenPrice(transcript);
+        let finalTranscript = "";
+        let interimTranscript = "";
 
-        if(price !== null){
-            document.getElementById("saleAmount").value = price;
-            renderBundleList();
-            setVoiceStatus("Heard: '" + transcript + "' → £" + price, true);
-            speakPriceSet(price);
-            scheduleBarcodeRefocus();
-        }else{
-            setVoiceStatus("Heard: '" + transcript + "'. Could not understand price. Try saying three fifty or twelve pounds.", true);
+        for(let i = event.resultIndex; i < event.results.length; i++){
+            const transcript = event.results[i][0].transcript.trim();
+
+            if(event.results[i].isFinal){
+                finalTranscript += transcript;
+            }else{
+                interimTranscript += transcript;
+            }
+        }
+
+        if(interimTranscript){
+            setVoiceStatus("Hearing: '" + interimTranscript + "'", true);
+        }
+
+        if(finalTranscript){
+            fillSalePriceFromSpeech(finalTranscript);
         }
     };
 
     speechRecognition.onerror = function(event){
-        setVoiceStatus("Voice error: " + event.error, false);
+        setVoiceStatus("Voice error: " + event.error + ". Press Activate Listening Mode again.", false);
     };
 
     speechRecognition.onend = function(){
         voiceListening = false;
+
         if(document.getElementById("voicePriceMode").checked){
-            setTimeout(function(){ try{ speechRecognition.start(); }catch(e){} }, 500);
+            setVoiceStatus("Restarting listening mode...", true);
+            setTimeout(function(){
+                try{
+                    speechRecognition.start();
+                }catch(error){}
+            }, 500);
         }else{
             setVoiceStatus("Listening mode is off.", false);
         }
     };
 
-    try{ speechRecognition.start(); }catch(e){ setVoiceStatus("Could not start voice recognition.", false); }
+    try{
+        speechRecognition.start();
+    }catch(error){
+        setVoiceStatus("Could not start listening mode. Refresh the page and try again.", false);
+    }
 }
 
 function stopVoicePrice(){
     document.getElementById("voicePriceMode").checked = false;
-    if(speechRecognition){ try{ speechRecognition.stop(); }catch(e){} }
+
+    if(speechRecognition){
+        try{
+            speechRecognition.stop();
+        }catch(error){}
+    }
+
     voiceListening = false;
     setVoiceStatus("Listening mode is off.", false);
     scheduleBarcodeRefocus();
+}
+
+function testFillPrice(){
+    fillSalePriceFromSpeech("three fifty");
 }
 
 document.addEventListener("click", scheduleBarcodeRefocus);
