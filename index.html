@@ -536,11 +536,9 @@ button{
     </div>
 </div>
 
+<script src="js/api.js"></script>
 <script>
-const PASSWORD = "Sales";
 
-const API_URL =
-"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
 
 const SECTION_IDS = [
     "section_inventory",
@@ -559,19 +557,11 @@ function hideLoading(){
 }
 
 function login(){
-    const entered = document.getElementById("password").value;
-
-    if(entered === PASSWORD){
-        localStorage.setItem("inventoryLoggedIn", "yes");
-        showApp();
-    }else{
-        document.getElementById("loginError").innerText = "Wrong password";
-    }
+    window.location.href = "login.html";
 }
 
 function logout(){
-    localStorage.removeItem("inventoryLoggedIn");
-    location.reload();
+    InventoryAPI.logout();
 }
 
 function showApp(){
@@ -628,43 +618,34 @@ function restoreSectionStates(){
 function loadStats(){
     showLoading();
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"STATS"
-        })
-    })
-
-    .then(res=>res.json())
-
+    InventoryAPI.request("/dashboard")
     .then(data=>{
         hideLoading();
-if(data.success){
-    document.getElementById("productsValue").innerText = data.totalProducts;
-    document.getElementById("stockValue").innerText = data.totalStock;
-    document.getElementById("boxesValue").innerText = data.totalBoxes;
 
-    document.getElementById("todaySalesValue").innerText =
-        data.todaySalesCount || 0;
+        if(data.success){
+            document.getElementById("productsValue").innerText = data.totalProducts;
+            document.getElementById("stockValue").innerText = data.totalStock;
+            document.getElementById("boxesValue").innerText = data.totalBoxes;
 
-    document.getElementById("todayIncomeValue").innerText =
-        "£" + Number(data.todayIncome || 0).toFixed(2);
+            document.getElementById("todaySalesValue").innerText =
+                data.todaySalesCount || 0;
 
-    const trend = Number(data.rolling3Trend || 0);
+            document.getElementById("todayIncomeValue").innerText =
+                "£" + Number(data.todayIncome || 0).toFixed(2);
 
-    document.getElementById("trendValue").innerText =
-        (trend > 0 ? "+" : "") + trend + "%";
-}
-else{
+            const trend = Number(data.rolling3Trend || 0);
+
+            document.getElementById("trendValue").innerText =
+                (trend > 0 ? "+" : "") + trend + "%";
+        }else{
             document.getElementById("productsValue").innerText = "-";
             document.getElementById("stockValue").innerText = "-";
             document.getElementById("boxesValue").innerText = "-";
-    document.getElementById("todaySalesValue").innerText = "-";
-document.getElementById("todayIncomeValue").innerText = "-";
-document.getElementById("trendValue").innerText = "-";
+            document.getElementById("todaySalesValue").innerText = "-";
+            document.getElementById("todayIncomeValue").innerText = "-";
+            document.getElementById("trendValue").innerText = "-";
         }
     })
-
     .catch(error=>{
         hideLoading();
 
@@ -674,8 +655,8 @@ document.getElementById("trendValue").innerText = "-";
         document.getElementById("stockValue").innerText = "-";
         document.getElementById("boxesValue").innerText = "-";
         document.getElementById("todaySalesValue").innerText = "-";
-document.getElementById("todayIncomeValue").innerText = "-";
-document.getElementById("trendValue").innerText = "-";
+        document.getElementById("todayIncomeValue").innerText = "-";
+        document.getElementById("trendValue").innerText = "-";
     });
 }
 
@@ -686,8 +667,10 @@ document.getElementById("password").addEventListener("keydown",function(e){
     }
 });
 
-if(localStorage.getItem("inventoryLoggedIn") === "yes"){
+if(InventoryAPI.isLoggedIn()){
     showApp();
+}else{
+    window.location.href = "login.html";
 }
 </script>
 
