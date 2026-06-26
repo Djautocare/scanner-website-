@@ -303,6 +303,7 @@ button{color:white;font-weight:bold;cursor:pointer;}
 
 <div class="links-grid">
     <a class="link-card" href="index.html">← Back to Dashboard</a>
+    <a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 </div>
 
 </div>
@@ -315,9 +316,12 @@ button{color:white;font-weight:bold;cursor:pointer;}
     </div>
 </div>
 
+<script src="js/api.js"></script>
 <script>
-const API_URL =
-"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
 
 let scannerStarted = false;
 let codeReader = null;
@@ -378,14 +382,22 @@ function copyOptions(sourceSelect, targetSelect){
 
 function loadBoxes(){
     showLoading();
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({action:"GET_BOXES"})
-    })
-    .then(res=>res.json())
+
+    InventoryAPI.request("/boxes")
     .then(data=>{
         hideLoading();
         if(!data.success){setResult(data.error || "Could not load boxes");return;}
+
+        const boxes = (data.boxes || []).map(item => ({
+            box: item.box || item.box_name || ""
+        })).filter(item => item.box);
+
+        boxes.sort((a,b) => {
+            const na = Number(String(a.box).match(/\d+/)?.[0] || 0);
+            const nb = Number(String(b.box).match(/\d+/)?.[0] || 0);
+            if(na && nb && na !== nb) return na - nb;
+            return String(a.box).localeCompare(String(b.box), undefined, {numeric:true});
+        });
 
         const selects = [
             document.getElementById("fromLocation"),
@@ -401,7 +413,7 @@ function loadBoxes(){
             select.innerHTML = '<option value="">' + firstText + '</option>';
         });
 
-        data.boxes.forEach(item=>{
+        boxes.forEach(item=>{
             selects.forEach(select=>{
                 const option = document.createElement("option");
                 option.value = item.box;
@@ -594,16 +606,15 @@ function renderBundleList(){
 }
 
 function moveRequest(barcode, fromLocation, toLocation, qty){
-    return fetch(API_URL,{
+    return InventoryAPI.request("/move/item",{
         method:"POST",
         body:JSON.stringify({
-            action:"MOVE",
             barcode:barcode,
             fromLocation:fromLocation,
             toLocation:toLocation,
-            qty:qty
+            qty:Number(qty || 1)
         })
-    }).then(res=>res.json());
+    });
 }
 
 function moveStock(){
@@ -686,13 +697,7 @@ async function moveBundleStock(){
 }
 
 function getBoxContents(box){
-    return fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"BOX_CONTENTS",
-            box:box
-        })
-    }).then(res=>res.json());
+    return InventoryAPI.request("/boxes/" + encodeURIComponent(box) + "/contents");
 }
 
 async function moveWholeBox(){
