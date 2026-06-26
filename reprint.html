@@ -439,6 +439,7 @@ No range generated yet.
 </div>
 
 <a class="link-card" href="index.html">← Back to Dashboard</a>
+<a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 
 </div>
 
@@ -453,9 +454,12 @@ No range generated yet.
     </div>
 </div>
 
+<script src="js/api.js"></script>
 <script>
-const API_URL =
-"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
 
 let generatedLabelCount = 0;
 
@@ -479,15 +483,7 @@ function searchProduct(){
 
     showLoading();
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"SEARCH",
-            query:query
-        })
-    })
-
-    .then(res=>res.json())
+    InventoryAPI.request("/search?query=" + encodeURIComponent(query))
 
     .then(data=>{
         hideLoading();
