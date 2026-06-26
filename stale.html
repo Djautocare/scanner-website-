@@ -9,13 +9,8 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 <title>Stale Stock</title>
 
 <style>
-html{
-    touch-action: manipulation;
-}
-
-*{
-    box-sizing:border-box;
-}
+html{touch-action: manipulation;}
+*{box-sizing:border-box;}
 
 body{
     font-family:Arial, sans-serif;
@@ -29,10 +24,7 @@ body{
     overflow-x:hidden;
 }
 
-.page{
-    max-width:950px;
-    margin:0 auto;
-}
+.page{max-width:950px;margin:0 auto;}
 
 .panel{
     background:linear-gradient(180deg,#1d1d1d,#151515);
@@ -42,18 +34,8 @@ body{
     box-shadow:0 20px 60px rgba(0,0,0,0.35);
 }
 
-h1{
-    text-align:center;
-    font-size:34px;
-    margin:12px 0 6px 0;
-}
-
-.subtitle{
-    text-align:center;
-    color:#aaa;
-    margin:0 0 24px 0;
-    font-size:15px;
-}
+h1{text-align:center;font-size:34px;margin:12px 0 6px 0;}
+.subtitle{text-align:center;color:#aaa;margin:0 0 24px 0;font-size:15px;}
 
 .summary-card{
     background:linear-gradient(135deg,#ffc107,#ff9800);
@@ -98,11 +80,7 @@ button{
     text-align:left;
 }
 
-.item-name{
-    font-size:20px;
-    font-weight:bold;
-    margin-bottom:12px;
-}
+.item-name{font-size:20px;font-weight:bold;margin-bottom:12px;}
 
 .badge{
     display:inline-block;
@@ -114,17 +92,9 @@ button{
     margin-bottom:8px;
 }
 
-.location-badge{
-    background:#007bff;
-}
-
-.qty-badge{
-    background:#6f42c1;
-}
-
-.days-badge{
-    background:#dc3545;
-}
+.location-badge{background:#007bff;}
+.qty-badge{background:#6f42c1;}
+.days-badge{background:#dc3545;}
 
 .barcode-box{
     background:#111;
@@ -166,80 +136,45 @@ button{
 }
 
 @media(max-width:600px){
-    h1{
-        font-size:30px;
-    }
-
-    .panel{
-        padding:18px;
-    }
+    h1{font-size:30px;}
+    .panel{padding:18px;}
 }
 </style>
 </head>
 
 <body>
-
-<div class="page">
-
-<div class="panel">
+<div class="page"><div class="panel">
 
 <h1>Stale Stock Report</h1>
+<p class="subtitle">Items sitting for 14+ days with no sales recorded.</p>
 
-<p class="subtitle">
-Items sitting for 14+ days with no sales recorded.
-</p>
+<div id="summary" class="summary-card">Loading stale stock...</div>
 
-<div id="summary" class="summary-card">
-Loading stale stock...
-</div>
-
-<button class="refresh-button" onclick="loadStaleStock()">
-Refresh Report
-</button>
+<button class="refresh-button" onclick="loadStaleStock()">Refresh Report</button>
 
 <div id="results"></div>
 
 <a class="link-card" href="index.html">← Back to Dashboard</a>
+<a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 
-</div>
+</div></div>
 
-</div>
-
+<script src="js/api.js"></script>
 <script>
-const API_URL =
-"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
 
 function loadStaleStock(){
+    document.getElementById("summary").innerHTML = "Loading stale stock...";
+    document.getElementById("results").innerHTML = "";
 
-    document.getElementById("summary").innerHTML =
-    "Loading stale stock...";
-
-    document.getElementById("results").innerHTML =
-    "";
-
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"STALE"
-        })
-    })
-
-    .then(res=>res.json())
-
+    InventoryAPI.request("/stale")
     .then(data=>{
-
         if(!data.success){
-
-            document.getElementById("summary").innerHTML =
-            "Could not load stale stock";
-
+            document.getElementById("summary").innerHTML = "Could not load stale stock";
             document.getElementById("results").innerHTML =
-            `
-            <div class="empty-state">
-                Something went wrong loading the report.
-            </div>
-            `;
-
+            `<div class="empty-state">Something went wrong loading the report.</div>`;
             return;
         }
 
@@ -247,79 +182,44 @@ function loadStaleStock(){
         "⚠️ " + data.results.length + " stale item(s) found";
 
         if(data.results.length === 0){
-
             document.getElementById("results").innerHTML =
-            `
-            <div class="empty-state">
+            `<div class="empty-state">
                 <h3>✅ No stale stock found</h3>
                 <p>Everything has had a sale/removal recorded recently.</p>
-            </div>
-            `;
-
+            </div>`;
             return;
         }
 
         let html = "<div class='grid'>";
 
         data.results.forEach(item=>{
-
             html += `
             <div class="item-card">
-
-                <div class="item-name">
-                    ${item.description || item.barcode}
-                </div>
-
-                <div class="badge location-badge">
-                    ${item.location}
-                </div>
-
-                <div class="badge qty-badge">
-                    Qty ${item.qty}
-                </div>
-
-                <div class="badge days-badge">
-                    ${item.daysOld} Days
-                </div>
-
+                <div class="item-name">${item.description || item.barcode}</div>
+                <div class="badge location-badge">${item.location}</div>
+                <div class="badge qty-badge">Qty ${item.qty}</div>
+                <div class="badge days-badge">${item.daysOld} Days</div>
                 <div class="barcode-box">
                     <strong>Barcode:</strong><br>
                     ${item.barcode}
                 </div>
-
                 <button
                 class="quick-sale"
                 onclick="window.location.href='remove.html?barcode=${encodeURIComponent(item.barcode)}&location=${encodeURIComponent(item.location)}'">
                 Quick Sale
                 </button>
-
-            </div>
-            `;
+            </div>`;
         });
 
         html += "</div>";
-
-        document.getElementById("results").innerHTML =
-        html;
-
+        document.getElementById("results").innerHTML = html;
     })
-
     .catch(error=>{
-
         console.error(error);
-
-        document.getElementById("summary").innerHTML =
-        "Error loading stale stock";
-
+        document.getElementById("summary").innerHTML = "Error loading stale stock";
         document.getElementById("results").innerHTML =
-        `
-        <div class="empty-state">
-            Error loading stale stock.
-        </div>
-        `;
-
+        `<div class="empty-state">Error loading stale stock.</div>`;
     });
-
 }
 
 loadStaleStock();
