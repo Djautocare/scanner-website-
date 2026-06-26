@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d0d0d">
 
@@ -14,7 +14,6 @@
 
 <style>
 *{ box-sizing:border-box; }
-
 html{ touch-action:manipulation; }
 
 body{
@@ -29,10 +28,7 @@ body{
     overflow-x:hidden;
 }
 
-.page{
-    max-width:700px;
-    margin:auto;
-}
+.page{max-width:700px;margin:auto;}
 
 .panel{
     background:linear-gradient(180deg,#1d1d1d,#151515);
@@ -42,17 +38,8 @@ body{
     box-shadow:0 20px 60px rgba(0,0,0,0.35);
 }
 
-h1{
-    text-align:center;
-    margin:10px 0 5px 0;
-    font-size:34px;
-}
-
-.subtitle{
-    text-align:center;
-    color:#aaa;
-    margin-bottom:25px;
-}
+h1{text-align:center;margin:10px 0 5px 0;font-size:34px;}
+.subtitle{text-align:center;color:#aaa;margin-bottom:25px;}
 
 .form-card{
     background:linear-gradient(145deg,#242424,#191919);
@@ -69,8 +56,7 @@ h1{
     font-weight:bold;
 }
 
-select,
-button{
+select,button{
     width:100%;
     padding:14px;
     border:none;
@@ -102,16 +88,8 @@ select{
     text-align:center;
 }
 
-.preview-title{
-    color:#aaa;
-    margin-bottom:10px;
-}
-
-.current-box{
-    font-size:26px;
-    font-weight:bold;
-    color:#17a2b8;
-}
+.preview-title{color:#aaa;margin-bottom:10px;}
+.current-box{font-size:26px;font-weight:bold;color:#17a2b8;}
 
 .link-card{
     display:block;
@@ -126,9 +104,7 @@ select{
     font-weight:bold;
 }
 
-#printArea{
-    display:none;
-}
+#printArea{display:none;}
 
 #barcodeText{
     color:black;
@@ -152,10 +128,7 @@ select{
     align-items:center;
 }
 
-.loaderBox{
-    text-align:center;
-}
-
+.loaderBox{text-align:center;}
 .spinner{
     width:55px;
     height:55px;
@@ -165,107 +138,57 @@ select{
     animation:spin 1s linear infinite;
     margin:0 auto 15px auto;
 }
-
-@keyframes spin{
-    0%{transform:rotate(0deg);}
-    100%{transform:rotate(360deg);}
-}
+@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
 
 @media print{
-    @page{
-        size:2in 1in;
-        margin:0;
+    @page{size:2in 1in;margin:0;}
+    html,body{
+        width:2in;height:1in;margin:0 !important;padding:0 !important;
+        background:white !important;overflow:hidden !important;
     }
-
-    html,
-    body{
-        width:2in;
-        height:1in;
-        margin:0 !important;
-        padding:0 !important;
-        background:white !important;
-        overflow:hidden !important;
-    }
-
-    body *{
-        display:none !important;
-    }
-
-    #printArea,
-    #printArea *{
-        display:block !important;
-    }
-
+    body *{display:none !important;}
+    #printArea,#printArea *{display:block !important;}
     #printArea{
-        position:fixed !important;
-        left:0 !important;
-        top:0 !important;
-        width:2in !important;
-        height:1in !important;
-        padding:0.03in !important;
-        margin:0 !important;
-        box-sizing:border-box !important;
-        background:white !important;
-        text-align:center !important;
-        overflow:hidden !important;
+        position:fixed !important;left:0 !important;top:0 !important;
+        width:2in !important;height:1in !important;padding:0.03in !important;
+        margin:0 !important;box-sizing:border-box !important;background:white !important;
+        text-align:center !important;overflow:hidden !important;
     }
-
     #barcode{
-        width:1.85in !important;
-        height:0.62in !important;
-        display:block !important;
-        margin:0 auto !important;
+        width:1.85in !important;height:0.62in !important;
+        display:block !important;margin:0 auto !important;
     }
-
     #barcodeText{
-        color:black !important;
-        font-size:9pt !important;
-        font-weight:bold !important;
-        text-align:center !important;
+        color:black !important;font-size:9pt !important;font-weight:bold !important;text-align:center !important;
     }
 }
 </style>
 </head>
 
 <body>
-
-<div class="page">
-
-<div class="panel">
+<div class="page"><div class="panel">
 
 <h1>Print Box Labels</h1>
-
-<p class="subtitle">
-Generate barcode labels for storage boxes
-</p>
+<p class="subtitle">Generate barcode labels for storage boxes</p>
 
 <div class="form-card">
+    <div class="input-label">Select Box</div>
+    <select id="boxSelect" onchange="updatePreview()">
+        <option value="">Loading boxes...</option>
+    </select>
 
-<div class="input-label">Select Box</div>
-
-<select id="boxSelect" onchange="updatePreview()">
-<option value="">Loading boxes...</option>
-</select>
-
-<button class="print-button" onclick="printSelectedBox()">
-Print Box Label
-</button>
-
+    <button class="print-button" onclick="printSelectedBox()">Print Box Label</button>
 </div>
 
 <div class="preview-card">
-
-<div class="preview-title">Selected Box</div>
-
-<div class="current-box" id="previewBox">—</div>
-
+    <div class="preview-title">Selected Box</div>
+    <div class="current-box" id="previewBox">—</div>
 </div>
 
 <a class="link-card" href="index.html">← Back to Dashboard</a>
+<a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 
-</div>
-
-</div>
+</div></div>
 
 <div id="loadingOverlay">
     <div class="loaderBox">
@@ -279,9 +202,11 @@ Print Box Label
     <p id="barcodeText"></p>
 </div>
 
+<script src="js/api.js"></script>
 <script>
-const API_URL =
-"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display="flex";
@@ -294,29 +219,23 @@ function hideLoading(){
 function loadBoxes(){
     showLoading();
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"GET_BOXES"
-        })
-    })
-    .then(res=>res.json())
+    InventoryAPI.request("/boxes")
     .then(data=>{
         hideLoading();
 
         const select = document.getElementById("boxSelect");
-
         select.innerHTML = '<option value="">Select Box</option>';
 
-        if(!data.success || data.boxes.length===0){
+        if(!data.success || !data.boxes || data.boxes.length===0){
             select.innerHTML = '<option value="">No boxes found</option>';
             return;
         }
 
         data.boxes.forEach(item=>{
+            const boxName = item.box || item.box_name;
             const option = document.createElement("option");
-            option.value = item.box;
-            option.textContent = item.box;
+            option.value = boxName;
+            option.textContent = boxName;
             select.appendChild(option);
         });
     })
@@ -329,7 +248,6 @@ function loadBoxes(){
 
 function updatePreview(){
     const box = document.getElementById("boxSelect").value;
-
     document.getElementById("previewBox").innerText = box || "—";
 }
 
