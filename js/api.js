@@ -1,5 +1,21 @@
 const InventoryAPI = (function(){
-    const API_BASE = "http://localhost:3000";
+    function detectApiBase(){
+        const savedApiBase = localStorage.getItem("inventoryos_api_base");
+
+        if(savedApiBase){
+            return savedApiBase.replace(/\/$/, "");
+        }
+
+        // If opened directly from a file on your PC
+        if(window.location.protocol === "file:"){
+            return "http://localhost:3000";
+        }
+
+        // If served through Cloudflare Tunnel or localhost, use the same site origin
+        return window.location.origin;
+    }
+
+    const API_BASE = detectApiBase();
     const TOKEN_KEY = "inventoryos_token";
     const USER_KEY = "inventoryos_user";
 
@@ -42,9 +58,16 @@ const InventoryAPI = (function(){
         const token = getToken();
 
         const headers = {
-            "Content-Type":"application/json",
             ...(options.headers || {})
         };
+
+        const isFormData =
+            typeof FormData !== "undefined" &&
+            options.body instanceof FormData;
+
+        if(!isFormData){
+            headers["Content-Type"] = headers["Content-Type"] || "application/json";
+        }
 
         if(token){
             headers.Authorization = "Bearer " + token;
