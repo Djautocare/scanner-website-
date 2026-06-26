@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0d0d0d">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-<title>Settings</title>
+<title>Expenses</title>
 
 <style>
 html{touch-action:manipulation;}
@@ -16,8 +16,8 @@ html{touch-action:manipulation;}
 body{
     font-family:Arial,sans-serif;
     background:
-        radial-gradient(circle at top left, rgba(111,66,193,0.16), transparent 35%),
-        radial-gradient(circle at top right, rgba(32,201,151,0.10), transparent 35%),
+        radial-gradient(circle at top left, rgba(255,193,7,0.14), transparent 35%),
+        radial-gradient(circle at top right, rgba(220,53,69,0.10), transparent 35%),
         #0d0d0d;
     color:white;
     padding:18px;
@@ -25,10 +25,7 @@ body{
     overflow-x:hidden;
 }
 
-.page{
-    max-width:900px;
-    margin:0 auto;
-}
+.page{max-width:980px;margin:0 auto;}
 
 .panel{
     background:linear-gradient(180deg,#1d1d1d,#151515);
@@ -38,11 +35,7 @@ body{
     box-shadow:0 20px 60px rgba(0,0,0,0.35);
 }
 
-h1{
-    text-align:center;
-    font-size:34px;
-    margin:12px 0 6px 0;
-}
+h1{text-align:center;font-size:34px;margin:12px 0 6px 0;}
 
 .subtitle{
     text-align:center;
@@ -81,7 +74,7 @@ h1{
     font-size:14px;
 }
 
-input,select,button{
+input,select,button,textarea{
     width:100%;
     padding:14px;
     margin:6px 0 12px 0;
@@ -90,11 +83,16 @@ input,select,button{
     font-size:16px;
 }
 
-input,select{
+input,select,textarea{
     background:#2a2a2a;
     color:white;
     outline:none;
     border:1px solid rgba(255,255,255,0.08);
+}
+
+textarea{
+    resize:vertical;
+    min-height:70px;
 }
 
 button{
@@ -103,20 +101,122 @@ button{
     cursor:pointer;
 }
 
-.import-button{
-    background:linear-gradient(135deg,#20c997,#138f6d);
-    border:1px solid rgba(32,201,151,0.45);
+.add-button{
+    background:linear-gradient(135deg,#ffc107,#d39e00);
+    color:black;
+    border:1px solid rgba(255,193,7,0.45);
 }
 
-.password-button{
+.refresh-button{
     background:linear-gradient(135deg,#6f42c1,#56329b);
     border:1px solid rgba(111,66,193,0.45);
 }
 
-.warning-button{
-    background:linear-gradient(135deg,#ffc107,#d39e00);
-    color:black;
-    border:1px solid rgba(255,193,7,0.45);
+.delete-button{
+    background:linear-gradient(135deg,#dc3545,#8d1f2b);
+    border:1px solid rgba(220,53,69,0.45);
+    margin:0;
+    padding:10px;
+    font-size:14px;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:1fr 180px;
+    gap:12px;
+}
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:12px;
+    margin-top:16px;
+}
+
+.summary-card{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;
+    padding:14px;
+}
+
+.summary-title{
+    color:#aaa;
+    font-size:13px;
+    margin-bottom:6px;
+    font-weight:bold;
+}
+
+.summary-value{
+    font-size:24px;
+    font-weight:bold;
+}
+
+.expense-row{
+    display:grid;
+    grid-template-columns:1fr 120px 120px 90px;
+    gap:10px;
+    align-items:center;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+    padding:12px 0;
+}
+
+.expense-row:last-child{border-bottom:none;}
+
+.expense-name{
+    font-weight:bold;
+    line-height:1.35;
+}
+
+.expense-meta{
+    color:#aaa;
+    font-size:13px;
+    margin-top:4px;
+    line-height:1.35;
+}
+
+.money{
+    font-weight:bold;
+    color:#ffc107;
+}
+
+.badge{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    background:rgba(111,66,193,0.22);
+    color:#d9b8ff;
+    border:1px solid rgba(111,66,193,0.35);
+    font-size:13px;
+    font-weight:bold;
+}
+
+.receipt-link{
+    display:inline-block;
+    margin-top:8px;
+    color:#20c997;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+.receipt-thumb{
+    width:72px;
+    height:72px;
+    object-fit:cover;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.10);
+    margin-top:8px;
+    display:block;
+}
+
+.empty-state{
+    background:#111;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;
+    padding:18px;
+    text-align:center;
+    color:#ddd;
+    margin-top:14px;
 }
 
 .link-card{
@@ -166,7 +266,7 @@ button{
     width:55px;
     height:55px;
     border:6px solid #333;
-    border-top:6px solid #20c997;
+    border-top:6px solid #ffc107;
     border-radius:50%;
     animation:spin 1s linear infinite;
     margin:0 auto 15px auto;
@@ -177,9 +277,11 @@ button{
     100%{transform:rotate(360deg);}
 }
 
-@media(max-width:700px){
+@media(max-width:780px){
     h1{font-size:30px;}
     .panel{padding:18px;}
+    .form-grid{grid-template-columns:1fr;}
+    .expense-row{grid-template-columns:1fr;}
 }
 </style>
 </head>
@@ -189,60 +291,94 @@ button{
 <div class="page">
 <div class="panel">
 
-<h1>Settings</h1>
-<p class="subtitle">Manage your account and import your old Google Sheets data into InventoryOS.</p>
+<h1>Expenses</h1>
+<p class="subtitle">Track stock costs, postage, packaging, equipment and attach receipt photos or PDFs.</p>
 
 <div class="card">
-    <div class="card-title">Change Password</div>
-    <div class="helper">
-        Update your login password. You’ll need to enter your current password first.
+    <div class="card-title">Add Expense</div>
+    <div class="helper">Add a business cost and optionally attach a receipt, invoice image or PDF.</div>
+
+    <div class="input-label">Description</div>
+    <input type="text" id="description" placeholder="Example: Trade Outlet stock box">
+
+    <div class="form-grid">
+        <div>
+            <div class="input-label">Category</div>
+            <select id="category">
+                <option value="Stock">Stock</option>
+                <option value="Postage">Postage</option>
+                <option value="Packaging">Packaging</option>
+                <option value="Equipment">Equipment</option>
+                <option value="Storage">Storage</option>
+                <option value="Fees">Fees</option>
+                <option value="Fuel">Fuel</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+
+        <div>
+            <div class="input-label">Amount</div>
+            <input type="number" id="amount" placeholder="£0.00" step="0.01" min="0">
+        </div>
     </div>
 
-    <div class="input-label">Current Password</div>
-    <input type="password" id="currentPassword" placeholder="Current password">
+    <div class="form-grid">
+        <div>
+            <div class="input-label">Date</div>
+            <input type="date" id="expenseDate">
+        </div>
 
-    <div class="input-label">New Password</div>
-    <input type="password" id="newPassword" placeholder="New password">
+        <div>
+            <div class="input-label">Supplier</div>
+            <input type="text" id="supplier" placeholder="Optional">
+        </div>
+    </div>
 
-    <div class="input-label">Confirm New Password</div>
-    <input type="password" id="confirmPassword" placeholder="Confirm new password">
+    <div class="form-grid">
+        <div>
+            <div class="input-label">Payment Method</div>
+            <select id="paymentMethod">
+                <option value="">Optional</option>
+                <option value="Card">Card</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="PayPal">PayPal</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
 
-    <button class="password-button" onclick="changePassword()">Change Password</button>
+        <div>
+            <div class="input-label">Reference / Invoice No.</div>
+            <input type="text" id="referenceNumber" placeholder="Optional">
+        </div>
+    </div>
 
-    <div id="passwordResult" class="result">No password change requested.</div>
+    <div class="input-label">Receipt / Invoice Image or PDF</div>
+    <input type="file" id="receipt" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment">
+
+    <div class="input-label">Notes</div>
+    <textarea id="notes" placeholder="Optional notes"></textarea>
+
+    <button class="add-button" onclick="addExpense()">Add Expense</button>
+
+    <div id="result" class="result">No expense added yet.</div>
 </div>
 
 <div class="card">
-    <div class="card-title">Import from Google Sheets export</div>
-    <div class="helper">
-        In Google Sheets, go to <strong>File → Download → Microsoft Excel (.xlsx)</strong>.
-        Upload your old <strong>Inventory System</strong> file and your <strong>Online Selling</strong> sales/expenses file.
-    </div>
+    <div class="card-title">Summary</div>
+    <button class="refresh-button" onclick="loadExpenses()">Refresh Expenses</button>
 
-    <div class="input-label">Inventory System .xlsx</div>
-    <input type="file" id="inventoryFile" accept=".xlsx,.xls">
-
-    <div class="input-label">Online Selling / Sales Tracker .xlsx</div>
-    <input type="file" id="salesFile" accept=".xlsx,.xls">
-
-    <button class="import-button" onclick="runImport()">Import Data</button>
-
-    <div class="helper">
-        This imports into the account you are currently logged in as. Run it once on a fresh account/database where possible.
-    </div>
-
-    <div id="result" class="result">No import run yet.</div>
+    <div id="summary"></div>
 </div>
 
 <div class="card">
-    <div class="card-title">What this importer looks for</div>
-    <div class="helper">
-        Inventory workbook tabs: Products, Inventory, Movements, Boxes, MysteryBoxes, MysteryBoxItems, PrintJobs, PrintJobItems.<br>
-        Sales workbook tabs: Sales, Expenses.<br><br>
-        It is designed around your current Google Sheet layouts.
+    <div class="card-title">Recent Expenses</div>
+    <div id="expensesList">
+        <div class="empty-state">Loading expenses...</div>
     </div>
 </div>
 
+<a class="link-card" href="salestracker.html">View Sales Tracker →</a>
 <a class="link-card" href="index.html">← Back to Dashboard</a>
 <a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 
@@ -270,98 +406,66 @@ function hideLoading(){
     document.getElementById("loadingOverlay").style.display = "none";
 }
 
+function money(value){
+    return "£" + Number(value || 0).toFixed(2);
+}
+
 function setResult(text, type){
     const el = document.getElementById("result");
     el.className = "result " + (type || "");
     el.innerText = text || "";
 }
 
-function setPasswordResult(text, type){
-    const el = document.getElementById("passwordResult");
-    el.className = "result " + (type || "");
-    el.innerText = text || "";
+function todayInput(){
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return yyyy + "-" + mm + "-" + dd;
 }
 
-async function changePassword(){
-    const currentPassword = document.getElementById("currentPassword").value;
-    const newPassword = document.getElementById("newPassword").value;
-    const confirmPassword = document.getElementById("confirmPassword").value;
+document.getElementById("expenseDate").value = todayInput();
 
-    if(!currentPassword || !newPassword || !confirmPassword){
-        alert("Fill in all password fields.");
+async function addExpense(){
+    const description = document.getElementById("description").value.trim();
+    const category = document.getElementById("category").value;
+    const amount = Number(document.getElementById("amount").value || 0);
+    const expense_date = document.getElementById("expenseDate").value;
+    const supplier = document.getElementById("supplier").value.trim();
+    const notes = document.getElementById("notes").value.trim();
+    const payment_method = document.getElementById("paymentMethod").value;
+    const reference_number = document.getElementById("referenceNumber").value.trim();
+    const receipt = document.getElementById("receipt").files[0];
+
+    if(!description){
+        alert("Enter a description.");
         return;
     }
 
-    if(newPassword.length < 8){
-        alert("New password must be at least 8 characters.");
-        return;
-    }
-
-    if(newPassword !== confirmPassword){
-        alert("New passwords do not match.");
-        return;
-    }
-
-    showLoading();
-    setPasswordResult("Changing password...");
-
-    try{
-        const data = await InventoryAPI.request("/auth/change-password", {
-            method:"POST",
-            body:JSON.stringify({
-                currentPassword,
-                newPassword
-            })
-        });
-
-        hideLoading();
-
-        if(!data.success){
-            setPasswordResult(data.error || "Could not change password", "error");
-            return;
-        }
-
-        document.getElementById("currentPassword").value = "";
-        document.getElementById("newPassword").value = "";
-        document.getElementById("confirmPassword").value = "";
-
-        setPasswordResult("Password changed successfully ✅", "success");
-
-    }catch(error){
-        hideLoading();
-        console.error(error);
-        setPasswordResult("Password change error: " + error.message, "error");
-    }
-}
-
-async function runImport(){
-    const inventoryFile = document.getElementById("inventoryFile").files[0];
-    const salesFile = document.getElementById("salesFile").files[0];
-
-    if(!inventoryFile && !salesFile){
-        alert("Choose at least one Excel file first.");
-        return;
-    }
-
-    if(!confirm("Import these files into the current InventoryOS account?")){
+    if(!amount || amount <= 0){
+        alert("Enter a valid amount.");
         return;
     }
 
     const formData = new FormData();
+    formData.append("description", description);
+    formData.append("category", category);
+    formData.append("amount", amount);
+    formData.append("expense_date", expense_date);
+    formData.append("supplier", supplier);
+    formData.append("notes", notes);
+    formData.append("payment_method", payment_method);
+    formData.append("reference_number", reference_number);
 
-    if(inventoryFile){
-        formData.append("inventoryFile", inventoryFile);
-    }
-
-    if(salesFile){
-        formData.append("salesFile", salesFile);
+    if(receipt){
+        formData.append("receipt", receipt);
     }
 
     showLoading();
-    setResult("Importing...");
+    setResult("Adding expense...");
 
     try{
-        const response = await fetch(InventoryAPI.API_BASE + "/import/google-sheets", {
+        const response = await fetch(InventoryAPI.API_BASE + "/expenses", {
             method:"POST",
             headers:{
                 "Authorization":"Bearer " + InventoryAPI.getToken()
@@ -374,31 +478,171 @@ async function runImport(){
         hideLoading();
 
         if(!data.success){
-            setResult(data.error || "Import failed", "error");
+            setResult(data.error || "Could not add expense", "error");
             return;
         }
 
-        let output = "Import complete ✅\n\n";
+        document.getElementById("description").value = "";
+        document.getElementById("amount").value = "";
+        document.getElementById("supplier").value = "";
+        document.getElementById("notes").value = "";
+        document.getElementById("paymentMethod").value = "";
+        document.getElementById("referenceNumber").value = "";
+        document.getElementById("receipt").value = "";
+        document.getElementById("expenseDate").value = todayInput();
 
-        Object.keys(data.summary || {}).forEach(key=>{
-            output += key + ": " + data.summary[key] + "\n";
-        });
-
-        if(data.warnings && data.warnings.length){
-            output += "\nWarnings:\n";
-            data.warnings.forEach(warning=>{
-                output += "- " + warning + "\n";
-            });
-        }
-
-        setResult(output, "success");
+        setResult("Expense added ✅", "success");
+        loadExpenses();
 
     }catch(error){
         hideLoading();
         console.error(error);
-        setResult("Import error: " + error.message, "error");
+        setResult("Error adding expense: " + error.message, "error");
     }
 }
+
+async function deleteExpense(id){
+    if(!confirm("Delete this expense and its receipt file?")){
+        return;
+    }
+
+    showLoading();
+
+    try{
+        const data = await InventoryAPI.request("/expenses/" + encodeURIComponent(id), {
+            method:"DELETE"
+        });
+
+        hideLoading();
+
+        if(!data.success){
+            alert(data.error || "Could not delete expense");
+            return;
+        }
+
+        loadExpenses();
+
+    }catch(error){
+        hideLoading();
+        console.error(error);
+        alert("Error deleting expense");
+    }
+}
+
+async function loadExpenses(){
+    showLoading();
+
+    try{
+        const data = await InventoryAPI.request("/expenses");
+        hideLoading();
+
+        if(!data.success){
+            document.getElementById("expensesList").innerHTML =
+            "<div class='empty-state'>" + (data.error || "Could not load expenses") + "</div>";
+            return;
+        }
+
+        renderSummary(data.summary || {});
+        renderExpenses(data.expenses || []);
+
+    }catch(error){
+        hideLoading();
+        console.error(error);
+        document.getElementById("expensesList").innerHTML =
+        "<div class='empty-state'>Error loading expenses.</div>";
+    }
+}
+
+function renderSummary(summary){
+    document.getElementById("summary").innerHTML = `
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-title">All Time Expenses</div>
+                <div class="summary-value">${money(summary.allTime)}</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-title">This Month</div>
+                <div class="summary-value">${money(summary.thisMonth)}</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-title">This Week</div>
+                <div class="summary-value">${money(summary.thisWeek)}</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-title">Expenses Count</div>
+                <div class="summary-value">${summary.count || 0}</div>
+            </div>
+        </div>
+    `;
+}
+
+function receiptHtml(expense){
+    if(!expense.receiptUrl){
+        return "";
+    }
+
+    const isImage = String(expense.receiptMimeType || "").startsWith("image/");
+
+    if(isImage){
+        return `
+            <a class="receipt-link" href="${expense.receiptUrl}" target="_blank">
+                <img class="receipt-thumb" src="${expense.receiptUrl}" alt="Receipt">
+                View Receipt
+            </a>
+        `;
+    }
+
+    return `
+        <a class="receipt-link" href="${expense.receiptUrl}" target="_blank">
+            📄 View Receipt / PDF
+        </a>
+    `;
+}
+
+function renderExpenses(expenses){
+    if(!expenses.length){
+        document.getElementById("expensesList").innerHTML =
+        "<div class='empty-state'>No expenses added yet.</div>";
+        return;
+    }
+
+    let html = "";
+
+    expenses.forEach(expense=>{
+        html += `
+            <div class="expense-row">
+                <div>
+                    <div class="expense-name">${expense.description}</div>
+                    <div class="expense-meta">
+                        ${expense.supplier ? expense.supplier + " • " : ""}
+                        ${expense.paymentMethod ? expense.paymentMethod + " • " : ""}
+                        ${expense.referenceNumber ? "Ref: " + expense.referenceNumber + " • " : ""}
+                        ${expense.notes || ""}
+                    </div>
+                    ${receiptHtml(expense)}
+                </div>
+
+                <div><span class="badge">${expense.category || "Other"}</span></div>
+
+                <div>
+                    <div class="money">${money(expense.amount)}</div>
+                    <div class="expense-meta">${expense.expenseDate || ""}</div>
+                </div>
+
+                <div>
+                    <button class="delete-button" onclick="deleteExpense('${expense.id}')">Delete</button>
+                </div>
+            </div>
+        `;
+    });
+
+    document.getElementById("expensesList").innerHTML = html;
+}
+
+loadExpenses();
 </script>
 
 </body>
