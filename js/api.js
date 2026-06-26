@@ -6,13 +6,21 @@ const InventoryAPI = (function(){
             return savedApiBase.replace(/\/$/, "");
         }
 
-        // If opened directly from a file on your PC
+        // Local testing from file:// or local GitHub repo
         if(window.location.protocol === "file:"){
             return "http://localhost:3000";
         }
 
-        // If served through Cloudflare Tunnel or localhost, use the same site origin
-        return window.location.origin;
+        // Local browser testing
+        if(
+            window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1"
+        ){
+            return "http://localhost:3000";
+        }
+
+        // Live website on GitHub/Cloudflare Pages talks to your PC through Cloudflare Tunnel
+        return "https://api.djautocaredetailing.uk";
     }
 
     const API_BASE = detectApiBase();
