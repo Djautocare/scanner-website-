@@ -388,6 +388,8 @@ details[open] summary:after{content:"▲";}
     <a class="link-card back-card" href="index.html">← Back to Dashboard</a>
 </div>
 
+<button class="minor-button" onclick="InventoryAPI.logout()" type="button">Logout</button>
+
 <div id="printArea" class="hidden-preview">
     <svg id="barcode"></svg>
     <p id="barcodeText"></p>
@@ -403,49 +405,22 @@ details[open] summary:after{content:"▲";}
     </div>
 </div>
 
+<script src="js/api.js"></script>
 <script>
-const API_BASE = "http://localhost:3000";
-const AUTH_TOKEN_KEY = "inventoryos_token";
+const API_BASE = InventoryAPI.API_BASE;
 
 function getAuthToken(){
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    return InventoryAPI.getToken();
 }
 
 function requireLogin(){
-    const token = getAuthToken();
-
-    if(!token){
-        const pasted = prompt("Paste your InventoryOS login token to use this page:");
-
-        if(pasted && pasted.trim()){
-            localStorage.setItem(AUTH_TOKEN_KEY, pasted.trim());
-            return pasted.trim();
-        }
-
-        flashError("Login token required.");
-        return "";
-    }
-
-    return token;
+    return InventoryAPI.requireLogin() ? InventoryAPI.getToken() : "";
 }
 
 function apiFetch(path, options = {}){
-    const token = requireLogin();
-
-    if(!token){
-        return Promise.reject("No login token");
-    }
-
-    const headers = options.headers || {};
-
-    return fetch(API_BASE + path, {
-        ...options,
-        headers:{
-            "Content-Type":"application/json",
-            "Authorization":"Bearer " + token,
-            ...headers
-        }
-    });
+    return InventoryAPI.request(path, options).then(data => ({
+        json: () => Promise.resolve(data)
+    }));
 }
 
 let existingProductResults = [];
@@ -1026,6 +1001,8 @@ document.getElementById("newPrintJobName").addEventListener("keydown",function(e
         createPrintJob();
     }
 });
+
+InventoryAPI.requireLogin();
 
 loadBoxes();
 loadPrintJobs();
