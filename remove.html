@@ -483,6 +483,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <div class="links-grid">
     <a class="link-card" href="index.html">← Back to Dashboard</a>
+    <a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 </div>
 
 </div>
@@ -496,9 +497,12 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
     </div>
 </div>
 
+<script src="js/api.js"></script>
 <script>
-const API_URL =
-"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
 
 let bundleBarcodes = [];
 let suggestedItems = [];
@@ -599,13 +603,7 @@ function searchSuggestedItems(){
     }
 
     suggestSearchTimer = setTimeout(function(){
-        fetch(API_URL,{
-            method:"POST",
-            body:JSON.stringify({
-                action:"SEARCH",
-                query:query
-            })
-        })
+        InventoryAPI.request("/search?query=" + encodeURIComponent(query))
         .then(res=>res.json())
         .then(data=>{
             if(!data.success || !data.results || data.results.length === 0){
@@ -788,19 +786,16 @@ function removeStock(locationOverride = ""){
 
     showLoading();
 
-    fetch(API_URL, {
+    InventoryAPI.request("/stock/remove", {
         method:"POST",
         body:JSON.stringify({
-            action:"REMOVE",
             barcode:barcode,
-            qty:qty,
+            qty:Number(qty || 1),
             location:locationOverride,
-            saleAmount:saleAmount,
+            saleAmount:Number(saleAmount || 0),
             oneSalesRow:oneSalesRow
         })
     })
-
-    .then(res => res.json())
 
     .then(data => {
         hideLoading();
@@ -927,19 +922,16 @@ function processNextBundleItem(){
 
     showLoading();
 
-    fetch(API_URL, {
+    InventoryAPI.request("/stock/remove", {
         method:"POST",
         body:JSON.stringify({
-            action:"REMOVE",
             barcode:pendingBundleItem.barcode,
             qty:1,
             location:pendingBundleItem.location || "",
-            saleAmount:formatMoney(pendingBundleEachAmount),
+            saleAmount:Number(formatMoney(pendingBundleEachAmount)),
             oneSalesRow:true
         })
     })
-
-    .then(res => res.json())
 
     .then(data => {
         hideLoading();
