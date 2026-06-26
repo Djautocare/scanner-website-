@@ -6,7 +6,7 @@ const InventoryAPI = (function(){
             return savedApiBase.replace(/\/$/, "");
         }
 
-        // Local testing from file:// or local GitHub repo
+        // Local testing from file:// or local GitHub repo 
         if(window.location.protocol === "file:"){
             return "http://localhost:3000";
         }
