@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d0d0d">
 
@@ -97,6 +97,20 @@ h1{
     border:1px solid rgba(32,201,151,0.45);
 }
 
+.back-button{
+    display:block;
+    text-decoration:none;
+    color:white;
+    width:100%;
+    margin-top:12px;
+    padding:14px;
+    border-radius:12px;
+    font-size:16px;
+    font-weight:bold;
+    background:linear-gradient(135deg,rgba(0,123,255,0.28),rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+}
+
 .barcode-display{
     margin-top:15px;
     color:#ccc;
@@ -162,15 +176,25 @@ h1{
             Print Label
         </button>
 
+        <a class="back-button" href="index.html">← Back to Dashboard</a>
+
     </div>
 
 </div>
 
+<script src="js/api.js"></script>
 <script>
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
 const params = new URLSearchParams(window.location.search);
 
 const barcode =
 params.get("barcode") || "NO-BARCODE";
+
+const autoPrint =
+params.get("autoprint") || "";
 
 document.getElementById("barcodeText")
 .innerText = barcode;
@@ -185,6 +209,14 @@ JsBarcode("#barcode", barcode, {
     height:35,
     margin:8
 });
+
+if(autoPrint === "1"){
+    window.addEventListener("load", function(){
+        setTimeout(function(){
+            window.print();
+        }, 250);
+    });
+}
 </script>
 
 </body>
