@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>InventoryOS Login</title>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(111,66,193,0.18), transparent 34%),
+        radial-gradient(circle at top right, rgba(32,201,151,0.12), transparent 36%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+}
+
+.page{
+    max-width:460px;
+    margin:40px auto;
+}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{
+    text-align:center;
+    font-size:36px;
+    margin:10px 0 6px 0;
+}
+
+.subtitle{
+    text-align:center;
+    color:#aaa;
+    margin:0 0 24px 0;
+    font-size:14px;
+}
+
+.input-label{
+    text-align:left;
+    color:#ddd;
+    font-weight:bold;
+    margin:12px 0 6px 2px;
+    font-size:14px;
+}
+
+input,button{
+    width:100%;
+    padding:14px;
+    margin:5px 0 12px 0;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+}
+
+input{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+button{
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.primary-button{
+    background:linear-gradient(135deg,#28a745,#1f8b3a);
+    border:1px solid rgba(40,167,69,0.45);
+    box-shadow:0 10px 30px rgba(40,167,69,0.18);
+}
+
+.secondary-button{
+    background:linear-gradient(135deg,#6f42c1,#56329b);
+    border:1px solid rgba(111,66,193,0.45);
+}
+
+.status{
+    min-height:20px;
+    font-size:13px;
+    color:#aaa;
+    margin-top:6px;
+    text-align:center;
+}
+
+.error{color:#ff8a8a;}
+.success{color:#20c997;}
+
+.toggle{
+    color:#aaa;
+    font-size:13px;
+    text-align:center;
+    margin-top:12px;
+    cursor:pointer;
+    text-decoration:underline;
+}
+
+.small-note{
+    color:#888;
+    font-size:12px;
+    line-height:1.35;
+    margin-top:14px;
+    text-align:center;
+}
+</style>
+</head>
+
+<body>
+<div class="page">
+<div class="panel">
+
+<h1>InventoryOS</h1>
+<p class="subtitle" id="subtitle">Login to your inventory system</p>
+
+<div id="loginForm">
+    <div class="input-label">Email</div>
+    <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+
+    <div class="input-label">Password</div>
+    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+
+    <button class="primary-button" onclick="login()" type="button">Login</button>
+
+    <div class="toggle" onclick="showRegister()">Need to create an account?</div>
+</div>
+
+<div id="registerForm" style="display:none;">
+    <div class="input-label">Name</div>
+    <input type="text" id="registerName" placeholder="Dylan" autocomplete="name">
+
+    <div class="input-label">Email</div>
+    <input type="email" id="registerEmail" placeholder="you@example.com" autocomplete="email">
+
+    <div class="input-label">Password</div>
+    <input type="password" id="registerPassword" placeholder="Password" autocomplete="new-password">
+
+    <button class="secondary-button" onclick="register()" type="button">Create Account</button>
+
+    <div class="toggle" onclick="showLogin()">Already have an account?</div>
+</div>
+
+<div class="status" id="status"></div>
+
+<div class="small-note">
+    Local development server: <strong>http://localhost:3000</strong>
+</div>
+
+</div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+function setStatus(message, type){
+    const status = document.getElementById("status");
+    status.className = "status " + (type || "");
+    status.innerText = message || "";
+}
+
+function showRegister(){
+    document.getElementById("loginForm").style.display = "none";
+    document.getElementById("registerForm").style.display = "block";
+    document.getElementById("subtitle").innerText = "Create your InventoryOS account";
+    setStatus("");
+}
+
+function showLogin(){
+    document.getElementById("registerForm").style.display = "none";
+    document.getElementById("loginForm").style.display = "block";
+    document.getElementById("subtitle").innerText = "Login to your inventory system";
+    setStatus("");
+}
+
+async function login(){
+    try{
+        setStatus("Logging in...");
+
+        const email = document.getElementById("loginEmail").value.trim();
+        const password = document.getElementById("loginPassword").value;
+
+        const data = await InventoryAPI.login(email, password);
+
+        if(!data.success){
+            setStatus(data.error || "Login failed", "error");
+            return;
+        }
+
+        InventoryAPI.saveSession(data.token, data.user);
+        setStatus("Login successful. Redirecting...", "success");
+
+        setTimeout(function(){
+            window.location.href = "add.html";
+        }, 600);
+
+    }catch(error){
+        console.error(error);
+        setStatus("Could not connect to server", "error");
+    }
+}
+
+async function register(){
+    try{
+        setStatus("Creating account...");
+
+        const name = document.getElementById("registerName").value.trim();
+        const email = document.getElementById("registerEmail").value.trim();
+        const password = document.getElementById("registerPassword").value;
+
+        const data = await InventoryAPI.register(name, email, password);
+
+        if(!data.success){
+            setStatus(data.error || "Registration failed", "error");
+            return;
+        }
+
+        InventoryAPI.saveSession(data.token, data.user);
+        setStatus("Account created. Redirecting...", "success");
+
+        setTimeout(function(){
+            window.location.href = "add.html";
+        }, 600);
+
+    }catch(error){
+        console.error(error);
+        setStatus("Could not connect to server", "error");
+    }
+}
+
+document.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){
+        if(document.getElementById("loginForm").style.display !== "none"){
+            login();
+        }else{
+            register();
+        }
+    }
+});
+
+if(InventoryAPI.isLoggedIn()){
+    window.location.href = "add.html";
+}
+</script>
+
+</body>
+</html>
