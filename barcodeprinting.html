@@ -500,6 +500,7 @@ button{
 </div>
 
 <a class="link-card" href="index.html">← Back to Dashboard</a>
+<a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 
 </div>
 </div>
@@ -513,9 +514,12 @@ button{
     </div>
 </div>
 
+<script src="js/api.js"></script>
 <script>
-const API_URL =
-"https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
 
 let liveSearchTimer = null;
 let loadedLabels = [];
@@ -651,14 +655,7 @@ function liveSearchProducts(query){
     document.getElementById("productResults").innerHTML =
     "<div class='empty-state'>Searching...</div>";
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"SEARCH",
-            query:query
-        })
-    })
-    .then(res=>res.json())
+    InventoryAPI.request("/search?query=" + encodeURIComponent(query))
     .then(data=>{
         if(!data.success || !data.results || data.results.length === 0){
             document.getElementById("productResults").innerHTML =
@@ -705,13 +702,7 @@ function loadBoxes(){
         }catch(e){}
     }
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"GET_BOXES"
-        })
-    })
-    .then(res=>res.json())
+    InventoryAPI.request("/boxes")
     .then(data=>{
         if(data.success && data.boxes){
             localStorage.setItem("inventoryBoxes", JSON.stringify(data.boxes));
@@ -735,8 +726,9 @@ function fillBoxes(boxes){
 
     boxes.forEach(item=>{
         const option = document.createElement("option");
-        option.value = item.box;
-        option.textContent = item.box;
+        const boxName = item.box || item.box_name;
+        option.value = boxName;
+        option.textContent = boxName;
         select.appendChild(option);
     });
 }
@@ -804,13 +796,7 @@ function loadPrintJobs(){
         }catch(e){}
     }
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"GET_PRINT_JOBS"
-        })
-    })
-    .then(res=>res.json())
+    InventoryAPI.request("/print-jobs")
     .then(data=>{
         if(data.success && data.printJobs){
             localStorage.setItem("inventoryPrintJobs", JSON.stringify(data.printJobs));
@@ -851,14 +837,7 @@ function loadSelectedPrintJob(){
 
     showLoading();
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({
-            action:"GET_PRINT_JOB_LABELS",
-            printJobId:printJobId
-        })
-    })
-    .then(res=>res.json())
+    InventoryAPI.request("/print-jobs/" + encodeURIComponent(printJobId) + "/labels")
     .then(data=>{
         hideLoading();
 
