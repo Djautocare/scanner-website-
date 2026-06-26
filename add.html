@@ -404,12 +404,55 @@ details[open] summary:after{content:"▲";}
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzJ8kEK_3oSFX6qrXO3rOUWusXzQo6WyV4TCi4z3CiClCw8Wy9_nPJo4GZDixR3KG_Tyg/exec";
+const API_BASE = "http://localhost:3000";
+const AUTH_TOKEN_KEY = "inventoryos_token";
+
+function getAuthToken(){
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function requireLogin(){
+    const token = getAuthToken();
+
+    if(!token){
+        const pasted = prompt("Paste your InventoryOS login token to use this page:");
+
+        if(pasted && pasted.trim()){
+            localStorage.setItem(AUTH_TOKEN_KEY, pasted.trim());
+            return pasted.trim();
+        }
+
+        flashError("Login token required.");
+        return "";
+    }
+
+    return token;
+}
+
+function apiFetch(path, options = {}){
+    const token = requireLogin();
+
+    if(!token){
+        return Promise.reject("No login token");
+    }
+
+    const headers = options.headers || {};
+
+    return fetch(API_BASE + path, {
+        ...options,
+        headers:{
+            "Content-Type":"application/json",
+            "Authorization":"Bearer " + token,
+            ...headers
+        }
+    });
+}
 
 let existingProductResults = [];
 let liveSearchTimer = null;
 let boxSearchTimer = null;
 let allBoxes = [];
+let selectedExistingBarcode = "";
 
 /*
     QZ TRUSTED SIGNING SETUP
@@ -642,7 +685,10 @@ function getBoxNumber(boxName){
 }
 
 function fillBoxDropdown(boxes){
-    allBoxes = boxes || [];
+    allBoxes = (boxes || []).map(item => ({
+        box: item.box || item.box_name || item.location || "",
+        notes: item.notes || ""
+    })).filter(item => item.box);
 
     const select = document.getElementById("location");
     select.innerHTML = '<option value="">Select Box / Location</option>';
@@ -681,10 +727,7 @@ function loadBoxes(){
         try{fillBoxDropdown(JSON.parse(cached));}catch(e){}
     }
 
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({action:"GET_BOXES"})
-    })
+    apiFetch("/boxes")
     .then(res=>res.json())
     .then(data=>{
         if(data.success && data.boxes){
@@ -692,7 +735,10 @@ function loadBoxes(){
             fillBoxDropdown(data.boxes);
         }
     })
-    .catch(error=>console.error(error));
+    .catch(error=>{
+        console.error(error);
+        setSaveStatus("Could not load boxes. Paste login token if asked.");
+    });
 }
 
 function chooseClosestBox(){
@@ -761,67 +807,12 @@ function fillPrintJobDropdown(jobs){
 }
 
 function loadPrintJobs(){
-    const cached = localStorage.getItem("inventoryPrintJobs");
-    if(cached){
-        try{fillPrintJobDropdown(JSON.parse(cached));}catch(e){}
-    }
-
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({action:"GET_PRINT_JOBS"})
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        if(data.success && data.printJobs){
-            localStorage.setItem("inventoryPrintJobs", JSON.stringify(data.printJobs));
-            fillPrintJobDropdown(data.printJobs);
-        }
-    })
-    .catch(error=>console.error(error));
+    const select = document.getElementById("printJob");
+    select.innerHTML = '<option value="">Print jobs not connected yet</option>';
 }
 
 function createPrintJob(){
-    const name = document.getElementById("newPrintJobName").value.trim();
-
-    if(!name){
-        flashError("Enter a print job name.");
-        return;
-    }
-
-    showLoading();
-
-    fetch(API_URL,{
-        method:"POST",
-        body:JSON.stringify({action:"CREATE_PRINT_JOB", name:name})
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        hideLoading();
-
-        if(!data.success){
-            flashError(data.error || "Could not create print job.");
-            return;
-        }
-
-        document.getElementById("newPrintJobName").value = "";
-        document.getElementById("addToPrintJob").checked = true;
-
-        localStorage.removeItem("inventoryPrintJobs");
-        loadPrintJobs();
-
-        setTimeout(function(){
-            document.getElementById("printJob").value = data.printJobId;
-        }, 500);
-
-        flashSuccess();
-        setSaveStatus("Created print job: " + data.printJobId);
-        document.getElementById("description").focus();
-    })
-    .catch(error=>{
-        hideLoading();
-        console.error(error);
-        flashError("Error creating print job.");
-    });
+    flashError("Print jobs are not connected to the new backend yet.");
 }
 
 function searchExistingProductsLive(){
@@ -830,6 +821,7 @@ function searchExistingProductsLive(){
     const summary = document.getElementById("matchSummary");
     const results = document.getElementById("matchResults");
 
+    selectedExistingBarcode = "";
     clearErrorOnNewProduct();
     clearTimeout(liveSearchTimer);
 
@@ -846,26 +838,25 @@ function searchExistingProductsLive(){
     results.innerHTML = "";
 
     liveSearchTimer = setTimeout(function(){
-        fetch(API_URL,{
-            method:"POST",
-            body:JSON.stringify({action:"SEARCH", query:query})
-        })
+        apiFetch("/products?search=" + encodeURIComponent(query))
         .then(res=>res.json())
         .then(data=>{
-            if(!data.success || !data.results || data.results.length === 0){
+            const products = data.products || data.results || [];
+
+            if(!data.success || products.length === 0){
                 existingProductResults = [];
                 summary.innerText = "No existing matches found.";
                 results.innerHTML = "";
                 return;
             }
 
-            existingProductResults = data.results;
-            summary.innerText = data.results.length + " existing match" + (data.results.length === 1 ? "" : "es") + " found";
+            existingProductResults = products;
+            summary.innerText = products.length + " existing match" + (products.length === 1 ? "" : "es") + " found";
 
             let html = "";
-            data.results.slice(0,8).forEach((item,index)=>{
-                const barcode = item.barcode || item.itemId || "";
-                const qty = item.totalQty || 0;
+            products.slice(0,8).forEach((item,index)=>{
+                const barcode = item.barcode || "";
+                const qty = item.totalQty || item.qty || 0;
                 html += `
                     <div class="match-item" onclick="selectExistingProduct(${index})">
                         <div class="match-title">${escapeHtml(item.description)}</div>
@@ -890,13 +881,15 @@ function selectExistingProduct(index){
     if(!item) return;
 
     document.getElementById("description").value = item.description;
-    document.getElementById("matchSummary").innerText = "Selected existing product";
+    selectedExistingBarcode = item.barcode || "";
+    document.getElementById("matchSummary").innerText = "Selected existing product: " + selectedExistingBarcode;
     document.getElementById("matchResults").innerHTML = "";
     document.getElementById("qty").focus();
 }
 
 function clearMatchResults(){
     existingProductResults = [];
+    selectedExistingBarcode = "";
     document.getElementById("matchesBox").classList.remove("show");
     document.getElementById("matchSummary").innerText = "Type to search existing products";
     document.getElementById("matchResults").innerHTML = "";
@@ -926,24 +919,21 @@ function saveProduct(){
 
     const finalLocation = document.getElementById("location").value;
 
-    if(addToPrintJob && !printJobId){
-        flashError("Select a print job or create one first.");
-        document.getElementById("printJob").focus();
+    if(addToPrintJob){
+        flashError("Print jobs are not connected to the new backend yet. Untick Add labels to print job.");
         return;
     }
 
     showLoading();
     setSaveStatus("Saving...");
 
-    fetch(API_URL,{
+    apiFetch("/stock/add",{
         method:"POST",
         body:JSON.stringify({
-            action:"ADD",
+            barcode:selectedExistingBarcode || "",
             description:description,
-            qty:qty,
-            location:finalLocation,
-            addToPrintJob:addToPrintJob,
-            printJobId:printJobId
+            qty:Number(qty || 1),
+            box_name:finalLocation
         })
     })
     .then(res=>res.json())
@@ -965,6 +955,8 @@ function saveProduct(){
             margin:2
         });
 
+        localStorage.removeItem("inventoryBoxes");
+        loadBoxes();
         flashSuccess();
         setSaveStatus("Saved: " + data.barcode);
 
