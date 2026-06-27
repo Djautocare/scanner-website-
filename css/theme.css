@@ -1,0 +1,181 @@
+/* InventoryOS shared theme engine */
+
+:root{
+    --theme-name: "green";
+
+    --accent:#45d36a;
+    --accent-rgb:69,211,106;
+
+    --accent-2:#4da3ff;
+    --accent-2-rgb:77,163,255;
+
+    --warning:#ffc107;
+    --warning-rgb:255,193,7;
+
+    --danger:#ff5c6c;
+    --danger-rgb:255,92,108;
+
+    --bg:#080909;
+    --panel:#111316;
+    --panel-2:#191b1f;
+    --card:#17191d;
+    --input:#2a2a2a;
+    --border:rgba(255,255,255,0.08);
+    --text:#ffffff;
+    --muted:#a8adb5;
+
+    --shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+html[data-theme="green"]{
+    --theme-name:"green";
+    --accent:#45d36a;
+    --accent-rgb:69,211,106;
+    --accent-2:#4da3ff;
+    --accent-2-rgb:77,163,255;
+}
+
+html[data-theme="purple"]{
+    --theme-name:"purple";
+    --accent:#b56cff;
+    --accent-rgb:181,108,255;
+    --accent-2:#45d36a;
+    --accent-2-rgb:69,211,106;
+}
+
+html[data-theme="blue"]{
+    --theme-name:"blue";
+    --accent:#4da3ff;
+    --accent-rgb:77,163,255;
+    --accent-2:#20e0d0;
+    --accent-2-rgb:32,224,208;
+}
+
+html[data-theme="gold"]{
+    --theme-name:"gold";
+    --accent:#ffc107;
+    --accent-rgb:255,193,7;
+    --accent-2:#ff8c42;
+    --accent-2-rgb:255,140,66;
+}
+
+html[data-theme="red"]{
+    --theme-name:"red";
+    --accent:#ff5c6c;
+    --accent-rgb:255,92,108;
+    --accent-2:#ffc107;
+    --accent-2-rgb:255,193,7;
+}
+
+html[data-theme="cyan"]{
+    --theme-name:"cyan";
+    --accent:#20e0d0;
+    --accent-rgb:32,224,208;
+    --accent-2:#4da3ff;
+    --accent-2-rgb:77,163,255;
+}
+
+body{
+    background:
+        radial-gradient(circle at top left, rgba(var(--accent-rgb),0.14), transparent 35%),
+        radial-gradient(circle at top right, rgba(var(--accent-2-rgb),0.10), transparent 35%),
+        var(--bg) !important;
+    color:var(--text);
+}
+
+.panel,
+.card,
+.form-card,
+.summary-card,
+.item-card,
+.preview-card,
+.empty-state,
+.stat-card,
+.accordion-section{
+    border-color:var(--border) !important;
+}
+
+input,
+select,
+textarea{
+    background:var(--input) !important;
+    color:var(--text) !important;
+    border-color:var(--border) !important;
+}
+
+button,
+.confirm-button,
+.import-button,
+.password-button,
+.add-button,
+.refresh-button,
+.print-button,
+.save-button{
+    border-color:rgba(var(--accent-rgb),0.45) !important;
+}
+
+.confirm-button,
+.import-button,
+.password-button,
+.add-button,
+.refresh-button,
+.print-button,
+.save-button{
+    background:linear-gradient(135deg,var(--accent),rgba(var(--accent-rgb),0.65)) !important;
+    color:white !important;
+}
+
+.link-card{
+    background:linear-gradient(135deg,rgba(var(--accent-2-rgb),0.28),rgba(var(--accent-2-rgb),0.08)) !important;
+    border-color:rgba(var(--accent-2-rgb),0.35) !important;
+}
+
+.spinner{
+    border-top-color:var(--accent) !important;
+}
+
+h1,
+.app-logo,
+.current-box,
+.summary-value,
+.stat-value{
+    color:var(--accent);
+}
+
+.badge,
+.qty-badge{
+    background:rgba(var(--accent-rgb),0.75) !important;
+}
+
+.theme-swatch-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:12px;
+    margin-top:12px;
+}
+
+.theme-swatch{
+    min-height:76px;
+    border-radius:14px;
+    border:1px solid var(--border);
+    background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+}
+
+.theme-swatch.active{
+    border-color:var(--accent);
+    box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.25);
+}
+
+.theme-dot{
+    width:18px;
+    height:18px;
+    border-radius:999px;
+    display:inline-block;
+}
