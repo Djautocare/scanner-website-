@@ -17,8 +17,8 @@ html{touch-action:manipulation;}
 body{
     font-family:Arial,sans-serif;
     background:
-        radial-gradient(circle at top left, rgba(142,68,255,0.24), transparent 34%),
-        radial-gradient(circle at bottom right, rgba(181,108,255,0.14), transparent 36%),
+        radial-gradient(circle at top left,rgba(142,68,255,.26),transparent 34%),
+        radial-gradient(circle at bottom right,rgba(181,108,255,.13),transparent 36%),
         linear-gradient(135deg,#050505,#121212,#1b0b2b);
     color:white;
     padding:18px;
@@ -31,27 +31,25 @@ body{
 
 .page{
     width:100%;
-    max-width:460px;
+    max-width:470px;
 }
 
 .panel{
-    background:rgba(23,23,31,0.96);
-    border:1px solid rgba(142,68,255,0.35);
-    padding:28px;
-    border-radius:24px;
-    box-shadow:0 24px 70px rgba(0,0,0,0.5);
+    background:rgba(23,23,31,.96);
+    border:1px solid rgba(142,68,255,.35);
+    padding:30px;
+    border-radius:26px;
+    box-shadow:0 24px 70px rgba(0,0,0,.55);
 }
 
 .logo{
     text-align:center;
-    font-size:34px;
+    font-size:36px;
     font-weight:900;
     margin:6px 0;
 }
 
-.logo span{
-    color:#8e44ff;
-}
+.logo span{color:#8e44ff;}
 
 .subtitle{
     text-align:center;
@@ -67,21 +65,41 @@ body{
     font-size:14px;
 }
 
-input,button{
+.input-wrap{
+    position:relative;
+}
+
+input{
+    width:100%;
+    padding:15px;
+    padding-right:72px;
+    border-radius:14px;
+    font-size:16px;
+    background:#25252d;
+    color:white;
+    outline:none;
+    border:1px solid rgba(142,68,255,.24);
+}
+
+.eye-btn{
+    position:absolute;
+    right:8px;
+    top:50%;
+    transform:translateY(-50%);
+    width:auto;
+    margin:0;
+    padding:8px 10px;
+    border-radius:10px;
+    background:#333342;
+    font-size:12px;
+    box-shadow:none;
+}
+
+button{
     width:100%;
     padding:15px;
     border-radius:14px;
     font-size:16px;
-}
-
-input{
-    background:#25252d;
-    color:white;
-    outline:none;
-    border:1px solid rgba(142,68,255,0.24);
-}
-
-button{
     margin-top:16px;
     color:white;
     font-weight:bold;
@@ -91,12 +109,12 @@ button{
 
 .primary-button{
     background:linear-gradient(135deg,#8e44ff,#b56cff);
-    box-shadow:0 12px 34px rgba(142,68,255,0.25);
+    box-shadow:0 12px 34px rgba(142,68,255,.25);
 }
 
 .secondary-button{
     background:linear-gradient(135deg,#343444,#24242e);
-    border:1px solid rgba(142,68,255,0.35);
+    border:1px solid rgba(142,68,255,.35);
 }
 
 .forgot{
@@ -128,6 +146,54 @@ button{
 .error{color:#ff8a8a;}
 .success{color:#63d471;}
 
+.strength{
+    margin-top:8px;
+    font-size:12px;
+    color:#aaa;
+}
+
+.strength-bar{
+    height:6px;
+    background:#2d2d35;
+    border-radius:99px;
+    overflow:hidden;
+    margin-top:8px;
+}
+
+.strength-fill{
+    height:100%;
+    width:0%;
+    background:#ff6b6b;
+    transition:.2s;
+}
+
+.verify-box{
+    text-align:center;
+}
+
+.verify-icon{
+    width:72px;
+    height:72px;
+    margin:8px auto 18px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(142,68,255,.16);
+    border:1px solid rgba(142,68,255,.45);
+    font-size:34px;
+}
+
+.verify-email{
+    margin:14px 0;
+    padding:13px;
+    border-radius:14px;
+    background:#24242e;
+    border:1px solid rgba(142,68,255,.25);
+    color:#fff;
+    word-break:break-word;
+}
+
 .small-note{
     color:#777;
     font-size:12px;
@@ -135,6 +201,8 @@ button{
     margin-top:18px;
     text-align:center;
 }
+
+.hidden{display:none;}
 </style>
 </head>
 
@@ -151,7 +219,10 @@ button{
     <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
 
     <div class="input-label">Password</div>
-    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+    <div class="input-wrap">
+        <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+        <button class="eye-btn" type="button" onclick="togglePassword('loginPassword', this)">Show</button>
+    </div>
 
     <button class="primary-button" onclick="login()" type="button">Login</button>
 
@@ -160,7 +231,7 @@ button{
     <div class="toggle" onclick="showRegister()">Need to create an account?</div>
 </div>
 
-<div id="registerForm" style="display:none;">
+<div id="registerForm" class="hidden">
     <div class="input-label">Name</div>
     <input type="text" id="registerName" placeholder="Dylan" autocomplete="name">
 
@@ -168,11 +239,30 @@ button{
     <input type="email" id="registerEmail" placeholder="you@example.com" autocomplete="email">
 
     <div class="input-label">Password</div>
-    <input type="password" id="registerPassword" placeholder="Minimum 8 characters" autocomplete="new-password">
+    <div class="input-wrap">
+        <input type="password" id="registerPassword" placeholder="Minimum 8 characters" autocomplete="new-password" oninput="updateStrength()">
+        <button class="eye-btn" type="button" onclick="togglePassword('registerPassword', this)">Show</button>
+    </div>
+
+    <div class="strength" id="strengthText">Use at least 8 characters.</div>
+    <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
 
     <button class="primary-button" onclick="register()" type="button">Create Account</button>
 
     <div class="toggle" onclick="showLogin()">Already have an account?</div>
+</div>
+
+<div id="verifyForm" class="hidden verify-box">
+    <div class="verify-icon">✉️</div>
+    <h2>Check your email</h2>
+    <p>We've sent a verification email to:</p>
+    <div class="verify-email" id="verifyEmailText"></div>
+    <p style="color:#bbb;font-size:14px;line-height:1.5;">
+        Please click the verification link before logging in.
+    </p>
+
+    <button class="primary-button" onclick="resendVerification()" type="button">Resend Verification Email</button>
+    <button class="secondary-button" onclick="showLogin()" type="button">Return to Login</button>
 </div>
 
 <div class="status" id="status"></div>
@@ -186,24 +276,78 @@ button{
 
 <script src="js/api.js"></script>
 <script>
+let pendingVerificationEmail = "";
+
 function setStatus(message, type){
     const status = document.getElementById("status");
     status.className = "status " + (type || "");
     status.innerText = message || "";
 }
 
+function hideAll(){
+    document.getElementById("loginForm").classList.add("hidden");
+    document.getElementById("registerForm").classList.add("hidden");
+    document.getElementById("verifyForm").classList.add("hidden");
+}
+
+function showLogin(){
+    hideAll();
+    document.getElementById("loginForm").classList.remove("hidden");
+    document.getElementById("subtitle").innerText = "Login to your inventory system";
+    setStatus("");
+}
+
 function showRegister(){
-    document.getElementById("loginForm").style.display = "none";
-    document.getElementById("registerForm").style.display = "block";
+    hideAll();
+    document.getElementById("registerForm").classList.remove("hidden");
     document.getElementById("subtitle").innerText = "Create your InventoryOS account";
     setStatus("");
 }
 
-function showLogin(){
-    document.getElementById("registerForm").style.display = "none";
-    document.getElementById("loginForm").style.display = "block";
-    document.getElementById("subtitle").innerText = "Login to your inventory system";
-    setStatus("");
+function showVerify(email){
+    pendingVerificationEmail = email || "";
+    hideAll();
+    document.getElementById("verifyForm").classList.remove("hidden");
+    document.getElementById("verifyEmailText").innerText = pendingVerificationEmail;
+    document.getElementById("subtitle").innerText = "Verify your email address";
+    setStatus("Account created. Please verify your email before logging in.", "success");
+}
+
+function togglePassword(id, button){
+    const input = document.getElementById(id);
+    if(input.type === "password"){
+        input.type = "text";
+        button.innerText = "Hide";
+    }else{
+        input.type = "password";
+        button.innerText = "Show";
+    }
+}
+
+function updateStrength(){
+    const password = document.getElementById("registerPassword").value;
+    const fill = document.getElementById("strengthFill");
+    const text = document.getElementById("strengthText");
+
+    let score = 0;
+    if(password.length >= 8) score++;
+    if(/[A-Z]/.test(password)) score++;
+    if(/[0-9]/.test(password)) score++;
+    if(/[^A-Za-z0-9]/.test(password)) score++;
+
+    if(score <= 1){
+        fill.style.width = "25%";
+        fill.style.background = "#ff6b6b";
+        text.innerText = "Weak password";
+    }else if(score === 2 || score === 3){
+        fill.style.width = "65%";
+        fill.style.background = "#ffb84d";
+        text.innerText = "Fair password";
+    }else{
+        fill.style.width = "100%";
+        fill.style.background = "#63d471";
+        text.innerText = "Strong password";
+    }
 }
 
 async function login(){
@@ -216,6 +360,13 @@ async function login(){
         const data = await InventoryAPI.login(email, password);
 
         if(!data.success){
+            if(data.requiresVerification){
+                pendingVerificationEmail = email;
+                showVerify(email);
+                setStatus(data.error || "Please verify your email first.", "error");
+                return;
+            }
+
             setStatus(data.error || "Login failed", "error");
             return;
         }
@@ -248,12 +399,39 @@ async function register(){
             return;
         }
 
-        InventoryAPI.saveSession(data.token, data.user);
-        setStatus("Account created. Redirecting...", "success");
+        if(data.requiresVerification){
+            showVerify(data.email || email);
+            return;
+        }
 
-        setTimeout(function(){
-            window.location.href = "add.html";
-        }, 600);
+        setStatus("Account created.", "success");
+
+    }catch(error){
+        console.error(error);
+        setStatus("Could not connect to server", "error");
+    }
+}
+
+async function resendVerification(){
+    if(!pendingVerificationEmail){
+        setStatus("No email address found. Please try registering again.", "error");
+        return;
+    }
+
+    try{
+        setStatus("Sending verification email...");
+
+        const data = await InventoryAPI.request("/auth/resend-verification", {
+            method:"POST",
+            body:JSON.stringify({ email: pendingVerificationEmail })
+        });
+
+        if(!data.success){
+            setStatus(data.error || "Could not resend verification email", "error");
+            return;
+        }
+
+        setStatus(data.message || "Verification email sent.", "success");
 
     }catch(error){
         console.error(error);
@@ -263,9 +441,9 @@ async function register(){
 
 document.addEventListener("keydown", function(e){
     if(e.key === "Enter"){
-        if(document.getElementById("loginForm").style.display !== "none"){
+        if(!document.getElementById("loginForm").classList.contains("hidden")){
             login();
-        }else{
+        }else if(!document.getElementById("registerForm").classList.contains("hidden")){
             register();
         }
     }
