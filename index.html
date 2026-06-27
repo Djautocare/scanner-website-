@@ -12,17 +12,25 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 <meta name="theme-color" content="#0d0d0d">
 <link rel="apple-touch-icon" href="icon.png">
 
-<title>Inventory Dashboard</title>
+<title>InventoryOS Dashboard</title>
 
 <style>
 html{touch-action:manipulation;}
 *{box-sizing:border-box;}
 
+:root{--accent:var(--accent);--accent-rgb:69,211,106;--accent2:var(--accent2);--accent2-rgb:77,163,255;}
+html[data-theme="green"]{--accent:var(--accent);--accent-rgb:69,211,106;--accent2:var(--accent2);--accent2-rgb:77,163,255;}
+html[data-theme="purple"]{--accent:#b56cff;--accent-rgb:181,108,255;--accent2:var(--accent);--accent2-rgb:69,211,106;}
+html[data-theme="blue"]{--accent:var(--accent2);--accent-rgb:77,163,255;--accent2:#20e0d0;--accent2-rgb:32,224,208;}
+html[data-theme="gold"]{--accent:#ffc107;--accent-rgb:255,193,7;--accent2:#ff8c42;--accent2-rgb:255,140,66;}
+html[data-theme="red"]{--accent:#ff5c6c;--accent-rgb:255,92,108;--accent2:#ffc107;--accent2-rgb:255,193,7;}
+html[data-theme="cyan"]{--accent:#20e0d0;--accent-rgb:32,224,208;--accent2:var(--accent2);--accent2-rgb:77,163,255;}
+
 body{
     font-family:Arial,sans-serif;
     background:
-        radial-gradient(circle at top left, rgba(76,175,80,0.12), transparent 35%),
-        radial-gradient(circle at top right, rgba(33,150,243,0.10), transparent 35%),
+        radial-gradient(circle at top left, rgba(var(--accent-rgb),0.13), transparent 35%),
+        radial-gradient(circle at top right, rgba(var(--accent2-rgb),0.10), transparent 35%),
         #0d0d0d;
     color:white;
     padding:18px;
@@ -47,7 +55,7 @@ body{
     text-align:center;
     font-size:38px;
     margin-top:4px;
-    color:#45d36a;
+    color:var(--accent);
 }
 
 h1{text-align:center;font-size:34px;margin:8px 0 6px 0;}
@@ -71,7 +79,7 @@ input,button{
 input{background:#2a2a2a;color:white;outline:none;}
 
 button{
-    background:#4CAF50;
+    background:var(--accent);
     color:white;
     font-weight:bold;
     cursor:pointer;
@@ -123,8 +131,8 @@ button{
     display:none;
 }
 
-.green-icon{background:rgba(40,167,69,0.18);color:#45d36a;border:1px solid rgba(40,167,69,0.35);}
-.blue-icon{background:rgba(0,123,255,0.18);color:#4da3ff;border:1px solid rgba(0,123,255,0.35);}
+.green-icon{background:rgba(var(--accent-rgb),0.18);color:var(--accent);border:1px solid rgba(var(--accent-rgb),0.35);}
+.blue-icon{background:rgba(var(--accent2-rgb),0.18);color:var(--accent2);border:1px solid rgba(var(--accent2-rgb),0.35);}
 .purple-icon{background:rgba(156,39,176,0.20);color:#d45cff;border:1px solid rgba(156,39,176,0.35);}
 
 .accordion-section{
@@ -243,20 +251,21 @@ button{
     font-weight:bold;
 }
 
-.add-quick{color:#45d36a;}
+.add-quick{color:var(--accent);}
 .remove-quick{color:#ff5c6c;}
-.search-quick{color:#4da3ff;}
+.search-quick{color:var(--accent2);}
 .move-quick{color:#ffae33;}
-.location-quick{color:#4da3ff;}
+.location-quick{color:var(--accent2);}
 .mystery-quick{color:#c77dff;}
 .snapshot-quick{color:#ffc107;}
 .print-quick{color:#20e0d0;}
 .sales-quick{color:#ffc107;}
 .stale-quick{color:#ffc107;}
-.expenses-quick{color:#ff8c42;}
+.expenses-quick{color:#c77dff;}
+.settings-quick{color:#ffffff;}
 
-.inventory-header{background:linear-gradient(135deg,rgba(40,167,69,0.22),rgba(0,123,255,0.08));}
-.locations-header{background:linear-gradient(135deg,rgba(0,123,255,0.22),rgba(0,123,255,0.08));}
+.inventory-header{background:linear-gradient(135deg,rgba(var(--accent-rgb),0.22),rgba(var(--accent2-rgb),0.08));}
+.locations-header{background:linear-gradient(135deg,rgba(0,123,255,0.22),rgba(var(--accent2-rgb),0.08));}
 .mystery-header{background:linear-gradient(135deg,rgba(156,39,176,0.26),rgba(255,193,7,0.08));}
 .printing-header{background:linear-gradient(135deg,rgba(32,201,151,0.24),rgba(23,162,184,0.08));}
 .reports-header{background:linear-gradient(135deg,rgba(255,193,7,0.22),rgba(156,39,176,0.08));}
@@ -264,8 +273,8 @@ button{
 .logout-card{
     margin-top:24px;
     width:100%;
-    background:linear-gradient(135deg,rgba(76,175,80,0.22),rgba(0,123,255,0.06));
-    border:1px solid rgba(76,175,80,0.35);
+    background:linear-gradient(135deg,rgba(var(--accent-rgb),0.22),rgba(0,123,255,0.06));
+    border:1px solid rgba(var(--accent-rgb),0.35);
     border-radius:16px;
     padding:18px;
     color:white;
@@ -292,7 +301,7 @@ button{
     width:55px;
     height:55px;
     border:6px solid #333;
-    border-top:6px solid #4CAF50;
+    border-top:6px solid var(--accent);
     border-radius:50%;
     animation:spin 1s linear infinite;
     margin:0 auto 15px auto;
@@ -315,6 +324,18 @@ button{
     .accordion-header{padding:16px;}
     .accordion-content{padding:14px;}
 }
+
+/* InventoryOS modern dashboard tweaks */
+.panel{max-width:1180px;margin:0 auto;}
+.app-logo{display:none;}
+#app h1{font-size:48px;letter-spacing:-1px;}
+.stats-grid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));}
+.stat-card{min-height:105px;}
+.quick-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
+.quick-grid.two,.quick-grid.one{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
+.accordion-section{box-shadow:0 14px 40px rgba(0,0,0,0.22);}
+.quick-card{min-height:118px;}
+.logout-card{background:linear-gradient(135deg,rgba(255,92,108,0.22),rgba(255,255,255,0.02));border-color:rgba(255,92,108,0.35);color:#ff7777;}
 </style>
 </head>
 
@@ -333,8 +354,8 @@ button{
 <div class="panel" id="app">
 
 <div class="app-logo">▱</div>
-<h1>Inventory Dashboard</h1>
-<p class="subtitle">Manage your stock, locations, mystery boxes and sales from one place</p>
+<h1>Inventory<span style="color:var(--accent);">OS</span></h1>
+<p class="subtitle">Inventory Management System</p>
 
 <div class="stats-grid">
     <div class="stat-card">
@@ -423,54 +444,10 @@ button{
                 <div class="quick-icon">⇄</div>
                 <div class="quick-title">Move Stock</div>
             </a>
-        </div>
-    </div>
-</div>
 
-<div class="accordion-section" id="section_locations">
-    <button class="accordion-header locations-header" onclick="toggleSection('section_locations')">
-        <div class="header-left">
-            <div class="header-icon">🗃️</div>
-            <div>
-                <div class="header-title">Locations</div>
-                <div class="header-subtitle">Manage your locations and view contents</div>
-            </div>
-        </div>
-        <div class="header-arrow">⌄</div>
-    </button>
-
-    <div class="accordion-content">
-        <div class="quick-grid one">
             <a class="quick-card location-quick" href="boxes.html">
-                <div class="quick-icon">▤</div>
-                <div class="quick-title">Manage Locations</div>
-            </a>
-        </div>
-    </div>
-</div>
-
-<div class="accordion-section" id="section_mystery">
-    <button class="accordion-header mystery-header" onclick="toggleSection('section_mystery')">
-        <div class="header-left">
-            <div class="header-icon">🎁</div>
-            <div>
-                <div class="header-title">Mystery Boxes</div>
-                <div class="header-subtitle">Create mystery boxes and snapshot locations</div>
-            </div>
-        </div>
-        <div class="header-arrow">⌄</div>
-    </button>
-
-    <div class="accordion-content">
-        <div class="quick-grid two">
-            <a class="quick-card mystery-quick" href="mysteryboxes.html">
-                <div class="quick-icon">🎁</div>
-                <div class="quick-title">Mystery Boxes</div>
-            </a>
-
-            <a class="quick-card snapshot-quick" href="snapshotbox.html">
-                <div class="quick-icon">📸</div>
-                <div class="quick-title">Snapshot Box</div>
+                <div class="quick-icon">📍</div>
+                <div class="quick-title">Locations</div>
             </a>
         </div>
     </div>
@@ -529,7 +506,7 @@ button{
 
             <a class="quick-card search-quick" href="settings.html">
                 <div class="quick-icon">⚙</div>
-                <div class="quick-title">Settings / Import</div>
+                <div class="quick-title">Settings</div>
             </a>
         </div>
     </div>
@@ -547,14 +524,19 @@ button{
     </div>
 </div>
 
+<script>
+(function(){
+    const theme = localStorage.getItem("inventoryos_theme") || "green";
+    document.documentElement.setAttribute("data-theme", theme);
+})();
+</script>
+
 <script src="js/api.js"></script>
 <script>
 
 
 const SECTION_IDS = [
     "section_inventory",
-    "section_locations",
-    "section_mystery",
     "section_printing",
     "section_reports"
 ];
