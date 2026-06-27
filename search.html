@@ -908,6 +908,27 @@ function stopScanner(){
     }
 }
 
+
+function getItemNumber(item){
+    const match = String(item.barcode || "").match(/\d+/);
+    return match ? Number(match[0]) : 0;
+}
+
+function filterAndSortInStock(items){
+    return (items || [])
+        .filter(item => Number(item.totalQty || item.total_qty || 0) > 0)
+        .sort((a, b) => {
+            const aNum = getItemNumber(a);
+            const bNum = getItemNumber(b);
+
+            if(aNum !== bNum){
+                return bNum - aNum;
+            }
+
+            return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+        });
+}
+
 function runSearch(query, options = {}){
     const showLoader = options.showLoader === true;
 
@@ -967,7 +988,7 @@ function liveSearch(query){
             return;
         }
 
-        renderLiveResults(data.results || []);
+        renderLiveResults(filterAndSortInStock(data.results || []));
     })
     .catch(error => {
         console.error(error);
@@ -1089,14 +1110,16 @@ function searchStock(){
             return;
         }
 
-        if(data.results.length === 0){
+        const inStockResults = filterAndSortInStock(data.results || []);
+
+        if(inStockResults.length === 0){
             document.getElementById("results").innerHTML =
-            "<div class='result-card'>No results found.</div>";
+            "<div class='result-card'>No matching items currently in stock.</div>";
             return;
         }
 
-        searchResultsCache = data.results;
-        showItemChoices(data.results);
+        searchResultsCache = inStockResults;
+        showItemChoices(inStockResults);
     })
     .catch(error => {
         console.error(error);
