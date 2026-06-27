@@ -833,7 +833,7 @@ function searchExistingProductsLive(){
             let html = "";
             products.slice(0,8).forEach((item,index)=>{
                 const barcode = item.barcode || "";
-                const qty = item.total_qty || item.qty || 0;
+                const qty = Number(     item.total_qty ??     item.current_qty ??     item.currentQty ??     item.stock_qty ??     item.stockQty ??     item.quantity ??     item.qty ??     0 );
                 html += `
                     <div class="match-item" onclick="selectExistingProduct(${index})">
                         <div class="match-title">${escapeHtml(item.description)}</div>
