@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>InventoryOS Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+*{box-sizing:border-box;}
+
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:linear-gradient(135deg,#050505,#151515,#24103a);
+    color:white;
+    padding:18px;
+}
+
+.page{
+    max-width:1100px;
+    margin:0 auto;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:20px;
+}
+
+h1{
+    margin:0;
+    font-size:32px;
+}
+
+.logo span{
+    color:#8e44ff;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px;
+    margin-bottom:20px;
+}
+
+.card{
+    background:#17171f;
+    border:1px solid rgba(142,68,255,.35);
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 14px 40px rgba(0,0,0,.35);
+}
+
+.card-title{
+    color:#aaa;
+    font-size:13px;
+    margin-bottom:8px;
+}
+
+.card-value{
+    font-size:30px;
+    font-weight:bold;
+}
+
+.section-title{
+    margin:28px 0 12px;
+    font-size:22px;
+}
+
+input{
+    width:100%;
+    padding:14px;
+    border-radius:12px;
+    border:1px solid rgba(142,68,255,.35);
+    background:#25252d;
+    color:white;
+    font-size:16px;
+    outline:none;
+    margin-bottom:14px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    overflow:hidden;
+    border-radius:16px;
+}
+
+th,td{
+    padding:12px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    text-align:left;
+    font-size:14px;
+}
+
+th{
+    color:#bbb;
+    background:#20202a;
+}
+
+tr{
+    background:#17171f;
+}
+
+.badge{
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:12px;
+    display:inline-block;
+}
+
+.good{
+    background:rgba(99,212,113,.16);
+    color:#63d471;
+}
+
+.bad{
+    background:rgba(255,107,107,.16);
+    color:#ff6b6b;
+}
+
+.admin{
+    background:rgba(142,68,255,.18);
+    color:#c9a4ff;
+}
+
+button{
+    padding:10px 14px;
+    border:0;
+    border-radius:12px;
+    background:#8e44ff;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.status{
+    color:#bbb;
+    margin-top:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+<div class="header">
+    <h1 class="logo">Inventory<span>OS</span> Admin</h1>
+    <button onclick="logout()">Logout</button>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <div class="card-title">Total Users</div>
+        <div class="card-value" id="totalUsers">-</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Verified Users</div>
+        <div class="card-value" id="verifiedUsers">-</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Unverified Users</div>
+        <div class="card-value" id="unverifiedUsers">-</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Products</div>
+        <div class="card-value" id="totalProducts">-</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Boxes</div>
+        <div class="card-value" id="totalBoxes">-</div>
+    </div>
+</div>
+
+<h2 class="section-title">Users</h2>
+
+<input id="search" placeholder="Search users by name or email..." oninput="searchUsers()">
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Verified</th>
+                <th>Admin</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody id="usersTable"></tbody>
+    </table>
+
+    <div class="status" id="status"></div>
+</div>
+
+</div>
+
+<script src="js/api.js"></script>
+<script>
+if(!InventoryAPI.isLoggedIn()){
+    window.location.href = "login.html";
+}
+
+function logout(){
+    InventoryAPI.logout();
+}
+
+function fmtDate(value){
+    if(!value) return "-";
+    return new Date(value).toLocaleDateString();
+}
+
+async function loadOverview(){
+    const data = await InventoryAPI.request("/admin/overview");
+
+    if(!data.success){
+        document.getElementById("status").textContent = data.error || "Admin access denied.";
+        return;
+    }
+
+    const overview = data.overview;
+
+    document.getElementById("totalUsers").textContent = overview.users.total_users;
+    document.getElementById("verifiedUsers").textContent = overview.users.verified_users;
+    document.getElementById("unverifiedUsers").textContent = overview.users.unverified_users;
+    document.getElementById("totalProducts").textContent = overview.products.total_products;
+    document.getElementById("totalBoxes").textContent = overview.boxes.total_boxes;
+
+    renderUsers(overview.latestUsers);
+}
+
+let searchTimer = null;
+
+function searchUsers(){
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadUsers, 300);
+}
+
+async function loadUsers(){
+    const search = document.getElementById("search").value.trim();
+    const data = await InventoryAPI.request("/admin/users?search=" + encodeURIComponent(search));
+
+    if(!data.success){
+        document.getElementById("status").textContent = data.error || "Could not load users.";
+        return;
+    }
+
+    renderUsers(data.users);
+}
+
+function renderUsers(users){
+    const tbody = document.getElementById("usersTable");
+
+    if(!users.length){
+        tbody.innerHTML = `<tr><td colspan="5">No users found.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = users.map(user => `
+        <tr>
+            <td>${user.name || "-"}</td>
+            <td>${user.email}</td>
+            <td>
+                ${user.email_verified 
+                    ? `<span class="badge good">Verified</span>` 
+                    : `<span class="badge bad">Not verified</span>`}
+            </td>
+            <td>
+                ${user.is_admin 
+                    ? `<span class="badge admin">Admin</span>` 
+                    : "-"}
+            </td>
+            <td>${fmtDate(user.created_at)}</td>
+        </tr>
+    `).join("");
+}
+
+loadOverview();
+</script>
+
+</body>
+</html>
