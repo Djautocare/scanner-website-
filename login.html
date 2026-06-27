@@ -17,116 +17,133 @@ html{touch-action:manipulation;}
 body{
     font-family:Arial,sans-serif;
     background:
-        radial-gradient(circle at top left, rgba(111,66,193,0.18), transparent 34%),
-        radial-gradient(circle at top right, rgba(32,201,151,0.12), transparent 36%),
-        #0d0d0d;
+        radial-gradient(circle at top left, rgba(142,68,255,0.24), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(181,108,255,0.14), transparent 36%),
+        linear-gradient(135deg,#050505,#121212,#1b0b2b);
     color:white;
     padding:18px;
     margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
 }
 
 .page{
+    width:100%;
     max-width:460px;
-    margin:40px auto;
 }
 
 .panel{
-    background:linear-gradient(180deg,#1d1d1d,#151515);
-    border:1px solid rgba(255,255,255,0.08);
-    padding:24px;
-    border-radius:18px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    background:rgba(23,23,31,0.96);
+    border:1px solid rgba(142,68,255,0.35);
+    padding:28px;
+    border-radius:24px;
+    box-shadow:0 24px 70px rgba(0,0,0,0.5);
 }
 
-h1{
+.logo{
     text-align:center;
-    font-size:36px;
-    margin:10px 0 6px 0;
+    font-size:34px;
+    font-weight:900;
+    margin:6px 0;
+}
+
+.logo span{
+    color:#8e44ff;
 }
 
 .subtitle{
     text-align:center;
-    color:#aaa;
-    margin:0 0 24px 0;
+    color:#bdbdbd;
+    margin:0 0 26px;
     font-size:14px;
 }
 
 .input-label{
-    text-align:left;
     color:#ddd;
     font-weight:bold;
-    margin:12px 0 6px 2px;
+    margin:14px 0 7px 2px;
     font-size:14px;
 }
 
 input,button{
     width:100%;
-    padding:14px;
-    margin:5px 0 12px 0;
-    border:none;
-    border-radius:12px;
+    padding:15px;
+    border-radius:14px;
     font-size:16px;
 }
 
 input{
-    background:#2a2a2a;
+    background:#25252d;
     color:white;
     outline:none;
-    border:1px solid rgba(255,255,255,0.08);
+    border:1px solid rgba(142,68,255,0.24);
 }
 
 button{
+    margin-top:16px;
     color:white;
     font-weight:bold;
     cursor:pointer;
+    border:none;
 }
 
 .primary-button{
-    background:linear-gradient(135deg,#28a745,#1f8b3a);
-    border:1px solid rgba(40,167,69,0.45);
-    box-shadow:0 10px 30px rgba(40,167,69,0.18);
+    background:linear-gradient(135deg,#8e44ff,#b56cff);
+    box-shadow:0 12px 34px rgba(142,68,255,0.25);
 }
 
 .secondary-button{
-    background:linear-gradient(135deg,#6f42c1,#56329b);
-    border:1px solid rgba(111,66,193,0.45);
+    background:linear-gradient(135deg,#343444,#24242e);
+    border:1px solid rgba(142,68,255,0.35);
 }
 
-.status{
-    min-height:20px;
-    font-size:13px;
-    color:#aaa;
-    margin-top:6px;
+.forgot{
+    display:block;
     text-align:center;
+    margin-top:16px;
+    color:#b56cff;
+    text-decoration:none;
+    font-size:14px;
 }
-
-.error{color:#ff8a8a;}
-.success{color:#20c997;}
 
 .toggle{
-    color:#aaa;
-    font-size:13px;
+    color:#bdbdbd;
+    font-size:14px;
     text-align:center;
-    margin-top:12px;
+    margin-top:18px;
     cursor:pointer;
     text-decoration:underline;
 }
 
+.status{
+    min-height:22px;
+    font-size:13px;
+    color:#aaa;
+    margin-top:16px;
+    text-align:center;
+}
+
+.error{color:#ff8a8a;}
+.success{color:#63d471;}
+
 .small-note{
-    color:#888;
+    color:#777;
     font-size:12px;
     line-height:1.35;
-    margin-top:14px;
+    margin-top:18px;
     text-align:center;
 }
 </style>
 </head>
 
 <body>
+
 <div class="page">
 <div class="panel">
 
-<h1>InventoryOS</h1>
+<div class="logo">Inventory<span>OS</span></div>
 <p class="subtitle" id="subtitle">Login to your inventory system</p>
 
 <div id="loginForm">
@@ -137,6 +154,8 @@ button{
     <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
 
     <button class="primary-button" onclick="login()" type="button">Login</button>
+
+    <a class="forgot" href="forgot-password.html">Forgot your password?</a>
 
     <div class="toggle" onclick="showRegister()">Need to create an account?</div>
 </div>
@@ -149,9 +168,9 @@ button{
     <input type="email" id="registerEmail" placeholder="you@example.com" autocomplete="email">
 
     <div class="input-label">Password</div>
-    <input type="password" id="registerPassword" placeholder="Password" autocomplete="new-password">
+    <input type="password" id="registerPassword" placeholder="Minimum 8 characters" autocomplete="new-password">
 
-    <button class="secondary-button" onclick="register()" type="button">Create Account</button>
+    <button class="primary-button" onclick="register()" type="button">Create Account</button>
 
     <div class="toggle" onclick="showLogin()">Already have an account?</div>
 </div>
@@ -159,7 +178,7 @@ button{
 <div class="status" id="status"></div>
 
 <div class="small-note">
-    Local development server: <strong>http://localhost:3000</strong>
+    Securely connected via InventoryOS Cloud API
 </div>
 
 </div>
