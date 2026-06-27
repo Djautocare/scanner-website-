@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Verify Email - InventoryOS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+*{box-sizing:border-box;}
+
+body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:Arial,sans-serif;
+    background:linear-gradient(135deg,#050505,#151515,#24103a);
+    color:white;
+    padding:20px;
+}
+
+.card{
+    width:100%;
+    max-width:430px;
+    background:#17171f;
+    border:1px solid rgba(142,68,255,0.35);
+    border-radius:22px;
+    padding:30px;
+    text-align:center;
+}
+
+.logo{
+    font-size:30px;
+    font-weight:bold;
+}
+
+.logo span{color:#8e44ff;}
+
+.message{
+    margin-top:22px;
+    color:#ccc;
+    line-height:1.5;
+}
+
+.success{color:#63d471;}
+.error{color:#ff6b6b;}
+
+a{
+    display:inline-block;
+    margin-top:24px;
+    color:white;
+    background:#8e44ff;
+    padding:13px 20px;
+    border-radius:12px;
+    text-decoration:none;
+    font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+    <div class="logo">Inventory<span>OS</span></div>
+    <div id="message" class="message">Verifying your email...</div>
+    <a href="login.html" id="loginLink" style="display:none;">Go to Login</a>
+</div>
+
+<script>
+const API_BASE = "https://api.inventoryos.co.uk";
+
+const params = new URLSearchParams(window.location.search);
+const token = params.get("token");
+
+async function verifyEmail(){
+    const message = document.getElementById("message");
+    const loginLink = document.getElementById("loginLink");
+
+    if(!token){
+        message.className = "message error";
+        message.textContent = "Invalid verification link.";
+        loginLink.style.display = "inline-block";
+        return;
+    }
+
+    try{
+        const res = await fetch(`${API_BASE}/auth/verify-email`, {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ token })
+        });
+
+        const data = await res.json();
+
+        if(data.success){
+            localStorage.removeItem("inventoryos_token");
+            localStorage.removeItem("inventoryos_user");
+
+            message.className = "message success";
+            message.textContent = "Email verified successfully. You can now log in.";
+            loginLink.style.display = "inline-block";
+        }else{
+            message.className = "message error";
+            message.textContent = data.error || "Verification failed.";
+            loginLink.style.display = "inline-block";
+        }
+
+    }catch(error){
+        message.className = "message error";
+        message.textContent = "Server error. Please try again.";
+        loginLink.style.display = "inline-block";
+    }
+}
+
+verifyEmail();
+</script>
+
+</body>
+</html>
