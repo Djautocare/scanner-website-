@@ -20,7 +20,7 @@ const InventoryAPI = (function(){
         }
 
         // Live website on GitHub/Cloudflare Pages talks to your PC through Cloudflare Tunnel
-        return "https://api.djautocaredetailing.uk";
+        return "https://api.inventoryos.co.uk";
     }
 
     const API_BASE = detectApiBase();
