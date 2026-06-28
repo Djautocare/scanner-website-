@@ -11,15 +11,14 @@
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:linear-gradient(135deg,#050505,#151515,#24103a);
+    background:
+        radial-gradient(circle at top left,rgba(142,68,255,.24),transparent 34%),
+        linear-gradient(135deg,#050505,#121212,#24103a);
     color:white;
     padding:18px;
 }
 
-.page{
-    max-width:1100px;
-    margin:0 auto;
-}
+.page{max-width:1200px;margin:0 auto;}
 
 .header{
     display:flex;
@@ -29,13 +28,39 @@ body{
     margin-bottom:20px;
 }
 
-h1{
-    margin:0;
-    font-size:32px;
+.logo{font-size:34px;font-weight:900;}
+.logo span{color:#8e44ff;}
+
+button{
+    border:0;
+    border-radius:12px;
+    padding:10px 14px;
+    background:#8e44ff;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
 }
 
-.logo span{
-    color:#8e44ff;
+button.danger{background:#d64545;}
+button.dark{background:#2b2b36;}
+button.small{padding:8px 10px;font-size:12px;}
+
+.tabs{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+
+.tab{
+    background:#17171f;
+    border:1px solid rgba(142,68,255,.35);
+    color:#ccc;
+}
+
+.tab.active{
+    background:#8e44ff;
+    color:white;
 }
 
 .grid{
@@ -64,10 +89,10 @@ h1{
     font-weight:bold;
 }
 
-.section-title{
-    margin:28px 0 12px;
-    font-size:22px;
-}
+.section{display:none;}
+.section.active{display:block;}
+
+h2{margin:24px 0 12px;}
 
 input{
     width:100%;
@@ -81,11 +106,14 @@ input{
     margin-bottom:14px;
 }
 
+.table-wrap{
+    overflow-x:auto;
+}
+
 table{
     width:100%;
     border-collapse:collapse;
-    overflow:hidden;
-    border-radius:16px;
+    min-width:760px;
 }
 
 th,td{
@@ -100,9 +128,7 @@ th{
     background:#20202a;
 }
 
-tr{
-    background:#17171f;
-}
+tr{background:#17171f;}
 
 .badge{
     padding:5px 9px;
@@ -111,34 +137,31 @@ tr{
     display:inline-block;
 }
 
-.good{
-    background:rgba(99,212,113,.16);
-    color:#63d471;
-}
+.good{background:rgba(99,212,113,.16);color:#63d471;}
+.bad{background:rgba(255,107,107,.16);color:#ff6b6b;}
+.admin{background:rgba(142,68,255,.18);color:#c9a4ff;}
 
-.bad{
-    background:rgba(255,107,107,.16);
-    color:#ff6b6b;
-}
-
-.admin{
-    background:rgba(142,68,255,.18);
-    color:#c9a4ff;
-}
-
-button{
-    padding:10px 14px;
-    border:0;
-    border-radius:12px;
-    background:#8e44ff;
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
+.actions{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
 }
 
 .status{
     color:#bbb;
     margin-top:12px;
+}
+
+.panel-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+}
+
+@media(max-width:700px){
+    .header{align-items:flex-start;flex-direction:column;}
+    .logo{font-size:28px;}
+    .panel-row{grid-template-columns:1fr;}
 }
 </style>
 </head>
@@ -148,58 +171,101 @@ button{
 <div class="page">
 
 <div class="header">
-    <h1 class="logo">Inventory<span>OS</span> Admin</h1>
+    <div class="logo">Inventory<span>OS</span> Admin</div>
     <button onclick="logout()">Logout</button>
 </div>
 
-<div class="grid">
-    <div class="card">
-        <div class="card-title">Total Users</div>
-        <div class="card-value" id="totalUsers">-</div>
-    </div>
-
-    <div class="card">
-        <div class="card-title">Verified Users</div>
-        <div class="card-value" id="verifiedUsers">-</div>
-    </div>
-
-    <div class="card">
-        <div class="card-title">Unverified Users</div>
-        <div class="card-value" id="unverifiedUsers">-</div>
-    </div>
-
-    <div class="card">
-        <div class="card-title">Products</div>
-        <div class="card-value" id="totalProducts">-</div>
-    </div>
-
-    <div class="card">
-        <div class="card-title">Boxes</div>
-        <div class="card-value" id="totalBoxes">-</div>
-    </div>
+<div class="tabs">
+    <button class="tab active" onclick="showTab('dashboard', this)">Dashboard</button>
+    <button class="tab" onclick="showTab('users', this)">Users</button>
+    <button class="tab" onclick="showTab('system', this)">System</button>
 </div>
 
-<h2 class="section-title">Users</h2>
+<section id="dashboard" class="section active">
+    <div class="grid">
+        <div class="card">
+            <div class="card-title">Total Users</div>
+            <div class="card-value" id="totalUsers">-</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Verified Users</div>
+            <div class="card-value" id="verifiedUsers">-</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Unverified Users</div>
+            <div class="card-value" id="unverifiedUsers">-</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Products</div>
+            <div class="card-value" id="totalProducts">-</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Boxes</div>
+            <div class="card-value" id="totalBoxes">-</div>
+        </div>
+    </div>
 
-<input id="search" placeholder="Search users by name or email..." oninput="searchUsers()">
+    <h2>Latest Users</h2>
+    <div class="card">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Verified</th>
+                        <th>Admin</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody id="latestUsersTable"></tbody>
+            </table>
+        </div>
+    </div>
+</section>
 
-<div class="card">
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Verified</th>
-                <th>Admin</th>
-                <th>Created</th> 
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="usersTable"></tbody>
-    </table>
+<section id="users" class="section">
+    <h2>User Management</h2>
 
-    <div class="status" id="status"></div>
-</div>
+    <input id="search" placeholder="Search users by name or email..." oninput="searchUsers()">
+
+    <div class="card">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Verified</th>
+                        <th>Admin</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTable"></tbody>
+            </table>
+        </div>
+
+        <div class="status" id="status"></div>
+    </div>
+</section>
+
+<section id="system" class="section">
+    <h2>System</h2>
+
+    <div class="panel-row">
+        <div class="card">
+            <div class="card-title">API Health</div>
+            <div class="card-value" id="apiHealth">Checking...</div>
+            <button onclick="checkApiHealth()">Refresh</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Current API</div>
+            <div style="font-size:14px;color:#ccc;word-break:break-word;" id="apiBase"></div>
+        </div>
+    </div>
+</section>
 
 </div>
 
@@ -209,13 +275,48 @@ if(!InventoryAPI.isLoggedIn()){
     window.location.href = "login.html";
 }
 
+const API_BASE = InventoryAPI.API_BASE || "https://api.inventoryos.co.uk";
+
 function logout(){
     InventoryAPI.logout();
 }
 
+function showTab(id, button){
+    document.querySelectorAll(".section").forEach(section => {
+        section.classList.remove("active");
+    });
+
+    document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.remove("active");
+    });
+
+    document.getElementById(id).classList.add("active");
+    button.classList.add("active");
+
+    if(id === "users"){
+        loadUsers();
+    }
+
+    if(id === "system"){
+        checkApiHealth();
+    }
+}
+
 function fmtDate(value){
     if(!value) return "-";
-    return new Date(value).toLocaleDateString();
+    return new Date(value).toLocaleDateString("en-GB");
+}
+
+function badgeVerified(value){
+    return value
+        ? `<span class="badge good">Verified</span>`
+        : `<span class="badge bad">Not verified</span>`;
+}
+
+function badgeAdmin(value){
+    return value
+        ? `<span class="badge admin">Admin</span>`
+        : "-";
 }
 
 async function loadOverview(){
@@ -234,7 +335,26 @@ async function loadOverview(){
     document.getElementById("totalProducts").textContent = overview.products.total_products;
     document.getElementById("totalBoxes").textContent = overview.boxes.total_boxes;
 
-    renderUsers(overview.latestUsers);
+    renderLatestUsers(overview.latestUsers || []);
+}
+
+function renderLatestUsers(users){
+    const tbody = document.getElementById("latestUsersTable");
+
+    if(!users.length){
+        tbody.innerHTML = `<tr><td colspan="5">No users found.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = users.map(user => `
+        <tr>
+            <td>${escapeHtml(user.name || "-")}</td>
+            <td>${escapeHtml(user.email || "-")}</td>
+            <td>${badgeVerified(user.email_verified)}</td>
+            <td>${badgeAdmin(user.is_admin)}</td>
+            <td>${fmtDate(user.created_at)}</td>
+        </tr>
+    `).join("");
 }
 
 let searchTimer = null;
@@ -246,14 +366,17 @@ function searchUsers(){
 
 async function loadUsers(){
     const search = document.getElementById("search").value.trim();
-    const data = await InventoryAPI.request("/admin/users?search=" + encodeURIComponent(search));
+
+    const data = await InventoryAPI.request(
+        "/admin/users?search=" + encodeURIComponent(search)
+    );
 
     if(!data.success){
         document.getElementById("status").textContent = data.error || "Could not load users.";
         return;
     }
 
-    renderUsers(data.users);
+    renderUsers(data.users || []);
 }
 
 function renderUsers(users){
@@ -264,32 +387,33 @@ function renderUsers(users){
         return;
     }
 
-    tbody.innerHTML = users.map(user => `
-        <tr>
-            <td>${user.name || "-"}</td>
-            <td>${user.email}</td>
-            <td>
-                ${user.email_verified 
-                    ? `<span class="badge good">Verified</span>` 
-                    : `<span class="badge bad">Not verified</span>`}
-            </td>
-            <td>
-                ${user.is_admin 
-                    ? `<span class="badge admin">Admin</span>` 
-                    : "-"}
-            </td>
-            <td>${fmtDate(user.created_at)}</td>
-            <td>
-                ${!user.email_verified ? `<button onclick="verifyUser(${user.id})">Verify</button>` : ""}
-                ${user.is_admin 
-                    ? `<button onclick="setAdmin(${user.id}, false)">Remove Admin</button>` 
-                    : `<button onclick="setAdmin(${user.id}, true)">Make Admin</button>`}
-                <button onclick="deleteUser(${user.id}, '${user.email}')">Delete</button>
-            </td>
-        </tr>
-    `).join("");
+    tbody.innerHTML = users.map(user => {
+        const safeEmail = encodeURIComponent(user.email || "");
+
+        return `
+            <tr>
+                <td>${escapeHtml(user.name || "-")}</td>
+                <td>${escapeHtml(user.email || "-")}</td>
+                <td>${badgeVerified(user.email_verified)}</td>
+                <td>${badgeAdmin(user.is_admin)}</td>
+                <td>${fmtDate(user.created_at)}</td>
+                <td>
+                    <div class="actions">
+                        ${!user.email_verified ? `<button class="small" onclick="verifyUser(${user.id})">Verify</button>` : ""}
+                        ${
+                            user.is_admin
+                            ? `<button class="small dark" onclick="setAdmin(${user.id}, false)">Remove Admin</button>`
+                            : `<button class="small" onclick="setAdmin(${user.id}, true)">Make Admin</button>`
+                        }
+                        <button class="small danger" onclick="deleteUser(${user.id}, decodeURIComponent('${safeEmail}'))">Delete</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join("");
 }
-    async function verifyUser(id){
+
+async function verifyUser(id){
     if(!confirm("Verify this user manually?")) return;
 
     const data = await InventoryAPI.request(`/admin/users/${id}/verify`, {
@@ -301,11 +425,12 @@ function renderUsers(users){
         return;
     }
 
-    await loadOverview();
+    await refreshAdmin();
 }
 
 async function setAdmin(id, isAdmin){
-    if(!confirm(isAdmin ? "Make this user an admin?" : "Remove admin access?")) return;
+    const message = isAdmin ? "Make this user an admin?" : "Remove admin access from this user?";
+    if(!confirm(message)) return;
 
     const data = await InventoryAPI.request(`/admin/users/${id}/admin`, {
         method:"POST",
@@ -317,7 +442,7 @@ async function setAdmin(id, isAdmin){
         return;
     }
 
-    await loadOverview();
+    await refreshAdmin();
 }
 
 async function deleteUser(id, email){
@@ -332,8 +457,48 @@ async function deleteUser(id, email){
         return;
     }
 
-    await loadOverview();
+    await refreshAdmin();
 }
+
+async function refreshAdmin(){
+    await loadOverview();
+    await loadUsers();
+}
+
+async function checkApiHealth(){
+    document.getElementById("apiBase").textContent = API_BASE;
+
+    try{
+        const res = await fetch(API_BASE + "/api-health");
+        const data = await res.json();
+
+        if(data.database === "Connected"){
+            document.getElementById("apiHealth").textContent = "Online";
+        }else{
+            document.getElementById("apiHealth").textContent = "Warning";
+        }
+
+    }catch(error){
+        document.getElementById("apiHealth").textContent = "Offline";
+    }
+}
+
+function escapeHtml(value){
+    return String(value)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+}
+
+window.verifyUser = verifyUser;
+window.setAdmin = setAdmin;
+window.deleteUser = deleteUser;
+window.showTab = showTab;
+window.logout = logout;
+window.searchUsers = searchUsers;
+window.checkApiHealth = checkApiHealth;
 
 loadOverview();
 </script>
