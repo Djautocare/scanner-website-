@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Join Workspace - InventoryOS</title>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left,rgba(142,68,255,.22),transparent 34%),
+        radial-gradient(circle at bottom right,rgba(32,201,151,.11),transparent 36%),
+        linear-gradient(135deg,#050505,#121212,#24103a);
+    color:white;
+    padding:18px;
+    min-height:100vh;
+}
+
+.page{max-width:520px;margin:45px auto;}
+
+.panel{
+    background:rgba(23,23,31,.96);
+    border:1px solid rgba(142,68,255,.35);
+    border-radius:24px;
+    padding:24px;
+    box-shadow:0 24px 70px rgba(0,0,0,.45);
+}
+
+.logo{
+    font-size:34px;
+    font-weight:900;
+    text-align:center;
+    margin-bottom:8px;
+}
+
+.logo span{color:#8e44ff;}
+
+h1{text-align:center;margin:8px 0;}
+.subtitle{text-align:center;color:#aaa;line-height:1.4;margin:0 0 20px;}
+
+label{
+    display:block;
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px;
+}
+
+input,button{
+    width:100%;
+    padding:14px;
+    border:0;
+    border-radius:14px;
+    font-size:16px;
+    margin:6px 0 12px;
+}
+
+input{
+    background:#282832;
+    color:white;
+    border:1px solid rgba(255,255,255,.08);
+    outline:none;
+    text-transform:uppercase;
+}
+
+button{
+    background:#8e44ff;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button.secondary{
+    background:#2b2b36;
+}
+
+.status{
+    background:#101016;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:14px;
+    color:#ddd;
+    margin-top:12px;
+    min-height:48px;
+    line-height:1.4;
+}
+
+.success{color:#63d471;}
+.error{color:#ff6b6b;}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+<div class="panel">
+    <div class="logo">Inventory<span>OS</span></div>
+
+    <h1>Join Workspace</h1>
+    <p class="subtitle">
+        Enter an invite code to join a shared InventoryOS workspace.
+    </p>
+
+    <label>Invite Code</label>
+    <input id="inviteCode" placeholder="ABCD1234">
+
+    <button onclick="joinWorkspace()">Join Workspace</button>
+    <button class="secondary" onclick="window.location.href='index.html'">Back to Dashboard</button>
+
+    <div class="status" id="status">Waiting for invite code...</div>
+</div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+if(!InventoryAPI.isLoggedIn()){
+    localStorage.setItem("inventoryos_pending_invite", window.location.href);
+    window.location.href = "login.html";
+}
+
+function setStatus(message, type){
+    const el = document.getElementById("status");
+    el.className = "status " + (type || "");
+    el.textContent = message;
+}
+
+function getCodeFromUrl(){
+    const params = new URLSearchParams(window.location.search);
+    return String(params.get("code") || "").trim().toUpperCase();
+}
+
+async function joinWorkspace(){
+    const code = document.getElementById("inviteCode").value.trim().toUpperCase();
+
+    if(!code){
+        setStatus("Enter an invite code.", "error");
+        return;
+    }
+
+    setStatus("Joining workspace...");
+
+    try{
+        const data = await InventoryAPI.request("/workspaces/join", {
+            method:"POST",
+            body:JSON.stringify({ code })
+        });
+
+        if(!data.success){
+            setStatus(data.error || "Could not join workspace.", "error");
+            return;
+        }
+
+        localStorage.removeItem("inventoryos_workspace");
+
+        setStatus("Joined " + data.workspace.name + ". Redirecting...", "success");
+
+        setTimeout(function(){
+            window.location.href = "index.html";
+        }, 900);
+
+    }catch(error){
+        console.error(error);
+        setStatus("Could not connect to server.", "error");
+    }
+}
+
+const urlCode = getCodeFromUrl();
+if(urlCode){
+    document.getElementById("inviteCode").value = urlCode;
+    joinWorkspace();
+}
+</script>
+
+</body>
+</html>
