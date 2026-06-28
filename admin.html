@@ -5,15 +5,13 @@
 <title>InventoryOS Admin</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<style> 
+<style>
 *{box-sizing:border-box;}
 
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:
-        radial-gradient(circle at top left,rgba(142,68,255,.24),transparent 34%),
-        linear-gradient(135deg,#050505,#121212,#24103a);
+    background:linear-gradient(135deg,#050505,#151515,#24103a);
     color:white;
     padding:18px;
 }
@@ -45,23 +43,9 @@ button.danger{background:#d64545;}
 button.dark{background:#2b2b36;}
 button.small{padding:8px 10px;font-size:12px;}
 
-.tabs{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-bottom:20px;
-}
-
-.tab{
-    background:#17171f;
-    border:1px solid rgba(142,68,255,.35);
-    color:#ccc;
-}
-
-.tab.active{
-    background:#8e44ff;
-    color:white;
-}
+.tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+.tab{background:#17171f;border:1px solid rgba(142,68,255,.35);}
+.tab.active{background:#8e44ff;}
 
 .grid{
     display:grid;
@@ -78,21 +62,11 @@ button.small{padding:8px 10px;font-size:12px;}
     box-shadow:0 14px 40px rgba(0,0,0,.35);
 }
 
-.card-title{
-    color:#aaa;
-    font-size:13px;
-    margin-bottom:8px;
-}
-
-.card-value{
-    font-size:30px;
-    font-weight:bold;
-}
+.card-title{color:#aaa;font-size:13px;margin-bottom:8px;}
+.card-value{font-size:30px;font-weight:bold;}
 
 .section{display:none;}
 .section.active{display:block;}
-
-h2{margin:24px 0 12px;}
 
 input{
     width:100%;
@@ -106,9 +80,7 @@ input{
     margin-bottom:14px;
 }
 
-.table-wrap{
-    overflow-x:auto;
-}
+.table-wrap{overflow-x:auto;}
 
 table{
     width:100%;
@@ -123,11 +95,7 @@ th,td{
     font-size:14px;
 }
 
-th{
-    color:#bbb;
-    background:#20202a;
-}
-
+th{color:#bbb;background:#20202a;}
 tr{background:#17171f;}
 
 .badge{
@@ -141,28 +109,8 @@ tr{background:#17171f;}
 .bad{background:rgba(255,107,107,.16);color:#ff6b6b;}
 .admin{background:rgba(142,68,255,.18);color:#c9a4ff;}
 
-.actions{
-    display:flex;
-    gap:6px;
-    flex-wrap:wrap;
-}
-
-.status{
-    color:#bbb;
-    margin-top:12px;
-}
-
-.panel-row{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:14px;
-}
-
-@media(max-width:700px){
-    .header{align-items:flex-start;flex-direction:column;}
-    .logo{font-size:28px;}
-    .panel-row{grid-template-columns:1fr;}
-}
+.actions{display:flex;gap:6px;flex-wrap:wrap;}
+.status{color:#bbb;margin-top:12px;}
 </style>
 </head>
 
@@ -172,37 +120,22 @@ tr{background:#17171f;}
 
 <div class="header">
     <div class="logo">Inventory<span>OS</span> Admin</div>
-    <button onclick="logout()">Logout</button>
+    <button id="logoutBtn">Logout</button>
 </div>
 
 <div class="tabs">
-    <button class="tab active" onclick="showTab('dashboard', this)">Dashboard</button>
-    <button class="tab" onclick="showTab('users', this)">Users</button>
-    <button class="tab" onclick="showTab('system', this)">System</button>
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="users">Users</button>
+    <button class="tab" data-tab="system">System</button>
 </div>
 
 <section id="dashboard" class="section active">
     <div class="grid">
-        <div class="card">
-            <div class="card-title">Total Users</div>
-            <div class="card-value" id="totalUsers">-</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Verified Users</div>
-            <div class="card-value" id="verifiedUsers">-</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Unverified Users</div>
-            <div class="card-value" id="unverifiedUsers">-</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Products</div>
-            <div class="card-value" id="totalProducts">-</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Boxes</div>
-            <div class="card-value" id="totalBoxes">-</div>
-        </div>
+        <div class="card"><div class="card-title">Total Users</div><div class="card-value" id="totalUsers">-</div></div>
+        <div class="card"><div class="card-title">Verified Users</div><div class="card-value" id="verifiedUsers">-</div></div>
+        <div class="card"><div class="card-title">Unverified Users</div><div class="card-value" id="unverifiedUsers">-</div></div>
+        <div class="card"><div class="card-title">Products</div><div class="card-value" id="totalProducts">-</div></div>
+        <div class="card"><div class="card-title">Boxes</div><div class="card-value" id="totalBoxes">-</div></div>
     </div>
 
     <h2>Latest Users</h2>
@@ -211,11 +144,7 @@ tr{background:#17171f;}
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Verified</th>
-                        <th>Admin</th>
-                        <th>Created</th>
+                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Created</th>
                     </tr>
                 </thead>
                 <tbody id="latestUsersTable"></tbody>
@@ -226,43 +155,34 @@ tr{background:#17171f;}
 
 <section id="users" class="section">
     <h2>User Management</h2>
-
-    <input id="search" placeholder="Search users by name or email..." oninput="searchUsers()">
+    <input id="search" placeholder="Search users by name or email...">
 
     <div class="card">
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Verified</th>
-                        <th>Admin</th>
-                        <th>Created</th>
-                        <th>Actions</th>
+                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Created</th><th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="usersTable"></tbody>
             </table>
         </div>
-
         <div class="status" id="status"></div>
     </div>
 </section>
 
 <section id="system" class="section">
     <h2>System</h2>
-
-    <div class="panel-row">
+    <div class="grid">
         <div class="card">
             <div class="card-title">API Health</div>
-            <div class="card-value" id="apiHealth">Checking...</div>
-            <button onclick="checkApiHealth()">Refresh</button>
+            <div class="card-value" id="apiHealth">-</div>
+            <button id="refreshHealthBtn">Refresh</button>
         </div>
-
         <div class="card">
             <div class="card-title">Current API</div>
-            <div style="font-size:14px;color:#ccc;word-break:break-word;" id="apiBase"></div>
+            <div id="apiBase" style="word-break:break-word;color:#ccc;"></div>
         </div>
     </div>
 </section>
@@ -271,236 +191,248 @@ tr{background:#17171f;}
 
 <script src="js/api.js"></script>
 <script>
-if(!InventoryAPI.isLoggedIn()){
-    window.location.href = "login.html";
-}
-
-const API_BASE = InventoryAPI.API_BASE || "https://api.inventoryos.co.uk";
-
-function logout(){
-    InventoryAPI.logout();
-}
-
-function showTab(id, button){
-    document.querySelectorAll(".section").forEach(section => {
-        section.classList.remove("active");
-    });
-
-    document.querySelectorAll(".tab").forEach(tab => {
-        tab.classList.remove("active");
-    });
-
-    document.getElementById(id).classList.add("active");
-    button.classList.add("active");
-
-    if(id === "users"){
-        loadUsers();
-    }
-
-    if(id === "system"){
-        checkApiHealth();
-    }
-}
-
-function fmtDate(value){
-    if(!value) return "-";
-    return new Date(value).toLocaleDateString("en-GB");
-}
-
-function badgeVerified(value){
-    return value
-        ? `<span class="badge good">Verified</span>`
-        : `<span class="badge bad">Not verified</span>`;
-}
-
-function badgeAdmin(value){
-    return value
-        ? `<span class="badge admin">Admin</span>`
-        : "-";
-}
-
-async function loadOverview(){
-    const data = await InventoryAPI.request("/admin/overview");
-
-    if(!data.success){
-        document.getElementById("status").textContent = data.error || "Admin access denied.";
+(function(){
+    if(!InventoryAPI.isLoggedIn()){
+        window.location.href = "login.html";
         return;
     }
 
-    const overview = data.overview;
+    const API_BASE = InventoryAPI.API_BASE || "https://api.inventoryos.co.uk";
 
-    document.getElementById("totalUsers").textContent = overview.users.total_users;
-    document.getElementById("verifiedUsers").textContent = overview.users.verified_users;
-    document.getElementById("unverifiedUsers").textContent = overview.users.unverified_users;
-    document.getElementById("totalProducts").textContent = overview.products.total_products;
-    document.getElementById("totalBoxes").textContent = overview.boxes.total_boxes;
+    const els = {
+        totalUsers: document.getElementById("totalUsers"),
+        verifiedUsers: document.getElementById("verifiedUsers"),
+        unverifiedUsers: document.getElementById("unverifiedUsers"),
+        totalProducts: document.getElementById("totalProducts"),
+        totalBoxes: document.getElementById("totalBoxes"),
+        latestUsersTable: document.getElementById("latestUsersTable"),
+        usersTable: document.getElementById("usersTable"),
+        status: document.getElementById("status"),
+        search: document.getElementById("search"),
+        apiHealth: document.getElementById("apiHealth"),
+        apiBase: document.getElementById("apiBase")
+    };
 
-    renderLatestUsers(overview.latestUsers || []);
-}
-
-function renderLatestUsers(users){
-    const tbody = document.getElementById("latestUsersTable");
-
-    if(!users.length){
-        tbody.innerHTML = `<tr><td colspan="5">No users found.</td></tr>`;
-        return;
+    function escapeHtml(value){
+        return String(value || "")
+            .replaceAll("&","&amp;")
+            .replaceAll("<","&lt;")
+            .replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;")
+            .replaceAll("'","&#039;");
     }
 
-    tbody.innerHTML = users.map(user => `
-        <tr>
-            <td>${escapeHtml(user.name || "-")}</td>
-            <td>${escapeHtml(user.email || "-")}</td>
-            <td>${badgeVerified(user.email_verified)}</td>
-            <td>${badgeAdmin(user.is_admin)}</td>
-            <td>${fmtDate(user.created_at)}</td>
-        </tr>
-    `).join("");
-}
-
-let searchTimer = null;
-
-function searchUsers(){
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(loadUsers, 300);
-}
-
-async function loadUsers(){
-    const search = document.getElementById("search").value.trim();
-
-    const data = await InventoryAPI.request(
-        "/admin/users?search=" + encodeURIComponent(search)
-    );
-
-    if(!data.success){
-        document.getElementById("status").textContent = data.error || "Could not load users.";
-        return;
+    function fmtDate(value){
+        if(!value) return "-";
+        return new Date(value).toLocaleDateString("en-GB");
     }
 
-    renderUsers(data.users || []);
-}
-
-function renderUsers(users){
-    const tbody = document.getElementById("usersTable");
-
-    if(!users.length){
-        tbody.innerHTML = `<tr><td colspan="6">No users found.</td></tr>`;
-        return;
+    function verifiedBadge(value){
+        return value
+            ? `<span class="badge good">Verified</span>`
+            : `<span class="badge bad">Not verified</span>`;
     }
 
-    tbody.innerHTML = users.map(user => {
-        const safeEmail = encodeURIComponent(user.email || "");
+    function adminBadge(value){
+        return value
+            ? `<span class="badge admin">Admin</span>`
+            : "-";
+    }
 
-        return `
+    function setStatus(message){
+        els.status.textContent = message || "";
+    }
+
+    function showTab(tabId){
+        document.querySelectorAll(".section").forEach(section => section.classList.remove("active"));
+        document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+
+        document.getElementById(tabId).classList.add("active");
+        document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add("active");
+
+        if(tabId === "users") loadUsers();
+        if(tabId === "system") checkApiHealth();
+    }
+
+    async function loadOverview(){
+        const data = await InventoryAPI.request("/admin/overview");
+
+        if(!data.success){
+            setStatus(data.error || "Admin access denied.");
+            return;
+        }
+
+        const overview = data.overview;
+
+        els.totalUsers.textContent = overview.users.total_users;
+        els.verifiedUsers.textContent = overview.users.verified_users;
+        els.unverifiedUsers.textContent = overview.users.unverified_users;
+        els.totalProducts.textContent = overview.products.total_products;
+        els.totalBoxes.textContent = overview.boxes.total_boxes;
+
+        renderLatestUsers(overview.latestUsers || []);
+    }
+
+    function renderLatestUsers(users){
+        if(!users.length){
+            els.latestUsersTable.innerHTML = `<tr><td colspan="5">No users found.</td></tr>`;
+            return;
+        }
+
+        els.latestUsersTable.innerHTML = users.map(user => `
             <tr>
                 <td>${escapeHtml(user.name || "-")}</td>
                 <td>${escapeHtml(user.email || "-")}</td>
-                <td>${badgeVerified(user.email_verified)}</td>
-                <td>${badgeAdmin(user.is_admin)}</td>
+                <td>${verifiedBadge(user.email_verified)}</td>
+                <td>${adminBadge(user.is_admin)}</td>
                 <td>${fmtDate(user.created_at)}</td>
-                <td>
-                    <div class="actions">
-                        ${!user.email_verified ? `<button class="small" onclick="verifyUser(${user.id})">Verify</button>` : ""}
-                        ${
-                            user.is_admin
-                            ? `<button class="small dark" onclick="setAdmin(${user.id}, false)">Remove Admin</button>`
-                            : `<button class="small" onclick="setAdmin(${user.id}, true)">Make Admin</button>`
-                        }
-                        <button class="small danger" onclick="deleteUser(${user.id})">Delete</button>
-                    </div>
-                </td>
             </tr>
-        `;
-    }).join("");
-}
-
-async function verifyUser(id){
-    if(!confirm("Verify this user manually?")) return;
-
-    const data = await InventoryAPI.request(`/admin/users/${id}/verify`, {
-        method:"POST"
-    });
-
-    if(!data.success){
-        alert(data.error || "Could not verify user");
-        return;
+        `).join("");
     }
 
-    await refreshAdmin();
-}
+    let searchTimer = null;
 
-async function setAdmin(id, isAdmin){
-    const message = isAdmin ? "Make this user an admin?" : "Remove admin access from this user?";
-    if(!confirm(message)) return;
-
-    const data = await InventoryAPI.request(`/admin/users/${id}/admin`, {
-        method:"POST",
-        body:JSON.stringify({ is_admin:isAdmin })
-    });
-
-    if(!data.success){
-        alert(data.error || "Could not update admin status");
-        return;
+    function searchUsers(){
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(loadUsers, 300);
     }
 
-    await refreshAdmin();
-}
+    async function loadUsers(){
+        const search = els.search.value.trim();
 
-async function deleteUser(id){
-    if(!confirm("Delete this account? This cannot be undone.")) return;
+        const data = await InventoryAPI.request("/admin/users?search=" + encodeURIComponent(search));
 
-    const data = await InventoryAPI.request(`/admin/users/${id}`, {
-        method:"DELETE"
-    });
-
-    if(!data.success){
-        alert(data.error || "Could not delete user");
-        return;
-    }
-
-    await refreshAdmin();
-}
-
-async function refreshAdmin(){
-    await loadOverview();
-    await loadUsers();
-}
-
-async function checkApiHealth(){
-    document.getElementById("apiBase").textContent = API_BASE;
-
-    try{
-        const res = await fetch(API_BASE + "/api-health");
-        const data = await res.json();
-
-        if(data.database === "Connected"){
-            document.getElementById("apiHealth").textContent = "Online";
-        }else{
-            document.getElementById("apiHealth").textContent = "Warning";
+        if(!data.success){
+            setStatus(data.error || "Could not load users.");
+            return;
         }
 
-    }catch(error){
-        document.getElementById("apiHealth").textContent = "Offline";
+        renderUsers(data.users || []);
     }
-}
 
-function escapeHtml(value){
-    return String(value)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-}
+    function renderUsers(users){
+        if(!users.length){
+            els.usersTable.innerHTML = `<tr><td colspan="6">No users found.</td></tr>`;
+            return;
+        }
 
-window.verifyUser = verifyUser;
-window.setAdmin = setAdmin;
-window.deleteUser = deleteUser;
-window.showTab = showTab;
-window.logout = logout;
-window.searchUsers = searchUsers;
-window.checkApiHealth = checkApiHealth;
+        els.usersTable.innerHTML = "";
 
-loadOverview();
+        users.forEach(user => {
+            const tr = document.createElement("tr");
+
+            tr.innerHTML = `
+                <td>${escapeHtml(user.name || "-")}</td>
+                <td>${escapeHtml(user.email || "-")}</td>
+                <td>${verifiedBadge(user.email_verified)}</td>
+                <td>${adminBadge(user.is_admin)}</td>
+                <td>${fmtDate(user.created_at)}</td>
+                <td><div class="actions"></div></td>
+            `;
+
+            const actions = tr.querySelector(".actions");
+
+            if(!user.email_verified){
+                const verifyBtn = document.createElement("button");
+                verifyBtn.className = "small";
+                verifyBtn.textContent = "Verify";
+                verifyBtn.addEventListener("click", () => verifyUser(user.id));
+                actions.appendChild(verifyBtn);
+            }
+
+            const adminBtn = document.createElement("button");
+            adminBtn.className = user.is_admin ? "small dark" : "small";
+            adminBtn.textContent = user.is_admin ? "Remove Admin" : "Make Admin";
+            adminBtn.addEventListener("click", () => setAdmin(user.id, !user.is_admin));
+            actions.appendChild(adminBtn);
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "small danger";
+            deleteBtn.textContent = "Delete";
+            deleteBtn.addEventListener("click", () => deleteUser(user.id, user.email));
+            actions.appendChild(deleteBtn);
+
+            els.usersTable.appendChild(tr);
+        });
+    }
+
+    async function verifyUser(id){
+        if(!confirm("Verify this user manually?")) return;
+
+        const data = await InventoryAPI.request("/admin/users/" + id + "/verify", {
+            method: "POST"
+        });
+
+        if(!data.success){
+            alert(data.error || "Could not verify user");
+            return;
+        }
+
+        await refreshAdmin();
+    }
+
+    async function setAdmin(id, makeAdmin){
+        if(!confirm(makeAdmin ? "Make this user an admin?" : "Remove admin access from this user?")) return;
+
+        const data = await InventoryAPI.request("/admin/users/" + id + "/admin", {
+            method: "POST",
+            body: JSON.stringify({ is_admin: makeAdmin })
+        });
+
+        if(!data.success){
+            alert(data.error || "Could not update admin status");
+            return;
+        }
+
+        await refreshAdmin();
+    }
+
+    async function deleteUser(id, email){
+        if(!confirm("Delete account " + email + "? This cannot be undone.")) return;
+
+        const data = await InventoryAPI.request("/admin/users/" + id, {
+            method: "DELETE"
+        });
+
+        if(!data.success){
+            alert(data.error || "Could not delete user");
+            return;
+        }
+
+        await refreshAdmin();
+    }
+
+    async function refreshAdmin(){
+        await loadOverview();
+        await loadUsers();
+    }
+
+    async function checkApiHealth(){
+        els.apiBase.textContent = API_BASE;
+        els.apiHealth.textContent = "Checking...";
+
+        try{
+            const res = await fetch(API_BASE + "/api-health");
+            const data = await res.json();
+            els.apiHealth.textContent = data.database === "Connected" ? "Online" : "Warning";
+        }catch(error){
+            els.apiHealth.textContent = "Offline";
+        }
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+        InventoryAPI.logout();
+    });
+
+    document.querySelectorAll(".tab").forEach(tab => {
+        tab.addEventListener("click", () => showTab(tab.dataset.tab));
+    });
+
+    document.getElementById("refreshHealthBtn").addEventListener("click", checkApiHealth);
+    els.search.addEventListener("input", searchUsers);
+
+    loadOverview();
+})();
 </script>
 
 </body>
