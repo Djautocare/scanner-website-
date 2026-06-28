@@ -405,7 +405,7 @@ function renderUsers(users){
                             ? `<button class="small dark" onclick="setAdmin(${user.id}, false)">Remove Admin</button>`
                             : `<button class="small" onclick="setAdmin(${user.id}, true)">Make Admin</button>`
                         }
-                        <button class="small danger" onclick="deleteUser(${user.id}, decodeURIComponent('${safeEmail}'))">Delete</button>
+                        <button class="small danger" onclick="deleteUser(${user.id})">Delete</button>
                     </div>
                 </td>
             </tr>
@@ -445,8 +445,8 @@ async function setAdmin(id, isAdmin){
     await refreshAdmin();
 }
 
-async function deleteUser(id, email){
-    if(!confirm(`Delete account ${email}? This cannot be undone.`)) return;
+async function deleteUser(id){
+    if(!confirm("Delete this account? This cannot be undone.")) return;
 
     const data = await InventoryAPI.request(`/admin/users/${id}`, {
         method:"DELETE"
