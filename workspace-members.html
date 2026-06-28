@@ -482,6 +482,51 @@ async function changeRole(userId, role){
 
     await loadMembers();
 }
+    function extractInviteCode(value){
+    value = String(value || "").trim();
+
+    if(!value) return "";
+
+    try{
+        if(value.includes("http")){
+            const url = new URL(value);
+            return String(url.searchParams.get("code") || "").trim().toUpperCase();
+        }
+    }catch(error){}
+
+    return value.trim().toUpperCase();
+}
+
+async function joinWorkspaceFromMembersPage(){
+    const raw = document.getElementById("joinCodeInput").value;
+    const code = extractInviteCode(raw);
+    const status = document.getElementById("joinStatus");
+
+    if(!code){
+        status.textContent = "Paste an invite code or link.";
+        return;
+    }
+
+    status.textContent = "Joining workspace...";
+
+    const data = await InventoryAPI.request("/workspaces/join", {
+        method:"POST",
+        body:JSON.stringify({ code })
+    });
+
+    if(!data.success){
+        status.textContent = data.error || "Could not join workspace.";
+        return;
+    }
+
+    localStorage.removeItem("inventoryos_workspace");
+
+    status.textContent = "Joined " + data.workspace.name + ". Reloading...";
+
+    setTimeout(function(){
+        window.location.reload();
+    }, 800);
+}
 
 async function removeMember(userId, email){
     if(!confirm("Remove " + email + " from this workspace?")) return;
