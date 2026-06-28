@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Workspace Members - InventoryOS</title>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left,rgba(142,68,255,.22),transparent 34%),
+        radial-gradient(circle at bottom right,rgba(32,201,151,.11),transparent 36%),
+        linear-gradient(135deg,#050505,#121212,#24103a);
+    color:white;
+    padding:18px;
+    min-height:100vh;
+}
+
+.page{max-width:1050px;margin:0 auto;}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:18px;
+}
+
+.logo{font-size:30px;font-weight:900;}
+.logo span{color:#8e44ff;}
+
+.back{
+    width:auto;
+    padding:11px 14px;
+    border-radius:13px;
+    background:#2b2b36;
+    color:white;
+    border:1px solid rgba(255,255,255,.08);
+    font-weight:bold;
+    text-decoration:none;
+}
+
+.panel{
+    background:rgba(23,23,31,.96);
+    border:1px solid rgba(142,68,255,.35);
+    border-radius:24px;
+    padding:22px;
+    box-shadow:0 24px 70px rgba(0,0,0,.45);
+    margin-bottom:16px;
+}
+
+h1{margin:0 0 8px;font-size:31px;}
+.subtitle{color:#aaa;margin:0 0 18px;line-height:1.4;}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px;
+}
+
+.card{
+    background:#20202a;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    padding:16px;
+}
+
+.card-title{color:#aaa;font-size:13px;margin-bottom:7px;}
+.card-value{font-size:24px;font-weight:bold;}
+
+input,select,button{
+    width:100%;
+    padding:13px;
+    border:0;
+    border-radius:13px;
+    font-size:15px;
+    margin:6px 0 11px;
+}
+
+input,select{
+    background:#282832;
+    color:white;
+    border:1px solid rgba(255,255,255,.08);
+    outline:none;
+}
+
+button{
+    background:#8e44ff;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button.secondary{background:#2b2b36;}
+button.danger{background:#d64545;}
+button.small{padding:8px 10px;font-size:12px;width:auto;margin:0;}
+
+.table-wrap{overflow-x:auto;}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:760px;
+}
+
+th,td{
+    padding:12px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    text-align:left;
+    font-size:14px;
+}
+
+th{color:#bbb;background:#20202a;}
+tr{background:#17171f;}
+
+.badge{
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:12px;
+}
+
+.owner{background:rgba(255,193,7,.16);color:#ffc107;}
+.admin{background:rgba(142,68,255,.18);color:#c9a4ff;}
+.member{background:rgba(32,201,151,.16);color:#20c997;}
+.viewer{background:rgba(77,163,255,.16);color:#4da3ff;}
+.bad{background:rgba(255,107,107,.16);color:#ff6b6b;}
+.good{background:rgba(99,212,113,.16);color:#63d471;}
+
+.actions{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+}
+
+.status{
+    color:#aaa;
+    margin-top:12px;
+    min-height:20px;
+}
+
+.copy-box{
+    background:#101016;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:13px;
+    color:#ddd;
+    word-break:break-all;
+    margin-top:10px;
+}
+
+@media(max-width:650px){
+    .header{flex-direction:column;align-items:flex-start;}
+    .logo{font-size:27px;}
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+<div class="header">
+    <div class="logo">Inventory<span>OS</span></div>
+    <a class="back" href="settings.html">← Back to Settings</a>
+</div>
+
+<div class="panel">
+    <h1>Workspace Members</h1>
+    <p class="subtitle">
+        Invite people into this workspace so they can share the same inventory.
+    </p>
+
+    <div class="grid">
+        <div class="card">
+            <div class="card-title">Workspace</div>
+            <div class="card-value" id="workspaceName">Loading...</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Your Role</div>
+            <div class="card-value" id="workspaceRole">-</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Members</div>
+            <div class="card-value" id="memberCount">-</div>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <h2 style="margin-top:0;">Create Invite</h2>
+
+    <label>Role for invited user</label>
+    <select id="inviteRole">
+        <option value="member">Member - can use inventory</option>
+        <option value="viewer">Viewer - read only</option>
+        <option value="admin">Admin - manage members and settings</option>
+    </select>
+
+    <button onclick="createInvite()">Create Invite Link</button>
+
+    <div id="inviteOutput" class="copy-box" style="display:none;"></div>
+    <button id="copyInviteBtn" class="secondary" style="display:none;" onclick="copyInvite()">Copy Invite Link</button>
+</div>
+
+<div class="panel">
+    <h2 style="margin-top:0;">Members</h2>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last Seen</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="membersTable"></tbody>
+        </table>
+    </div>
+
+    <div class="status" id="status"></div>
+</div>
+
+<div class="panel">
+    <h2 style="margin-top:0;">Invite Codes</h2>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="invitesTable"></tbody>
+        </table>
+    </div>
+</div>
+
+</div>
+
+<script src="js/theme.js"></script>
+<script src="js/api.js"></script>
+<script src="js/workspace.js"></script>
+<script>
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
+let lastInviteUrl = "";
+
+function setStatus(message){
+    document.getElementById("status").textContent = message || "";
+}
+
+function escapeHtml(value){
+    return String(value || "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+}
+
+function fmtDate(value){
+    if(!value) return "-";
+    return new Date(value).toLocaleString("en-GB");
+}
+
+function roleBadge(role){
+    role = String(role || "member").toLowerCase();
+    return `<span class="badge ${role}">${role}</span>`;
+}
+
+function statusBadge(active){
+    return active
+        ? `<span class="badge good">Active</span>`
+        : `<span class="badge bad">Inactive</span>`;
+}
+
+async function loadPage(){
+    await InventoryWorkspace.load();
+
+    const workspace = InventoryWorkspace.getCached();
+
+    if(workspace){
+        document.getElementById("workspaceName").textContent = workspace.name || "Workspace";
+        document.getElementById("workspaceRole").textContent = workspace.role || "-";
+    }
+
+    await loadMembers();
+    await loadInvites();
+}
+
+async function loadMembers(){
+    const data = await InventoryAPI.request("/workspaces/members");
+
+    if(!data.success){
+        setStatus(data.error || "Could not load members");
+        return;
+    }
+
+    const members = data.members || [];
+
+    document.getElementById("memberCount").textContent = members.length;
+
+    const tbody = document.getElementById("membersTable");
+
+    if(!members.length){
+        tbody.innerHTML = `<tr><td colspan="6">No members found.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    members.forEach(member => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${escapeHtml(member.name || "-")}</td>
+            <td>${escapeHtml(member.email || "-")}</td>
+            <td>${roleBadge(member.role)}</td>
+            <td>${escapeHtml(member.status || "-")}</td>
+            <td>${fmtDate(member.last_seen)}</td>
+            <td><div class="actions"></div></td>
+        `;
+
+        const actions = tr.querySelector(".actions");
+
+        if(member.role !== "owner"){
+            const select = document.createElement("select");
+            select.style.width = "130px";
+            select.style.margin = "0";
+            select.innerHTML = `
+                <option value="admin">Admin</option>
+                <option value="member">Member</option>
+                <option value="viewer">Viewer</option>
+            `;
+            select.value = member.role;
+            select.addEventListener("change", () => changeRole(member.user_id, select.value));
+            actions.appendChild(select);
+
+            const removeBtn = document.createElement("button");
+            removeBtn.className = "small danger";
+            removeBtn.textContent = "Remove";
+            removeBtn.addEventListener("click", () => removeMember(member.user_id, member.email));
+            actions.appendChild(removeBtn);
+        }else{
+            actions.innerHTML = `<span style="color:#aaa;">Owner</span>`;
+        }
+
+        tbody.appendChild(tr);
+    });
+}
+
+async function loadInvites(){
+    const data = await InventoryAPI.request("/workspaces/invites");
+
+    const tbody = document.getElementById("invitesTable");
+
+    if(!data.success){
+        tbody.innerHTML = `<tr><td colspan="5">${escapeHtml(data.error || "Could not load invites")}</td></tr>`;
+        return;
+    }
+
+    const invites = data.invites || [];
+
+    if(!invites.length){
+        tbody.innerHTML = `<tr><td colspan="5">No invites created yet.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    invites.forEach(invite => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${escapeHtml(invite.code)}</td>
+            <td>${roleBadge(invite.role)}</td>
+            <td>${statusBadge(invite.is_active)}</td>
+            <td>${fmtDate(invite.created_at)}</td>
+            <td><div class="actions"></div></td>
+        `;
+
+        const actions = tr.querySelector(".actions");
+
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "small";
+        copyBtn.textContent = "Copy";
+        copyBtn.addEventListener("click", () => {
+            const url = window.location.origin + "/join.html?code=" + invite.code;
+            navigator.clipboard.writeText(url);
+            alert("Invite link copied");
+        });
+        actions.appendChild(copyBtn);
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.className = invite.is_active ? "small danger" : "small";
+        toggleBtn.textContent = invite.is_active ? "Disable" : "Enable";
+        toggleBtn.addEventListener("click", () => toggleInvite(invite.id));
+        actions.appendChild(toggleBtn);
+
+        tbody.appendChild(tr);
+    });
+}
+
+async function createInvite(){
+    const role = document.getElementById("inviteRole").value;
+
+    const data = await InventoryAPI.request("/workspaces/invites", {
+        method:"POST",
+        body:JSON.stringify({ role })
+    });
+
+    if(!data.success){
+        alert(data.error || "Could not create invite");
+        return;
+    }
+
+    lastInviteUrl = data.join_url || (window.location.origin + "/join.html?code=" + data.invite.code);
+
+    const output = document.getElementById("inviteOutput");
+    output.style.display = "block";
+    output.textContent = lastInviteUrl;
+
+    document.getElementById("copyInviteBtn").style.display = "block";
+
+    await loadInvites();
+}
+
+async function copyInvite(){
+    if(!lastInviteUrl) return;
+    await navigator.clipboard.writeText(lastInviteUrl);
+    alert("Invite link copied");
+}
+
+async function changeRole(userId, role){
+    if(!confirm("Change this member's role?")) {
+        await loadMembers();
+        return;
+    }
+
+    const data = await InventoryAPI.request("/workspaces/members/" + userId + "/role", {
+        method:"POST",
+        body:JSON.stringify({ role })
+    });
+
+    if(!data.success){
+        alert(data.error || "Could not change role");
+    }
+
+    await loadMembers();
+}
+
+async function removeMember(userId, email){
+    if(!confirm("Remove " + email + " from this workspace?")) return;
+
+    const data = await InventoryAPI.request("/workspaces/members/" + userId, {
+        method:"DELETE"
+    });
+
+    if(!data.success){
+        alert(data.error || "Could not remove member");
+        return;
+    }
+
+    await loadMembers();
+}
+
+async function toggleInvite(inviteId){
+    const data = await InventoryAPI.request("/workspaces/invites/" + inviteId + "/toggle", {
+        method:"POST"
+    });
+
+    if(!data.success){
+        alert(data.error || "Could not update invite");
+        return;
+    }
+
+    await loadInvites();
+}
+
+loadPage();
+</script>
+
+</body>
+</html>
