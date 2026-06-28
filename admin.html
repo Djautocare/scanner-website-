@@ -11,12 +11,15 @@
 body{
     margin:0;
     font-family:Arial,sans-serif;
-    background:linear-gradient(135deg,#050505,#151515,#24103a);
+    background:
+        radial-gradient(circle at top left,rgba(142,68,255,.22),transparent 34%),
+        radial-gradient(circle at bottom right,rgba(181,108,255,.12),transparent 34%),
+        linear-gradient(135deg,#050505,#111,#24103a);
     color:white;
     padding:18px;
 }
 
-.page{max-width:1200px;margin:0 auto;}
+.page{max-width:1280px;margin:0 auto;}
 
 .header{
     display:flex;
@@ -39,8 +42,10 @@ button{
     cursor:pointer;
 }
 
+button:hover{opacity:.9;}
 button.danger{background:#d64545;}
 button.dark{background:#2b2b36;}
+button.good-btn{background:#2fa84f;}
 button.small{padding:8px 10px;font-size:12px;}
 
 .tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
@@ -85,7 +90,7 @@ input{
 table{
     width:100%;
     border-collapse:collapse;
-    min-width:760px;
+    min-width:880px;
 }
 
 th,td{
@@ -108,9 +113,87 @@ tr{background:#17171f;}
 .good{background:rgba(99,212,113,.16);color:#63d471;}
 .bad{background:rgba(255,107,107,.16);color:#ff6b6b;}
 .admin{background:rgba(142,68,255,.18);color:#c9a4ff;}
+.warn{background:rgba(255,184,77,.16);color:#ffb84d;}
 
 .actions{display:flex;gap:6px;flex-wrap:wrap;}
 .status{color:#bbb;margin-top:12px;}
+
+.drawer{
+    position:fixed;
+    top:0;
+    right:-440px;
+    width:420px;
+    max-width:92vw;
+    height:100vh;
+    background:#12121a;
+    border-left:1px solid rgba(142,68,255,.35);
+    box-shadow:-20px 0 60px rgba(0,0,0,.45);
+    padding:20px;
+    transition:.25s;
+    z-index:50;
+    overflow:auto;
+}
+
+.drawer.open{right:0;}
+
+.overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    z-index:40;
+}
+
+.overlay.open{display:block;}
+
+.detail-row{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 0;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    color:#ddd;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:70;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(0,0,0,.65);
+}
+
+.modal.open{display:flex;}
+
+.modal-card{
+    width:100%;
+    max-width:480px;
+    background:#17171f;
+    border:1px solid rgba(142,68,255,.35);
+    border-radius:20px;
+    padding:22px;
+}
+
+.check-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:10px 0;
+    color:#ddd;
+}
+
+.check-row input{
+    width:auto;
+    margin:0;
+}
+
+@media(max-width:700px){
+    .header{align-items:flex-start;flex-direction:column;}
+    .logo{font-size:28px;}
+}
 </style>
 </head>
 
@@ -134,8 +217,17 @@ tr{background:#17171f;}
         <div class="card"><div class="card-title">Total Users</div><div class="card-value" id="totalUsers">-</div></div>
         <div class="card"><div class="card-title">Verified Users</div><div class="card-value" id="verifiedUsers">-</div></div>
         <div class="card"><div class="card-title">Unverified Users</div><div class="card-value" id="unverifiedUsers">-</div></div>
+        <div class="card"><div class="card-title">Suspended Users</div><div class="card-value" id="suspendedUsers">-</div></div>
         <div class="card"><div class="card-title">Products</div><div class="card-value" id="totalProducts">-</div></div>
         <div class="card"><div class="card-title">Boxes</div><div class="card-value" id="totalBoxes">-</div></div>
+    </div>
+
+    <h2>Analytics</h2>
+    <div class="grid">
+        <div class="card"><div class="card-title">Users Online</div><div class="card-value" id="usersOnline">-</div></div>
+        <div class="card"><div class="card-title">Accounts Created Today</div><div class="card-value" id="accountsToday">-</div></div>
+        <div class="card"><div class="card-title">Storage Used</div><div class="card-value" id="storageUsed">-</div></div>
+        <div class="card"><div class="card-title">API Uptime</div><div class="card-value" id="apiUptime">-</div></div>
     </div>
 
     <h2>Latest Users</h2>
@@ -144,7 +236,7 @@ tr{background:#17171f;}
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Created</th>
+                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Status</th><th>Created</th>
                     </tr>
                 </thead>
                 <tbody id="latestUsersTable"></tbody>
@@ -162,7 +254,7 @@ tr{background:#17171f;}
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Created</th><th>Actions</th>
+                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Status</th><th>Last Seen</th><th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="usersTable"></tbody>
@@ -189,6 +281,36 @@ tr{background:#17171f;}
 
 </div>
 
+<div class="overlay" id="overlay"></div>
+
+<div class="drawer" id="drawer">
+    <button class="dark" id="closeDrawerBtn">Close</button>
+    <h2>User Details</h2>
+    <div id="drawerContent">Select a user.</div>
+</div>
+
+<div class="modal" id="deleteModal">
+    <div class="modal-card">
+        <h2>Safe Delete</h2>
+        <p style="color:#bbb;">Choose exactly what to delete. This runs inside a database transaction.</p>
+
+        <div id="deleteUserEmail" style="margin:12px 0;color:#ffb84d;"></div>
+
+        <label class="check-row"><input type="checkbox" id="delExpenses" checked> Expenses</label>
+        <label class="check-row"><input type="checkbox" id="delSales" checked> Sales</label>
+        <label class="check-row"><input type="checkbox" id="delInventory" checked> Inventory</label>
+        <label class="check-row"><input type="checkbox" id="delMovements" checked> Movements</label>
+        <label class="check-row"><input type="checkbox" id="delProducts" checked> Products</label>
+        <label class="check-row"><input type="checkbox" id="delBoxes" checked> Boxes</label>
+        <label class="check-row"><input type="checkbox" id="delMysteryBoxes" checked> Mystery Boxes</label>
+        <label class="check-row"><input type="checkbox" id="delPrintJobs" checked> Print Jobs</label>
+        <label class="check-row"><input type="checkbox" id="delUserAccount" checked> Delete User Account</label>
+
+        <button class="danger" id="confirmDeleteBtn">Run Safe Delete</button>
+        <button class="dark" id="cancelDeleteBtn">Cancel</button>
+    </div>
+</div>
+
 <script src="js/api.js"></script>
 <script>
 (function(){
@@ -198,11 +320,13 @@ tr{background:#17171f;}
     }
 
     const API_BASE = InventoryAPI.API_BASE || "https://api.inventoryos.co.uk";
+    let selectedDeleteUser = null;
 
     const els = {
         totalUsers: document.getElementById("totalUsers"),
         verifiedUsers: document.getElementById("verifiedUsers"),
         unverifiedUsers: document.getElementById("unverifiedUsers"),
+        suspendedUsers: document.getElementById("suspendedUsers"),
         totalProducts: document.getElementById("totalProducts"),
         totalBoxes: document.getElementById("totalBoxes"),
         latestUsersTable: document.getElementById("latestUsersTable"),
@@ -210,7 +334,16 @@ tr{background:#17171f;}
         status: document.getElementById("status"),
         search: document.getElementById("search"),
         apiHealth: document.getElementById("apiHealth"),
-        apiBase: document.getElementById("apiBase")
+        apiBase: document.getElementById("apiBase"),
+        usersOnline: document.getElementById("usersOnline"),
+        accountsToday: document.getElementById("accountsToday"),
+        storageUsed: document.getElementById("storageUsed"),
+        apiUptime: document.getElementById("apiUptime"),
+        drawer: document.getElementById("drawer"),
+        overlay: document.getElementById("overlay"),
+        drawerContent: document.getElementById("drawerContent"),
+        deleteModal: document.getElementById("deleteModal"),
+        deleteUserEmail: document.getElementById("deleteUserEmail")
     };
 
     function escapeHtml(value){
@@ -224,19 +357,28 @@ tr{background:#17171f;}
 
     function fmtDate(value){
         if(!value) return "-";
-        return new Date(value).toLocaleDateString("en-GB");
+        return new Date(value).toLocaleString("en-GB");
+    }
+
+    function fmtUptime(seconds){
+        seconds = Number(seconds || 0);
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return `${h}h ${m}m`;
     }
 
     function verifiedBadge(value){
-        return value
-            ? `<span class="badge good">Verified</span>`
-            : `<span class="badge bad">Not verified</span>`;
+        return value ? `<span class="badge good">Verified</span>` : `<span class="badge bad">Not verified</span>`;
     }
 
     function adminBadge(value){
-        return value
-            ? `<span class="badge admin">Admin</span>`
-            : "-";
+        return value ? `<span class="badge admin">Admin</span>` : "-";
+    }
+
+    function statusBadge(user){
+        return user.is_suspended
+            ? `<span class="badge bad">Suspended</span>`
+            : `<span class="badge good">Active</span>`;
     }
 
     function setStatus(message){
@@ -267,15 +409,28 @@ tr{background:#17171f;}
         els.totalUsers.textContent = overview.users.total_users;
         els.verifiedUsers.textContent = overview.users.verified_users;
         els.unverifiedUsers.textContent = overview.users.unverified_users;
+        els.suspendedUsers.textContent = overview.users.suspended_users || 0;
         els.totalProducts.textContent = overview.products.total_products;
         els.totalBoxes.textContent = overview.boxes.total_boxes;
 
         renderLatestUsers(overview.latestUsers || []);
+        loadAnalytics();
+    }
+
+    async function loadAnalytics(){
+        const data = await InventoryAPI.request("/admin/analytics");
+
+        if(!data.success) return;
+
+        els.usersOnline.textContent = data.analytics.users_online;
+        els.accountsToday.textContent = data.analytics.accounts_created_today;
+        els.storageUsed.textContent = data.analytics.storage_used;
+        els.apiUptime.textContent = fmtUptime(data.analytics.api_uptime_seconds);
     }
 
     function renderLatestUsers(users){
         if(!users.length){
-            els.latestUsersTable.innerHTML = `<tr><td colspan="5">No users found.</td></tr>`;
+            els.latestUsersTable.innerHTML = `<tr><td colspan="6">No users found.</td></tr>`;
             return;
         }
 
@@ -285,6 +440,7 @@ tr{background:#17171f;}
                 <td>${escapeHtml(user.email || "-")}</td>
                 <td>${verifiedBadge(user.email_verified)}</td>
                 <td>${adminBadge(user.is_admin)}</td>
+                <td>${statusBadge(user)}</td>
                 <td>${fmtDate(user.created_at)}</td>
             </tr>
         `).join("");
@@ -299,7 +455,6 @@ tr{background:#17171f;}
 
     async function loadUsers(){
         const search = els.search.value.trim();
-
         const data = await InventoryAPI.request("/admin/users?search=" + encodeURIComponent(search));
 
         if(!data.success){
@@ -312,7 +467,7 @@ tr{background:#17171f;}
 
     function renderUsers(users){
         if(!users.length){
-            els.usersTable.innerHTML = `<tr><td colspan="6">No users found.</td></tr>`;
+            els.usersTable.innerHTML = `<tr><td colspan="7">No users found.</td></tr>`;
             return;
         }
 
@@ -326,42 +481,84 @@ tr{background:#17171f;}
                 <td>${escapeHtml(user.email || "-")}</td>
                 <td>${verifiedBadge(user.email_verified)}</td>
                 <td>${adminBadge(user.is_admin)}</td>
-                <td>${fmtDate(user.created_at)}</td>
+                <td>${statusBadge(user)}</td>
+                <td>${fmtDate(user.last_seen)}</td>
                 <td><div class="actions"></div></td>
             `;
 
             const actions = tr.querySelector(".actions");
 
+            const viewBtn = makeButton("View", "small dark", () => viewUser(user.id));
+            actions.appendChild(viewBtn);
+
             if(!user.email_verified){
-                const verifyBtn = document.createElement("button");
-                verifyBtn.className = "small";
-                verifyBtn.textContent = "Verify";
-                verifyBtn.addEventListener("click", () => verifyUser(user.id));
-                actions.appendChild(verifyBtn);
+                actions.appendChild(makeButton("Verify", "small", () => verifyUser(user.id)));
             }
 
-            const adminBtn = document.createElement("button");
-            adminBtn.className = user.is_admin ? "small dark" : "small";
-            adminBtn.textContent = user.is_admin ? "Remove Admin" : "Make Admin";
-            adminBtn.addEventListener("click", () => setAdmin(user.id, !user.is_admin));
-            actions.appendChild(adminBtn);
+            actions.appendChild(makeButton(user.is_admin ? "Remove Admin" : "Make Admin", user.is_admin ? "small dark" : "small", () => setAdmin(user.id, !user.is_admin)));
 
-            const deleteBtn = document.createElement("button");
-            deleteBtn.className = "small danger";
-            deleteBtn.textContent = "Delete";
-            deleteBtn.addEventListener("click", () => deleteUser(user.id, user.email));
-            actions.appendChild(deleteBtn);
+            actions.appendChild(makeButton(user.is_suspended ? "Unsuspend" : "Suspend", user.is_suspended ? "small good-btn" : "small dark", () => suspendUser(user.id, !user.is_suspended)));
+
+            actions.appendChild(makeButton("Reset Password", "small dark", () => sendPasswordReset(user.id)));
+
+            actions.appendChild(makeButton("Safe Delete", "small danger", () => openSafeDelete(user)));
 
             els.usersTable.appendChild(tr);
         });
     }
 
+    function makeButton(text, className, onClick){
+        const btn = document.createElement("button");
+        btn.className = className;
+        btn.textContent = text;
+        btn.addEventListener("click", onClick);
+        return btn;
+    }
+
+    async function viewUser(id){
+        const data = await InventoryAPI.request("/admin/users/" + id + "/details");
+
+        if(!data.success){
+            alert(data.error || "Could not load user details");
+            return;
+        }
+
+        const user = data.user;
+        const c = data.counts;
+
+        els.drawerContent.innerHTML = `
+            <div class="detail-row"><strong>Name</strong><span>${escapeHtml(user.name || "-")}</span></div>
+            <div class="detail-row"><strong>Email</strong><span>${escapeHtml(user.email || "-")}</span></div>
+            <div class="detail-row"><strong>Verified</strong><span>${user.email_verified ? "Yes" : "No"}</span></div>
+            <div class="detail-row"><strong>Admin</strong><span>${user.is_admin ? "Yes" : "No"}</span></div>
+            <div class="detail-row"><strong>Status</strong><span>${user.is_suspended ? "Suspended" : "Active"}</span></div>
+            <div class="detail-row"><strong>Created</strong><span>${fmtDate(user.created_at)}</span></div>
+            <div class="detail-row"><strong>Last Seen</strong><span>${fmtDate(user.last_seen)}</span></div>
+
+            <h3>Data</h3>
+            <div class="detail-row"><strong>Products</strong><span>${c.products}</span></div>
+            <div class="detail-row"><strong>Inventory</strong><span>${c.inventory}</span></div>
+            <div class="detail-row"><strong>Boxes</strong><span>${c.boxes}</span></div>
+            <div class="detail-row"><strong>Sales</strong><span>${c.sales}</span></div>
+            <div class="detail-row"><strong>Expenses</strong><span>${c.expenses}</span></div>
+            <div class="detail-row"><strong>Movements</strong><span>${c.movements}</span></div>
+            <div class="detail-row"><strong>Mystery Boxes</strong><span>${c.mystery_boxes}</span></div>
+            <div class="detail-row"><strong>Print Jobs</strong><span>${c.print_jobs}</span></div>
+        `;
+
+        els.drawer.classList.add("open");
+        els.overlay.classList.add("open");
+    }
+
+    function closeDrawer(){
+        els.drawer.classList.remove("open");
+        els.overlay.classList.remove("open");
+    }
+
     async function verifyUser(id){
         if(!confirm("Verify this user manually?")) return;
 
-        const data = await InventoryAPI.request("/admin/users/" + id + "/verify", {
-            method: "POST"
-        });
+        const data = await InventoryAPI.request("/admin/users/" + id + "/verify", { method:"POST" });
 
         if(!data.success){
             alert(data.error || "Could not verify user");
@@ -375,8 +572,8 @@ tr{background:#17171f;}
         if(!confirm(makeAdmin ? "Make this user an admin?" : "Remove admin access from this user?")) return;
 
         const data = await InventoryAPI.request("/admin/users/" + id + "/admin", {
-            method: "POST",
-            body: JSON.stringify({ is_admin: makeAdmin })
+            method:"POST",
+            body:JSON.stringify({ is_admin:makeAdmin })
         });
 
         if(!data.success){
@@ -387,18 +584,77 @@ tr{background:#17171f;}
         await refreshAdmin();
     }
 
-    async function deleteUser(id, email){
-        if(!confirm("Delete account " + email + "? This cannot be undone.")) return;
+    async function suspendUser(id, suspend){
+        if(!confirm(suspend ? "Suspend this user?" : "Unsuspend this user?")) return;
 
-        const data = await InventoryAPI.request("/admin/users/" + id, {
-            method: "DELETE"
+        const data = await InventoryAPI.request("/admin/users/" + id + "/suspend", {
+            method:"POST",
+            body:JSON.stringify({ is_suspended:suspend })
         });
 
         if(!data.success){
-            alert(data.error || "Could not delete user");
+            alert(data.error || "Could not update suspension status");
             return;
         }
 
+        await refreshAdmin();
+    }
+
+    async function sendPasswordReset(id){
+        if(!confirm("Send this user a password reset email?")) return;
+
+        const data = await InventoryAPI.request("/admin/users/" + id + "/password-reset", {
+            method:"POST"
+        });
+
+        if(!data.success){
+            alert(data.error || "Could not send reset email");
+            return;
+        }
+
+        alert("Password reset email sent.");
+    }
+
+    function openSafeDelete(user){
+        selectedDeleteUser = user;
+        els.deleteUserEmail.textContent = user.email;
+        els.deleteModal.classList.add("open");
+    }
+
+    function closeSafeDelete(){
+        selectedDeleteUser = null;
+        els.deleteModal.classList.remove("open");
+    }
+
+    async function runSafeDelete(){
+        if(!selectedDeleteUser) return;
+
+        const options = {
+            deleteExpenses: document.getElementById("delExpenses").checked,
+            deleteSales: document.getElementById("delSales").checked,
+            deleteInventory: document.getElementById("delInventory").checked,
+            deleteMovements: document.getElementById("delMovements").checked,
+            deleteProducts: document.getElementById("delProducts").checked,
+            deleteBoxes: document.getElementById("delBoxes").checked,
+            deleteMysteryBoxes: document.getElementById("delMysteryBoxes").checked,
+            deletePrintJobs: document.getElementById("delPrintJobs").checked,
+            deleteUserAccount: document.getElementById("delUserAccount").checked
+        };
+
+        if(!confirm("Run safe delete now? This cannot be undone.")) return;
+
+        const data = await InventoryAPI.request("/admin/users/" + selectedDeleteUser.id + "/safe-delete", {
+            method:"POST",
+            body:JSON.stringify(options)
+        });
+
+        if(!data.success){
+            alert(data.error || "Safe delete failed");
+            return;
+        }
+
+        alert("Safe delete completed.");
+        closeSafeDelete();
         await refreshAdmin();
     }
 
@@ -420,15 +676,17 @@ tr{background:#17171f;}
         }
     }
 
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-        InventoryAPI.logout();
-    });
+    document.getElementById("logoutBtn").addEventListener("click", () => InventoryAPI.logout());
+    document.getElementById("closeDrawerBtn").addEventListener("click", closeDrawer);
+    document.getElementById("overlay").addEventListener("click", closeDrawer);
+    document.getElementById("refreshHealthBtn").addEventListener("click", checkApiHealth);
+    document.getElementById("cancelDeleteBtn").addEventListener("click", closeSafeDelete);
+    document.getElementById("confirmDeleteBtn").addEventListener("click", runSafeDelete);
 
     document.querySelectorAll(".tab").forEach(tab => {
         tab.addEventListener("click", () => showTab(tab.dataset.tab));
     });
 
-    document.getElementById("refreshHealthBtn").addEventListener("click", checkApiHealth);
     els.search.addEventListener("input", searchUsers);
 
     loadOverview();
