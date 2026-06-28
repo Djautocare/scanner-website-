@@ -212,6 +212,19 @@ tr{background:#17171f;}
     <div id="inviteOutput" class="copy-box" style="display:none;"></div>
     <button id="copyInviteBtn" class="secondary" style="display:none;" onclick="copyInvite()">Copy Invite Link</button>
 </div>
+    <div class="panel">
+    <h2 style="margin-top:0;">Join Workspace</h2>
+    <p class="subtitle">
+        Paste an invite code or full invite link to join another workspace.
+    </p>
+
+    <label>Invite Code or Link</label>
+    <input id="joinCodeInput" placeholder="Paste invite code or link">
+
+    <button onclick="joinWorkspaceFromMembersPage()">Join Workspace</button>
+
+    <div class="status" id="joinStatus"></div>
+</div>
 
 <div class="panel">
     <h2 style="margin-top:0;">Members</h2>
