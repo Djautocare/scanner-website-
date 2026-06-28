@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Workspace Settings - InventoryOS</title>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+:root{
+    --primary:#8e44ff;
+    --primary-light:#b56cff;
+    --bg:#0d0d0d;
+    --panel:#17171f;
+    --card:#20202a;
+    --input:#262631;
+    --text:#ffffff;
+    --muted:#aaa;
+    --border:rgba(142,68,255,.35);
+    --success:#63d471;
+    --danger:#ff6b6b;
+}
+
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left,rgba(142,68,255,.23),transparent 34%),
+        radial-gradient(circle at bottom right,rgba(181,108,255,.13),transparent 36%),
+        linear-gradient(135deg,#050505,#121212,#24103a);
+    color:var(--text);
+    padding:18px;
+    min-height:100vh;
+}
+
+.page{
+    max-width:920px;
+    margin:0 auto;
+}
+
+.header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:18px;
+}
+
+.logo{
+    font-size:30px;
+    font-weight:900;
+}
+
+.logo span{color:var(--primary);}
+
+.back{
+    width:auto;
+    padding:11px 14px;
+    border-radius:13px;
+    background:#2b2b36;
+    color:white;
+    border:1px solid rgba(255,255,255,.08);
+    font-weight:bold;
+    text-decoration:none;
+}
+
+.panel{
+    background:rgba(23,23,31,.96);
+    border:1px solid var(--border);
+    border-radius:24px;
+    padding:22px;
+    box-shadow:0 24px 70px rgba(0,0,0,.45);
+    margin-bottom:16px;
+}
+
+h1{
+    margin:0 0 8px;
+    font-size:30px;
+}
+
+.subtitle{
+    color:var(--muted);
+    margin:0 0 20px;
+    line-height:1.4;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:14px;
+}
+
+.card{
+    background:var(--card);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    padding:16px;
+}
+
+.card h3{
+    margin:0 0 8px;
+    font-size:18px;
+}
+
+.card p{
+    color:var(--muted);
+    margin:0;
+    font-size:13px;
+    line-height:1.4;
+}
+
+label{
+    display:block;
+    color:#ddd;
+    font-weight:bold;
+    margin:16px 0 7px 2px;
+    font-size:14px;
+}
+
+input,select{
+    width:100%;
+    padding:14px;
+    border-radius:14px;
+    border:1px solid rgba(142,68,255,.28);
+    background:var(--input);
+    color:white;
+    font-size:16px;
+    outline:none;
+}
+
+.toggle-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    padding:14px;
+    background:var(--card);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:16px;
+    margin-top:12px;
+}
+
+.toggle-row div strong{
+    display:block;
+    margin-bottom:4px;
+}
+
+.toggle-row div span{
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.3;
+}
+
+.switch{
+    position:relative;
+    width:56px;
+    height:32px;
+    flex:0 0 auto;
+}
+
+.switch input{
+    opacity:0;
+    width:0;
+    height:0;
+}
+
+.slider{
+    position:absolute;
+    cursor:pointer;
+    inset:0;
+    background:#3a3a45;
+    border-radius:999px;
+    transition:.2s;
+}
+
+.slider:before{
+    position:absolute;
+    content:"";
+    width:24px;
+    height:24px;
+    left:4px;
+    top:4px;
+    background:white;
+    border-radius:50%;
+    transition:.2s;
+}
+
+.switch input:checked + .slider{
+    background:var(--primary);
+}
+
+.switch input:checked + .slider:before{
+    transform:translateX(24px);
+}
+
+.preview{
+    background:linear-gradient(180deg,#1e1e29,#17171f);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:18px;
+    margin-top:16px;
+}
+
+.preview-title{
+    color:#ddd;
+    font-size:13px;
+    margin-bottom:12px;
+}
+
+.preview-box{
+    background:#101016;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:16px;
+    padding:14px;
+    line-height:1.6;
+}
+
+.preview-line{
+    color:#ddd;
+    font-size:14px;
+}
+
+.preview-line strong{
+    color:white;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:18px;
+}
+
+button{
+    border:0;
+    border-radius:14px;
+    padding:14px 16px;
+    background:var(--primary);
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:15px;
+}
+
+button.secondary{
+    background:#2b2b36;
+    border:1px solid rgba(255,255,255,.08);
+}
+
+.status{
+    min-height:22px;
+    margin-top:14px;
+    color:var(--muted);
+    font-size:14px;
+}
+
+.success{color:var(--success);}
+.error{color:var(--danger);}
+
+.small{
+    font-size:12px;
+    color:#777;
+    margin-top:16px;
+    line-height:1.4;
+}
+
+@media(max-width:650px){
+    .header{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .logo{
+        font-size:27px;
+    }
+
+    h1{
+        font-size:26px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+<div class="header">
+    <div class="logo">Inventory<span>OS</span></div>
+    <a class="back" href="add.html">← Back to app</a>
+</div>
+
+<div class="panel">
+    <h1>Workspace Settings</h1>
+    <p class="subtitle">
+        Choose how this workspace talks about storage. InventoryOS can call them boxes, shelves,
+        racks, rooms, or any custom name you want.
+    </p>
+
+    <div class="grid">
+        <div class="card">
+            <h3 id="workspaceName">Loading workspace...</h3>
+            <p id="workspaceRole">Checking access...</p>
+        </div>
+
+        <div class="card">
+            <h3 id="currentLabel">Storage Type</h3>
+            <p id="currentLabelHint">Loading current settings...</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <h2 style="margin-top:0;">Location Wording</h2>
+
+    <label for="locationPreset">Preset</label>
+    <select id="locationPreset" onchange="applyPreset()">
+        <option value="box">Boxes 📦</option>
+        <option value="shelf">Shelves 🗄️</option>
+        <option value="rack">Racks 🏗️</option>
+        <option value="pallet">Pallets 🪵</option>
+        <option value="room">Rooms 🚪</option>
+        <option value="store">Stores 🏬</option>
+        <option value="custom">Custom 📍</option>
+    </select>
+
+    <label for="singularLabel">Singular label</label>
+    <input id="singularLabel" placeholder="Box">
+
+    <label for="pluralLabel">Plural label</label>
+    <input id="pluralLabel" placeholder="Boxes">
+
+    <label for="locationIcon">Icon</label>
+    <input id="locationIcon" placeholder="📦" maxlength="4">
+
+    <div class="toggle-row">
+        <div>
+            <strong>Auto-create locations</strong>
+            <span>When enabled, adding/moving stock can create new locations automatically.</span>
+        </div>
+
+        <label class="switch">
+            <input type="checkbox" id="autoCreateLocations">
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="toggle-row">
+        <div>
+            <strong>Show auto-create option</strong>
+            <span>Show the auto-create toggle/option across InventoryOS pages.</span>
+        </div>
+
+        <label class="switch">
+            <input type="checkbox" id="showAutoCreateOption">
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="preview">
+        <div class="preview-title">Preview</div>
+        <div class="preview-box">
+            <div class="preview-line"><strong id="previewCreate">Create Box</strong></div>
+            <div class="preview-line">Move stock to <strong id="previewMove">Box</strong></div>
+            <div class="preview-line">View all <strong id="previewPlural">Boxes</strong></div>
+            <div class="preview-line"><span id="previewIcon">📦</span> <strong id="previewExample">Box 12</strong></div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button type="button" onclick="saveSettings()">Save Settings</button>
+        <button type="button" class="secondary" onclick="loadSettings()">Reset</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="small">
+        This only changes wording and location behaviour for this workspace. It does not delete or rename your existing stock.
+    </div>
+</div>
+
+</div>
+
+<script src="js/api.js"></script>
+<script>
+if(!InventoryAPI.isLoggedIn()){
+    window.location.href = "login.html";
+}
+
+const presets = {
+    box:{
+        type:"box",
+        singular:"Box",
+        plural:"Boxes",
+        icon:"📦"
+    },
+    shelf:{
+        type:"shelf",
+        singular:"Shelf",
+        plural:"Shelves",
+        icon:"🗄️"
+    },
+    rack:{
+        type:"rack",
+        singular:"Rack",
+        plural:"Racks",
+        icon:"🏗️"
+    },
+    pallet:{
+        type:"pallet",
+        singular:"Pallet",
+        plural:"Pallets",
+        icon:"🪵"
+    },
+    room:{
+        type:"room",
+        singular:"Room",
+        plural:"Rooms",
+        icon:"🚪"
+    },
+    store:{
+        type:"store",
+        singular:"Store",
+        plural:"Stores",
+        icon:"🏬"
+    },
+    custom:{
+        type:"custom",
+        singular:"Location",
+        plural:"Locations",
+        icon:"📍"
+    }
+};
+
+function setStatus(message, type){
+    const el = document.getElementById("status");
+    el.className = "status " + (type || "");
+    el.textContent = message || "";
+}
+
+function getValue(id){
+    return document.getElementById(id).value.trim();
+}
+
+function setValue(id, value){
+    document.getElementById(id).value = value || "";
+}
+
+function setChecked(id, value){
+    document.getElementById(id).checked = !!value;
+}
+
+function getChecked(id){
+    return document.getElementById(id).checked;
+}
+
+function applyPreset(){
+    const presetKey = document.getElementById("locationPreset").value;
+    const preset = presets[presetKey] || presets.box;
+
+    if(presetKey !== "custom"){
+        setValue("singularLabel", preset.singular);
+        setValue("pluralLabel", preset.plural);
+        setValue("locationIcon", preset.icon);
+    }
+
+    updatePreview();
+}
+
+function updatePreview(){
+    const singular = getValue("singularLabel") || "Location";
+    const plural = getValue("pluralLabel") || singular + "s";
+    const icon = getValue("locationIcon") || "📍";
+
+    document.getElementById("previewCreate").textContent = "Create " + singular;
+    document.getElementById("previewMove").textContent = singular;
+    document.getElementById("previewPlural").textContent = plural;
+    document.getElementById("previewIcon").textContent = icon;
+    document.getElementById("previewExample").textContent = singular + " 12";
+
+    document.getElementById("currentLabel").textContent = icon + " " + plural;
+    document.getElementById("currentLabelHint").textContent = "InventoryOS will use “" + singular + "” and “" + plural + "” across this workspace.";
+}
+
+function matchPreset(settings){
+    const type = String(settings.location_type || "").toLowerCase();
+
+    if(presets[type]){
+        return type;
+    }
+
+    return "custom";
+}
+
+async function loadWorkspace(){
+    try{
+        const data = await InventoryAPI.request("/workspaces/current");
+
+        if(!data.success){
+            setStatus(data.error || "Could not load workspace", "error");
+            return;
+        }
+
+        document.getElementById("workspaceName").textContent = data.workspace.name || "Workspace";
+        document.getElementById("workspaceRole").textContent = "Your role: " + (data.workspace.role || "-");
+
+    }catch(error){
+        console.error(error);
+        setStatus("Could not connect to workspace API", "error");
+    }
+}
+
+async function loadSettings(){
+    try{
+        setStatus("Loading settings...");
+
+        const data = await InventoryAPI.request("/workspaces/settings");
+
+        if(!data.success){
+            setStatus(data.error || "Could not load settings", "error");
+            return;
+        }
+
+        const s = data.settings || {};
+
+        document.getElementById("locationPreset").value = matchPreset(s);
+        setValue("singularLabel", s.location_label_singular || "Box");
+        setValue("pluralLabel", s.location_label_plural || "Boxes");
+        setValue("locationIcon", s.location_icon || "📦");
+        setChecked("autoCreateLocations", s.auto_create_locations !== false);
+        setChecked("showAutoCreateOption", s.show_auto_create_location_option !== false);
+
+        updatePreview();
+        setStatus("Settings loaded.", "success");
+
+        setTimeout(function(){
+            setStatus("");
+        }, 1200);
+
+    }catch(error){
+        console.error(error);
+        setStatus("Could not connect to server", "error");
+    }
+}
+
+async function saveSettings(){
+    try{
+        const singular = getValue("singularLabel");
+        const plural = getValue("pluralLabel");
+        const icon = getValue("locationIcon") || "📍";
+
+        if(!singular || !plural){
+            setStatus("Singular and plural labels are required.", "error");
+            return;
+        }
+
+        setStatus("Saving settings...");
+
+        const preset = document.getElementById("locationPreset").value;
+
+        const data = await InventoryAPI.request("/workspaces/settings", {
+            method:"POST",
+            body:JSON.stringify({
+                location_type:preset,
+                location_label_singular:singular,
+                location_label_plural:plural,
+                location_icon:icon,
+                auto_create_locations:getChecked("autoCreateLocations"),
+                show_auto_create_location_option:getChecked("showAutoCreateOption")
+            })
+        });
+
+        if(!data.success){
+            setStatus(data.error || "Could not save settings", "error");
+            return;
+        }
+
+        updatePreview();
+        setStatus("Settings saved successfully.", "success");
+
+    }catch(error){
+        console.error(error);
+        setStatus("Could not connect to server", "error");
+    }
+}
+
+["singularLabel","pluralLabel","locationIcon"].forEach(function(id){
+    document.getElementById(id).addEventListener("input", function(){
+        document.getElementById("locationPreset").value = "custom";
+        updatePreview();
+    });
+});
+
+document.getElementById("autoCreateLocations").addEventListener("change", updatePreview);
+document.getElementById("showAutoCreateOption").addEventListener("change", updatePreview);
+
+loadWorkspace();
+loadSettings();
+</script>
+
+</body>
+</html>
