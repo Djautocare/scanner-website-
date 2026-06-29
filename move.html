@@ -190,11 +190,14 @@ button{color:white;font-weight:bold;cursor:pointer;}
 }
 </style>
 <link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
 
 <body>
 <div class="page">
 <div class="panel">
+
+<div id="inventory-topbar"></div>
 
 <h1>Move Stock</h1>
 <p class="subtitle">Move single items, scanned bundles, or the full remaining contents of one box into another box</p>
@@ -318,7 +321,9 @@ button{color:white;font-weight:bold;cursor:pointer;}
 </div>
 
 <script src="js/theme.js"></script>
-<script src="js/api.js"></script> <script src="js/workspace.js"></script>
+<script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=3"></script>
+<script src="js/workspace.js"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -385,7 +390,7 @@ function copyOptions(sourceSelect, targetSelect){
 function loadBoxes(){
     showLoading();
 
-    InventoryAPI.request("/boxes")
+    InventoryAPI.request("/boxes?_t=" + Date.now())
     .then(data=>{
         hideLoading();
         if(!data.success){setResult(data.error || "Could not load boxes");return;}
@@ -699,7 +704,7 @@ async function moveBundleStock(){
 }
 
 function getBoxContents(box){
-    return InventoryAPI.request("/boxes/" + encodeURIComponent(box) + "/contents");
+    return InventoryAPI.request("/boxes/" + encodeURIComponent(box) + "/contents?_t=" + Date.now());
 }
 
 async function moveWholeBox(){
@@ -790,6 +795,16 @@ document.getElementById("bundleBarcodeInput").addEventListener("keydown",functio
         e.preventDefault();
         addBundleBarcodeFromInput();
     }
+});
+
+window.addEventListener("inventory-selection-changed", function(){
+    bundleBarcodes = [];
+    renderBundleList();
+    document.getElementById("barcode").value = "";
+    document.getElementById("bundleBarcodeInput").value = "";
+    clearProgress();
+    setResult("Inventory changed. Ready to move stock.");
+    loadBoxes();
 });
 
 loadBoxes();
