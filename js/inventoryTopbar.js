@@ -2,6 +2,10 @@ const InventoryTopbar = (function(){
     const STORAGE_KEY = "inventoryos_selected_inventory_ids";
     let apiPatched = false;
 
+    function hasInventoryAPI(){
+        return typeof InventoryAPI !== "undefined" && InventoryAPI;
+    }
+
     function getSelectedIds(){
         try{
             const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
@@ -22,7 +26,7 @@ const InventoryTopbar = (function(){
     }
 
     function patchApiRequests(){
-        if(!window.InventoryAPI || apiPatched || InventoryAPI.__inventoryTopbarPatched) return;
+        if(!hasInventoryAPI() || apiPatched || InventoryAPI.__inventoryTopbarPatched) return;
 
         const originalRequest = InventoryAPI.request;
 
@@ -123,7 +127,7 @@ const InventoryTopbar = (function(){
 
         const container = document.getElementById(containerId);
 
-        if(!container || !window.InventoryAPI || !InventoryAPI.isLoggedIn()){
+        if(!container || !hasInventoryAPI() || !InventoryAPI.isLoggedIn()){
             return false;
         }
 
