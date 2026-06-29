@@ -1,5 +1,6 @@
 const InventoryTopbar = (function(){
     const STORAGE_KEY = "inventoryos_selected_inventory_ids";
+    const WORKSPACE_KEY = "inventoryos_selected_workspace_id";
     let apiPatched = false;
 
     function hasInventoryAPI(){
@@ -19,6 +20,17 @@ const InventoryTopbar = (function(){
         const clean = [...new Set((ids || []).filter(Boolean).map(String))];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
         return clean;
+    }
+
+    function getSelectedWorkspaceId(){
+        return String(localStorage.getItem(WORKSPACE_KEY) || "").trim();
+    }
+
+    function saveSelectedWorkspaceId(id){
+        if(id){
+            localStorage.setItem(WORKSPACE_KEY, String(id));
+        }
+        return getSelectedWorkspaceId();
     }
 
     function getHeaderValue(){
@@ -63,29 +75,54 @@ const InventoryTopbar = (function(){
         return data.inventories || [];
     }
 
-    function ensureSelection(inventories){
-        let selected = getSelectedIds();
-        const validIds = inventories.map(inv => String(inv.id));
+    function groupByWorkspace(inventories){
+        const map = new Map();
 
-        selected = selected.filter(id => validIds.includes(id));
+        inventories.forEach(inv=>{
+            const workspaceId = String(inv.workspace_id || "");
+            if(!map.has(workspaceId)){
+                map.set(workspaceId, {
+                    id: workspaceId,
+                    name: inv.workspace_name || "Workspace",
+                    role: inv.workspace_role || "user",
+                    owner_user_id: inv.owner_user_id || "",
+                    inventories: []
+                });
+            }
 
-        if(selected.length === 0 && inventories.length){
-            const defaultInv = inventories.find(inv => inv.is_default) || inventories[0];
-            selected = [String(defaultInv.id)];
-        }
+            map.get(workspaceId).inventories.push(inv);
+        });
 
-        return saveSelectedIds(selected);
+        return Array.from(map.values());
     }
 
-    function selectedText(inventories, selectedIds){
-        if(!inventories.length) return "No inventories";
+    function ensureWorkspaceAndSelection(inventories, currentWorkspace){
+        const groups = groupByWorkspace(inventories);
 
-        if(selectedIds.length === 1){
-            const inv = inventories.find(i => String(i.id) === String(selectedIds[0]));
-            return inv ? inv.name : "Inventory";
+        let selectedWorkspaceId = getSelectedWorkspaceId();
+
+        if(!selectedWorkspaceId || !groups.some(group => String(group.id) === String(selectedWorkspaceId))){
+            const personalGroup = groups.find(group => String(group.owner_user_id || "") === String(currentWorkspace?.owner_user_id || ""));
+            selectedWorkspaceId = String((personalGroup || groups[0] || {}).id || "");
+            saveSelectedWorkspaceId(selectedWorkspaceId);
         }
 
-        return selectedIds.length + " inventories selected";
+        const workspaceInventories = inventories.filter(inv => String(inv.workspace_id) === String(selectedWorkspaceId));
+        let selectedIds = getSelectedIds().filter(id => workspaceInventories.some(inv => String(inv.id) === String(id)));
+
+        if(selectedIds.length === 0 && workspaceInventories.length){
+            const defaultInv = workspaceInventories.find(inv => inv.is_default) || workspaceInventories[0];
+            selectedIds = [String(defaultInv.id)];
+        }
+
+        selectedIds = saveSelectedIds(selectedIds);
+
+        return {
+            groups,
+            selectedWorkspaceId,
+            workspaceInventories,
+            selectedIds
+        };
     }
 
     function escapeHtml(value){
@@ -97,14 +134,56 @@ const InventoryTopbar = (function(){
             .replaceAll("'","&#039;");
     }
 
-    async function createInventory(){
-        const name = prompt("New inventory name, e.g. Warehouse, Van 1, Van 2, Returns");
+    function selectedInventoryText(inventories, selectedIds){
+        if(!inventories.length) return "No inventories";
+
+        if(selectedIds.length === inventories.length && inventories.length > 1){
+            return "All Inventories";
+        }
+
+        if(selectedIds.length === 1){
+            const inv = inventories.find(i => String(i.id) === String(selectedIds[0]));
+            return inv ? inv.name : "Inventory";
+        }
+
+        return selectedIds.length + " selected";
+    }
+
+    async function createWorkspace(){
+        const name = prompt("New workspace name, e.g. My Warehouse, Family Stock, Trade Outlet");
+
+        if(!name || !name.trim()) return;
+
+        const data = await InventoryAPI.request("/workspaces", {
+            method:"POST",
+            body:JSON.stringify({ name:name.trim() })
+        });
+
+        if(!data.success){
+            alert(data.error || "Could not create workspace");
+            return;
+        }
+
+        saveSelectedWorkspaceId(data.workspace.id);
+        saveSelectedIds([String(data.inventory.id)]);
+
+        await init();
+        window.dispatchEvent(new CustomEvent("inventory-selection-changed", {
+            detail:{ selectedIds:getSelectedIds(), workspaceId:getSelectedWorkspaceId() }
+        }));
+    }
+
+    async function createInventory(workspaceId){
+        const name = prompt("New inventory name, e.g. Main, Van, Returns, Clothing");
 
         if(!name || !name.trim()) return;
 
         const data = await InventoryAPI.request("/workspaces/inventories", {
             method:"POST",
-            body:JSON.stringify({ name:name.trim() })
+            body:JSON.stringify({
+                name:name.trim(),
+                workspace_id: workspaceId || getSelectedWorkspaceId()
+            })
         });
 
         if(!data.success){
@@ -112,13 +191,12 @@ const InventoryTopbar = (function(){
             return;
         }
 
-        const selected = getSelectedIds();
-        selected.push(String(data.inventory.id));
-        saveSelectedIds(selected);
+        saveSelectedWorkspaceId(data.inventory.workspace_id);
+        saveSelectedIds([String(data.inventory.id)]);
 
         await init();
         window.dispatchEvent(new CustomEvent("inventory-selection-changed", {
-            detail:{ selectedIds:getSelectedIds() }
+            detail:{ selectedIds:getSelectedIds(), workspaceId:getSelectedWorkspaceId() }
         }));
     }
 
@@ -152,29 +230,44 @@ const InventoryTopbar = (function(){
             return false;
         }
 
-        let selectedIds = ensureSelection(inventories);
+        let state = ensureWorkspaceAndSelection(inventories, workspace);
+        const selectedWorkspace = state.groups.find(group => String(group.id) === String(state.selectedWorkspaceId)) || state.groups[0] || null;
 
         container.innerHTML = `
             <div class="inventory-topbar">
                 <div class="inventory-topbar-left">
                     <div class="inventory-topbar-brand">Inventory<span>OS</span></div>
                     <div class="inventory-topbar-sub">
-                        <span>${escapeHtml(workspace?.name || "Workspace")}</span>
+                        <span>${escapeHtml(selectedWorkspace?.name || workspace?.name || "Workspace")}</span>
                         <span class="dot">•</span>
-                        <span>${escapeHtml(workspace?.role || "user")}</span>
+                        <span>${escapeHtml(selectedWorkspace?.role || workspace?.role || "user")}</span>
                     </div>
                 </div>
 
                 <div class="inventory-topbar-right">
+                    <div class="inventory-switcher" id="workspaceSwitcher">
+                        <button class="inventory-switcher-btn" type="button" id="workspaceSwitcherBtn">
+                            <span class="box">🏢</span>
+                            <span id="workspaceSwitcherLabel">${escapeHtml(selectedWorkspace?.name || "Workspace")}</span>
+                            <span class="chev">▾</span>
+                        </button>
+
+                        <div class="inventory-switcher-menu" id="workspaceSwitcherMenu">
+                            <div class="menu-title">Workspace</div>
+                            <div class="menu-list" id="workspaceSwitcherList"></div>
+                            <button class="menu-create" type="button" id="workspaceCreateBtn">＋ Create Workspace</button>
+                        </div>
+                    </div>
+
                     <div class="inventory-switcher" id="inventorySwitcher">
                         <button class="inventory-switcher-btn" type="button" id="inventorySwitcherBtn">
                             <span class="box">📦</span>
-                            <span id="inventorySwitcherLabel">${escapeHtml(selectedText(inventories, selectedIds))}</span>
+                            <span id="inventorySwitcherLabel">${escapeHtml(selectedInventoryText(state.workspaceInventories, state.selectedIds))}</span>
                             <span class="chev">▾</span>
                         </button>
 
                         <div class="inventory-switcher-menu" id="inventorySwitcherMenu">
-                            <div class="menu-title">Viewing Inventories</div>
+                            <div class="menu-title">Inventory</div>
                             <div class="menu-list" id="inventorySwitcherList"></div>
                             <button class="menu-create" type="button" id="inventoryCreateBtn">＋ Create Inventory</button>
                         </div>
@@ -185,20 +278,104 @@ const InventoryTopbar = (function(){
             </div>
         `;
 
-        const switcher = document.getElementById("inventorySwitcher");
-        const btn = document.getElementById("inventorySwitcherBtn");
-        const list = document.getElementById("inventorySwitcherList");
-        const label = document.getElementById("inventorySwitcherLabel");
-        const createBtn = document.getElementById("inventoryCreateBtn");
+        const workspaceSwitcher = document.getElementById("workspaceSwitcher");
+        const workspaceBtn = document.getElementById("workspaceSwitcherBtn");
+        const workspaceList = document.getElementById("workspaceSwitcherList");
+        const workspaceCreateBtn = document.getElementById("workspaceCreateBtn");
 
-        function updateLabel(){
-            label.textContent = selectedText(inventories, selectedIds);
+        const inventorySwitcher = document.getElementById("inventorySwitcher");
+        const inventoryBtn = document.getElementById("inventorySwitcherBtn");
+        const inventoryList = document.getElementById("inventorySwitcherList");
+        const inventoryLabel = document.getElementById("inventorySwitcherLabel");
+        const inventoryCreateBtn = document.getElementById("inventoryCreateBtn");
+
+        function closeMenus(except){
+            if(except !== "workspace") workspaceSwitcher.classList.remove("open");
+            if(except !== "inventory") inventorySwitcher.classList.remove("open");
         }
 
-        function renderList(){
-            list.innerHTML = "";
+        function updateInventoryLabel(){
+            inventoryLabel.textContent = selectedInventoryText(state.workspaceInventories, state.selectedIds);
+        }
 
-            inventories.forEach(inv => {
+        function dispatchSelection(){
+            window.dispatchEvent(new CustomEvent("inventory-selection-changed", {
+                detail:{
+                    selectedIds:state.selectedIds,
+                    workspaceId:state.selectedWorkspaceId
+                }
+            }));
+        }
+
+        function renderWorkspaceList(){
+            workspaceList.innerHTML = "";
+
+            state.groups.forEach(group=>{
+                const row = document.createElement("button");
+                row.type = "button";
+                row.className = "inventory-menu-row";
+                row.innerHTML = `
+                    <div>
+                        <div class="inv-name">${escapeHtml(group.name)}</div>
+                        <div class="inv-meta">${escapeHtml(group.role)} • ${group.inventories.length} inventor${group.inventories.length === 1 ? "y" : "ies"}</div>
+                    </div>
+                `;
+
+                if(String(group.id) === String(state.selectedWorkspaceId)){
+                    row.classList.add("active");
+                }
+
+                row.addEventListener("click", function(){
+                    saveSelectedWorkspaceId(group.id);
+
+                    const invs = inventories.filter(inv => String(inv.workspace_id) === String(group.id));
+                    const defaultInv = invs.find(inv => inv.is_default) || invs[0];
+
+                    saveSelectedIds(defaultInv ? [String(defaultInv.id)] : []);
+
+                    closeMenus();
+                    init().then(dispatchSelection);
+                });
+
+                workspaceList.appendChild(row);
+            });
+        }
+
+        function renderInventoryList(){
+            inventoryList.innerHTML = "";
+
+            if(state.workspaceInventories.length > 1){
+                const allRow = document.createElement("label");
+                allRow.className = "inventory-menu-row";
+
+                const allChecked = state.selectedIds.length === state.workspaceInventories.length;
+
+                allRow.innerHTML = `
+                    <input type="checkbox" ${allChecked ? "checked" : ""}>
+                    <div>
+                        <div class="inv-name">All Inventories</div>
+                        <div class="inv-meta">View combined data only</div>
+                    </div>
+                `;
+
+                const allCheckbox = allRow.querySelector("input");
+                allCheckbox.addEventListener("change", function(){
+                    if(allCheckbox.checked){
+                        state.selectedIds = saveSelectedIds(state.workspaceInventories.map(inv => String(inv.id)));
+                    }else{
+                        const defaultInv = state.workspaceInventories.find(inv => inv.is_default) || state.workspaceInventories[0];
+                        state.selectedIds = saveSelectedIds(defaultInv ? [String(defaultInv.id)] : []);
+                    }
+
+                    renderInventoryList();
+                    updateInventoryLabel();
+                    dispatchSelection();
+                });
+
+                inventoryList.appendChild(allRow);
+            }
+
+            state.workspaceInventories.forEach(inv=>{
                 const id = String(inv.id);
 
                 const row = document.createElement("label");
@@ -216,47 +393,62 @@ const InventoryTopbar = (function(){
                 `;
 
                 const checkbox = row.querySelector("input");
-                checkbox.checked = selectedIds.includes(id);
+                checkbox.checked = state.selectedIds.includes(id);
 
                 checkbox.addEventListener("change", function(){
                     if(checkbox.checked){
-                        selectedIds.push(id);
+                        state.selectedIds.push(id);
                     }else{
-                        selectedIds = selectedIds.filter(x => x !== id);
+                        state.selectedIds = state.selectedIds.filter(x => x !== id);
                     }
 
-                    if(selectedIds.length === 0){
+                    if(state.selectedIds.length === 0){
                         checkbox.checked = true;
-                        selectedIds = [id];
+                        state.selectedIds = [id];
                     }
 
-                    selectedIds = saveSelectedIds(selectedIds);
-                    updateLabel();
-
-                    window.dispatchEvent(new CustomEvent("inventory-selection-changed", {
-                        detail:{ selectedIds }
-                    }));
+                    state.selectedIds = saveSelectedIds(state.selectedIds);
+                    renderInventoryList();
+                    updateInventoryLabel();
+                    dispatchSelection();
                 });
 
-                list.appendChild(row);
+                inventoryList.appendChild(row);
             });
         }
 
-        btn.addEventListener("click", function(e){
+        workspaceBtn.addEventListener("click", function(e){
             e.stopPropagation();
-            switcher.classList.toggle("open");
+            const open = workspaceSwitcher.classList.contains("open");
+            closeMenus();
+            if(!open) workspaceSwitcher.classList.add("open");
         });
 
-        createBtn.addEventListener("click", createInventory);
+        inventoryBtn.addEventListener("click", function(e){
+            e.stopPropagation();
+            const open = inventorySwitcher.classList.contains("open");
+            closeMenus();
+            if(!open) inventorySwitcher.classList.add("open");
+        });
+
+        workspaceCreateBtn.addEventListener("click", createWorkspace);
+
+        inventoryCreateBtn.addEventListener("click", function(){
+            createInventory(state.selectedWorkspaceId);
+        });
 
         document.addEventListener("click", function(e){
-            if(!switcher.contains(e.target)){
-                switcher.classList.remove("open");
+            if(
+                !workspaceSwitcher.contains(e.target) &&
+                !inventorySwitcher.contains(e.target)
+            ){
+                closeMenus();
             }
         });
 
-        renderList();
-        updateLabel();
+        renderWorkspaceList();
+        renderInventoryList();
+        updateInventoryLabel();
 
         return true;
     }
@@ -278,6 +470,8 @@ const InventoryTopbar = (function(){
         start,
         getSelectedIds,
         saveSelectedIds,
+        getSelectedWorkspaceId,
+        saveSelectedWorkspaceId,
         getHeaderValue,
         patchApiRequests
     };
