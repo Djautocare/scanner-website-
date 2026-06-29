@@ -228,7 +228,7 @@ const InventorySelector = (function(){
     };
 })();
 
-document.addEventListener("DOMContentLoaded", function(){
+function startInventorySelector(){
     if(window.InventoryAPI && InventoryAPI.isLoggedIn()){
         InventorySelector.patchApiRequests();
 
@@ -236,4 +236,10 @@ document.addEventListener("DOMContentLoaded", function(){
             InventorySelector.init();
         }
     }
-});
+}
+
+if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", startInventorySelector);
+}else{
+    startInventorySelector();
+}
