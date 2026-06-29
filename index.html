@@ -344,6 +344,19 @@ button{
     }
 }
 
+.top-header #inventory-selector{
+    display:block;
+    width:260px;
+    max-width:100%;
+    margin-top:8px;
+}
+
+@media(max-width:760px){
+    .top-header #inventory-selector{
+        width:100%;
+    }
+}
+
 /* InventoryOS modern dashboard tweaks */
 .panel{max-width:1180px;margin:0 auto;}
 .app-logo{display:none;}
@@ -355,15 +368,6 @@ button{
 .accordion-section{box-shadow:0 14px 40px rgba(0,0,0,0.22);}
 .quick-card{min-height:118px;}
 .logout-card{background:linear-gradient(135deg,rgba(255,92,108,0.22),rgba(255,255,255,0.02));border-color:rgba(255,92,108,0.35);color:#ff7777;}
-
-    #inventory-selector{
-    display:block !important;
-    position:fixed !important;
-    top:155px !important;
-    right:285px !important;
-    z-index:99999 !important;
-    width:260px !important;
-}
 </style>
 </head>
 
@@ -571,7 +575,7 @@ button{
 
 <script src="js/api.js"></script>
 <script src="js/workspace.js"></script>
-<script src="js/inventorySelector.js?v=5"></script>
+<script src="js/inventorySelector.js?v=7"></script>
 <script>
 
 
@@ -602,6 +606,11 @@ function showApp(){
     document.getElementById("app").style.display = "block";
 
     restoreSectionStates();
+
+    if(window.InventorySelector && document.getElementById("inventory-selector")){
+        InventorySelector.init("inventory-selector");
+    }
+
     loadStats();
 }
 
@@ -709,12 +718,6 @@ if(InventoryAPI.isLoggedIn()){
 }else{
     window.location.href = "login.html";
 }
-
-    setTimeout(function(){
-    if(window.InventorySelector && document.getElementById("inventory-selector")){
-        InventorySelector.init("inventory-selector");
-    }
-}, 300);
 </script>
 
 </body>
