@@ -284,12 +284,15 @@ button{
     .expense-row{grid-template-columns:1fr;}
 }
 </style>
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
 
 <body>
 
 <div class="page">
 <div class="panel">
+
+<div id="inventory-topbar"></div>
 
 <h1>Expenses</h1>
 <p class="subtitle">Track stock costs, postage, packaging, equipment and attach receipt photos or PDFs.</p>
@@ -392,7 +395,9 @@ button{
     </div>
 </div>
 
-<script src="js/api.js"></script> <script src="js/workspace.js"></script>
+<script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=3"></script>
+<script src="js/workspace.js"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -468,7 +473,8 @@ async function addExpense(){
         const response = await fetch(InventoryAPI.API_BASE + "/expenses", {
             method:"POST",
             headers:{
-                "Authorization":"Bearer " + InventoryAPI.getToken()
+                "Authorization":"Bearer " + InventoryAPI.getToken(),
+                "X-Inventory-Ids": (window.InventoryTopbar ? InventoryTopbar.getHeaderValue() : "")
             },
             body:formData
         });
@@ -641,6 +647,10 @@ function renderExpenses(expenses){
 
     document.getElementById("expensesList").innerHTML = html;
 }
+
+window.addEventListener("inventory-selection-changed", function(){
+    loadExpenses();
+});
 
 loadExpenses();
 </script>
