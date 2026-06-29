@@ -479,6 +479,7 @@ button{
 }
 </style>
 <link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
 
 <body>
@@ -486,6 +487,8 @@ button{
 <div class="page">
 
 <div class="panel">
+
+<div id="inventory-topbar"></div>
 
 <h1>Scanner Search</h1>
 <p class="subtitle">Search stock, check locations, and jump straight into a quick sale</p>
@@ -545,7 +548,9 @@ button{
 </div>
 
 <script src="js/theme.js"></script>
-<script src="js/api.js"></script> <script src="js/workspace.js"></script>
+<script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=3"></script>
+<script src="js/workspace.js"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -936,7 +941,7 @@ function runSearch(query, options = {}){
         showLoading();
     }
 
-    return InventoryAPI.request("/search?query=" + encodeURIComponent(query))
+    return InventoryAPI.request("/search?query=" + encodeURIComponent(query) + "&_t=" + Date.now())
     .finally(() => {
         if(showLoader){
             hideLoading();
@@ -1325,6 +1330,18 @@ function showSelectedItem(index){
 
     document.getElementById("results").innerHTML = html;
 }
+
+window.addEventListener("inventory-selection-changed", function(){
+    selectedBundleItems = [];
+    searchResultsCache = [];
+    document.getElementById("liveResults").innerHTML = "";
+    document.getElementById("results").innerHTML = "";
+    renderSelectedBundleItems();
+    const query = document.getElementById("query").value.trim();
+    if(query){
+        liveSearch(normaliseBarcodeShortcut(query));
+    }
+});
 
 setupAutoSearch();
 </script>
