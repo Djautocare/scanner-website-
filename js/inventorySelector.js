@@ -1,5 +1,6 @@
 const InventorySelector = (function(){
     const STORAGE_KEY = "inventoryos_selected_inventory_ids";
+    let hasPatchedApi = false;
 
     function getSelectedIds(){
         try{
@@ -21,7 +22,7 @@ const InventorySelector = (function(){
     }
 
     function patchApiRequests(){
-        if(!window.InventoryAPI || InventoryAPI.__inventorySelectorPatched) return;
+        if(!window.InventoryAPI || hasPatchedApi) return;
 
         const originalRequest = InventoryAPI.request;
 
@@ -39,6 +40,7 @@ const InventorySelector = (function(){
             return originalRequest(path, options);
         };
 
+        hasPatchedApi = true;
         InventoryAPI.__inventorySelectorPatched = true;
     }
 
@@ -79,6 +81,15 @@ const InventorySelector = (function(){
         return selectedIds.length + " inventories";
     }
 
+    function escapeHtml(value){
+        return String(value || "")
+            .replaceAll("&","&amp;")
+            .replaceAll("<","&lt;")
+            .replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;")
+            .replaceAll("'","&#039;");
+    }
+
     async function createInventory(){
         const name = prompt("New inventory name, e.g. Warehouse, Van 1, Van 2, Returns");
 
@@ -101,7 +112,7 @@ const InventorySelector = (function(){
         patchApiRequests();
 
         const container = document.getElementById(containerId);
-        if(!container) return;
+        if(!container) return false;
 
         let inventories = [];
 
@@ -110,7 +121,7 @@ const InventorySelector = (function(){
         }catch(error){
             console.error(error);
             container.innerHTML = `<div class="inventory-selector-error">Inventory selector unavailable</div>`;
-            return;
+            return false;
         }
 
         let selectedIds = ensureDefaultSelection(inventories);
@@ -136,15 +147,6 @@ const InventorySelector = (function(){
         const label = wrapper.querySelector(".inventory-selector-label");
         const list = wrapper.querySelector(".inventory-selector-list");
         const createBtn = wrapper.querySelector(".inventory-selector-create");
-
-        function escapeHtml(value){
-            return String(value || "")
-                .replaceAll("&","&amp;")
-                .replaceAll("<","&lt;")
-                .replaceAll(">","&gt;")
-                .replaceAll('"',"&quot;")
-                .replaceAll("'","&#039;");
-        }
 
         function refreshLabel(){
             label.textContent = selectedLabel(inventories, selectedIds);
@@ -211,11 +213,13 @@ const InventorySelector = (function(){
 
         refreshLabel();
         refreshList();
+
+        return true;
     }
 
     async function init(containerId = "inventory-selector"){
         patchApiRequests();
-        await render(containerId);
+        return await render(containerId);
     }
 
     return {
@@ -229,13 +233,31 @@ const InventorySelector = (function(){
 })();
 
 function startInventorySelector(){
-    if(window.InventoryAPI && InventoryAPI.isLoggedIn()){
-        InventorySelector.patchApiRequests();
-
-        if(document.getElementById("inventory-selector")){
-            InventorySelector.init();
-        }
+    if(!window.InventoryAPI || !InventoryAPI.isLoggedIn()){
+        return;
     }
+
+    InventorySelector.patchApiRequests();
+
+    let attempts = 0;
+
+    const timer = setInterval(async function(){
+        attempts++;
+
+        const container = document.getElementById("inventory-selector");
+
+        if(container){
+            const rendered = await InventorySelector.init("inventory-selector");
+
+            if(rendered){
+                clearInterval(timer);
+            }
+        }
+
+        if(attempts >= 20){
+            clearInterval(timer);
+        }
+    }, 250);
 }
 
 if(document.readyState === "loading"){
