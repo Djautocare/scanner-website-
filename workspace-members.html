@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0d0d0d">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-<title>Workspace Members - InventoryOS</title>
+<title>Manage Workspace - InventoryOS</title>
 
 <style>
 html{touch-action:manipulation;}
@@ -60,6 +60,7 @@ body{
 }
 
 h1{margin:0 0 8px;font-size:31px;}
+h2{margin:0 0 14px;}
 .subtitle{color:#aaa;margin:0 0 18px;line-height:1.4;}
 
 .grid{
@@ -77,6 +78,13 @@ h1{margin:0 0 8px;font-size:31px;}
 
 .card-title{color:#aaa;font-size:13px;margin-bottom:7px;}
 .card-value{font-size:24px;font-weight:bold;}
+
+label{
+    display:block;
+    color:#ddd;
+    font-weight:bold;
+    margin:8px 0 3px;
+}
 
 input,select,button{
     width:100%;
@@ -103,7 +111,16 @@ button{
 
 button.secondary{background:#2b2b36;}
 button.danger{background:#d64545;}
+button.good{background:#20c997;color:#071312;}
+button.blue{background:#007bff;}
 button.small{padding:8px 10px;font-size:12px;width:auto;margin:0;}
+
+.form-row{
+    display:grid;
+    grid-template-columns:1fr 180px;
+    gap:12px;
+    align-items:end;
+}
 
 .table-wrap{overflow-x:auto;}
 
@@ -128,6 +145,7 @@ tr{background:#17171f;}
     padding:5px 9px;
     border-radius:999px;
     font-size:12px;
+    font-weight:bold;
 }
 
 .owner{background:rgba(255,193,7,.16);color:#ffc107;}
@@ -135,7 +153,8 @@ tr{background:#17171f;}
 .member{background:rgba(32,201,151,.16);color:#20c997;}
 .viewer{background:rgba(77,163,255,.16);color:#4da3ff;}
 .bad{background:rgba(255,107,107,.16);color:#ff6b6b;}
-.good{background:rgba(99,212,113,.16);color:#63d471;}
+.good-badge{background:rgba(99,212,113,.16);color:#63d471;}
+.default{background:rgba(255,193,7,.16);color:#ffc107;}
 
 .actions{
     display:flex;
@@ -147,6 +166,7 @@ tr{background:#17171f;}
     color:#aaa;
     margin-top:12px;
     min-height:20px;
+    white-space:pre-wrap;
 }
 
 .copy-box{
@@ -159,11 +179,27 @@ tr{background:#17171f;}
     margin-top:10px;
 }
 
+.result{
+    background:#101016;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:13px;
+    color:#ddd;
+    white-space:pre-wrap;
+    margin-top:10px;
+}
+
+.success{color:#20c997;}
+.error{color:#ff7777;}
+
 @media(max-width:650px){
     .header{flex-direction:column;align-items:flex-start;}
     .logo{font-size:27px;}
+    .form-row{grid-template-columns:1fr;}
 }
 </style>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
 
 <body>
@@ -176,15 +212,17 @@ tr{background:#17171f;}
 </div>
 
 <div class="panel">
-    <h1>Workspace Members</h1>
+    <div id="inventory-topbar"></div>
+
+    <h1>Manage Workspace</h1>
     <p class="subtitle">
-        Invite people into this workspace so they can share the same inventory.
+        Rename the current workspace, manage inventories, invite people, join another workspace, and control member roles.
     </p>
 
     <div class="grid">
         <div class="card">
             <div class="card-title">Workspace</div>
-            <div class="card-value" id="workspaceName">Loading...</div>
+            <div class="card-value" id="workspaceNameCard">Loading...</div>
         </div>
         <div class="card">
             <div class="card-title">Your Role</div>
@@ -194,11 +232,56 @@ tr{background:#17171f;}
             <div class="card-title">Members</div>
             <div class="card-value" id="memberCount">-</div>
         </div>
+        <div class="card">
+            <div class="card-title">Inventories</div>
+            <div class="card-value" id="inventoryCount">-</div>
+        </div>
     </div>
 </div>
 
 <div class="panel">
-    <h2 style="margin-top:0;">Create Invite</h2>
+    <h2>Workspace Details</h2>
+    <p class="subtitle">Only owners/admins can rename a workspace.</p>
+
+    <label>Workspace Name</label>
+    <div class="form-row">
+        <input id="workspaceNameInput" placeholder="Workspace name">
+        <button onclick="renameWorkspace()">Rename</button>
+    </div>
+
+    <div class="status" id="workspaceStatus"></div>
+</div>
+
+<div class="panel">
+    <h2>Inventories</h2>
+    <p class="subtitle">Create, rename, or delete inventories inside this workspace. Default inventories cannot be deleted.</p>
+
+    <label>New Inventory Name</label>
+    <div class="form-row">
+        <input id="newInventoryName" placeholder="Example: Van, Returns, Clothing">
+        <button class="good" onclick="createInventory()">Create</button>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Inventory</th>
+                    <th>Stock</th>
+                    <th>Products</th>
+                    <th>Locations</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="inventoriesTable"></tbody>
+        </table>
+    </div>
+
+    <div class="status" id="inventoryStatus"></div>
+</div>
+
+<div class="panel">
+    <h2>Create Invite</h2>
 
     <label>Role for invited user</label>
     <select id="inviteRole">
@@ -212,8 +295,9 @@ tr{background:#17171f;}
     <div id="inviteOutput" class="copy-box" style="display:none;"></div>
     <button id="copyInviteBtn" class="secondary" style="display:none;" onclick="copyInvite()">Copy Invite Link</button>
 </div>
-    <div class="panel">
-    <h2 style="margin-top:0;">Join Workspace</h2>
+
+<div class="panel">
+    <h2>Join Workspace</h2>
     <p class="subtitle">
         Paste an invite code or full invite link to join another workspace.
     </p>
@@ -227,7 +311,7 @@ tr{background:#17171f;}
 </div>
 
 <div class="panel">
-    <h2 style="margin-top:0;">Members</h2>
+    <h2>Members</h2>
 
     <div class="table-wrap">
         <table>
@@ -249,7 +333,7 @@ tr{background:#17171f;}
 </div>
 
 <div class="panel">
-    <h2 style="margin-top:0;">Invite Codes</h2>
+    <h2>Invite Codes</h2>
 
     <div class="table-wrap">
         <table>
@@ -271,6 +355,7 @@ tr{background:#17171f;}
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=4"></script>
 <script src="js/workspace.js"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
@@ -278,6 +363,9 @@ if(!InventoryAPI.requireLogin()){
 }
 
 let lastInviteUrl = "";
+let currentWorkspace = null;
+let allInventories = [];
+let currentInventories = [];
 
 function setStatus(message){
     document.getElementById("status").textContent = message || "";
@@ -304,8 +392,12 @@ function roleBadge(role){
 
 function statusBadge(active){
     return active
-        ? `<span class="badge good">Active</span>`
+        ? `<span class="badge good-badge">Active</span>`
         : `<span class="badge bad">Inactive</span>`;
+}
+
+function canManage(){
+    return currentWorkspace && ["owner","admin"].includes(String(currentWorkspace.role || "").toLowerCase());
 }
 
 async function loadPage(){
@@ -313,13 +405,198 @@ async function loadPage(){
 
     const workspace = InventoryWorkspace.getCached();
 
-    if(workspace){
-        document.getElementById("workspaceName").textContent = workspace.name || "Workspace";
-        document.getElementById("workspaceRole").textContent = workspace.role || "-";
+    const invData = await InventoryAPI.request("/workspaces/inventories?_t=" + Date.now());
+    allInventories = invData.inventories || [];
+
+    const selectedWorkspaceId = InventoryTopbar.getSelectedWorkspaceId
+        ? InventoryTopbar.getSelectedWorkspaceId()
+        : (workspace ? workspace.id : "");
+
+    currentInventories = allInventories.filter(inv => String(inv.workspace_id) === String(selectedWorkspaceId));
+
+    if(currentInventories.length > 0){
+        currentWorkspace = {
+            id: selectedWorkspaceId,
+            name: currentInventories[0].workspace_name,
+            role: currentInventories[0].workspace_role
+        };
+    }else{
+        currentWorkspace = workspace;
     }
+
+    if(currentWorkspace){
+        document.getElementById("workspaceNameCard").textContent = currentWorkspace.name || "Workspace";
+        document.getElementById("workspaceNameInput").value = currentWorkspace.name || "";
+        document.getElementById("workspaceRole").textContent = currentWorkspace.role || "-";
+    }
+
+    document.getElementById("inventoryCount").textContent = currentInventories.length;
+
+    renderInventories();
 
     await loadMembers();
     await loadInvites();
+}
+
+function renderInventories(){
+    const tbody = document.getElementById("inventoriesTable");
+
+    if(!currentInventories.length){
+        tbody.innerHTML = `<tr><td colspan="5">No inventories found.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    currentInventories.forEach(inv => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>
+                ${escapeHtml(inv.name || "Inventory")}
+                ${inv.is_default ? `<span class="badge default">Default</span>` : ""}
+            </td>
+            <td>${Number(inv.total_stock || 0)}</td>
+            <td>${Number(inv.total_products || 0)}</td>
+            <td>${Number(inv.total_locations || 0)}</td>
+            <td><div class="actions"></div></td>
+        `;
+
+        const actions = tr.querySelector(".actions");
+
+        const renameBtn = document.createElement("button");
+        renameBtn.className = "small blue";
+        renameBtn.textContent = "Rename";
+        renameBtn.addEventListener("click", () => renameInventory(inv.id, inv.name));
+        actions.appendChild(renameBtn);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "small danger";
+        deleteBtn.textContent = "Delete";
+        deleteBtn.addEventListener("click", () => deleteInventory(inv.id, inv.name, inv.total_stock, inv.is_default));
+        actions.appendChild(deleteBtn);
+
+        tbody.appendChild(tr);
+    });
+}
+
+async function renameWorkspace(){
+    if(!canManage()){
+        document.getElementById("workspaceStatus").textContent = "Only owners/admins can rename this workspace.";
+        return;
+    }
+
+    const name = document.getElementById("workspaceNameInput").value.trim();
+
+    if(!name){
+        document.getElementById("workspaceStatus").textContent = "Enter a workspace name.";
+        return;
+    }
+
+    const data = await InventoryAPI.request("/workspaces/" + encodeURIComponent(currentWorkspace.id), {
+        method:"PUT",
+        body:JSON.stringify({ name })
+    });
+
+    if(!data.success){
+        document.getElementById("workspaceStatus").textContent = data.error || "Could not rename workspace.";
+        return;
+    }
+
+    document.getElementById("workspaceStatus").textContent = "Workspace renamed.";
+    await InventoryTopbar.init();
+    await loadPage();
+}
+
+async function createInventory(){
+    if(!canManage()){
+        document.getElementById("inventoryStatus").textContent = "Only owners/admins can create inventories.";
+        return;
+    }
+
+    const name = document.getElementById("newInventoryName").value.trim();
+
+    if(!name){
+        document.getElementById("inventoryStatus").textContent = "Enter an inventory name.";
+        return;
+    }
+
+    const data = await InventoryAPI.request("/workspaces/inventories", {
+        method:"POST",
+        body:JSON.stringify({
+            name,
+            workspace_id:currentWorkspace.id
+        })
+    });
+
+    if(!data.success){
+        document.getElementById("inventoryStatus").textContent = data.error || "Could not create inventory.";
+        return;
+    }
+
+    document.getElementById("newInventoryName").value = "";
+    document.getElementById("inventoryStatus").textContent = "Inventory created.";
+    InventoryTopbar.saveSelectedWorkspaceId(currentWorkspace.id);
+    InventoryTopbar.saveSelectedIds([String(data.inventory.id)]);
+    await InventoryTopbar.init();
+    await loadPage();
+}
+
+async function renameInventory(id, oldName){
+    if(!canManage()){
+        alert("Only owners/admins can rename inventories.");
+        return;
+    }
+
+    const name = prompt("Rename inventory", oldName || "");
+
+    if(!name || !name.trim()) return;
+
+    const data = await InventoryAPI.request("/workspaces/inventories/" + encodeURIComponent(id), {
+        method:"PUT",
+        body:JSON.stringify({ name:name.trim() })
+    });
+
+    if(!data.success){
+        alert(data.error || "Could not rename inventory");
+        return;
+    }
+
+    await InventoryTopbar.init();
+    await loadPage();
+}
+
+async function deleteInventory(id, name, stock, isDefault){
+    if(!canManage()){
+        alert("Only owners/admins can delete inventories.");
+        return;
+    }
+
+    if(isDefault){
+        alert("Default inventory cannot be deleted.");
+        return;
+    }
+
+    if(Number(stock || 0) > 0){
+        alert("Inventory still contains stock. Move/remove stock first.");
+        return;
+    }
+
+    if(!confirm("Delete inventory '" + name + "'?")){
+        return;
+    }
+
+    const data = await InventoryAPI.request("/workspaces/inventories/" + encodeURIComponent(id), {
+        method:"DELETE"
+    });
+
+    if(!data.success){
+        alert(data.error || "Could not delete inventory");
+        return;
+    }
+
+    await InventoryTopbar.init();
+    await loadPage();
 }
 
 async function loadMembers(){
@@ -327,6 +604,7 @@ async function loadMembers(){
 
     if(!data.success){
         setStatus(data.error || "Could not load members");
+        document.getElementById("membersTable").innerHTML = `<tr><td colspan="6">${escapeHtml(data.error || "Could not load members")}</td></tr>`;
         return;
     }
 
@@ -482,7 +760,8 @@ async function changeRole(userId, role){
 
     await loadMembers();
 }
-    function extractInviteCode(value){
+
+function extractInviteCode(value){
     value = String(value || "").trim();
 
     if(!value) return "";
@@ -555,6 +834,10 @@ async function toggleInvite(inviteId){
 
     await loadInvites();
 }
+
+window.addEventListener("inventory-selection-changed", function(){
+    loadPage();
+});
 
 loadPage();
 </script>
