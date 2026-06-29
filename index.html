@@ -700,6 +700,12 @@ if(InventoryAPI.isLoggedIn()){
 }else{
     window.location.href = "login.html";
 }
+
+    setTimeout(function(){
+    if(window.InventorySelector && document.getElementById("inventory-selector")){
+        InventorySelector.init("inventory-selector");
+    }
+}, 300);
 </script>
 
 </body>
