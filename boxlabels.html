@@ -5,7 +5,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d0d0d">
-
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Print Box Labels</title>
@@ -163,10 +162,14 @@ select{
     }
 }
 </style>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
 
 <body>
 <div class="page"><div class="panel">
+
+<div id="inventory-topbar"></div>
 
 <h1>Print Box Labels</h1>
 <p class="subtitle">Generate barcode labels for storage boxes</p>
@@ -202,7 +205,9 @@ select{
     <p id="barcodeText"></p>
 </div>
 
-<script src="js/api.js"></script> <script src="js/workspace.js"></script>
+<script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=3"></script>
+<script src="js/workspace.js"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -219,7 +224,7 @@ function hideLoading(){
 function loadBoxes(){
     showLoading();
 
-    InventoryAPI.request("/boxes")
+    InventoryAPI.request("/boxes?_t=" + Date.now())
     .then(data=>{
         hideLoading();
 
@@ -228,6 +233,7 @@ function loadBoxes(){
 
         if(!data.success || !data.boxes || data.boxes.length===0){
             select.innerHTML = '<option value="">No boxes found</option>';
+            document.getElementById("previewBox").innerText = "—";
             return;
         }
 
@@ -238,6 +244,8 @@ function loadBoxes(){
             option.textContent = boxName;
             select.appendChild(option);
         });
+
+        updatePreview();
     })
     .catch(error=>{
         hideLoading();
@@ -273,6 +281,10 @@ function printSelectedBox(){
         window.print();
     },200);
 }
+
+window.addEventListener("inventory-selection-changed", function(){
+    loadBoxes();
+});
 
 loadBoxes();
 </script>
