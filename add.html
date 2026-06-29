@@ -700,17 +700,18 @@ function fillBoxDropdown(boxes){
 }
 
 function loadBoxes(){
-    const cached = localStorage.getItem("inventoryBoxes");
-    if(cached){
-        try{fillBoxDropdown(JSON.parse(cached));}catch(e){}
-    }
-
-    apiFetch("/boxes")
+    /*
+        Do not use localStorage here.
+        Boxes/locations are inventory-specific, so cached boxes from another selected inventory
+        can make the Add page show the wrong locations.
+    */
+    apiFetch("/boxes?_t=" + Date.now())
     .then(res=>res.json())
     .then(data=>{
         if(data.success && data.boxes){
-            localStorage.setItem("inventoryBoxes", JSON.stringify(data.boxes));
             fillBoxDropdown(data.boxes);
+        }else{
+            fillBoxDropdown([]);
         }
     })
     .catch(error=>{
@@ -816,7 +817,7 @@ function searchExistingProductsLive(){
     results.innerHTML = "";
 
     liveSearchTimer = setTimeout(function(){
-        apiFetch("/products?search=" + encodeURIComponent(query))
+        apiFetch("/products?search=" + encodeURIComponent(query) + "&_t=" + Date.now())
         .then(res=>res.json())
         .then(data=>{
             const products = data.products || data.results || [];
@@ -933,7 +934,6 @@ function saveProduct(){
             margin:2
         });
 
-        localStorage.removeItem("inventoryBoxes");
         loadBoxes();
         flashSuccess();
         setSaveStatus("Saved: " + data.barcode);
@@ -1006,6 +1006,11 @@ document.getElementById("newPrintJobName").addEventListener("keydown",function(e
 });
 
 InventoryAPI.requireLogin();
+
+window.addEventListener("inventory-selection-changed", function(){
+    clearMatchResults();
+    loadBoxes();
+});
 
 loadBoxes();
 loadPrintJobs();
