@@ -259,6 +259,7 @@ tr:last-child td{
 }
 </style>
 <link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
 
 <body>
@@ -266,6 +267,8 @@ tr:last-child td{
 <div class="page">
 
 <div class="panel">
+
+<div id="inventory-topbar"></div>
 
 <h1>Sales Tracker</h1>
 <p class="subtitle">Track income, expenses, profit, trends and recent sales</p>
@@ -413,6 +416,8 @@ tr:last-child td{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=3"></script>
+<script src="js/workspace.js"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -484,7 +489,7 @@ function loadSalesTracker(){
 
     showLoading();
 
-    InventoryAPI.request("/sales/tracker")
+    InventoryAPI.request("/sales/tracker?_t=" + Date.now())
 
     .then(data => {
 
@@ -582,6 +587,10 @@ function loadSalesTracker(){
     });
 
 }
+
+window.addEventListener("inventory-selection-changed", function(){
+    loadSalesTracker();
+});
 
 loadSalesTracker();
 </script>
