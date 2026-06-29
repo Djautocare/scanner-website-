@@ -4,7 +4,7 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport" 
+<meta name="viewport"
 content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,7 +14,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 
 <title>InventoryOS Dashboard</title>
 
-<link rel="stylesheet" href="css/inventorySelector.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 
 <style>
 html{touch-action:manipulation;}
@@ -328,33 +328,9 @@ button{
 }
 
 
-.top-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:20px;
-    margin-bottom:24px;
-    flex-wrap:wrap;
-}
-
-@media(max-width:760px){
-    .top-header{
-        flex-direction:column;
-        align-items:stretch;
-    }
-}
-
-.top-header #inventory-selector{
-    display:block;
-    width:260px;
-    max-width:100%;
-    margin-top:8px;
-}
-
-@media(max-width:760px){
-    .top-header #inventory-selector{
-        width:100%;
-    }
+.dashboard-title{
+    text-align:center;
+    margin:10px 0 20px;
 }
 
 /* InventoryOS modern dashboard tweaks */
@@ -368,15 +344,6 @@ button{
 .accordion-section{box-shadow:0 14px 40px rgba(0,0,0,0.22);}
 .quick-card{min-height:118px;}
 .logout-card{background:linear-gradient(135deg,rgba(255,92,108,0.22),rgba(255,255,255,0.02));border-color:rgba(255,92,108,0.35);color:#ff7777;}
-
-    #inventory-selector{
-    position:fixed !important;
-    top:20px !important;
-    right:20px !important;
-    width:300px !important;
-    z-index:999999 !important;
-    display:block !important;
-} 
 </style>
 </head>
 
@@ -403,9 +370,6 @@ button{
         <p class="subtitle">Inventory Management System</p>
 
     </div>
-
-    <div id="inventory-selector"></div>
-
 </div>
 
 <div class="stats-grid">
@@ -584,7 +548,7 @@ button{
 
 <script src="js/api.js"></script>
 <script src="js/workspace.js"></script>
-<script src="js/inventorySelector.js?v=7"></script>
+<script src="js/inventoryTopbar.js?v=1"></script>
 <script>
 
 
@@ -616,9 +580,10 @@ function showApp(){
 
     restoreSectionStates();
 
-if(window.InventorySelector && document.getElementById("inventory-selector")){
-    InventorySelector.init("inventory-selector");
-}
+    if(window.InventoryTopbar){
+        InventoryTopbar.init("inventory-topbar");
+    }
+
     loadStats();
 }
 
