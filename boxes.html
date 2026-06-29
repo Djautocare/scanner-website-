@@ -88,10 +88,13 @@ summary{cursor:pointer;font-weight:bold;font-size:18px;}
 @media(max-width:700px){h1{font-size:30px;}.panel{padding:18px;}.box-grid,.stats-grid,.top-actions,.highlight-grid{grid-template-columns:1fr;}}
 </style>
 <link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
 
 <body>
 <div class="page"><div class="panel">
+
+<div id="inventory-topbar"></div>
 
 <h1>Box Locations</h1>
 <p class="subtitle">Active boxes, empty boxes, contents, sorting and combine suggestions</p>
@@ -143,7 +146,9 @@ summary{cursor:pointer;font-weight:bold;font-size:18px;}
 <div id="loadingOverlay"><div class="loaderBox"><div class="spinner"></div><p>Working...</p></div></div>
 
 <script src="js/theme.js"></script>
-<script src="js/api.js"></script> <script src="js/workspace.js"></script>
+<script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=2"></script>
+<script src="js/workspace.js"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -325,6 +330,10 @@ function deleteBox(box){
         else{alert(data.error || "Could not delete box");}
     }).catch(error=>{hideLoading();console.error(error);alert("Error deleting box");});
 }
+
+window.addEventListener("inventory-selection-changed", function(){
+    loadBoxes();
+});
 
 loadBoxes();
 </script>
