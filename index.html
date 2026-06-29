@@ -14,6 +14,8 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
 
 <title>InventoryOS Dashboard</title>
 
+<link rel="stylesheet" href="css/inventorySelector.css">
+
 <style>
 html{touch-action:manipulation;}
 *{box-sizing:border-box;}
@@ -325,6 +327,23 @@ button{
     .accordion-content{padding:14px;}
 }
 
+
+.top-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    margin-bottom:24px;
+    flex-wrap:wrap;
+}
+
+@media(max-width:760px){
+    .top-header{
+        flex-direction:column;
+        align-items:stretch;
+    }
+}
+
 /* InventoryOS modern dashboard tweaks */
 .panel{max-width:1180px;margin:0 auto;}
 .app-logo{display:none;}
@@ -353,9 +372,19 @@ button{
 
 <div class="panel" id="app">
 
-<div class="app-logo">▱</div>
-<h1>Inventory<span style="color:var(--accent);">OS</span></h1>
-<p class="subtitle">Inventory Management System</p>
+<div class="top-header">
+
+    <div>
+
+        <div class="app-logo">▱</div>
+        <h1>Inventory<span style="color:var(--accent);">OS</span></h1>
+        <p class="subtitle">Inventory Management System</p>
+
+    </div>
+
+    <div id="inventory-selector"></div>
+
+</div>
 
 <div class="stats-grid">
     <div class="stat-card">
@@ -531,7 +560,9 @@ button{
 })();
 </script>
 
-<script src="js/api.js"></script> <script src="js/workspace.js"></script>
+<script src="js/api.js"></script>
+<script src="js/workspace.js"></script>
+<script src="js/inventorySelector.js"></script>
 <script>
 
 
@@ -658,6 +689,10 @@ document.getElementById("password").addEventListener("keydown",function(e){
         e.preventDefault();
         login();
     }
+});
+
+window.addEventListener("inventory-selection-changed",function(){
+    location.reload();
 });
 
 if(InventoryAPI.isLoggedIn()){
