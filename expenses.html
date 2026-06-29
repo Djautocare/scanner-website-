@@ -112,6 +112,14 @@ button{
     border:1px solid rgba(111,66,193,0.45);
 }
 
+.upload-button{
+    background:linear-gradient(135deg,#007bff,#0056b3);
+    border:1px solid rgba(0,123,255,0.45);
+    margin:0 0 8px 0;
+    padding:10px;
+    font-size:14px;
+}
+
 .delete-button{
     background:linear-gradient(135deg,#dc3545,#8d1f2b);
     border:1px solid rgba(220,53,69,0.45);
@@ -357,7 +365,7 @@ button{
     </div>
 
     <div class="input-label">Receipt / Invoice Image or PDF</div>
-    <input type="file" id="receipt" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment">
+    <input type="file" id="receipt" accept="image/jpeg,image/png,image/webp,application/pdf">
 
     <div class="input-label">Notes</div>
     <textarea id="notes" placeholder="Optional notes"></textarea>
@@ -387,6 +395,8 @@ button{
 
 </div>
 </div>
+
+<input type="file" id="receiptUpdateInput" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none;">
 
 <div id="loadingOverlay">
     <div class="loaderBox">
@@ -506,6 +516,58 @@ async function addExpense(){
         setResult("Error adding expense: " + error.message, "error");
     }
 }
+
+
+let pendingReceiptExpenseId = null;
+
+function chooseReceiptForExpense(id){
+    pendingReceiptExpenseId = id;
+    const input = document.getElementById("receiptUpdateInput");
+    input.value = "";
+    input.click();
+}
+
+document.getElementById("receiptUpdateInput").addEventListener("change", async function(){
+    const file = this.files[0];
+
+    if(!file || !pendingReceiptExpenseId){
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("receipt", file);
+
+    showLoading();
+
+    try{
+        const response = await fetch(InventoryAPI.API_BASE + "/expenses/" + encodeURIComponent(pendingReceiptExpenseId) + "/receipt", {
+            method:"POST",
+            headers:{
+                "Authorization":"Bearer " + InventoryAPI.getToken(),
+                "X-Inventory-Ids": (window.InventoryTopbar ? InventoryTopbar.getHeaderValue() : "")
+            },
+            body:formData
+        });
+
+        const data = await response.json();
+
+        hideLoading();
+
+        if(!data.success){
+            alert(data.error || "Could not upload receipt");
+            return;
+        }
+
+        pendingReceiptExpenseId = null;
+        loadExpenses();
+
+    }catch(error){
+        hideLoading();
+        console.error(error);
+        alert("Error uploading receipt");
+    }
+});
+
 
 async function deleteExpense(id){
     if(!confirm("Delete this expense and its receipt file?")){
@@ -639,6 +701,7 @@ function renderExpenses(expenses){
                 </div>
 
                 <div>
+                    <button class="upload-button" onclick="chooseReceiptForExpense('${expense.id}')">${expense.receiptUrl ? "Replace File" : "Add File"}</button>
                     <button class="delete-button" onclick="deleteExpense('${expense.id}')">Delete</button>
                 </div>
             </div>
