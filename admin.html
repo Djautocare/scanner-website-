@@ -114,6 +114,27 @@ tr{background:#17171f;}
 .bad{background:rgba(255,107,107,.16);color:#ff6b6b;}
 .admin{background:rgba(142,68,255,.18);color:#c9a4ff;}
 .warn{background:rgba(255,184,77,.16);color:#ffb84d;}
+.online{background:rgba(32,201,151,.16);color:#20c997;}
+.offline{background:rgba(255,255,255,.10);color:#bbb;}
+
+.online-dot{
+    display:inline-block;
+    width:8px;
+    height:8px;
+    border-radius:999px;
+    background:#20c997;
+    margin-right:6px;
+    box-shadow:0 0 10px rgba(32,201,151,.85);
+}
+
+.offline-dot{
+    display:inline-block;
+    width:8px;
+    height:8px;
+    border-radius:999px;
+    background:#777;
+    margin-right:6px;
+}
 
 .actions{display:flex;gap:6px;flex-wrap:wrap;}
 .status{color:#bbb;margin-top:12px;}
@@ -236,7 +257,7 @@ tr{background:#17171f;}
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Status</th><th>Created</th>
+                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Status</th><th>Last Activity</th><th>Created</th>
                     </tr>
                 </thead>
                 <tbody id="latestUsersTable"></tbody>
@@ -321,6 +342,8 @@ tr{background:#17171f;}
 
     const API_BASE = InventoryAPI.API_BASE || "https://api.inventoryos.co.uk";
     let selectedDeleteUser = null;
+    let activeTab = "dashboard";
+    let autoRefreshTimer = null;
 
     const els = {
         totalUsers: document.getElementById("totalUsers"),
@@ -376,16 +399,60 @@ tr{background:#17171f;}
     }
 
     function statusBadge(user){
-        return user.is_suspended
-            ? `<span class="badge bad">Suspended</span>`
-            : `<span class="badge good">Active</span>`;
+        if(user.is_suspended){
+            return `<span class="badge bad">Suspended</span>`;
+        }
+
+        if(user.is_online){
+            return `<span class="badge online"><span class="online-dot"></span>Online</span>`;
+        }
+
+        return `<span class="badge offline"><span class="offline-dot"></span>Offline</span>`;
+    }
+
+    function lastSeenText(user){
+        if(user && user.last_seen_text){
+            return escapeHtml(user.last_seen_text);
+        }
+
+        if(!user || !user.last_seen){
+            return "Never";
+        }
+
+        return fmtDate(user.last_seen);
+    }
+
+    function activeNowBadge(user){
+        return user && user.is_online
+            ? `<span class="badge online"><span class="online-dot"></span>Active now</span>`
+            : `<span class="badge offline"><span class="offline-dot"></span>${lastSeenText(user)}</span>`;
     }
 
     function setStatus(message){
         els.status.textContent = message || "";
     }
 
+    async function confirmAdminAccess(){
+        try{
+            const data = await InventoryAPI.request("/admin/me");
+
+            if(!data.success || !data.admin){
+                alert("Admin access required.");
+                window.location.href = "settings.html";
+                return false;
+            }
+
+            return true;
+        }catch(error){
+            alert("Admin access required.");
+            window.location.href = "settings.html";
+            return false;
+        }
+    }
+
     function showTab(tabId){
+        activeTab = tabId;
+
         document.querySelectorAll(".section").forEach(section => section.classList.remove("active"));
         document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
 
@@ -397,7 +464,7 @@ tr{background:#17171f;}
     }
 
     async function loadOverview(){
-        const data = await InventoryAPI.request("/admin/overview");
+        const data = await InventoryAPI.request("/admin/overview?_t=" + Date.now());
 
         if(!data.success){
             setStatus(data.error || "Admin access denied.");
@@ -418,7 +485,7 @@ tr{background:#17171f;}
     }
 
     async function loadAnalytics(){
-        const data = await InventoryAPI.request("/admin/analytics");
+        const data = await InventoryAPI.request("/admin/analytics?_t=" + Date.now());
 
         if(!data.success) return;
 
@@ -430,7 +497,7 @@ tr{background:#17171f;}
 
     function renderLatestUsers(users){
         if(!users.length){
-            els.latestUsersTable.innerHTML = `<tr><td colspan="6">No users found.</td></tr>`;
+            els.latestUsersTable.innerHTML = `<tr><td colspan="7">No users found.</td></tr>`;
             return;
         }
 
@@ -441,6 +508,7 @@ tr{background:#17171f;}
                 <td>${verifiedBadge(user.email_verified)}</td>
                 <td>${adminBadge(user.is_admin)}</td>
                 <td>${statusBadge(user)}</td>
+                <td>${activeNowBadge(user)}</td>
                 <td>${fmtDate(user.created_at)}</td>
             </tr>
         `).join("");
@@ -455,7 +523,7 @@ tr{background:#17171f;}
 
     async function loadUsers(){
         const search = els.search.value.trim();
-        const data = await InventoryAPI.request("/admin/users?search=" + encodeURIComponent(search));
+        const data = await InventoryAPI.request("/admin/users?search=" + encodeURIComponent(search) + "&_t=" + Date.now());
 
         if(!data.success){
             setStatus(data.error || "Could not load users.");
@@ -482,7 +550,7 @@ tr{background:#17171f;}
                 <td>${verifiedBadge(user.email_verified)}</td>
                 <td>${adminBadge(user.is_admin)}</td>
                 <td>${statusBadge(user)}</td>
-                <td>${fmtDate(user.last_seen)}</td>
+                <td>${activeNowBadge(user)}</td>
                 <td><div class="actions"></div></td>
             `;
 
@@ -516,7 +584,7 @@ tr{background:#17171f;}
     }
 
     async function viewUser(id){
-        const data = await InventoryAPI.request("/admin/users/" + id + "/details");
+        const data = await InventoryAPI.request("/admin/users/" + id + "/details?_t=" + Date.now());
 
         if(!data.success){
             alert(data.error || "Could not load user details");
@@ -531,9 +599,9 @@ tr{background:#17171f;}
             <div class="detail-row"><strong>Email</strong><span>${escapeHtml(user.email || "-")}</span></div>
             <div class="detail-row"><strong>Verified</strong><span>${user.email_verified ? "Yes" : "No"}</span></div>
             <div class="detail-row"><strong>Admin</strong><span>${user.is_admin ? "Yes" : "No"}</span></div>
-            <div class="detail-row"><strong>Status</strong><span>${user.is_suspended ? "Suspended" : "Active"}</span></div>
-            <div class="detail-row"><strong>Created</strong><span>${fmtDate(user.created_at)}</span></div>
-            <div class="detail-row"><strong>Last Seen</strong><span>${fmtDate(user.last_seen)}</span></div>
+            <div class="detail-row"><strong>Status</strong><span>${user.is_suspended ? "Suspended" : (user.is_online ? "🟢 Online now" : "⚪ Offline")}</span></div>
+            <div class="detail-row"><strong>Last Activity</strong><span>${lastSeenText(user)}</span></div>
+            <div class="detail-row"><strong>Member Since</strong><span>${fmtDate(user.created_at)}</span></div>
 
             <h3>Data</h3>
             <div class="detail-row"><strong>Products</strong><span>${c.products}</span></div>
@@ -676,6 +744,31 @@ tr{background:#17171f;}
         }
     }
 
+
+    async function autoRefresh(){
+        try{
+            await loadAnalytics();
+
+            if(activeTab === "dashboard"){
+                await loadOverview();
+            }
+
+            if(activeTab === "users"){
+                await loadUsers();
+            }
+        }catch(error){
+            console.error("Auto refresh failed:", error);
+        }
+    }
+
+    function startAutoRefresh(){
+        if(autoRefreshTimer){
+            clearInterval(autoRefreshTimer);
+        }
+
+        autoRefreshTimer = setInterval(autoRefresh, 30000);
+    }
+
     document.getElementById("logoutBtn").addEventListener("click", () => InventoryAPI.logout());
     document.getElementById("closeDrawerBtn").addEventListener("click", closeDrawer);
     document.getElementById("overlay").addEventListener("click", closeDrawer);
@@ -689,7 +782,16 @@ tr{background:#17171f;}
 
     els.search.addEventListener("input", searchUsers);
 
-    loadOverview();
+    (async function startAdmin(){
+        const allowed = await confirmAdminAccess();
+
+        if(!allowed){
+            return;
+        }
+
+        await loadOverview();
+        startAutoRefresh();
+    })();
 })();
 </script>
 
