@@ -391,6 +391,24 @@ button{
         • Workspace preferences
     </div>
 </div>
+
+<div class="card" id="adminCard" style="display:none;">
+    <div class="card-title"><span class="card-icon">🛡️</span>Administration</div>
+    <div class="helper">
+        Super administrator tools. This section is only visible to authorised administrator accounts.
+    </div>
+
+    <button
+        style="background:linear-gradient(135deg,#dc3545,#b02a37);border:1px solid rgba(220,53,69,.45);"
+        onclick="window.location.href='admin.html'">
+        Open Admin Portal
+    </button>
+
+    <div class="result">
+        Manage users, monitor activity and administer InventoryOS.
+    </div>
+</div>
+
 <div class="card">
     <div class="card-title"><span class="card-icon">🎨</span>Appearance</div>
     <div class="helper">
@@ -687,7 +705,21 @@ async function runImport(){
     }
 }
 
+
+async function showAdminCard(){
+    try{
+        const data=await InventoryAPI.request("/admin/me");
+        if(data.success && data.admin){
+            document.getElementById("adminCard").style.display="block";
+        }
+    }catch(e){
+        // Not an admin - keep hidden.
+    }
+}
+
+
 loadProfile();
+showAdminCard();
 </script>
 
 </body>
