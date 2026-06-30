@@ -29,6 +29,17 @@ body{
     margin-bottom:20px;
 }
 
+.header-actions{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+}
+
+.header-actions button{
+    width:auto;
+}
+
 .logo{font-size:34px;font-weight:900;}
 .logo span{color:#8e44ff;}
 
@@ -224,7 +235,10 @@ tr{background:#17171f;}
 
 <div class="header">
     <div class="logo">Inventory<span>OS</span> Admin</div>
-    <button id="logoutBtn">Logout</button>
+    <div class="header-actions">
+        <button class="dark" id="dashboardBtn">← Dashboard</button>
+        <button id="logoutBtn">Logout</button>
+    </div>
 </div>
 
 <div class="tabs">
@@ -768,6 +782,10 @@ tr{background:#17171f;}
 
         autoRefreshTimer = setInterval(autoRefresh, 30000);
     }
+
+    document.getElementById("dashboardBtn").addEventListener("click", () => {
+        window.location.href = "index.html";
+    });
 
     document.getElementById("logoutBtn").addEventListener("click", () => InventoryAPI.logout());
     document.getElementById("closeDrawerBtn").addEventListener("click", closeDrawer);
