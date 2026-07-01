@@ -681,9 +681,81 @@ function connectDispatchQz(){
     });
 }
 
-function printDispatchPdfWithQz(pdfUrl, labelCount){
+function arrayBufferToBase64(buffer){
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    let binary = "";
+
+    for(let offset = 0; offset < bytes.length; offset += chunkSize){
+        const chunk = bytes.subarray(
+            offset,
+            Math.min(offset + chunkSize, bytes.length)
+        );
+
+        binary += String.fromCharCode.apply(null, chunk);
+    }
+
+    return btoa(binary);
+}
+
+async function downloadPrintPdfAsBase64(pdfUrl){
+    const headers = {};
+    const token = InventoryAPI.getToken();
+
+    if(token){
+        headers.Authorization = "Bearer " + token;
+    }
+
+    setDispatchQzStatus(
+        "Downloading the generated 4×6 PDF securely...",
+        "busy"
+    );
+
+    const response = await fetch(pdfUrl, {
+        method:"GET",
+        headers,
+        cache:"no-store"
+    });
+
+    if(!response.ok){
+        throw new Error(
+            "Could not download the generated print PDF. HTTP " +
+            response.status
+        );
+    }
+
+    const contentType = String(
+        response.headers.get("content-type") || ""
+    ).toLowerCase();
+
+    if(
+        contentType &&
+        !contentType.includes("application/pdf") &&
+        !contentType.includes("application/octet-stream")
+    ){
+        throw new Error(
+            "The print file was not returned as a PDF. Received: " +
+            contentType
+        );
+    }
+
+    const buffer = await response.arrayBuffer();
+
+    if(!buffer.byteLength){
+        throw new Error("The generated print PDF was empty.");
+    }
+
+    return arrayBufferToBase64(buffer);
+}
+
+function printDispatchPdfWithQz(pdfBase64, labelCount){
     return connectDispatchQz()
         .then(function(){
+            setDispatchQzStatus(
+                "Finding printer " + QZ_PRINTER_NAME + "...",
+                "busy"
+            );
+
             return qz.printers.find(QZ_PRINTER_NAME);
         })
         .then(function(printer){
@@ -696,7 +768,6 @@ function printDispatchPdfWithQz(pdfUrl, labelCount){
                 scaleContent:true,
                 colorType:"blackwhite",
                 density:"best",
-                interpolation:"nearest-neighbor",
                 rasterize:false,
                 jobName:`InventoryOS Dispatch ${new Date().toLocaleString()}`
             });
@@ -704,9 +775,11 @@ function printDispatchPdfWithQz(pdfUrl, labelCount){
             const data = [{
                 type:"pixel",
                 format:"pdf",
-                flavor:"file",
-                data:pdfUrl,
+                flavor:"base64",
+                data:pdfBase64,
                 options:{
+                    pageWidth:4,
+                    pageHeight:6,
                     ignoreTransparency:true,
                     altFontRendering:true
                 }
@@ -1073,10 +1146,15 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", async
         const pdfUrl = InventoryAPI.API_BASE + data.print_url;
 
         document.getElementById("loadingText").innerText =
+            "Downloading the generated 4×6 PDF...";
+
+        const pdfBase64 = await downloadPrintPdfAsBase64(pdfUrl);
+
+        document.getElementById("loadingText").innerText =
             "Sending labels directly to JD-668BT...";
 
         await printDispatchPdfWithQz(
-            pdfUrl,
+            pdfBase64,
             Number(data.label_count || labels.length)
         );
     }catch(err){
@@ -1085,8 +1163,14 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", async
             "Direct print failed: " + (err.message || err),
             "error"
         );
+        const detail = err && err.message
+            ? err.message
+            : String(err || "Unknown QZ print error");
+
         alert(
-            "Could not print directly to JD-668BT. Make sure QZ Tray is open and the printer is connected."
+            "Could not print directly to JD-668BT.\n\n" +
+            detail +
+            "\n\nMake sure QZ Tray is open and the printer is connected."
         );
     }finally{
         hideLoading();
