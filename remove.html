@@ -382,6 +382,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 }
 </style>
 <link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
 
 <body>
@@ -389,6 +390,8 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 <div class="page">
 
 <div class="panel">
+
+<div id="inventory-topbar"></div>
 
 <h1>Remove Stock</h1>
 <p class="subtitle">Type a barcode or item name, remove single items, or build a Vinted-style bundle</p>
@@ -499,7 +502,9 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 </div>
 
 <script src="js/theme.js"></script>
-<script src="js/api.js"></script> <script src="js/workspace.js"></script>
+<script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=4"></script>
+<script src="js/workspace.js"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -753,6 +758,34 @@ function renderBundleList(){
     }
 }
 
+
+function getSelectedInventoryHeaderForRemove(){
+    if(window.InventoryTopbar && typeof InventoryTopbar.getHeaderValue === "function"){
+        return InventoryTopbar.getHeaderValue();
+    }
+
+    if(window.InventoryAPI && typeof InventoryAPI.getSelectedInventoryHeader === "function"){
+        return InventoryAPI.getSelectedInventoryHeader();
+    }
+
+    try{
+        const parsed = JSON.parse(localStorage.getItem("inventoryos_selected_inventory_ids") || "[]");
+        return Array.isArray(parsed) ? parsed.filter(Boolean).map(String).join(",") : "";
+    }catch(error){
+        return "";
+    }
+}
+
+function hasSelectedInventoryForRemove(){
+    const selected = getSelectedInventoryHeaderForRemove();
+    return !!selected;
+}
+
+function showNoInventorySelected(){
+    document.getElementById("result").innerText = "Please select one inventory first using the selector at the top.";
+    flashError();
+}
+
 function removeButtonPressed(){
     if(bundleBarcodes.length > 0){
         removeBundleStock();
@@ -763,6 +796,11 @@ function removeButtonPressed(){
 }
 
 function removeStock(locationOverride = ""){
+    if(!hasSelectedInventoryForRemove()){
+        showNoInventorySelected();
+        return;
+    }
+
     const barcode = normaliseBarcode(document.getElementById("barcode").value);
 
     const qty =
@@ -865,6 +903,11 @@ function removeStock(locationOverride = ""){
 }
 
 function removeBundleStock(){
+    if(!hasSelectedInventoryForRemove()){
+        showNoInventorySelected();
+        return;
+    }
+
     if(bundleBarcodes.length === 0){
         alert("Add at least one barcode to the bundle list");
         return;
