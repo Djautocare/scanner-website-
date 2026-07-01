@@ -392,6 +392,37 @@ button:disabled{
     border-radius:5px;
 }
 
+
+.actual-shipping-preview{
+    background:white;
+    width:100%;
+    aspect-ratio:4/6;
+    border-radius:10px;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.actual-shipping-preview img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+}
+
+.brand-badge{
+    display:inline-block;
+    margin-top:6px;
+    padding:4px 8px;
+    border-radius:999px;
+    background:rgba(40,167,69,0.16);
+    border:1px solid rgba(40,167,69,0.35);
+    color:#8dffb0;
+    font-size:11px;
+    font-weight:bold;
+}
+
 @media(max-width:700px){
     body{padding:12px;}
     h1{font-size:30px;}
@@ -468,12 +499,12 @@ button:disabled{
     </div>
 
     <div class="panel">
-        <h2 style="margin:0;">Print Label Preview</h2>
-        <div class="muted small">Preview the queued packing labels before printing. This follows the selected view: Location Order or Label Print Order.</div>
+        <h2 style="margin:0;">Cropped Shipping Label Preview (4×6)</h2>
+        <div class="muted small">These are the actual cropped courier labels that will print, shown in Label Print Order.</div>
 
         <div class="actions">
             <button id="refreshPrintPreviewBtn" class="secondary" type="button">Refresh Preview</button>
-            <button id="printPreviewLabelsBtn" type="button">Print Preview Labels</button>
+            <button id="printPreviewLabelsBtn" type="button">Print Cropped Shipping Labels</button>
         </div>
 
         <div id="printPreviewGrid" class="print-preview-grid"></div>
@@ -637,7 +668,9 @@ function addPreviewCard(label, index){
         <img src="${escapeHtml(InventoryAPI.API_BASE + label.preview_url)}" alt="Label preview ${index}">
         <div class="preview-title">Label ${index}: ${escapeHtml(label.original_name)}</div>
         <div class="preview-meta">
+            <span class="brand-badge">${escapeHtml(label.brand_label || "Unknown courier")}</span><br>
             ${escapeHtml(label.method || "Backend crop")}<br>
+            ${escapeHtml(label.orientation || "")}<br>
             Confidence: ${escapeHtml(label.confidence || "Medium")}
         </div>
     `;
@@ -800,40 +833,71 @@ document.getElementById("printBtn").addEventListener("click", () => {
 document.getElementById("refreshPrintPreviewBtn").addEventListener("click", renderPrintPreviewLabels);
 
 document.getElementById("printPreviewLabelsBtn").addEventListener("click", () => {
-    const rows = getRowsForCurrentView();
+    const labels = getQueuedCourierLabels();
 
-    const html = rows.map(row => buildPrintableLabelHtml(row)).join("");
+    if(!labels.length){
+        alert("There are no cropped courier labels ready to print.");
+        return;
+    }
+
+    const pages = labels.map(label => `
+        <div class="shipping-label-page">
+            <img src="${escapeHtml(label.imageUrl)}" alt="Shipping label ${escapeHtml(label.labelOrder)}">
+        </div>
+    `).join("");
 
     const win = window.open("", "_blank");
+
     win.document.write(`
         <html>
         <head>
-            <title>InventoryOS Preview Labels</title>
+            <title>InventoryOS Cropped Shipping Labels</title>
             <style>
-                @page{size:4in 6in;margin:0;}
-                html,body{margin:0;padding:0;background:white;font-family:Arial,sans-serif;}
-                .label{
+                @page{
+                    size:4in 6in;
+                    margin:0;
+                }
+
+                html,body{
+                    margin:0;
+                    padding:0;
+                    background:white;
+                }
+
+                .shipping-label-page{
                     width:4in;
                     height:6in;
                     page-break-after:always;
-                    padding:0.22in;
-                    box-sizing:border-box;
                     display:flex;
-                    flex-direction:column;
-                    justify-content:space-between;
-                    color:black;
+                    align-items:center;
+                    justify-content:center;
+                    overflow:hidden;
+                    background:white;
                 }
-                .top{font-size:18px;font-weight:bold;line-height:1.2;}
-                .middle{border:3px solid black;padding:16px;text-align:center;font-size:28px;font-weight:bold;margin:20px 0;}
-                .bottom{font-size:16px;line-height:1.35;}
+
+                .shipping-label-page:last-child{
+                    page-break-after:auto;
+                }
+
+                .shipping-label-page img{
+                    width:100%;
+                    height:100%;
+                    object-fit:contain;
+                    display:block;
+                }
             </style>
         </head>
         <body>
-            ${html || "<p>No labels to print.</p>"}
-            <script>window.print();<\/script>
+            ${pages}
+            <script>
+                window.addEventListener("load", function(){
+                    window.print();
+                });
+            <\/script>
         </body>
         </html>
     `);
+
     win.document.close();
 });
 
@@ -881,44 +945,52 @@ function getRowsForCurrentView(){
     return rows.sort((a,b) => a.labelOrder - b.labelOrder);
 }
 
-function buildPrintableLabelHtml(row){
-    return `
-        <div class="label">
-            <div class="top">Label ${escapeHtml(row.labelOrder)}</div>
-            <div class="middle">${escapeHtml(row.location || "LOCATION NOT FOUND")}</div>
-            <div class="bottom">
-                <strong>${escapeHtml(row.description)}</strong><br>
-                Qty: ${escapeHtml(row.qty)}<br>
-                Source: ${escapeHtml(row.sourceName || "")}
-            </div>
-        </div>
-    `;
+function getQueuedCourierLabels(){
+    return [...queueCache]
+        .filter(pack => {
+            return (
+                pack.status !== "packed" &&
+                pack.preview_url &&
+                /\.(png|jpe?g|webp)(\?|$)/i.test(pack.preview_url)
+            );
+        })
+        .sort((a,b) => {
+            return Number(a.label_order || 0) - Number(b.label_order || 0);
+        })
+        .map(pack => ({
+            packId:pack.id,
+            labelOrder:Number(pack.label_order || 0),
+            sourceName:pack.source_name || "Shipping label",
+            imageUrl:InventoryAPI.API_BASE + pack.preview_url
+        }));
 }
 
 function renderPrintPreviewLabels(){
-    if(!printPreviewGrid) return;
-
-    const rows = getRowsForCurrentView();
-
-    if(!rows.length){
-        printPreviewGrid.innerHTML = `<div class="muted">No queued labels to preview.</div>`;
+    if(!printPreviewGrid){
         return;
     }
 
-    printPreviewGrid.innerHTML = rows.map(row => `
+    const labels = getQueuedCourierLabels();
+
+    if(!labels.length){
+        printPreviewGrid.innerHTML =
+            `<div class="muted">No cropped courier labels are queued yet.</div>`;
+        return;
+    }
+
+    printPreviewGrid.innerHTML = labels.map(label => `
         <div class="print-label-card">
-            <div class="print-label-preview">
-                <div class="print-label-top">Label ${escapeHtml(row.labelOrder)}</div>
-                <div class="print-label-middle">${escapeHtml(row.location || "LOCATION NOT FOUND")}</div>
-                <div class="print-label-bottom">
-                    <strong>${escapeHtml(row.description)}</strong><br>
-                    Qty: ${escapeHtml(row.qty)}<br>
-                    ${escapeHtml(row.sourceName || "")}
-                </div>
+            <div class="actual-shipping-preview">
+                <img
+                    src="${escapeHtml(label.imageUrl)}"
+                    alt="Cropped shipping label ${escapeHtml(label.labelOrder)}"
+                >
             </div>
+
             <div class="print-label-meta">
-                ${currentView === "location" ? "Location Order" : "Label Print Order"}<br>
-                Status: ${escapeHtml(statusLabel(row.status))}
+                <strong>Label ${escapeHtml(label.labelOrder)}</strong><br>
+                ${escapeHtml(label.sourceName)}<br>
+                Prints as 4×6
             </div>
         </div>
     `).join("");
