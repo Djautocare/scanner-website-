@@ -544,7 +544,7 @@ button:disabled{
             <button id="printPreviewLabelsBtn" type="button">Print Labels to JD-668BT</button>
         </div>
 
-        <div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send 4×6 labels directly to JD-668BT.</div>
+        <div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send crisp 4×6 PNG labels directly to JD-668BT.</div>
         <div id="printPreviewGrid" class="print-preview-grid"></div>
     </div>
 
@@ -681,74 +681,7 @@ function connectDispatchQz(){
     });
 }
 
-function arrayBufferToBase64(buffer){
-    const bytes = new Uint8Array(buffer);
-    const chunkSize = 0x8000;
-    let binary = "";
-
-    for(let offset = 0; offset < bytes.length; offset += chunkSize){
-        const chunk = bytes.subarray(
-            offset,
-            Math.min(offset + chunkSize, bytes.length)
-        );
-
-        binary += String.fromCharCode.apply(null, chunk);
-    }
-
-    return btoa(binary);
-}
-
-async function downloadPrintPdfAsBase64(pdfUrl){
-    const headers = {};
-    const token = InventoryAPI.getToken();
-
-    if(token){
-        headers.Authorization = "Bearer " + token;
-    }
-
-    setDispatchQzStatus(
-        "Downloading the generated 4×6 PDF securely...",
-        "busy"
-    );
-
-    const response = await fetch(pdfUrl, {
-        method:"GET",
-        headers,
-        cache:"no-store"
-    });
-
-    if(!response.ok){
-        throw new Error(
-            "Could not download the generated print PDF. HTTP " +
-            response.status
-        );
-    }
-
-    const contentType = String(
-        response.headers.get("content-type") || ""
-    ).toLowerCase();
-
-    if(
-        contentType &&
-        !contentType.includes("application/pdf") &&
-        !contentType.includes("application/octet-stream")
-    ){
-        throw new Error(
-            "The print file was not returned as a PDF. Received: " +
-            contentType
-        );
-    }
-
-    const buffer = await response.arrayBuffer();
-
-    if(!buffer.byteLength){
-        throw new Error("The generated print PDF was empty.");
-    }
-
-    return arrayBufferToBase64(buffer);
-}
-
-function printDispatchPdfWithQz(pdfBase64, labelCount){
+function printDispatchImagesWithQz(printLabels){
     return connectDispatchQz()
         .then(function(){
             setDispatchQzStatus(
@@ -766,27 +699,27 @@ function printDispatchPdfWithQz(pdfBase64, labelCount){
                 orientation:"portrait",
                 copies:1,
                 scaleContent:true,
-                colorType:"blackwhite",
+                colorType:"grayscale",
                 density:"best",
-                rasterize:false,
+                interpolation:"nearest-neighbor",
                 jobName:`InventoryOS Dispatch ${new Date().toLocaleString()}`
             });
 
-            const data = [{
-                type:"pixel",
-                format:"pdf",
-                flavor:"base64",
-                data:pdfBase64,
-                options:{
-                    pageWidth:4,
-                    pageHeight:6,
-                    ignoreTransparency:true,
-                    altFontRendering:true
-                }
-            }];
+            const data = printLabels.map(function(label){
+                return {
+                    type:"pixel",
+                    format:"image",
+                    flavor:"base64",
+                    data:label.image_base64,
+                    options:{
+                        pageWidth:4,
+                        pageHeight:6
+                    }
+                };
+            });
 
             setDispatchQzStatus(
-                `Sending ${labelCount} cropped label${labelCount === 1 ? "" : "s"} to ${QZ_PRINTER_NAME}...`,
+                `Sending ${printLabels.length} cropped label${printLabels.length === 1 ? "" : "s"} to ${QZ_PRINTER_NAME}...`,
                 "busy"
             );
 
@@ -794,7 +727,7 @@ function printDispatchPdfWithQz(pdfBase64, labelCount){
         })
         .then(function(){
             setDispatchQzStatus(
-                `Sent ${labelCount} cropped label${labelCount === 1 ? "" : "s"} directly to ${QZ_PRINTER_NAME}.`,
+                `Sent ${printLabels.length} cropped label${printLabels.length === 1 ? "" : "s"} directly to ${QZ_PRINTER_NAME}.`,
                 "ok"
             );
         });
@@ -1127,12 +1060,12 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", async
 
     const button = document.getElementById("printPreviewLabelsBtn");
     button.disabled = true;
-    button.textContent = "Sending to JD-668BT...";
+    button.textContent = "Preparing 4×6 Labels...";
 
-    showLoading("Building full-quality 4×6 print PDF...");
+    showLoading("Rendering crisp 4×6 shipping-label images...");
 
     try{
-        const data = await InventoryAPI.request("/shipping-labels/print-pdf", {
+        const data = await InventoryAPI.request("/shipping-labels/print-images", {
             method:"POST",
             body:JSON.stringify({
                 pack_ids:labels.map(label => label.packId)
@@ -1140,32 +1073,34 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", async
         });
 
         if(!data.success){
-            throw new Error(data.error || "Could not create print PDF.");
+            throw new Error(
+                data.error || "Could not render shipping labels for printing."
+            );
         }
 
-        const pdfUrl = InventoryAPI.API_BASE + data.print_url;
+        const printLabels = Array.isArray(data.labels)
+            ? data.labels
+            : [];
+
+        if(!printLabels.length){
+            throw new Error("The backend returned no printable labels.");
+        }
 
         document.getElementById("loadingText").innerText =
-            "Downloading the generated 4×6 PDF...";
+            "Sending 4×6 label images directly to JD-668BT...";
 
-        const pdfBase64 = await downloadPrintPdfAsBase64(pdfUrl);
-
-        document.getElementById("loadingText").innerText =
-            "Sending labels directly to JD-668BT...";
-
-        await printDispatchPdfWithQz(
-            pdfBase64,
-            Number(data.label_count || labels.length)
-        );
+        await printDispatchImagesWithQz(printLabels);
     }catch(err){
         console.error(err);
-        setDispatchQzStatus(
-            "Direct print failed: " + (err.message || err),
-            "error"
-        );
+
         const detail = err && err.message
             ? err.message
             : String(err || "Unknown QZ print error");
+
+        setDispatchQzStatus(
+            "Direct print failed: " + detail,
+            "error"
+        );
 
         alert(
             "Could not print directly to JD-668BT.\n\n" +
