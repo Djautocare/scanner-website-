@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Dispatch Centre</title>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(142,68,255,0.16), transparent 34%),
+        radial-gradient(circle at top right, rgba(111,66,193,0.14), transparent 36%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{max-width:980px;margin:0 auto;}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(142,68,255,0.30);
+    padding:18px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    margin-bottom:16px;
+}
+
+h1{text-align:center;font-size:34px;margin:10px 0 6px 0;}
+.subtitle{text-align:center;color:#aaa;margin:0 0 20px 0;font-size:14px;line-height:1.4;}
+
+.dropzone{
+    border:2px dashed rgba(142,68,255,0.45);
+    background:rgba(142,68,255,0.10);
+    border-radius:18px;
+    padding:28px 18px;
+    text-align:center;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.dropzone.dragover{
+    border-color:#b56cff;
+    background:rgba(142,68,255,0.20);
+}
+
+.dropzone strong{
+    display:block;
+    font-size:20px;
+    margin-bottom:8px;
+}
+
+input,button{
+    padding:13px;
+    margin:5px 0 11px 0;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+}
+
+input{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+button{
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    background:linear-gradient(135deg,#8e44ff,#6f2fd9);
+    border:1px solid rgba(142,68,255,0.45);
+}
+
+button.secondary{
+    background:linear-gradient(135deg,#333,#222);
+    border:1px solid rgba(255,255,255,0.12);
+}
+
+button.success{
+    background:linear-gradient(135deg,#28a745,#1f8b3a);
+    border:1px solid rgba(40,167,69,0.45);
+}
+
+button.danger{
+    background:linear-gradient(135deg,#dc3545,#9c1f2b);
+    border:1px solid rgba(220,53,69,0.45);
+}
+
+button:disabled{
+    opacity:0.45;
+    cursor:not-allowed;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:14px;
+}
+
+.hidden{display:none!important;}
+
+.muted{color:#aaa;font-size:14px;}
+.small{font-size:12px;line-height:1.35;}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:1fr 100px auto;
+    gap:10px;
+    margin-top:12px;
+}
+
+.view-tabs{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:14px;
+}
+
+.view-tabs button{
+    margin:0;
+}
+
+.view-tabs button.active{
+    background:linear-gradient(135deg,#28a745,#1f8b3a);
+    border-color:rgba(40,167,69,0.45);
+}
+
+.card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:14px;
+    margin-top:12px;
+}
+
+.card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+}
+
+.card-title{
+    font-size:17px;
+    font-weight:bold;
+}
+
+.label-number{
+    background:rgba(142,68,255,0.20);
+    border:1px solid rgba(142,68,255,0.35);
+    color:#d9c8ff;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:13px;
+    font-weight:bold;
+    white-space:nowrap;
+}
+
+.status{
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:bold;
+    background:#333;
+    text-transform:capitalize;
+}
+
+.status.ready{background:rgba(46,204,113,.18);color:#7dffa8;}
+.status.needs_review{background:rgba(241,196,15,.18);color:#ffe27a;}
+.status.missing{background:rgba(255,77,77,.18);color:#ff8a8a;}
+.status.packed{background:rgba(142,68,255,.22);color:#d7bdff;}
+
+.item-row{
+    background:#1d1d1d;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:10px;
+    margin-top:8px;
+}
+
+.inline-edit{
+    display:grid;
+    grid-template-columns:1fr 75px auto auto;
+    gap:8px;
+    margin-top:10px;
+}
+
+.location{
+    margin-top:8px;
+    color:#d9c8ff;
+    font-size:14px;
+    line-height:1.35;
+}
+
+.ok{color:#8dffb0;}
+.error{color:#ff9b9b;}
+
+.pick-row{
+    display:grid;
+    grid-template-columns:90px 1fr 1fr 80px;
+    gap:10px;
+    align-items:center;
+    padding:11px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+}
+
+.pick-row:last-child{border-bottom:none;}
+
+.pick-head{
+    color:#aaa;
+    font-size:12px;
+    font-weight:bold;
+    text-transform:uppercase;
+}
+
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{text-align:center;color:white;font-weight:bold;}
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #8e44ff;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+
+.links-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:14px;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg,rgba(142,68,255,0.22),rgba(142,68,255,0.06));
+    border:1px solid rgba(142,68,255,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
+}
+
+@media(max-width:700px){
+    body{padding:12px;}
+    h1{font-size:30px;}
+    .panel{padding:14px;}
+    .form-grid,.inline-edit,.links-grid{grid-template-columns:1fr;}
+    .view-tabs{grid-template-columns:1fr;}
+    button{width:100%;}
+    .actions{display:grid;}
+    .pick-row{grid-template-columns:1fr;}
+    .pick-head{display:none;}
+}
+</style>
+<link rel="stylesheet" href="css/theme.css">
+</head>
+
+<body>
+<div class="page">
+    <div class="panel">
+        <h1>Dispatch Centre</h1>
+        <p class="subtitle">Upload labels, build a packing queue, search item locations, then pack by location or by printed label order.</p>
+
+        <div id="dropzone" class="dropzone">
+            <strong>Drop shipping labels here</strong>
+            <span class="muted">PDF, PNG, JPG or JPEG. This will not remove stock.</span>
+            <input id="fileInput" class="hidden" type="file" multiple accept=".pdf,.png,.jpg,.jpeg">
+        </div>
+
+        <div class="actions">
+            <button id="browseBtn">Browse Files</button>
+            <button id="uploadBtn" class="success" disabled>Upload To Packing Queue</button>
+        </div>
+
+        <div id="selectedFiles" class="muted small"></div>
+    </div>
+
+    <div class="panel">
+        <h2 style="margin-top:0;">Manual Packing Item</h2>
+        <div class="muted small">Use this when a label only gives a tracking number or when the item name cannot be detected yet.</div>
+
+        <div class="form-grid">
+            <input id="manualDescription" type="text" placeholder="Item description e.g. Blue hoodie">
+            <input id="manualQty" type="number" min="1" value="1">
+            <button id="manualAddBtn">Add</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2 style="margin:0;">Packing Queue</h2>
+        <div class="muted small">Search locations first. Nothing is removed from stock from this page.</div>
+
+        <div class="actions">
+            <button id="refreshBtn" class="secondary">Refresh Queue</button>
+            <button id="searchBtn">Search Locations</button>
+            <button id="printBtn" class="secondary">Print Pick List</button>
+        </div>
+
+        <div class="view-tabs">
+            <button id="locationViewBtn" class="active" type="button">Location Order</button>
+            <button id="labelViewBtn" type="button">Label Print Order</button>
+        </div>
+
+        <div id="queue" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="links-grid">
+        <a class="link-card" href="index.html">← Back to Dashboard</a>
+        <a class="link-card" href="search.html">Open Stock Search</a>
+    </div>
+</div>
+
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Working...</p>
+    </div>
+</div>
+
+<script src="js/theme.js"></script>
+<script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=2"></script>
+<script src="js/workspace.js"></script>
+
+<script>
+const API_BASE = InventoryAPI.API_BASE;
+
+function apiFetch(path, options = {}){
+    return InventoryAPI.request(path, options).then(data => ({
+        json: () => Promise.resolve(data)
+    }));
+}
+
+let selectedFiles = [];
+let queueCache = [];
+let currentView = "location";
+
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const browseBtn = document.getElementById("browseBtn");
+const uploadBtn = document.getElementById("uploadBtn");
+const selectedFilesEl = document.getElementById("selectedFiles");
+const queueEl = document.getElementById("queue");
+
+function showLoading(){document.getElementById("loadingOverlay").style.display = "flex";}
+function hideLoading(){document.getElementById("loadingOverlay").style.display = "none";}
+
+function escapeHtml(value){
+    return String(value || "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function statusLabel(status){
+    return String(status || "needs_review").replaceAll("_"," ");
+}
+
+function getLocationSortValue(location){
+    const str = String(location || "ZZZ");
+    const match = str.match(/(\d+)/);
+    if(match) return Number(match[1]);
+    return 999999;
+}
+
+function setFiles(files){
+    selectedFiles = Array.from(files || []);
+    uploadBtn.disabled = selectedFiles.length === 0;
+
+    if(!selectedFiles.length){
+        selectedFilesEl.textContent = "";
+        return;
+    }
+
+    selectedFilesEl.textContent = selectedFiles.map(f => f.name).join(", ");
+}
+
+browseBtn.addEventListener("click", () => fileInput.click());
+dropzone.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", e => setFiles(e.target.files));
+
+dropzone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+});
+
+dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("dragover");
+});
+
+dropzone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    setFiles(e.dataTransfer.files);
+});
+
+uploadBtn.addEventListener("click", async () => {
+    if(!selectedFiles.length) return;
+
+    const form = new FormData();
+    selectedFiles.forEach(file => form.append("labels", file));
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = "Uploading...";
+    showLoading();
+
+    try{
+        const data = await InventoryAPI.request("/shipping-labels/upload", {
+            method:"POST",
+            body:form
+        });
+
+        if(!data.success) throw new Error(data.error || "Upload failed");
+
+        selectedFiles = [];
+        fileInput.value = "";
+        selectedFilesEl.textContent = "Uploaded. Review the packing queue below.";
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Upload failed");
+    }finally{
+        hideLoading();
+        uploadBtn.textContent = "Upload To Packing Queue";
+        uploadBtn.disabled = selectedFiles.length === 0;
+    }
+});
+
+document.getElementById("manualAddBtn").addEventListener("click", async () => {
+    const description = document.getElementById("manualDescription").value.trim();
+    const qty = Number(document.getElementById("manualQty").value || 1);
+
+    if(!description){
+        alert("Enter an item description first.");
+        return;
+    }
+
+    showLoading();
+
+    try{
+        const res = await apiFetch("/shipping-labels/manual-item", {
+            method:"POST",
+            body:JSON.stringify({description, qty})
+        });
+
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not add item");
+
+        document.getElementById("manualDescription").value = "";
+        document.getElementById("manualQty").value = 1;
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not add item");
+    }finally{
+        hideLoading();
+    }
+});
+
+document.getElementById("refreshBtn").addEventListener("click", loadQueue);
+
+document.getElementById("searchBtn").addEventListener("click", async () => {
+    showLoading();
+
+    try{
+        const res = await apiFetch("/shipping-labels/search-locations", { method:"POST" });
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Search failed");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Search failed");
+    }finally{
+        hideLoading();
+    }
+});
+
+document.getElementById("locationViewBtn").addEventListener("click", () => {
+    currentView = "location";
+    document.getElementById("locationViewBtn").classList.add("active");
+    document.getElementById("labelViewBtn").classList.remove("active");
+    renderQueue();
+});
+
+document.getElementById("labelViewBtn").addEventListener("click", () => {
+    currentView = "label";
+    document.getElementById("labelViewBtn").classList.add("active");
+    document.getElementById("locationViewBtn").classList.remove("active");
+    renderQueue();
+});
+
+document.getElementById("printBtn").addEventListener("click", () => {
+    const rows = buildPickRows();
+
+    const sorted = currentView === "location"
+        ? rows.sort((a,b) => {
+            const locDiff = getLocationSortValue(a.location) - getLocationSortValue(b.location);
+            if(locDiff !== 0) return locDiff;
+            return String(a.location || "").localeCompare(String(b.location || ""));
+        })
+        : rows.sort((a,b) => a.labelOrder - b.labelOrder);
+
+    const html = sorted.map(row => `
+        <div style="border-bottom:1px solid #ddd;padding:8px 0;">
+            <strong>Label ${escapeHtml(row.labelOrder)}</strong><br>
+            Item: ${escapeHtml(row.description)}<br>
+            Qty: ${escapeHtml(row.qty)}<br>
+            Location: ${escapeHtml(row.location || "Not found")}
+        </div>
+    `).join("");
+
+    const win = window.open("", "_blank");
+    win.document.write(`
+        <html>
+        <head>
+            <title>InventoryOS Pick List</title>
+            <style>
+                body{font-family:Arial;padding:20px;}
+                h1{margin-top:0;}
+            </style>
+        </head>
+        <body>
+            <h1>${currentView === "location" ? "Pick List - Location Order" : "Pick List - Label Print Order"}</h1>
+            ${html || "<p>No items to print.</p>"}
+            <script>window.print();<\/script>
+        </body>
+        </html>
+    `);
+    win.document.close();
+});
+
+function buildPickRows(){
+    const rows = [];
+
+    queueCache.forEach(pack => {
+        if(pack.status === "packed") return;
+
+        (pack.items || []).forEach(item => {
+            const locations = Array.isArray(item.locations) ? item.locations : [];
+            const firstLocation = item.picked_location || (locations[0] ? locations[0].location : "");
+
+            rows.push({
+                packId: pack.id,
+                itemId: item.id,
+                labelOrder: Number(pack.label_order || 0),
+                sourceName: pack.source_name || "Manual pack",
+                description: item.description,
+                qty: item.qty,
+                status: item.status,
+                location: firstLocation,
+                locations: locations
+            });
+        });
+    });
+
+    return rows;
+}
+
+function renderQueue(){
+    const rows = buildPickRows();
+
+    if(!rows.length){
+        queueEl.innerHTML = `<div class="muted">No packing items yet.</div>`;
+        return;
+    }
+
+    if(currentView === "location"){
+        renderLocationView(rows);
+    }else{
+        renderLabelView(rows);
+    }
+}
+
+function renderLocationView(rows){
+    const sorted = rows.sort((a,b) => {
+        const locDiff = getLocationSortValue(a.location) - getLocationSortValue(b.location);
+        if(locDiff !== 0) return locDiff;
+        const nameDiff = String(a.location || "").localeCompare(String(b.location || ""));
+        if(nameDiff !== 0) return nameDiff;
+        return a.labelOrder - b.labelOrder;
+    });
+
+    let html = `
+        <div class="card">
+            <div class="pick-row pick-head">
+                <div>Label</div>
+                <div>Item</div>
+                <div>Location</div>
+                <div>Qty</div>
+            </div>
+    `;
+
+    sorted.forEach(row => {
+        html += `
+            <div class="pick-row">
+                <div><span class="label-number">Label ${escapeHtml(row.labelOrder)}</span></div>
+                <div>
+                    <strong>${escapeHtml(row.description)}</strong>
+                    <div class="muted small">${escapeHtml(row.sourceName)}</div>
+                </div>
+                <div class="${row.location ? "ok" : "error"}">${escapeHtml(row.location || "Not found")}</div>
+                <div>${escapeHtml(row.qty)}</div>
+            </div>
+        `;
+    });
+
+    html += `</div><div style="margin-top:12px;">${renderPackCards()}</div>`;
+    queueEl.innerHTML = html;
+}
+
+function renderLabelView(rows){
+    const sortedPacks = [...queueCache].sort((a,b) => Number(a.label_order || 0) - Number(b.label_order || 0));
+
+    queueEl.innerHTML = sortedPacks.map(pack => renderPackCard(pack)).join("");
+}
+
+function renderPackCards(){
+    return [...queueCache]
+        .sort((a,b) => Number(a.label_order || 0) - Number(b.label_order || 0))
+        .map(pack => renderPackCard(pack))
+        .join("");
+}
+
+function renderPackCard(pack){
+    const packItems = pack.items || [];
+
+    const itemHtml = packItems.map(item => {
+        const locations = Array.isArray(item.locations) ? item.locations : [];
+        const locationHtml = locations.length
+            ? locations.map(loc => `
+                <div class="location ok">
+                    ${escapeHtml(loc.location || "Unknown location")}
+                    — Qty ${escapeHtml(loc.qty)}
+                    ${loc.barcode ? ` — ${escapeHtml(loc.barcode)}` : ""}
+                </div>
+            `).join("")
+            : `<div class="location ${item.status === "missing" ? "error" : ""}">${item.status === "missing" ? "No stock location found" : "Locations not searched yet"}</div>`;
+
+        return `
+            <div class="item-row">
+                <div class="card-head">
+                    <div style="width:100%;">
+                        <strong>${escapeHtml(item.description)}</strong>
+                        <div class="muted small">Qty needed: ${escapeHtml(item.qty)}</div>
+                        ${locationHtml}
+
+                        <div class="inline-edit">
+                            <input id="desc-${Number(item.id)}" type="text" value="${escapeHtml(item.description)}">
+                            <input id="qty-${Number(item.id)}" type="number" min="1" value="${escapeHtml(item.qty)}">
+                            <button onclick="updateItem(${Number(item.id)})">Update</button>
+                            <button class="danger" onclick="deleteItem(${Number(item.id)})">Delete</button>
+                        </div>
+                    </div>
+                    <span class="status ${escapeHtml(item.status || "needs_review")}">${escapeHtml(statusLabel(item.status))}</span>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    return `
+        <div class="card">
+            <div class="card-head">
+                <div>
+                    <div class="card-title">${escapeHtml(pack.source_name || "Manual pack")}</div>
+                    <div class="muted small">Printed/uploaded as Label ${escapeHtml(pack.label_order || "")}</div>
+                </div>
+                <div>
+                    <div class="label-number">Label ${escapeHtml(pack.label_order || "")}</div>
+                    <div style="margin-top:8px;text-align:right;">
+                        <span class="status ${escapeHtml(pack.status || "needs_review")}">${escapeHtml(statusLabel(pack.status))}</span>
+                    </div>
+                </div>
+            </div>
+
+            ${itemHtml}
+
+            <div class="form-grid">
+                <input id="add-desc-${Number(pack.id)}" type="text" placeholder="Add another item to this label/pack">
+                <input id="add-qty-${Number(pack.id)}" type="number" min="1" value="1">
+                <button onclick="addItemToPack(${Number(pack.id)})">Add</button>
+            </div>
+
+            <div class="actions">
+                <button class="success" onclick="markPacked(${Number(pack.id)})">Mark Packed</button>
+                <button class="danger" onclick="removePack(${Number(pack.id)})">Remove From Queue</button>
+            </div>
+        </div>
+    `;
+}
+
+async function loadQueue(){
+    try{
+        const res = await apiFetch("/shipping-labels/queue");
+        const data = await res.json();
+
+        if(!data.success) throw new Error(data.error || "Could not load packing queue");
+
+        queueCache = data.packs || [];
+        renderQueue();
+    }catch(err){
+        queueEl.innerHTML = `<div class="error">${escapeHtml(err.message || "Could not load packing queue.")}</div>`;
+    }
+}
+
+async function updateItem(id){
+    const description = document.getElementById(`desc-${id}`).value.trim();
+    const qty = Number(document.getElementById(`qty-${id}`).value || 1);
+
+    if(!description){
+        alert("Enter an item description first.");
+        return;
+    }
+
+    showLoading();
+
+    try{
+        const res = await apiFetch(`/shipping-labels/item/${id}/update`, {
+            method:"POST",
+            body:JSON.stringify({description, qty})
+        });
+
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not update item");
+
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not update item");
+    }finally{
+        hideLoading();
+    }
+}
+
+async function deleteItem(id){
+    if(!confirm("Remove this item from the packing queue? Stock will not be changed.")) return;
+
+    showLoading();
+
+    try{
+        const res = await apiFetch(`/shipping-labels/item/${id}`, { method:"DELETE" });
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not delete item");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not delete item");
+    }finally{
+        hideLoading();
+    }
+}
+
+async function addItemToPack(packId){
+    const description = document.getElementById(`add-desc-${packId}`).value.trim();
+    const qty = Number(document.getElementById(`add-qty-${packId}`).value || 1);
+
+    if(!description){
+        alert("Enter an item description first.");
+        return;
+    }
+
+    showLoading();
+
+    try{
+        const res = await apiFetch(`/shipping-labels/${packId}/add-item`, {
+            method:"POST",
+            body:JSON.stringify({description, qty})
+        });
+
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not add item");
+
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not add item");
+    }finally{
+        hideLoading();
+    }
+}
+
+async function markPacked(id){
+    showLoading();
+
+    try{
+        const res = await apiFetch(`/shipping-labels/${id}/packed`, {method:"POST"});
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not mark packed");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not mark packed");
+    }finally{
+        hideLoading();
+    }
+}
+
+async function removePack(id){
+    if(!confirm("Remove this pack from the queue? Stock will not be changed.")) return;
+
+    showLoading();
+
+    try{
+        const res = await apiFetch(`/shipping-labels/${id}`, {method:"DELETE"});
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not remove pack");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not remove pack");
+    }finally{
+        hideLoading();
+    }
+}
+
+InventoryAPI.requireLogin();
+
+window.addEventListener("inventory-selection-changed", function(){
+    loadQueue();
+});
+
+loadQueue();
+</script>
+
+</body>
+</html>
