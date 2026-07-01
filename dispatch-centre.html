@@ -404,11 +404,32 @@ button:disabled{
     justify-content:center;
 }
 
-.actual-shipping-preview img{
+.actual-shipping-preview img,
+.actual-shipping-preview iframe{
     width:100%;
     height:100%;
     object-fit:contain;
     display:block;
+    border:0;
+    background:white;
+}
+
+.preview-card iframe{
+    width:100%;
+    height:260px;
+    display:block;
+    border:0;
+    background:white;
+    border-radius:10px;
+}
+
+.courier-preview iframe{
+    width:100%;
+    height:155px;
+    display:block;
+    border:0;
+    background:white;
+    border-radius:5px;
 }
 
 .brand-badge{
@@ -661,11 +682,30 @@ async function processSelectedFiles(){
     }
 }
 
+
+function courierPreviewMedia(url, previewType, altText, cssClass){
+    const safeUrl = escapeHtml(url);
+    const safeAlt = escapeHtml(altText || "Courier label preview");
+    const className = cssClass ? ` class="${escapeHtml(cssClass)}"` : "";
+
+    if(previewType === "pdf" || /\.pdf(\?|$)/i.test(url)){
+        return `
+            <iframe
+                ${className}
+                src="${safeUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit"
+                title="${safeAlt}"
+            ></iframe>
+        `;
+    }
+
+    return `<img${className} src="${safeUrl}" alt="${safeAlt}">`;
+}
+
 function addPreviewCard(label, index){
     const div = document.createElement("div");
     div.className = "preview-card";
     div.innerHTML = `
-        <img src="${escapeHtml(InventoryAPI.API_BASE + label.preview_url)}" alt="Label preview ${index}">
+        ${courierPreviewMedia(InventoryAPI.API_BASE + label.preview_url, label.preview_type, `Label preview ${index}`)}
         <div class="preview-title">Label ${index}: ${escapeHtml(label.original_name)}</div>
         <div class="preview-meta">
             <span class="brand-badge">${escapeHtml(label.brand_label || "Unknown courier")}</span><br>
@@ -832,7 +872,7 @@ document.getElementById("printBtn").addEventListener("click", () => {
 
 document.getElementById("refreshPrintPreviewBtn").addEventListener("click", renderPrintPreviewLabels);
 
-document.getElementById("printPreviewLabelsBtn").addEventListener("click", () => {
+document.getElementById("printPreviewLabelsBtn").addEventListener("click", async () => {
     const labels = getQueuedCourierLabels();
 
     if(!labels.length){
@@ -840,65 +880,38 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", () =>
         return;
     }
 
-    const pages = labels.map(label => `
-        <div class="shipping-label-page">
-            <img src="${escapeHtml(label.imageUrl)}" alt="Shipping label ${escapeHtml(label.labelOrder)}">
-        </div>
-    `).join("");
+    const printWindow = window.open("", "_blank");
 
-    const win = window.open("", "_blank");
+    showLoading("Building full-quality 4×6 print PDF...");
 
-    win.document.write(`
-        <html>
-        <head>
-            <title>InventoryOS Cropped Shipping Labels</title>
-            <style>
-                @page{
-                    size:4in 6in;
-                    margin:0;
-                }
+    try{
+        const data = await InventoryAPI.request("/shipping-labels/print-pdf", {
+            method:"POST",
+            body:JSON.stringify({
+                pack_ids:labels.map(label => label.packId)
+            })
+        });
 
-                html,body{
-                    margin:0;
-                    padding:0;
-                    background:white;
-                }
+        if(!data.success){
+            throw new Error(data.error || "Could not create print PDF.");
+        }
 
-                .shipping-label-page{
-                    width:4in;
-                    height:6in;
-                    page-break-after:always;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    overflow:hidden;
-                    background:white;
-                }
+        const url = InventoryAPI.API_BASE + data.print_url;
 
-                .shipping-label-page:last-child{
-                    page-break-after:auto;
-                }
+        if(printWindow){
+            printWindow.location.href = url;
+        }else{
+            window.location.href = url;
+        }
+    }catch(err){
+        if(printWindow){
+            printWindow.close();
+        }
 
-                .shipping-label-page img{
-                    width:100%;
-                    height:100%;
-                    object-fit:contain;
-                    display:block;
-                }
-            </style>
-        </head>
-        <body>
-            ${pages}
-            <script>
-                window.addEventListener("load", function(){
-                    window.print();
-                });
-            <\/script>
-        </body>
-        </html>
-    `);
-
-    win.document.close();
+        alert(err.message || "Could not create print PDF.");
+    }finally{
+        hideLoading();
+    }
 });
 
 function buildPickRows(){
@@ -951,7 +964,7 @@ function getQueuedCourierLabels(){
             return (
                 pack.status !== "packed" &&
                 pack.preview_url &&
-                /\.(png|jpe?g|webp)(\?|$)/i.test(pack.preview_url)
+                /\.(pdf|png|jpe?g|webp)(\?|$)/i.test(pack.preview_url)
             );
         })
         .sort((a,b) => {
@@ -961,6 +974,7 @@ function getQueuedCourierLabels(){
             packId:pack.id,
             labelOrder:Number(pack.label_order || 0),
             sourceName:pack.source_name || "Shipping label",
+            previewType:pack.preview_type || (/\.pdf(\?|$)/i.test(pack.preview_url) ? "pdf" : "image"),
             imageUrl:InventoryAPI.API_BASE + pack.preview_url
         }));
 }
@@ -981,10 +995,11 @@ function renderPrintPreviewLabels(){
     printPreviewGrid.innerHTML = labels.map(label => `
         <div class="print-label-card">
             <div class="actual-shipping-preview">
-                <img
-                    src="${escapeHtml(label.imageUrl)}"
-                    alt="Cropped shipping label ${escapeHtml(label.labelOrder)}"
-                >
+                ${courierPreviewMedia(
+                    label.imageUrl,
+                    label.previewType,
+                    `Cropped shipping label ${label.labelOrder}`
+                )}
             </div>
 
             <div class="print-label-meta">
@@ -1100,7 +1115,13 @@ function renderPackCard(pack){
     }).join("");
 
     const courierPreview = pack.preview_url
-        ? `<div class="courier-preview"><img src="${escapeHtml(InventoryAPI.API_BASE + pack.preview_url)}" alt="Courier label preview"></div>`
+        ? `<div class="courier-preview">${
+            courierPreviewMedia(
+                InventoryAPI.API_BASE + pack.preview_url,
+                pack.preview_type,
+                "Courier label preview"
+            )
+        }</div>`
         : "";
 
     return `
