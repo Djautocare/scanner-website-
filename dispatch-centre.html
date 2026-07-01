@@ -544,7 +544,7 @@ button:disabled{
             <button id="printPreviewLabelsBtn" type="button">Print Labels to JD-668BT</button>
         </div>
 
-        <div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send crisp 4×6 PNG labels directly to JD-668BT.</div>
+        <div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send each 4×6 shipping label directly to JD-668BT using the same trusted HTML print method as Add Stock.</div>
         <div id="printPreviewGrid" class="print-preview-grid"></div>
     </div>
 
@@ -681,7 +681,94 @@ function connectDispatchQz(){
     });
 }
 
+function buildShippingLabelHtml(label){
+    const imageBase64 = String(label.image_base64 || "");
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@page{
+    size:4in 6in;
+    margin:0;
+}
+
+html,body{
+    width:4in;
+    height:6in;
+    margin:0;
+    padding:0;
+    background:white;
+    overflow:hidden;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+.label-page{
+    width:4in;
+    height:6in;
+    margin:0;
+    padding:0;
+    background:white;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.label-page img{
+    width:4in;
+    height:6in;
+    object-fit:contain;
+    display:block;
+    image-rendering:auto;
+}
+</style>
+</head>
+<body>
+    <div class="label-page">
+        <img src="data:image/png;base64,${imageBase64}">
+    </div>
+</body>
+</html>`;
+}
+
+function printSingleDispatchLabelHtml(printer, label, index, total){
+    const config = qz.configs.create(printer, {
+        size:{width:4,height:6},
+        units:"in",
+        margins:0,
+        orientation:"portrait",
+        copies:1,
+        scaleContent:false,
+        colorType:"grayscale",
+        density:"best",
+        interpolation:"nearest-neighbor",
+        jobName:`InventoryOS Dispatch Label ${index + 1} of ${total}`
+    });
+
+    const data = [{
+        type:"pixel",
+        format:"html",
+        flavor:"plain",
+        data:buildShippingLabelHtml(label)
+    }];
+
+    setDispatchQzStatus(
+        `Sending label ${index + 1} of ${total} to ${QZ_PRINTER_NAME}...`,
+        "busy"
+    );
+
+    return qz.print(config, data);
+}
+
 function printDispatchImagesWithQz(printLabels){
+    let foundPrinter = null;
+
     return connectDispatchQz()
         .then(function(){
             setDispatchQzStatus(
@@ -692,38 +779,28 @@ function printDispatchImagesWithQz(printLabels){
             return qz.printers.find(QZ_PRINTER_NAME);
         })
         .then(function(printer){
-            const config = qz.configs.create(printer, {
-                size:{width:4,height:6},
-                units:"in",
-                margins:0,
-                orientation:"portrait",
-                copies:1,
-                scaleContent:true,
-                colorType:"grayscale",
-                density:"best",
-                interpolation:"nearest-neighbor",
-                jobName:`InventoryOS Dispatch ${new Date().toLocaleString()}`
+            foundPrinter = printer;
+
+            /*
+                Print each 4×6 label as its own trusted QZ HTML job.
+                This uses the same stable method as the Add Stock test print,
+                but with a full-page 4×6 PNG inside the HTML instead of a
+                generated 2×1 barcode.
+            */
+            let chain = Promise.resolve();
+
+            printLabels.forEach(function(label, index){
+                chain = chain.then(function(){
+                    return printSingleDispatchLabelHtml(
+                        foundPrinter,
+                        label,
+                        index,
+                        printLabels.length
+                    );
+                });
             });
 
-            const data = printLabels.map(function(label){
-                return {
-                    type:"pixel",
-                    format:"image",
-                    flavor:"base64",
-                    data:label.image_base64,
-                    options:{
-                        pageWidth:4,
-                        pageHeight:6
-                    }
-                };
-            });
-
-            setDispatchQzStatus(
-                `Sending ${printLabels.length} cropped label${printLabels.length === 1 ? "" : "s"} to ${QZ_PRINTER_NAME}...`,
-                "busy"
-            );
-
-            return qz.print(config, data);
+            return chain;
         })
         .then(function(){
             setDispatchQzStatus(
