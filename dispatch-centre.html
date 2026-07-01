@@ -10,8 +10,6 @@
 
 <title>Dispatch Centre</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
 <style>
 html{touch-action:manipulation;}
 *{box-sizing:border-box;}
@@ -132,9 +130,7 @@ button:disabled{
     margin-top:14px;
 }
 
-.view-tabs button{
-    margin:0;
-}
+.view-tabs button{margin:0;}
 
 .view-tabs button.active{
     background:linear-gradient(135deg,#28a745,#1f8b3a);
@@ -247,7 +243,7 @@ button:disabled{
 
 .preview-card img{
     width:100%;
-    max-height:220px;
+    max-height:260px;
     object-fit:contain;
     background:white;
     border-radius:10px;
@@ -265,6 +261,60 @@ button:disabled{
     font-size:11px;
     color:#aaa;
     margin-top:4px;
+    line-height:1.35;
+}
+
+.print-preview-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+    gap:12px;
+    margin-top:14px;
+}
+
+.print-label-card{
+    background:#191919;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:12px;
+}
+
+.print-label-preview{
+    background:white;
+    color:black;
+    width:100%;
+    aspect-ratio:4/6;
+    border-radius:10px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    overflow:hidden;
+}
+
+.print-label-top{
+    font-size:14px;
+    font-weight:bold;
+    line-height:1.2;
+}
+
+.print-label-middle{
+    border:2px solid black;
+    padding:10px;
+    text-align:center;
+    font-weight:bold;
+    font-size:18px;
+    margin:12px 0;
+}
+
+.print-label-bottom{
+    font-size:13px;
+    line-height:1.3;
+}
+
+.print-label-meta{
+    margin-top:8px;
+    color:#aaa;
+    font-size:12px;
     line-height:1.35;
 }
 
@@ -329,59 +379,17 @@ button:disabled{
     text-align:center;
 }
 
-
-.print-preview-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-    gap:12px;
-    margin-top:14px;
-}
-
-.print-label-card{
-    background:#191919;
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:14px;
-    padding:12px;
-}
-
-.print-label-preview{
+.courier-preview{
+    max-width:110px;
     background:white;
-    color:black;
+    border-radius:8px;
+    padding:4px;
+}
+
+.courier-preview img{
     width:100%;
-    aspect-ratio:4/6;
-    border-radius:10px;
-    padding:12px;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-    overflow:hidden;
-}
-
-.print-label-top{
-    font-size:14px;
-    font-weight:bold;
-    line-height:1.2;
-}
-
-.print-label-middle{
-    border:2px solid black;
-    padding:10px;
-    text-align:center;
-    font-weight:bold;
-    font-size:18px;
-    margin:12px 0;
-}
-
-.print-label-bottom{
-    font-size:13px;
-    line-height:1.3;
-}
-
-.print-label-meta{
-    margin-top:8px;
-    color:#aaa;
-    font-size:12px;
-    line-height:1.35;
+    display:block;
+    border-radius:5px;
 }
 
 @media(max-width:700px){
@@ -403,25 +411,25 @@ button:disabled{
 <div class="page">
     <div class="panel">
         <h1>Dispatch Centre</h1>
-        <p class="subtitle">Upload labels, auto-crop to 4×6, build a packing queue, then pack by location or by printed label order.</p>
+        <p class="subtitle">Upload labels, backend-crop to 4×6, build a packing queue, then pack by location or by printed label order.</p>
 
         <div id="dropzone" class="dropzone">
             <strong>Drop shipping labels here</strong>
-            <span class="muted">PDF, PNG, JPG or JPEG. This will auto-crop before upload and will not remove stock.</span>
+            <span class="muted">PDF, PNG, JPG or JPEG. This will backend auto-crop before upload and will not remove stock.</span>
             <input id="fileInput" class="hidden" type="file" multiple accept=".pdf,.png,.jpg,.jpeg">
         </div>
 
         <div class="checkbox-card">
             <label>
                 <input type="checkbox" id="autoCropToggle" checked>
-                Auto-crop labels to 4×6 before adding to queue
+                Backend auto-crop labels to 4×6 before adding to queue
             </label>
-            <div class="small muted" style="margin-top:8px;">This detects the densest label/barcode area and creates a clean 4×6 preview. Check the preview before uploading.</div>
+            <div class="small muted" style="margin-top:8px;">Better for InPost/Vinted style A4 labels because the backend detects the cut-line and label block.</div>
         </div>
 
         <div class="actions">
             <button id="browseBtn">Browse Files</button>
-            <button id="processBtn" class="secondary" disabled>Preview Auto-Crop</button>
+            <button id="processBtn" class="secondary" disabled>Backend Crop Preview</button>
             <button id="uploadBtn" class="success" disabled>Upload To Packing Queue</button>
         </div>
 
@@ -459,10 +467,9 @@ button:disabled{
         <div id="queue" style="margin-top:14px;"></div>
     </div>
 
-
     <div class="panel">
         <h2 style="margin:0;">Print Label Preview</h2>
-        <div class="muted small">Preview the queued labels before printing. This follows the selected view: Location Order or Label Print Order.</div>
+        <div class="muted small">Preview the queued packing labels before printing. This follows the selected view: Location Order or Label Print Order.</div>
 
         <div class="actions">
             <button id="refreshPrintPreviewBtn" class="secondary" type="button">Refresh Preview</button>
@@ -491,20 +498,8 @@ button:disabled{
 <script src="js/workspace.js"></script>
 
 <script>
-if(window.pdfjsLib){
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-}
-
-const API_BASE = InventoryAPI.API_BASE;
-
-function apiFetch(path, options = {}){
-    return InventoryAPI.request(path, options).then(data => ({
-        json: () => Promise.resolve(data)
-    }));
-}
-
 let selectedFiles = [];
-let processedFiles = [];
+let croppedLabels = [];
 let queueCache = [];
 let currentView = "location";
 
@@ -518,6 +513,12 @@ const cropStatusEl = document.getElementById("cropStatus");
 const previewGrid = document.getElementById("previewGrid");
 const queueEl = document.getElementById("queue");
 const printPreviewGrid = document.getElementById("printPreviewGrid");
+
+function apiFetch(path, options = {}){
+    return InventoryAPI.request(path, options).then(data => ({
+        json: () => Promise.resolve(data)
+    }));
+}
 
 function showLoading(text){
     document.getElementById("loadingText").innerText = text || "Working...";
@@ -547,7 +548,7 @@ function getLocationSortValue(location){
 
 function setFiles(files){
     selectedFiles = Array.from(files || []);
-    processedFiles = [];
+    croppedLabels = [];
     previewGrid.innerHTML = "";
     uploadBtn.disabled = true;
     processBtn.disabled = selectedFiles.length === 0;
@@ -559,7 +560,7 @@ function setFiles(files){
     }
 
     selectedFilesEl.textContent = selectedFiles.map(f => f.name).join(", ");
-    cropStatusEl.textContent = "Ready to preview/crop.";
+    cropStatusEl.textContent = "Ready for backend crop preview.";
 }
 
 browseBtn.addEventListener("click", () => fileInput.click());
@@ -586,321 +587,100 @@ processBtn.addEventListener("click", processSelectedFiles);
 async function processSelectedFiles(){
     if(!selectedFiles.length) return;
 
-    processedFiles = [];
+    croppedLabels = [];
     previewGrid.innerHTML = "";
     uploadBtn.disabled = true;
-    showLoading("Auto-cropping labels...");
+
+    const autoCrop = document.getElementById("autoCropToggle").checked;
+
+    if(!autoCrop){
+        cropStatusEl.textContent = "Auto-crop is off. Uploading original files to queue.";
+        uploadBtn.disabled = false;
+        return;
+    }
+
+    const form = new FormData();
+    selectedFiles.forEach(file => form.append("labels", file));
+
+    showLoading("Backend cropping labels...");
 
     try{
-        const autoCrop = document.getElementById("autoCropToggle").checked;
+        const data = await InventoryAPI.request("/shipping-labels/autocrop", {
+            method:"POST",
+            body:form
+        });
 
-        for(let i = 0; i < selectedFiles.length; i++){
-            const file = selectedFiles[i];
-            document.getElementById("loadingText").innerText = `Processing ${i + 1} of ${selectedFiles.length}...`;
+        if(!data.success) throw new Error(data.error || "Auto-crop failed");
 
-            let result;
-            if(autoCrop){
-                result = await makeCroppedLabelFile(file, i + 1);
-            }else{
-                result = {
-                    originalName:file.name,
-                    file:file,
-                    previewUrl:URL.createObjectURL(file),
-                    cropMethod:"Original file",
-                    confidence:"Manual"
-                };
-            }
+        croppedLabels = data.labels || [];
 
-            processedFiles.push(result);
-            addPreviewCard(result, i + 1);
-        }
+        previewGrid.innerHTML = "";
+        croppedLabels.forEach((label, index) => {
+            addPreviewCard(label, index + 1);
+        });
 
-        cropStatusEl.textContent = `${processedFiles.length} label(s) ready. Check previews, then upload to packing queue.`;
-        uploadBtn.disabled = processedFiles.length === 0;
+        cropStatusEl.textContent = `${croppedLabels.length} cropped label(s) ready. Check previews, then upload to packing queue.`;
+        uploadBtn.disabled = croppedLabels.length === 0;
     }catch(err){
         console.error(err);
-        alert(err.message || "Could not auto-crop labels.");
-        cropStatusEl.textContent = "Auto-crop failed. Try turning auto-crop off or upload a clearer file.";
+        alert(err.message || "Could not backend crop labels.");
+        cropStatusEl.textContent = "Backend crop failed. Try turning auto-crop off or check the backend terminal.";
     }finally{
         hideLoading();
     }
 }
 
-function addPreviewCard(result, index){
+function addPreviewCard(label, index){
     const div = document.createElement("div");
     div.className = "preview-card";
     div.innerHTML = `
-        <img src="${result.previewUrl}" alt="Label preview ${index}">
-        <div class="preview-title">Label ${index}: ${escapeHtml(result.originalName)}</div>
+        <img src="${escapeHtml(InventoryAPI.API_BASE + label.preview_url)}" alt="Label preview ${index}">
+        <div class="preview-title">Label ${index}: ${escapeHtml(label.original_name)}</div>
         <div class="preview-meta">
-            ${escapeHtml(result.cropMethod || "Auto-crop")}<br>
-            Confidence: ${escapeHtml(result.confidence || "Medium")}
+            ${escapeHtml(label.method || "Backend crop")}<br>
+            Confidence: ${escapeHtml(label.confidence || "Medium")}
         </div>
     `;
     previewGrid.appendChild(div);
 }
 
-async function makeCroppedLabelFile(file, index){
-    const sourceCanvas = await fileToCanvas(file);
-    const crop = detectBestLabelCrop(sourceCanvas);
-    const croppedCanvas = cropToFourBySix(sourceCanvas, crop);
-
-    const blob = await new Promise(resolve => croppedCanvas.toBlob(resolve, "image/png", 0.95));
-    const safeBase = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9.\-_]/g, "_");
-    const croppedFile = new File([blob], `cropped-label-${String(index).padStart(3,"0")}-${safeBase}.png`, { type:"image/png" });
-
-    return {
-        originalName:file.name,
-        file:croppedFile,
-        previewUrl:URL.createObjectURL(blob),
-        cropMethod:crop.method,
-        confidence:crop.confidence
-    };
-}
-
-async function fileToCanvas(file){
-    if(file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")){
-        return pdfFirstPageToCanvas(file);
-    }
-
-    return imageFileToCanvas(file);
-}
-
-function imageFileToCanvas(file){
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = function(){
-            const canvas = document.createElement("canvas");
-            canvas.width = img.naturalWidth || img.width;
-            canvas.height = img.naturalHeight || img.height;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0);
-            URL.revokeObjectURL(img.src);
-            resolve(canvas);
-        };
-        img.onerror = reject;
-        img.src = URL.createObjectURL(file);
-    });
-}
-
-async function pdfFirstPageToCanvas(file){
-    if(!window.pdfjsLib){
-        throw new Error("PDF renderer did not load.");
-    }
-
-    const buffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({data:buffer}).promise;
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({scale:2.5});
-
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
-
-    const ctx = canvas.getContext("2d", {willReadFrequently:true});
-    await page.render({canvasContext:ctx, viewport}).promise;
-
-    return canvas;
-}
-
-function detectBestLabelCrop(canvas){
-    /*
-        Smart-ish label detection v1:
-        - Downsamples the page for speed.
-        - Finds dark/ink pixels.
-        - Scores many 4x6/6x4 windows.
-        - Favours dense barcode/label areas, not the whole A4 page.
-        - Works when the label is top/middle/bottom/left/right.
-    */
-    const workW = 360;
-    const scale = workW / canvas.width;
-    const workH = Math.max(1, Math.round(canvas.height * scale));
-
-    const work = document.createElement("canvas");
-    work.width = workW;
-    work.height = workH;
-
-    const wctx = work.getContext("2d", {willReadFrequently:true});
-    wctx.drawImage(canvas, 0, 0, workW, workH);
-
-    const img = wctx.getImageData(0, 0, workW, workH);
-    const data = img.data;
-
-    const integral = new Uint32Array((workW + 1) * (workH + 1));
-    let totalInk = 0;
-
-    for(let y = 0; y < workH; y++){
-        let rowSum = 0;
-        for(let x = 0; x < workW; x++){
-            const idx = (y * workW + x) * 4;
-            const r = data[idx];
-            const g = data[idx + 1];
-            const b = data[idx + 2];
-
-            const dark = (r < 210 || g < 210 || b < 210) && !(r > 235 && g > 235 && b > 235);
-            const ink = dark ? 1 : 0;
-
-            rowSum += ink;
-            totalInk += ink;
-
-            integral[(y + 1) * (workW + 1) + (x + 1)] =
-                integral[y * (workW + 1) + (x + 1)] + rowSum;
-        }
-    }
-
-    function rectSum(x, y, w, h){
-        const x2 = Math.min(workW, x + w);
-        const y2 = Math.min(workH, y + h);
-        x = Math.max(0, x);
-        y = Math.max(0, y);
-
-        return integral[y2 * (workW + 1) + x2]
-            - integral[y * (workW + 1) + x2]
-            - integral[y2 * (workW + 1) + x]
-            + integral[y * (workW + 1) + x];
-    }
-
-    const candidates = [];
-
-    function addCandidates(aspect, label){
-        /*
-          aspect = width / height.
-          4x6 portrait = 0.6667.
-          6x4 landscape = 1.5.
-        */
-        const minW = Math.round(workW * 0.28);
-        const maxW = Math.round(workW * 0.92);
-
-        for(let w = minW; w <= maxW; w += 18){
-            const h = Math.round(w / aspect);
-            if(h < 80 || h > workH * 0.96) continue;
-
-            const stepX = Math.max(10, Math.round(w / 8));
-            const stepY = Math.max(10, Math.round(h / 8));
-
-            for(let y = 0; y <= workH - h; y += stepY){
-                for(let x = 0; x <= workW - w; x += stepX){
-                    const ink = rectSum(x, y, w, h);
-                    const area = w * h;
-                    const density = ink / area;
-
-                    if(ink < 80) continue;
-
-                    const margin = Math.round(Math.min(w, h) * 0.08);
-                    const innerInk = rectSum(x + margin, y + margin, w - margin * 2, h - margin * 2);
-                    const edgeInk = ink - innerInk;
-
-                    const centreX = x + w / 2;
-                    const centreY = y + h / 2;
-
-                    const centreBias = 1 - (
-                        Math.abs(centreX - workW / 2) / workW * 0.15 +
-                        Math.abs(centreY - workH / 2) / workH * 0.08
-                    );
-
-                    const score = (density * 100000) + (innerInk * 0.8) - (edgeInk * 0.25) + (centreBias * 120);
-
-                    candidates.push({x,y,w,h,score,density,label,ink});
-                }
-            }
-        }
-    }
-
-    addCandidates(4 / 6, "4x6 portrait");
-    addCandidates(6 / 4, "6x4 landscape");
-
-    if(!candidates.length || totalInk < 80){
-        return {
-            x:0,
-            y:0,
-            w:canvas.width,
-            h:canvas.height,
-            method:"Fallback full page",
-            confidence:"Low"
-        };
-    }
-
-    candidates.sort((a,b) => b.score - a.score);
-    const best = candidates[0];
-
-    const original = {
-        x:Math.max(0, Math.round(best.x / scale)),
-        y:Math.max(0, Math.round(best.y / scale)),
-        w:Math.min(canvas.width, Math.round(best.w / scale)),
-        h:Math.min(canvas.height, Math.round(best.h / scale)),
-        method:`Auto-crop ${best.label}`,
-        confidence:best.density > 0.045 ? "High" : best.density > 0.022 ? "Medium" : "Low"
-    };
-
-    return original;
-}
-
-function cropToFourBySix(sourceCanvas, crop){
-    const targetW = 1200;
-    const targetH = 1800;
-
-    let x = crop.x;
-    let y = crop.y;
-    let w = crop.w;
-    let h = crop.h;
-
-    const targetRatio = targetW / targetH;
-    const currentRatio = w / h;
-
-    if(currentRatio > targetRatio){
-        const newH = Math.round(w / targetRatio);
-        y = y - Math.round((newH - h) / 2);
-        h = newH;
-    }else{
-        const newW = Math.round(h * targetRatio);
-        x = x - Math.round((newW - w) / 2);
-        w = newW;
-    }
-
-    if(x < 0) x = 0;
-    if(y < 0) y = 0;
-    if(x + w > sourceCanvas.width) x = Math.max(0, sourceCanvas.width - w);
-    if(y + h > sourceCanvas.height) y = Math.max(0, sourceCanvas.height - h);
-
-    w = Math.min(w, sourceCanvas.width - x);
-    h = Math.min(h, sourceCanvas.height - y);
-
-    const out = document.createElement("canvas");
-    out.width = targetW;
-    out.height = targetH;
-
-    const ctx = out.getContext("2d");
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, targetW, targetH);
-    ctx.drawImage(sourceCanvas, x, y, w, h, 0, 0, targetW, targetH);
-
-    return out;
-}
-
 uploadBtn.addEventListener("click", async () => {
-    if(!processedFiles.length){
-        await processSelectedFiles();
-    }
+    const autoCrop = document.getElementById("autoCropToggle").checked;
 
-    if(!processedFiles.length) return;
-
-    const form = new FormData();
-    processedFiles.forEach(item => form.append("labels", item.file));
-
+    showLoading("Uploading to packing queue...");
     uploadBtn.disabled = true;
     uploadBtn.textContent = "Uploading...";
-    showLoading("Uploading to packing queue...");
 
     try{
-        const data = await InventoryAPI.request("/shipping-labels/upload", {
-            method:"POST",
-            body:form
-        });
+        let data;
+
+        if(autoCrop){
+            if(!croppedLabels.length){
+                await processSelectedFiles();
+            }
+
+            if(!croppedLabels.length){
+                throw new Error("No cropped labels ready.");
+            }
+
+            data = await InventoryAPI.request("/shipping-labels/create-from-crops", {
+                method:"POST",
+                body:JSON.stringify({ labels: croppedLabels })
+            });
+        }else{
+            const form = new FormData();
+            selectedFiles.forEach(file => form.append("labels", file));
+
+            data = await InventoryAPI.request("/shipping-labels/upload", {
+                method:"POST",
+                body:form
+            });
+        }
 
         if(!data.success) throw new Error(data.error || "Upload failed");
 
         selectedFiles = [];
-        processedFiles = [];
+        croppedLabels = [];
         fileInput.value = "";
         selectedFilesEl.textContent = "Uploaded. Review the packing queue below.";
         cropStatusEl.textContent = "";
@@ -911,7 +691,7 @@ uploadBtn.addEventListener("click", async () => {
     }finally{
         hideLoading();
         uploadBtn.textContent = "Upload To Packing Queue";
-        uploadBtn.disabled = processedFiles.length === 0;
+        uploadBtn.disabled = true;
         processBtn.disabled = selectedFiles.length === 0;
     }
 });
@@ -1017,7 +797,6 @@ document.getElementById("printBtn").addEventListener("click", () => {
     win.document.close();
 });
 
-
 document.getElementById("refreshPrintPreviewBtn").addEventListener("click", renderPrintPreviewLabels);
 
 document.getElementById("printPreviewLabelsBtn").addEventListener("click", () => {
@@ -1058,7 +837,6 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", () =>
     win.document.close();
 });
 
-
 function buildPickRows(){
     const rows = [];
 
@@ -1078,14 +856,14 @@ function buildPickRows(){
                 qty: item.qty,
                 status: item.status,
                 location: firstLocation,
-                locations: locations
+                locations: locations,
+                courierPreview: pack.preview_url || ""
             });
         });
     });
 
     return rows;
 }
-
 
 function getRowsForCurrentView(){
     const rows = buildPickRows();
@@ -1145,7 +923,6 @@ function renderPrintPreviewLabels(){
         </div>
     `).join("");
 }
-
 
 function renderQueue(){
     const rows = buildPickRows();
@@ -1250,6 +1027,10 @@ function renderPackCard(pack){
         `;
     }).join("");
 
+    const courierPreview = pack.preview_url
+        ? `<div class="courier-preview"><img src="${escapeHtml(InventoryAPI.API_BASE + pack.preview_url)}" alt="Courier label preview"></div>`
+        : "";
+
     return `
         <div class="card">
             <div class="card-head">
@@ -1257,10 +1038,13 @@ function renderPackCard(pack){
                     <div class="card-title">${escapeHtml(pack.source_name || "Manual pack")}</div>
                     <div class="muted small">Printed/uploaded as Label ${escapeHtml(pack.label_order || "")}</div>
                 </div>
-                <div>
-                    <div class="label-number">Label ${escapeHtml(pack.label_order || "")}</div>
-                    <div style="margin-top:8px;text-align:right;">
-                        <span class="status ${escapeHtml(pack.status || "needs_review")}">${escapeHtml(statusLabel(pack.status))}</span>
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    ${courierPreview}
+                    <div>
+                        <div class="label-number">Label ${escapeHtml(pack.label_order || "")}</div>
+                        <div style="margin-top:8px;text-align:right;">
+                            <span class="status ${escapeHtml(pack.status || "needs_review")}">${escapeHtml(statusLabel(pack.status))}</span>
+                        </div>
                     </div>
                 </div>
             </div>
