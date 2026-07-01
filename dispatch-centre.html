@@ -10,6 +10,8 @@
 
 <title>Dispatch Centre</title>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
 <style>
 html{touch-action:manipulation;}
 *{box-sizing:border-box;}
@@ -26,7 +28,7 @@ body{
     overflow-x:hidden;
 }
 
-.page{max-width:980px;margin:0 auto;}
+.page{max-width:1040px;margin:0 auto;}
 
 .panel{
     background:linear-gradient(180deg,#1d1d1d,#151515);
@@ -61,7 +63,7 @@ h1{text-align:center;font-size:34px;margin:10px 0 6px 0;}
     margin-bottom:8px;
 }
 
-input,button{
+input,button,select{
     padding:13px;
     margin:5px 0 11px 0;
     border:none;
@@ -69,7 +71,7 @@ input,button{
     font-size:16px;
 }
 
-input{
+input,select{
     background:#2a2a2a;
     color:white;
     outline:none;
@@ -209,6 +211,7 @@ button:disabled{
 
 .ok{color:#8dffb0;}
 .error{color:#ff9b9b;}
+.warn{color:#ffe27a;}
 
 .pick-row{
     display:grid;
@@ -227,6 +230,62 @@ button:disabled{
     font-weight:bold;
     text-transform:uppercase;
 }
+
+.preview-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:12px;
+    margin-top:14px;
+}
+
+.preview-card{
+    background:#191919;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:10px;
+}
+
+.preview-card img{
+    width:100%;
+    max-height:220px;
+    object-fit:contain;
+    background:white;
+    border-radius:10px;
+    display:block;
+}
+
+.preview-title{
+    font-size:12px;
+    color:#ddd;
+    margin-top:8px;
+    word-break:break-word;
+}
+
+.preview-meta{
+    font-size:11px;
+    color:#aaa;
+    margin-top:4px;
+    line-height:1.35;
+}
+
+.checkbox-card{
+    background:#2a2a2a;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:11px;
+    margin:12px 0;
+    text-align:left;
+}
+
+.checkbox-card label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:bold;
+    font-size:14px;
+}
+
+.checkbox-card input{width:auto;margin:0;}
 
 #loadingOverlay{
     display:none;
@@ -289,20 +348,31 @@ button:disabled{
 <div class="page">
     <div class="panel">
         <h1>Dispatch Centre</h1>
-        <p class="subtitle">Upload labels, build a packing queue, search item locations, then pack by location or by printed label order.</p>
+        <p class="subtitle">Upload labels, auto-crop to 4×6, build a packing queue, then pack by location or by printed label order.</p>
 
         <div id="dropzone" class="dropzone">
             <strong>Drop shipping labels here</strong>
-            <span class="muted">PDF, PNG, JPG or JPEG. This will not remove stock.</span>
+            <span class="muted">PDF, PNG, JPG or JPEG. This will auto-crop before upload and will not remove stock.</span>
             <input id="fileInput" class="hidden" type="file" multiple accept=".pdf,.png,.jpg,.jpeg">
+        </div>
+
+        <div class="checkbox-card">
+            <label>
+                <input type="checkbox" id="autoCropToggle" checked>
+                Auto-crop labels to 4×6 before adding to queue
+            </label>
+            <div class="small muted" style="margin-top:8px;">This detects the densest label/barcode area and creates a clean 4×6 preview. Check the preview before uploading.</div>
         </div>
 
         <div class="actions">
             <button id="browseBtn">Browse Files</button>
+            <button id="processBtn" class="secondary" disabled>Preview Auto-Crop</button>
             <button id="uploadBtn" class="success" disabled>Upload To Packing Queue</button>
         </div>
 
         <div id="selectedFiles" class="muted small"></div>
+        <div id="cropStatus" class="small muted"></div>
+        <div id="previewGrid" class="preview-grid"></div>
     </div>
 
     <div class="panel">
@@ -343,7 +413,7 @@ button:disabled{
 <div id="loadingOverlay">
     <div class="loaderBox">
         <div class="spinner"></div>
-        <p>Working...</p>
+        <p id="loadingText">Working...</p>
     </div>
 </div>
 
@@ -353,6 +423,10 @@ button:disabled{
 <script src="js/workspace.js"></script>
 
 <script>
+if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
 const API_BASE = InventoryAPI.API_BASE;
 
 function apiFetch(path, options = {}){
@@ -362,17 +436,24 @@ function apiFetch(path, options = {}){
 }
 
 let selectedFiles = [];
+let processedFiles = [];
 let queueCache = [];
 let currentView = "location";
 
 const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("fileInput");
 const browseBtn = document.getElementById("browseBtn");
+const processBtn = document.getElementById("processBtn");
 const uploadBtn = document.getElementById("uploadBtn");
 const selectedFilesEl = document.getElementById("selectedFiles");
+const cropStatusEl = document.getElementById("cropStatus");
+const previewGrid = document.getElementById("previewGrid");
 const queueEl = document.getElementById("queue");
 
-function showLoading(){document.getElementById("loadingOverlay").style.display = "flex";}
+function showLoading(text){
+    document.getElementById("loadingText").innerText = text || "Working...";
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
 function hideLoading(){document.getElementById("loadingOverlay").style.display = "none";}
 
 function escapeHtml(value){
@@ -397,14 +478,19 @@ function getLocationSortValue(location){
 
 function setFiles(files){
     selectedFiles = Array.from(files || []);
-    uploadBtn.disabled = selectedFiles.length === 0;
+    processedFiles = [];
+    previewGrid.innerHTML = "";
+    uploadBtn.disabled = true;
+    processBtn.disabled = selectedFiles.length === 0;
 
     if(!selectedFiles.length){
         selectedFilesEl.textContent = "";
+        cropStatusEl.textContent = "";
         return;
     }
 
     selectedFilesEl.textContent = selectedFiles.map(f => f.name).join(", ");
+    cropStatusEl.textContent = "Ready to preview/crop.";
 }
 
 browseBtn.addEventListener("click", () => fileInput.click());
@@ -426,15 +512,315 @@ dropzone.addEventListener("drop", e => {
     setFiles(e.dataTransfer.files);
 });
 
-uploadBtn.addEventListener("click", async () => {
+processBtn.addEventListener("click", processSelectedFiles);
+
+async function processSelectedFiles(){
     if(!selectedFiles.length) return;
 
+    processedFiles = [];
+    previewGrid.innerHTML = "";
+    uploadBtn.disabled = true;
+    showLoading("Auto-cropping labels...");
+
+    try{
+        const autoCrop = document.getElementById("autoCropToggle").checked;
+
+        for(let i = 0; i < selectedFiles.length; i++){
+            const file = selectedFiles[i];
+            document.getElementById("loadingText").innerText = `Processing ${i + 1} of ${selectedFiles.length}...`;
+
+            let result;
+            if(autoCrop){
+                result = await makeCroppedLabelFile(file, i + 1);
+            }else{
+                result = {
+                    originalName:file.name,
+                    file:file,
+                    previewUrl:URL.createObjectURL(file),
+                    cropMethod:"Original file",
+                    confidence:"Manual"
+                };
+            }
+
+            processedFiles.push(result);
+            addPreviewCard(result, i + 1);
+        }
+
+        cropStatusEl.textContent = `${processedFiles.length} label(s) ready. Check previews, then upload to packing queue.`;
+        uploadBtn.disabled = processedFiles.length === 0;
+    }catch(err){
+        console.error(err);
+        alert(err.message || "Could not auto-crop labels.");
+        cropStatusEl.textContent = "Auto-crop failed. Try turning auto-crop off or upload a clearer file.";
+    }finally{
+        hideLoading();
+    }
+}
+
+function addPreviewCard(result, index){
+    const div = document.createElement("div");
+    div.className = "preview-card";
+    div.innerHTML = `
+        <img src="${result.previewUrl}" alt="Label preview ${index}">
+        <div class="preview-title">Label ${index}: ${escapeHtml(result.originalName)}</div>
+        <div class="preview-meta">
+            ${escapeHtml(result.cropMethod || "Auto-crop")}<br>
+            Confidence: ${escapeHtml(result.confidence || "Medium")}
+        </div>
+    `;
+    previewGrid.appendChild(div);
+}
+
+async function makeCroppedLabelFile(file, index){
+    const sourceCanvas = await fileToCanvas(file);
+    const crop = detectBestLabelCrop(sourceCanvas);
+    const croppedCanvas = cropToFourBySix(sourceCanvas, crop);
+
+    const blob = await new Promise(resolve => croppedCanvas.toBlob(resolve, "image/png", 0.95));
+    const safeBase = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9.\-_]/g, "_");
+    const croppedFile = new File([blob], `cropped-label-${String(index).padStart(3,"0")}-${safeBase}.png`, { type:"image/png" });
+
+    return {
+        originalName:file.name,
+        file:croppedFile,
+        previewUrl:URL.createObjectURL(blob),
+        cropMethod:crop.method,
+        confidence:crop.confidence
+    };
+}
+
+async function fileToCanvas(file){
+    if(file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")){
+        return pdfFirstPageToCanvas(file);
+    }
+
+    return imageFileToCanvas(file);
+}
+
+function imageFileToCanvas(file){
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = function(){
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(img.src);
+            resolve(canvas);
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+async function pdfFirstPageToCanvas(file){
+    if(!window.pdfjsLib){
+        throw new Error("PDF renderer did not load.");
+    }
+
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:buffer}).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({scale:2.5});
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+
+    const ctx = canvas.getContext("2d", {willReadFrequently:true});
+    await page.render({canvasContext:ctx, viewport}).promise;
+
+    return canvas;
+}
+
+function detectBestLabelCrop(canvas){
+    /*
+        Smart-ish label detection v1:
+        - Downsamples the page for speed.
+        - Finds dark/ink pixels.
+        - Scores many 4x6/6x4 windows.
+        - Favours dense barcode/label areas, not the whole A4 page.
+        - Works when the label is top/middle/bottom/left/right.
+    */
+    const workW = 360;
+    const scale = workW / canvas.width;
+    const workH = Math.max(1, Math.round(canvas.height * scale));
+
+    const work = document.createElement("canvas");
+    work.width = workW;
+    work.height = workH;
+
+    const wctx = work.getContext("2d", {willReadFrequently:true});
+    wctx.drawImage(canvas, 0, 0, workW, workH);
+
+    const img = wctx.getImageData(0, 0, workW, workH);
+    const data = img.data;
+
+    const integral = new Uint32Array((workW + 1) * (workH + 1));
+    let totalInk = 0;
+
+    for(let y = 0; y < workH; y++){
+        let rowSum = 0;
+        for(let x = 0; x < workW; x++){
+            const idx = (y * workW + x) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
+
+            const dark = (r < 210 || g < 210 || b < 210) && !(r > 235 && g > 235 && b > 235);
+            const ink = dark ? 1 : 0;
+
+            rowSum += ink;
+            totalInk += ink;
+
+            integral[(y + 1) * (workW + 1) + (x + 1)] =
+                integral[y * (workW + 1) + (x + 1)] + rowSum;
+        }
+    }
+
+    function rectSum(x, y, w, h){
+        const x2 = Math.min(workW, x + w);
+        const y2 = Math.min(workH, y + h);
+        x = Math.max(0, x);
+        y = Math.max(0, y);
+
+        return integral[y2 * (workW + 1) + x2]
+            - integral[y * (workW + 1) + x2]
+            - integral[y2 * (workW + 1) + x]
+            + integral[y * (workW + 1) + x];
+    }
+
+    const candidates = [];
+
+    function addCandidates(aspect, label){
+        /*
+          aspect = width / height.
+          4x6 portrait = 0.6667.
+          6x4 landscape = 1.5.
+        */
+        const minW = Math.round(workW * 0.28);
+        const maxW = Math.round(workW * 0.92);
+
+        for(let w = minW; w <= maxW; w += 18){
+            const h = Math.round(w / aspect);
+            if(h < 80 || h > workH * 0.96) continue;
+
+            const stepX = Math.max(10, Math.round(w / 8));
+            const stepY = Math.max(10, Math.round(h / 8));
+
+            for(let y = 0; y <= workH - h; y += stepY){
+                for(let x = 0; x <= workW - w; x += stepX){
+                    const ink = rectSum(x, y, w, h);
+                    const area = w * h;
+                    const density = ink / area;
+
+                    if(ink < 80) continue;
+
+                    const margin = Math.round(Math.min(w, h) * 0.08);
+                    const innerInk = rectSum(x + margin, y + margin, w - margin * 2, h - margin * 2);
+                    const edgeInk = ink - innerInk;
+
+                    const centreX = x + w / 2;
+                    const centreY = y + h / 2;
+
+                    const centreBias = 1 - (
+                        Math.abs(centreX - workW / 2) / workW * 0.15 +
+                        Math.abs(centreY - workH / 2) / workH * 0.08
+                    );
+
+                    const score = (density * 100000) + (innerInk * 0.8) - (edgeInk * 0.25) + (centreBias * 120);
+
+                    candidates.push({x,y,w,h,score,density,label,ink});
+                }
+            }
+        }
+    }
+
+    addCandidates(4 / 6, "4x6 portrait");
+    addCandidates(6 / 4, "6x4 landscape");
+
+    if(!candidates.length || totalInk < 80){
+        return {
+            x:0,
+            y:0,
+            w:canvas.width,
+            h:canvas.height,
+            method:"Fallback full page",
+            confidence:"Low"
+        };
+    }
+
+    candidates.sort((a,b) => b.score - a.score);
+    const best = candidates[0];
+
+    const original = {
+        x:Math.max(0, Math.round(best.x / scale)),
+        y:Math.max(0, Math.round(best.y / scale)),
+        w:Math.min(canvas.width, Math.round(best.w / scale)),
+        h:Math.min(canvas.height, Math.round(best.h / scale)),
+        method:`Auto-crop ${best.label}`,
+        confidence:best.density > 0.045 ? "High" : best.density > 0.022 ? "Medium" : "Low"
+    };
+
+    return original;
+}
+
+function cropToFourBySix(sourceCanvas, crop){
+    const targetW = 1200;
+    const targetH = 1800;
+
+    let x = crop.x;
+    let y = crop.y;
+    let w = crop.w;
+    let h = crop.h;
+
+    const targetRatio = targetW / targetH;
+    const currentRatio = w / h;
+
+    if(currentRatio > targetRatio){
+        const newH = Math.round(w / targetRatio);
+        y = y - Math.round((newH - h) / 2);
+        h = newH;
+    }else{
+        const newW = Math.round(h * targetRatio);
+        x = x - Math.round((newW - w) / 2);
+        w = newW;
+    }
+
+    if(x < 0) x = 0;
+    if(y < 0) y = 0;
+    if(x + w > sourceCanvas.width) x = Math.max(0, sourceCanvas.width - w);
+    if(y + h > sourceCanvas.height) y = Math.max(0, sourceCanvas.height - h);
+
+    w = Math.min(w, sourceCanvas.width - x);
+    h = Math.min(h, sourceCanvas.height - y);
+
+    const out = document.createElement("canvas");
+    out.width = targetW;
+    out.height = targetH;
+
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, targetW, targetH);
+    ctx.drawImage(sourceCanvas, x, y, w, h, 0, 0, targetW, targetH);
+
+    return out;
+}
+
+uploadBtn.addEventListener("click", async () => {
+    if(!processedFiles.length){
+        await processSelectedFiles();
+    }
+
+    if(!processedFiles.length) return;
+
     const form = new FormData();
-    selectedFiles.forEach(file => form.append("labels", file));
+    processedFiles.forEach(item => form.append("labels", item.file));
 
     uploadBtn.disabled = true;
     uploadBtn.textContent = "Uploading...";
-    showLoading();
+    showLoading("Uploading to packing queue...");
 
     try{
         const data = await InventoryAPI.request("/shipping-labels/upload", {
@@ -445,15 +831,19 @@ uploadBtn.addEventListener("click", async () => {
         if(!data.success) throw new Error(data.error || "Upload failed");
 
         selectedFiles = [];
+        processedFiles = [];
         fileInput.value = "";
         selectedFilesEl.textContent = "Uploaded. Review the packing queue below.";
+        cropStatusEl.textContent = "";
+        previewGrid.innerHTML = "";
         await loadQueue();
     }catch(err){
         alert(err.message || "Upload failed");
     }finally{
         hideLoading();
         uploadBtn.textContent = "Upload To Packing Queue";
-        uploadBtn.disabled = selectedFiles.length === 0;
+        uploadBtn.disabled = processedFiles.length === 0;
+        processBtn.disabled = selectedFiles.length === 0;
     }
 });
 
@@ -466,7 +856,7 @@ document.getElementById("manualAddBtn").addEventListener("click", async () => {
         return;
     }
 
-    showLoading();
+    showLoading("Adding manual item...");
 
     try{
         const res = await apiFetch("/shipping-labels/manual-item", {
@@ -490,7 +880,7 @@ document.getElementById("manualAddBtn").addEventListener("click", async () => {
 document.getElementById("refreshBtn").addEventListener("click", loadQueue);
 
 document.getElementById("searchBtn").addEventListener("click", async () => {
-    showLoading();
+    showLoading("Searching item locations...");
 
     try{
         const res = await apiFetch("/shipping-labels/search-locations", { method:"POST" });
@@ -639,7 +1029,6 @@ function renderLocationView(rows){
 
 function renderLabelView(rows){
     const sortedPacks = [...queueCache].sort((a,b) => Number(a.label_order || 0) - Number(b.label_order || 0));
-
     queueEl.innerHTML = sortedPacks.map(pack => renderPackCard(pack)).join("");
 }
 
@@ -740,7 +1129,7 @@ async function updateItem(id){
         return;
     }
 
-    showLoading();
+    showLoading("Updating item...");
 
     try{
         const res = await apiFetch(`/shipping-labels/item/${id}/update`, {
@@ -762,7 +1151,7 @@ async function updateItem(id){
 async function deleteItem(id){
     if(!confirm("Remove this item from the packing queue? Stock will not be changed.")) return;
 
-    showLoading();
+    showLoading("Removing item...");
 
     try{
         const res = await apiFetch(`/shipping-labels/item/${id}`, { method:"DELETE" });
@@ -785,7 +1174,7 @@ async function addItemToPack(packId){
         return;
     }
 
-    showLoading();
+    showLoading("Adding item...");
 
     try{
         const res = await apiFetch(`/shipping-labels/${packId}/add-item`, {
@@ -805,7 +1194,7 @@ async function addItemToPack(packId){
 }
 
 async function markPacked(id){
-    showLoading();
+    showLoading("Marking packed...");
 
     try{
         const res = await apiFetch(`/shipping-labels/${id}/packed`, {method:"POST"});
@@ -822,7 +1211,7 @@ async function markPacked(id){
 async function removePack(id){
     if(!confirm("Remove this pack from the queue? Stock will not be changed.")) return;
 
-    showLoading();
+    showLoading("Removing pack...");
 
     try{
         const res = await apiFetch(`/shipping-labels/${id}`, {method:"DELETE"});
