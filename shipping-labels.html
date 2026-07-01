@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Shipping Label Centre</title>
+
+<style>
+:root{
+    --primary:#8e44ff;
+    --primary-light:#b56cff;
+    --primary-border:rgba(142,68,255,0.28);
+    --bg1:#050505;
+    --bg2:#151515;
+    --panel:#1b1b1b;
+    --card:#242424;
+    --input:#2a2a2a;
+    --text:white;
+    --muted:#bbb;
+    --success:#2ecc71;
+    --danger:#ff4d4d;
+    --warning:#f1c40f;
+}
+
+*{box-sizing:border-box;}
+html{touch-action:manipulation;}
+
+body{
+    margin:0;
+    padding:18px;
+    font-family:Arial,sans-serif;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2),#1b0828);
+    color:var(--text);
+}
+
+.page{
+    max-width:980px;
+    margin:0 auto;
+}
+
+.topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:16px;
+}
+
+h1{
+    margin:0;
+    font-size:28px;
+}
+
+.sub{
+    color:var(--muted);
+    margin-top:6px;
+    line-height:1.4;
+}
+
+.panel{
+    background:var(--panel);
+    border:1px solid var(--primary-border);
+    border-radius:22px;
+    padding:18px;
+    box-shadow:0 10px 35px rgba(0,0,0,.35);
+    margin-bottom:16px;
+}
+
+.dropzone{
+    border:2px dashed var(--primary-border);
+    background:rgba(142,68,255,.08);
+    border-radius:20px;
+    padding:28px 18px;
+    text-align:center;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.dropzone.dragover{
+    border-color:var(--primary-light);
+    background:rgba(142,68,255,.18);
+}
+
+.dropzone strong{
+    display:block;
+    font-size:20px;
+    margin-bottom:8px;
+}
+
+button{
+    border:0;
+    border-radius:14px;
+    padding:13px 16px;
+    font-size:15px;
+    font-weight:bold;
+    cursor:pointer;
+    background:var(--primary);
+    color:white;
+}
+
+button.secondary{
+    background:#333;
+}
+
+button.success{
+    background:var(--success);
+}
+
+button.danger{
+    background:var(--danger);
+}
+
+button:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:14px;
+}
+
+.hidden{display:none!important;}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+}
+
+.card{
+    background:var(--card);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    padding:14px;
+}
+
+.card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+}
+
+.card-title{
+    font-size:17px;
+    font-weight:bold;
+}
+
+.muted{
+    color:var(--muted);
+    font-size:14px;
+}
+
+.status{
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:bold;
+    background:#333;
+}
+
+.status.ready{background:rgba(46,204,113,.18);color:#7dffa8;}
+.status.needs_review{background:rgba(241,196,15,.18);color:#ffe27a;}
+.status.missing{background:rgba(255,77,77,.18);color:#ff8a8a;}
+.status.packed{background:rgba(142,68,255,.22);color:#d7bdff;}
+
+.item-list{
+    margin-top:12px;
+    display:grid;
+    gap:8px;
+}
+
+.item-row{
+    background:#1d1d1d;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:10px;
+}
+
+.item-main{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:flex-start;
+}
+
+input[type="text"], input[type="number"]{
+    width:100%;
+    padding:12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.12);
+    background:var(--input);
+    color:white;
+    font-size:15px;
+}
+
+.manual-add{
+    display:grid;
+    grid-template-columns:1fr 90px auto;
+    gap:8px;
+    margin-top:12px;
+}
+
+.location{
+    margin-top:8px;
+    color:#d9c8ff;
+    font-size:14px;
+    line-height:1.35;
+}
+
+.error{
+    color:#ff9b9b;
+}
+
+.ok{
+    color:#8dffb0;
+}
+
+.small{
+    font-size:13px;
+}
+
+@media(max-width:650px){
+    body{padding:12px;}
+    h1{font-size:24px;}
+    .manual-add{grid-template-columns:1fr;}
+    button{width:100%;}
+    .actions{display:grid;}
+}
+</style>
+</head>
+
+<body>
+<div class="page">
+    <div class="topbar">
+        <div>
+            <h1>Shipping Label Centre</h1>
+            <div class="sub">Upload shipping labels, build a pre-selected packing queue, then search where each item is stored.</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div id="dropzone" class="dropzone">
+            <strong>Drop shipping labels here</strong>
+            <span class="muted">PDF, PNG, JPG or JPEG. This will not remove stock.</span>
+            <input id="fileInput" class="hidden" type="file" multiple accept=".pdf,.png,.jpg,.jpeg">
+        </div>
+
+        <div class="actions">
+            <button id="browseBtn">Browse Files</button>
+            <button id="uploadBtn" class="success" disabled>Upload To Packing Queue</button>
+        </div>
+
+        <div id="selectedFiles" class="muted small" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel">
+        <h2 style="margin-top:0;">Manual Packing Item</h2>
+        <div class="muted small">Use this when the label text cannot be read properly. Add the exact product name, then search locations.</div>
+
+        <div class="manual-add">
+            <input id="manualDescription" type="text" placeholder="Item description e.g. Tuck In Bunny">
+            <input id="manualQty" type="number" min="1" value="1">
+            <button id="manualAddBtn">Add</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="card-head">
+            <div>
+                <h2 style="margin:0;">Packing Queue</h2>
+                <div class="muted small">Click Search Locations to find where all queued items are.</div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="refreshBtn" class="secondary">Refresh Queue</button>
+            <button id="searchBtn">Search Locations</button>
+            <button id="printBtn" class="secondary">Print Pick List</button>
+        </div>
+
+        <div id="queue" class="grid" style="margin-top:14px;"></div>
+    </div>
+</div>
+
+<script>
+const API_BASE = "";
+let selectedFiles = [];
+let queueCache = [];
+
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const browseBtn = document.getElementById("browseBtn");
+const uploadBtn = document.getElementById("uploadBtn");
+const selectedFilesEl = document.getElementById("selectedFiles");
+const queueEl = document.getElementById("queue");
+
+function escapeHtml(value){
+    return String(value ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+}
+
+function setFiles(files){
+    selectedFiles = Array.from(files || []);
+    uploadBtn.disabled = selectedFiles.length === 0;
+
+    if(!selectedFiles.length){
+        selectedFilesEl.textContent = "";
+        return;
+    }
+
+    selectedFilesEl.textContent = selectedFiles.map(f => f.name).join(", ");
+}
+
+browseBtn.addEventListener("click", () => fileInput.click());
+dropzone.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", e => setFiles(e.target.files));
+
+dropzone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+});
+
+dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("dragover");
+});
+
+dropzone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    setFiles(e.dataTransfer.files);
+});
+
+uploadBtn.addEventListener("click", async () => {
+    if(!selectedFiles.length) return;
+
+    const form = new FormData();
+    selectedFiles.forEach(file => form.append("labels", file));
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = "Uploading...";
+
+    try{
+        const res = await fetch(`${API_BASE}/api/shipping-labels/upload`, {
+            method:"POST",
+            body:form
+        });
+
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Upload failed");
+
+        selectedFiles = [];
+        fileInput.value = "";
+        selectedFilesEl.textContent = "Uploaded. Review the packing queue below.";
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Upload failed");
+    }finally{
+        uploadBtn.textContent = "Upload To Packing Queue";
+        uploadBtn.disabled = selectedFiles.length === 0;
+    }
+});
+
+document.getElementById("manualAddBtn").addEventListener("click", async () => {
+    const description = document.getElementById("manualDescription").value.trim();
+    const qty = Number(document.getElementById("manualQty").value || 1);
+
+    if(!description){
+        alert("Enter an item description first.");
+        return;
+    }
+
+    try{
+        const res = await fetch(`${API_BASE}/api/shipping-labels/manual-item`, {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({description, qty})
+        });
+
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Could not add item");
+
+        document.getElementById("manualDescription").value = "";
+        document.getElementById("manualQty").value = 1;
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not add item");
+    }
+});
+
+document.getElementById("refreshBtn").addEventListener("click", loadQueue);
+
+document.getElementById("searchBtn").addEventListener("click", async () => {
+    try{
+        const res = await fetch(`${API_BASE}/api/shipping-labels/search-locations`, {
+            method:"POST"
+        });
+
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Search failed");
+
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Search failed");
+    }
+});
+
+document.getElementById("printBtn").addEventListener("click", () => {
+    const rows = [];
+
+    queueCache.forEach(pack => {
+        rows.push(`<h2>${escapeHtml(pack.source_name || "Manual pack")}</h2>`);
+        (pack.items || []).forEach(item => {
+            rows.push(`
+                <div style="border-bottom:1px solid #ddd;padding:8px 0;">
+                    <strong>${escapeHtml(item.description)}</strong><br>
+                    Qty: ${escapeHtml(item.qty)}<br>
+                    Location: ${escapeHtml(formatLocations(item.locations))}
+                </div>
+            `);
+        });
+    });
+
+    const win = window.open("", "_blank");
+    win.document.write(`
+        <html>
+        <head>
+            <title>InventoryOS Pick List</title>
+            <style>
+                body{font-family:Arial;padding:20px;}
+                h1{margin-top:0;}
+            </style>
+        </head>
+        <body>
+            <h1>Pick List</h1>
+            ${rows.join("")}
+            <script>window.print();<\/script>
+        </body>
+        </html>
+    `);
+    win.document.close();
+});
+
+function formatLocations(locations){
+    if(!Array.isArray(locations) || !locations.length) return "Not found";
+    return locations.map(loc => {
+        const place = [loc.location, loc.box_name, loc.shelf_name].filter(Boolean).join(" / ");
+        return `${place || "Unknown location"} - Qty ${loc.qty}`;
+    }).join("; ");
+}
+
+function renderQueue(items){
+    queueCache = items || [];
+
+    if(!queueCache.length){
+        queueEl.innerHTML = `<div class="muted">No packing items yet.</div>`;
+        return;
+    }
+
+    queueEl.innerHTML = queueCache.map(pack => {
+        const packItems = pack.items || [];
+        const itemHtml = packItems.map(item => {
+            const locations = Array.isArray(item.locations) ? item.locations : [];
+            const locationHtml = locations.length
+                ? locations.map(loc => `
+                    <div class="location ok">
+                        ${escapeHtml([loc.location, loc.box_name, loc.shelf_name].filter(Boolean).join(" / ") || "Unknown location")}
+                        — Qty ${escapeHtml(loc.qty)}
+                    </div>
+                `).join("")
+                : `<div class="location ${item.status === "missing" ? "error" : ""}">${item.status === "missing" ? "No stock location found" : "Locations not searched yet"}</div>`;
+
+            return `
+                <div class="item-row">
+                    <div class="item-main">
+                        <div>
+                            <strong>${escapeHtml(item.description)}</strong>
+                            <div class="muted small">Qty needed: ${escapeHtml(item.qty)}</div>
+                            ${locationHtml}
+                        </div>
+                        <span class="status ${escapeHtml(item.status || "needs_review")}">${escapeHtml((item.status || "needs_review").replaceAll("_"," "))}</span>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        return `
+            <div class="card">
+                <div class="card-head">
+                    <div>
+                        <div class="card-title">${escapeHtml(pack.source_name || "Manual pack")}</div>
+                        <div class="muted small">${escapeHtml(pack.created_at || "")}</div>
+                    </div>
+                    <span class="status ${escapeHtml(pack.status || "needs_review")}">${escapeHtml((pack.status || "needs_review").replaceAll("_"," "))}</span>
+                </div>
+
+                <div class="item-list">${itemHtml}</div>
+
+                <div class="actions">
+                    <button class="success" onclick="markPacked(${Number(pack.id)})">Mark Packed</button>
+                    <button class="danger" onclick="removePack(${Number(pack.id)})">Remove From Queue</button>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+async function loadQueue(){
+    try{
+        const res = await fetch(`${API_BASE}/api/shipping-labels/queue`);
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Could not load queue");
+        renderQueue(data.packs || []);
+    }catch(err){
+        queueEl.innerHTML = `<div class="error">${escapeHtml(err.message || "Could not load queue")}</div>`;
+    }
+}
+
+async function markPacked(id){
+    try{
+        const res = await fetch(`${API_BASE}/api/shipping-labels/${id}/packed`, {method:"POST"});
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Could not mark packed");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not mark packed");
+    }
+}
+
+async function removePack(id){
+    if(!confirm("Remove this pack from the queue? Stock will not be changed.")) return;
+
+    try{
+        const res = await fetch(`${API_BASE}/api/shipping-labels/${id}`, {method:"DELETE"});
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Could not remove pack");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not remove pack");
+    }
+}
+
+loadQueue();
+</script>
+</body>
+</html>
