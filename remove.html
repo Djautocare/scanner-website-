@@ -519,6 +519,17 @@ let pendingBundleItem = null;
 let pendingBundleEachAmount = 0;
 let completedBundleRemovals = [];
 
+
+function focusBarcodeInput(){
+    setTimeout(function(){
+        const barcodeInput = document.getElementById("barcode");
+        if(barcodeInput){
+            barcodeInput.focus();
+            barcodeInput.select();
+        }
+    }, 120);
+}
+
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
 }
@@ -695,6 +706,7 @@ function addBundleBarcode(barcode, fromScanner = false){
 
     document.getElementById("locationChoices").innerHTML = "";
     renderBundleList();
+    focusBarcodeInput();
 }
 
 function removeBundleBarcode(index){
@@ -880,6 +892,7 @@ function removeStock(locationOverride = ""){
 
             document.getElementById("locationChoices").innerHTML = "";
             renderBundleList();
+            focusBarcodeInput();
 
         }else{
             flashError();
@@ -887,6 +900,7 @@ function removeStock(locationOverride = ""){
             setWarehouseStatus("Remove failed.");
             document.getElementById("result").innerText =
             data.error || "Remove failed";
+            focusBarcodeInput();
         }
     })
 
@@ -899,6 +913,7 @@ function removeStock(locationOverride = ""){
         speakText("Remove failed");
         setWarehouseStatus("Remove failed.");
         alert("Error removing stock");
+        focusBarcodeInput();
     });
 }
 
@@ -959,6 +974,7 @@ function processNextBundleItem(){
         document.getElementById("locationChoices").innerHTML = "";
 
         renderBundleList();
+        focusBarcodeInput();
         return;
     }
 
@@ -996,6 +1012,7 @@ function processNextBundleItem(){
             "Removed " + pendingBundleItem.barcode +
             ". Continuing bundle...";
 
+            focusBarcodeInput();
             processNextBundleItem();
             return;
         }
@@ -1010,6 +1027,7 @@ function processNextBundleItem(){
 
         document.getElementById("result").innerText =
         "Bundle stopped at " + failedBarcode + ". " + (data.error || "Remove failed");
+        focusBarcodeInput();
     })
 
     .catch(error => {
@@ -1023,6 +1041,7 @@ function processNextBundleItem(){
         speakText("Remove failed");
         setWarehouseStatus("Remove failed.");
         alert("Error removing bundle stock");
+        focusBarcodeInput();
     });
 }
 
