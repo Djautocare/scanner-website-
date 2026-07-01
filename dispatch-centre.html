@@ -544,7 +544,7 @@ button:disabled{
             <button id="printPreviewLabelsBtn" type="button">Print Labels to JD-668BT</button>
         </div>
 
-        <div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send each 4×6 shipping label directly to JD-668BT using the same trusted HTML print method as Add Stock.</div>
+        <div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send each 600-DPI 4×6 shipping label directly to JD-668BT using Chrome/PDFium-rendered images.</div>
         <div id="printPreviewGrid" class="print-preview-grid"></div>
     </div>
 
@@ -725,13 +725,13 @@ html,body{
     height:6in;
     object-fit:contain;
     display:block;
-    image-rendering:auto;
+    image-rendering:crisp-edges;
 }
 </style>
 </head>
 <body>
     <div class="label-page">
-        <img src="data:image/png;base64,${imageBase64}">
+        <img src="data:image/png;base64,${imageBase64}" width="2400" height="3600">
     </div>
 </body>
 </html>`;
