@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0d0d0d">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Refund Sale</title>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(32,201,151,0.15), transparent 35%),
+        radial-gradient(circle at top right, rgba(0,123,255,0.12), transparent 35%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{max-width:860px;margin:0 auto;}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:24px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+h1{text-align:center;font-size:34px;margin:12px 0 6px;}
+.subtitle{text-align:center;color:#aaa;margin:0 0 24px;font-size:15px;line-height:1.4;}
+
+.card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:16px;
+}
+
+.input-label{
+    color:#ddd;
+    font-weight:bold;
+    margin:14px 0 6px 2px;
+    font-size:14px;
+}
+
+input,select,textarea,button{
+    width:100%;
+    padding:14px;
+    margin:6px 0 12px 0;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+}
+
+input,select,textarea{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+textarea{min-height:92px;resize:vertical;}
+
+button{
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.refund-button{
+    background:linear-gradient(135deg,#20c997,#138f6d);
+    border:1px solid rgba(32,201,151,0.45);
+    box-shadow:0 10px 30px rgba(32,201,151,0.16);
+}
+
+.clear-button{
+    background:linear-gradient(135deg,#444,#222);
+    border:1px solid rgba(255,255,255,0.10);
+}
+
+.suggest-panel{
+    display:none;
+    background:#111;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    overflow:hidden;
+    margin-top:8px;
+}
+
+.suggest-panel.open{display:block;}
+
+.suggest-item{
+    padding:13px;
+    border-bottom:1px solid rgba(255,255,255,0.07);
+    cursor:pointer;
+}
+
+.suggest-item:last-child{border-bottom:none;}
+.suggest-item:hover{background:#1b1b1b;}
+
+.suggest-title{
+    font-weight:bold;
+    font-size:16px;
+    margin-bottom:5px;
+}
+
+.suggest-meta{
+    color:#aaa;
+    font-size:13px;
+    line-height:1.35;
+}
+
+.sale-card{
+    background:#111;
+    border:1px solid rgba(32,201,151,0.24);
+    border-radius:14px;
+    padding:14px;
+    margin-top:12px;
+}
+
+.sale-title{font-weight:bold;font-size:18px;margin-bottom:8px;color:#20c997;}
+.sale-line{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,0.07);padding:9px 0;color:#ddd;}
+.sale-line:last-child{border-bottom:none;}
+.sale-line span:last-child{text-align:right;font-weight:bold;}
+
+.toggle-box{
+    background:#2a2a2a;
+    padding:14px;
+    margin:12px 0;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+.toggle-box label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:15px;
+    font-weight:bold;
+}
+
+.toggle-box input{
+    width:auto;
+    margin:0;
+}
+
+.helper-text{
+    color:#aaa;
+    font-size:13px;
+    line-height:1.4;
+    margin-top:7px;
+}
+
+.result{
+    white-space:pre-wrap;
+    background:#111;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:14px;
+    color:#ddd;
+    margin-top:14px;
+    font-size:14px;
+    line-height:1.45;
+}
+
+.success{color:#20c997;}
+.error{color:#ff7777;}
+
+.links-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+    margin-top:16px;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg,rgba(0,123,255,0.28),rgba(0,123,255,0.08));
+    border:1px solid rgba(0,123,255,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
+}
+
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{text-align:center;color:white;font-weight:bold;}
+
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #20c997;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px;
+}
+
+@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+
+body.success-flash{background:#0f3d1f !important;box-shadow:inset 0 0 120px rgba(40,167,69,0.65);transition:background .25s ease,box-shadow .25s ease;}
+body.error-flash{background:#4a1010 !important;box-shadow:inset 0 0 120px rgba(220,53,69,0.65);transition:background .25s ease,box-shadow .25s ease;}
+
+@media(max-width:600px){
+    h1{font-size:30px;}
+    .panel{padding:18px;}
+}
+</style>
+
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
+</head>
+
+<body>
+<div class="page">
+<div class="panel">
+
+<div id="inventory-topbar"></div>
+
+<h1>Refund Sale</h1>
+<p class="subtitle">Search sold items, refund the sale, and optionally add returned stock back into a box, shelf or location.</p>
+
+<div class="card">
+    <div class="input-label">Search Sold Item</div>
+    <input type="text" id="saleSearch" placeholder="Type item name, e.g. tuck, bunny, sun, sunglasses">
+
+    <div id="suggestPanel" class="suggest-panel">
+        <div class="helper-text" style="padding:13px;margin:0;">Type at least 2 letters to find previous sales.</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="input-label">Selected Sale</div>
+    <div id="selectedSaleCard" class="sale-card">
+        <div class="helper-text">No sale selected yet.</div>
+    </div>
+
+    <div class="toggle-box">
+        <label>
+            <input type="checkbox" id="returnToStock" onchange="toggleReturnToStock()">
+            Add item back to inventory
+        </label>
+        <div class="helper-text">
+            Tick this if the item has been returned and should go back into stock.
+        </div>
+    </div>
+
+    <div id="returnLocationBox" style="display:none;">
+        <div class="input-label">
+            Return <span data-location-singular>Box</span> / Location
+        </div>
+        <select id="returnLocation">
+            <option value="">Loading locations...</option>
+        </select>
+
+        <div class="helper-text">
+            The refunded quantity will be added back into the selected location.
+        </div>
+    </div>
+
+    <div class="input-label">Refund Reason</div>
+    <textarea id="refundReason" placeholder="Optional, e.g. customer returned item, wrong item, damaged, cancelled order"></textarea>
+
+    <button class="refund-button" onclick="processRefund()">Process Refund</button>
+    <button class="clear-button" onclick="clearSelection()">Clear</button>
+
+    <div id="result" class="result">Ready.</div>
+</div>
+
+<div class="links-grid">
+    <a class="link-card" href="index.html">← Back to Dashboard</a>
+    <a class="link-card" href="sales.html">Sales Tracker</a>
+    <a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
+</div>
+
+</div>
+</div>
+
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p>Working...</p>
+    </div>
+</div>
+
+<script src="js/theme.js"></script>
+<script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=4"></script>
+<script src="js/workspace.js"></script>
+<script>
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
+let searchTimer = null;
+let suggestedSales = [];
+let selectedSale = null;
+
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display = "none";
+}
+
+function escapeHtml(value){
+    return String(value || "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function formatMoney(value){
+    return Number(value || 0).toFixed(2);
+}
+
+function flashSuccess(){
+    document.body.classList.remove("error-flash");
+    document.body.classList.add("success-flash");
+    setTimeout(function(){ document.body.classList.remove("success-flash"); }, 3500);
+}
+
+function flashError(){
+    document.body.classList.remove("success-flash");
+    document.body.classList.add("error-flash");
+}
+
+function setResult(text, type){
+    const el = document.getElementById("result");
+    el.className = "result " + (type || "");
+    el.innerText = text || "";
+}
+
+function getSelectedInventoryHeaderForRefund(){
+    if(window.InventoryTopbar && typeof InventoryTopbar.getHeaderValue === "function"){
+        return InventoryTopbar.getHeaderValue();
+    }
+
+    if(window.InventoryAPI && typeof InventoryAPI.getSelectedInventoryHeader === "function"){
+        return InventoryAPI.getSelectedInventoryHeader();
+    }
+
+    try{
+        const parsed = JSON.parse(localStorage.getItem("inventoryos_selected_inventory_ids") || "[]");
+        return Array.isArray(parsed) ? parsed.filter(Boolean).map(String).join(",") : "";
+    }catch(error){
+        return "";
+    }
+}
+
+function hasOneSelectedInventory(){
+    const selected = getSelectedInventoryHeaderForRefund();
+    return selected && selected.split(",").filter(Boolean).length === 1;
+}
+
+function renderSuggestions(){
+    const panel = document.getElementById("suggestPanel");
+
+    if(!suggestedSales.length){
+        panel.classList.add("open");
+        panel.innerHTML = "<div class='helper-text' style='padding:13px;margin:0;'>No matching sales found.</div>";
+        return;
+    }
+
+    panel.classList.add("open");
+
+    let html = "";
+
+    suggestedSales.forEach((sale, index)=>{
+        html += `
+            <div class="suggest-item" onclick="selectSale(${index})">
+                <div class="suggest-title">${escapeHtml(sale.description || "Unknown item")}</div>
+                <div class="suggest-meta">
+                    ${escapeHtml(sale.barcode || "")}
+                    • Sold £${formatMoney(sale.saleAmount)}
+                    • Qty ${Number(sale.qty || 0)}
+                    • ${escapeHtml(sale.soldDate || "")}
+                </div>
+            </div>
+        `;
+    });
+
+    panel.innerHTML = html;
+}
+
+function searchSales(){
+    const query = document.getElementById("saleSearch").value.trim();
+
+    clearTimeout(searchTimer);
+
+    if(query.length < 2){
+        suggestedSales = [];
+        document.getElementById("suggestPanel").classList.remove("open");
+        document.getElementById("suggestPanel").innerHTML =
+            "<div class='helper-text' style='padding:13px;margin:0;'>Type at least 2 letters to find previous sales.</div>";
+        return;
+    }
+
+    if(!hasOneSelectedInventory()){
+        setResult("Please select one inventory first using the selector at the top.", "error");
+        return;
+    }
+
+    searchTimer = setTimeout(async function(){
+        try{
+            const data = await InventoryAPI.request("/sales/search?query=" + encodeURIComponent(query) + "&_t=" + Date.now());
+
+            if(!data.success){
+                suggestedSales = [];
+                setResult(data.error || "Could not search sales", "error");
+                renderSuggestions();
+                return;
+            }
+
+            suggestedSales = data.sales || [];
+            renderSuggestions();
+
+        }catch(error){
+            console.error(error);
+            suggestedSales = [];
+            setResult("Error searching sales", "error");
+            renderSuggestions();
+        }
+    }, 250);
+}
+
+function selectSale(index){
+    const sale = suggestedSales[index];
+
+    if(!sale) return;
+
+    selectedSale = sale;
+
+    document.getElementById("saleSearch").value = sale.description || "";
+    document.getElementById("suggestPanel").classList.remove("open");
+
+    document.getElementById("selectedSaleCard").innerHTML = `
+        <div class="sale-title">${escapeHtml(sale.description || "Unknown item")}</div>
+        <div class="sale-line"><span>Barcode</span><span>${escapeHtml(sale.barcode || "-")}</span></div>
+        <div class="sale-line"><span>Sold Date</span><span>${escapeHtml(sale.soldDate || "-")}</span></div>
+        <div class="sale-line"><span>Quantity</span><span>${Number(sale.qty || 0)}</span></div>
+        <div class="sale-line"><span>Refund Amount</span><span>£${formatMoney(sale.saleAmount)}</span></div>
+    `;
+
+    setResult("Sale selected. Choose refund options, then process refund.");
+}
+
+function toggleReturnToStock(){
+    const checked = document.getElementById("returnToStock").checked;
+    document.getElementById("returnLocationBox").style.display = checked ? "block" : "none";
+
+    if(checked){
+        loadLocations();
+    }
+}
+
+async function loadLocations(){
+    const select = document.getElementById("returnLocation");
+    select.innerHTML = "<option value=''>Loading locations...</option>";
+
+    try{
+        const data = await InventoryAPI.request("/boxes?_t=" + Date.now());
+
+        if(!data.success || !data.boxes || data.boxes.length === 0){
+            select.innerHTML = "<option value=''>No locations found</option>";
+            return;
+        }
+
+        select.innerHTML = "<option value=''>Choose location</option>";
+
+        data.boxes.forEach(item=>{
+            const boxName = item.box || item.box_name;
+            const option = document.createElement("option");
+            option.value = boxName;
+            option.textContent = boxName;
+            select.appendChild(option);
+        });
+
+    }catch(error){
+        console.error(error);
+        select.innerHTML = "<option value=''>Could not load locations</option>";
+    }
+}
+
+async function processRefund(){
+    if(!selectedSale){
+        alert("Choose a sale first.");
+        return;
+    }
+
+    if(!hasOneSelectedInventory()){
+        setResult("Please select one inventory first using the selector at the top.", "error");
+        flashError();
+        return;
+    }
+
+    const returnToStock = document.getElementById("returnToStock").checked;
+    const returnLocation = document.getElementById("returnLocation").value;
+    const refundReason = document.getElementById("refundReason").value.trim();
+
+    if(returnToStock && !returnLocation){
+        alert("Choose a return location.");
+        return;
+    }
+
+    if(!confirm("Refund this sale for £" + formatMoney(selectedSale.saleAmount) + "?")){
+        return;
+    }
+
+    showLoading();
+    setResult("Processing refund...");
+
+    try{
+        const data = await InventoryAPI.request("/sales/refund", {
+            method:"POST",
+            body:JSON.stringify({
+                sale_id:selectedSale.id,
+                return_to_stock:returnToStock,
+                return_location:returnLocation,
+                refund_reason:refundReason
+            })
+        });
+
+        hideLoading();
+
+        if(!data.success){
+            setResult(data.error || "Could not process refund", "error");
+            flashError();
+            return;
+        }
+
+        let output = "Refund processed ✅\\n\\n";
+        output += data.description + "\\n";
+        output += "Refund amount: £" + formatMoney(data.refundAmount) + "\\n";
+        output += "Quantity: " + data.qty + "\\n";
+
+        if(data.returnedToStock){
+            output += "Returned to: " + data.returnedLocation + "\\n";
+        }else{
+            output += "Not returned to inventory.\\n";
+        }
+
+        setResult(output, "success");
+        flashSuccess();
+        clearSelection(false);
+        document.getElementById("saleSearch").focus();
+
+    }catch(error){
+        hideLoading();
+        console.error(error);
+        setResult("Refund error: " + error.message, "error");
+        flashError();
+    }
+}
+
+function clearSelection(clearSearch = true){
+    selectedSale = null;
+    suggestedSales = [];
+
+    if(clearSearch){
+        document.getElementById("saleSearch").value = "";
+    }
+
+    document.getElementById("suggestPanel").classList.remove("open");
+    document.getElementById("selectedSaleCard").innerHTML = "<div class='helper-text'>No sale selected yet.</div>";
+    document.getElementById("returnToStock").checked = false;
+    document.getElementById("returnLocationBox").style.display = "none";
+    document.getElementById("returnLocation").innerHTML = "<option value=''>Loading locations...</option>";
+    document.getElementById("refundReason").value = "";
+}
+
+document.getElementById("saleSearch").addEventListener("input", searchSales);
+
+window.addEventListener("inventory-selection-changed", function(){
+    clearSelection();
+    setResult("Inventory changed. Ready.");
+});
+
+window.addEventListener("load", function(){
+    setTimeout(function(){
+        document.getElementById("saleSearch").focus();
+    }, 250);
+});
+</script>
+
+</body>
+</html>
