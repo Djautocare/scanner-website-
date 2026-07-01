@@ -99,17 +99,9 @@ button{
     color:white;
 }
 
-button.secondary{
-    background:#333;
-}
-
-button.success{
-    background:var(--success);
-}
-
-button.danger{
-    background:var(--danger);
-}
+button.secondary{background:#333;}
+button.success{background:var(--success);}
+button.danger{background:var(--danger);}
 
 button:disabled{
     opacity:.45;
@@ -162,6 +154,7 @@ button:disabled{
     font-size:12px;
     font-weight:bold;
     background:#333;
+    text-transform:capitalize;
 }
 
 .status.ready{background:rgba(46,204,113,.18);color:#7dffa8;}
@@ -206,6 +199,13 @@ input[type="text"], input[type="number"]{
     margin-top:12px;
 }
 
+.inline-edit{
+    display:grid;
+    grid-template-columns:1fr 75px auto auto;
+    gap:8px;
+    margin-top:10px;
+}
+
 .location{
     margin-top:8px;
     color:#d9c8ff;
@@ -213,22 +213,14 @@ input[type="text"], input[type="number"]{
     line-height:1.35;
 }
 
-.error{
-    color:#ff9b9b;
-}
-
-.ok{
-    color:#8dffb0;
-}
-
-.small{
-    font-size:13px;
-}
+.error{color:#ff9b9b;}
+.ok{color:#8dffb0;}
+.small{font-size:13px;}
 
 @media(max-width:650px){
     body{padding:12px;}
     h1{font-size:24px;}
-    .manual-add{grid-template-columns:1fr;}
+    .manual-add,.inline-edit{grid-template-columns:1fr;}
     button{width:100%;}
     .actions{display:grid;}
 }
@@ -240,7 +232,7 @@ input[type="text"], input[type="number"]{
     <div class="topbar">
         <div>
             <h1>Shipping Label Centre</h1>
-            <div class="sub">Upload shipping labels, build a pre-selected packing queue, then search where each item is stored.</div>
+            <div class="sub">Upload labels, build a pre-selected packing queue, then search where each item is stored.</div>
         </div>
     </div>
 
@@ -261,7 +253,7 @@ input[type="text"], input[type="number"]{
 
     <div class="panel">
         <h2 style="margin-top:0;">Manual Packing Item</h2>
-        <div class="muted small">Use this when the label text cannot be read properly. Add the exact product name, then search locations.</div>
+        <div class="muted small">Use this when the label only gives a tracking number or the item name cannot be read yet.</div>
 
         <div class="manual-add">
             <input id="manualDescription" type="text" placeholder="Item description e.g. Tuck In Bunny">
@@ -274,7 +266,7 @@ input[type="text"], input[type="number"]{
         <div class="card-head">
             <div>
                 <h2 style="margin:0;">Packing Queue</h2>
-                <div class="muted small">Click Search Locations to find where all queued items are.</div>
+                <div class="muted small">Search locations first. Nothing is removed from stock from this page.</div>
             </div>
         </div>
 
@@ -289,7 +281,8 @@ input[type="text"], input[type="number"]{
 </div>
 
 <script>
-const API_BASE = "";
+const API_BASE = window.API_BASE || "https://api.djautocaredetailing.uk";
+
 let selectedFiles = [];
 let queueCache = [];
 
@@ -300,6 +293,21 @@ const uploadBtn = document.getElementById("uploadBtn");
 const selectedFilesEl = document.getElementById("selectedFiles");
 const queueEl = document.getElementById("queue");
 
+function getToken(){
+    return localStorage.getItem("token") ||
+           localStorage.getItem("inventoryos_token") ||
+           localStorage.getItem("authToken") ||
+           "";
+}
+
+function authHeaders(extra){
+    const token = getToken();
+    return {
+        ...(extra || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+}
+
 function escapeHtml(value){
     return String(value ?? "")
         .replaceAll("&","&amp;")
@@ -307,6 +315,15 @@ function escapeHtml(value){
         .replaceAll(">","&gt;")
         .replaceAll('"',"&quot;")
         .replaceAll("'","&#039;");
+}
+
+async function apiFetch(url, options){
+    const opts = options || {};
+    opts.headers = authHeaders(opts.headers || {});
+    const res = await fetch(`${API_BASE}${url}`, opts);
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(data.error || data.message || "Request failed");
+    return data;
 }
 
 function setFiles(files){
@@ -350,12 +367,14 @@ uploadBtn.addEventListener("click", async () => {
     uploadBtn.textContent = "Uploading...";
 
     try{
-        const res = await fetch(`${API_BASE}/api/shipping-labels/upload`, {
+        const token = getToken();
+        const res = await fetch(`${API_BASE}/shipping-labels/upload`, {
             method:"POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
             body:form
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if(!res.ok) throw new Error(data.error || "Upload failed");
 
         selectedFiles = [];
@@ -380,14 +399,11 @@ document.getElementById("manualAddBtn").addEventListener("click", async () => {
     }
 
     try{
-        const res = await fetch(`${API_BASE}/api/shipping-labels/manual-item`, {
+        await apiFetch("/shipping-labels/manual-item", {
             method:"POST",
             headers:{"Content-Type":"application/json"},
             body:JSON.stringify({description, qty})
         });
-
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error || "Could not add item");
 
         document.getElementById("manualDescription").value = "";
         document.getElementById("manualQty").value = 1;
@@ -401,13 +417,7 @@ document.getElementById("refreshBtn").addEventListener("click", loadQueue);
 
 document.getElementById("searchBtn").addEventListener("click", async () => {
     try{
-        const res = await fetch(`${API_BASE}/api/shipping-labels/search-locations`, {
-            method:"POST"
-        });
-
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error || "Search failed");
-
+        await apiFetch("/shipping-labels/search-locations", { method:"POST" });
         await loadQueue();
     }catch(err){
         alert(err.message || "Search failed");
@@ -418,6 +428,7 @@ document.getElementById("printBtn").addEventListener("click", () => {
     const rows = [];
 
     queueCache.forEach(pack => {
+        if(pack.status === "packed") return;
         rows.push(`<h2>${escapeHtml(pack.source_name || "Manual pack")}</h2>`);
         (pack.items || []).forEach(item => {
             rows.push(`
@@ -453,9 +464,13 @@ document.getElementById("printBtn").addEventListener("click", () => {
 function formatLocations(locations){
     if(!Array.isArray(locations) || !locations.length) return "Not found";
     return locations.map(loc => {
-        const place = [loc.location, loc.box_name, loc.shelf_name].filter(Boolean).join(" / ");
+        const place = [loc.location].filter(Boolean).join(" / ");
         return `${place || "Unknown location"} - Qty ${loc.qty}`;
     }).join("; ");
+}
+
+function statusLabel(status){
+    return String(status || "needs_review").replaceAll("_"," ");
 }
 
 function renderQueue(items){
@@ -468,13 +483,15 @@ function renderQueue(items){
 
     queueEl.innerHTML = queueCache.map(pack => {
         const packItems = pack.items || [];
+
         const itemHtml = packItems.map(item => {
             const locations = Array.isArray(item.locations) ? item.locations : [];
             const locationHtml = locations.length
                 ? locations.map(loc => `
                     <div class="location ok">
-                        ${escapeHtml([loc.location, loc.box_name, loc.shelf_name].filter(Boolean).join(" / ") || "Unknown location")}
+                        ${escapeHtml(loc.location || "Unknown location")}
                         — Qty ${escapeHtml(loc.qty)}
+                        ${loc.barcode ? ` — ${escapeHtml(loc.barcode)}` : ""}
                     </div>
                 `).join("")
                 : `<div class="location ${item.status === "missing" ? "error" : ""}">${item.status === "missing" ? "No stock location found" : "Locations not searched yet"}</div>`;
@@ -482,12 +499,19 @@ function renderQueue(items){
             return `
                 <div class="item-row">
                     <div class="item-main">
-                        <div>
+                        <div style="width:100%;">
                             <strong>${escapeHtml(item.description)}</strong>
                             <div class="muted small">Qty needed: ${escapeHtml(item.qty)}</div>
                             ${locationHtml}
+
+                            <div class="inline-edit">
+                                <input id="desc-${Number(item.id)}" type="text" value="${escapeHtml(item.description)}">
+                                <input id="qty-${Number(item.id)}" type="number" min="1" value="${escapeHtml(item.qty)}">
+                                <button onclick="updateItem(${Number(item.id)})">Update</button>
+                                <button class="danger" onclick="deleteItem(${Number(item.id)})">Delete</button>
+                            </div>
                         </div>
-                        <span class="status ${escapeHtml(item.status || "needs_review")}">${escapeHtml((item.status || "needs_review").replaceAll("_"," "))}</span>
+                        <span class="status ${escapeHtml(item.status || "needs_review")}">${escapeHtml(statusLabel(item.status))}</span>
                     </div>
                 </div>
             `;
@@ -500,10 +524,16 @@ function renderQueue(items){
                         <div class="card-title">${escapeHtml(pack.source_name || "Manual pack")}</div>
                         <div class="muted small">${escapeHtml(pack.created_at || "")}</div>
                     </div>
-                    <span class="status ${escapeHtml(pack.status || "needs_review")}">${escapeHtml((pack.status || "needs_review").replaceAll("_"," "))}</span>
+                    <span class="status ${escapeHtml(pack.status || "needs_review")}">${escapeHtml(statusLabel(pack.status))}</span>
                 </div>
 
                 <div class="item-list">${itemHtml}</div>
+
+                <div class="manual-add">
+                    <input id="add-desc-${Number(pack.id)}" type="text" placeholder="Add another item to this pack">
+                    <input id="add-qty-${Number(pack.id)}" type="number" min="1" value="1">
+                    <button onclick="addItemToPack(${Number(pack.id)})">Add</button>
+                </div>
 
                 <div class="actions">
                     <button class="success" onclick="markPacked(${Number(pack.id)})">Mark Packed</button>
@@ -516,20 +546,69 @@ function renderQueue(items){
 
 async function loadQueue(){
     try{
-        const res = await fetch(`${API_BASE}/api/shipping-labels/queue`);
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error || "Could not load queue");
+        const data = await apiFetch("/shipping-labels/queue");
         renderQueue(data.packs || []);
     }catch(err){
         queueEl.innerHTML = `<div class="error">${escapeHtml(err.message || "Could not load queue")}</div>`;
     }
 }
 
+async function updateItem(id){
+    const description = document.getElementById(`desc-${id}`).value.trim();
+    const qty = Number(document.getElementById(`qty-${id}`).value || 1);
+
+    if(!description){
+        alert("Enter an item description first.");
+        return;
+    }
+
+    try{
+        await apiFetch(`/shipping-labels/item/${id}/update`, {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({description, qty})
+        });
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not update item");
+    }
+}
+
+async function deleteItem(id){
+    if(!confirm("Remove this item from the packing queue? Stock will not be changed.")) return;
+
+    try{
+        await apiFetch(`/shipping-labels/item/${id}`, { method:"DELETE" });
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not delete item");
+    }
+}
+
+async function addItemToPack(packId){
+    const description = document.getElementById(`add-desc-${packId}`).value.trim();
+    const qty = Number(document.getElementById(`add-qty-${packId}`).value || 1);
+
+    if(!description){
+        alert("Enter an item description first.");
+        return;
+    }
+
+    try{
+        await apiFetch(`/shipping-labels/${packId}/add-item`, {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({description, qty})
+        });
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not add item");
+    }
+}
+
 async function markPacked(id){
     try{
-        const res = await fetch(`${API_BASE}/api/shipping-labels/${id}/packed`, {method:"POST"});
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error || "Could not mark packed");
+        await apiFetch(`/shipping-labels/${id}/packed`, {method:"POST"});
         await loadQueue();
     }catch(err){
         alert(err.message || "Could not mark packed");
@@ -540,9 +619,7 @@ async function removePack(id){
     if(!confirm("Remove this pack from the queue? Stock will not be changed.")) return;
 
     try{
-        const res = await fetch(`${API_BASE}/api/shipping-labels/${id}`, {method:"DELETE"});
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error || "Could not remove pack");
+        await apiFetch(`/shipping-labels/${id}`, {method:"DELETE"});
         await loadQueue();
     }catch(err){
         alert(err.message || "Could not remove pack");
