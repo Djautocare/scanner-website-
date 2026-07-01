@@ -6,7 +6,7 @@ const InventoryAPI = (function(){
             return savedApiBase.replace(/\/$/, "");
         }
 
-        // Local testing from file:// or local GitHub repo 
+        // Local testing from file:// or local GitHub repo
         if(window.location.protocol === "file:"){
             return "http://localhost:3000";
         }
@@ -26,6 +26,7 @@ const InventoryAPI = (function(){
     const API_BASE = detectApiBase();
     const TOKEN_KEY = "inventoryos_token";
     const USER_KEY = "inventoryos_user";
+    const INVENTORY_SELECTION_KEY = "inventoryos_selected_inventory_ids";
 
     function getToken(){
         return localStorage.getItem(TOKEN_KEY);
@@ -62,6 +63,24 @@ const InventoryAPI = (function(){
         return true;
     }
 
+    function getSelectedInventoryHeader(){
+        try{
+            if(window.InventoryTopbar && typeof InventoryTopbar.getHeaderValue === "function"){
+                return InventoryTopbar.getHeaderValue();
+            }
+
+            const parsed = JSON.parse(localStorage.getItem(INVENTORY_SELECTION_KEY) || "[]");
+
+            if(Array.isArray(parsed)){
+                return parsed.filter(Boolean).map(String).join(",");
+            }
+
+            return "";
+        }catch(error){
+            return "";
+        }
+    }
+
     async function request(path, options = {}){
         const token = getToken();
 
@@ -79,6 +98,12 @@ const InventoryAPI = (function(){
 
         if(token){
             headers.Authorization = "Bearer " + token;
+        }
+
+        const selectedInventories = getSelectedInventoryHeader();
+
+        if(selectedInventories && !headers["X-Inventory-Ids"]){
+            headers["X-Inventory-Ids"] = selectedInventories;
         }
 
         const response = await fetch(API_BASE + path, {
@@ -146,6 +171,7 @@ const InventoryAPI = (function(){
         logout,
         isLoggedIn,
         requireLogin,
+        getSelectedInventoryHeader,
         request,
         login,
         register,
