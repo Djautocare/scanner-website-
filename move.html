@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"> 
+<meta charset="UTF-8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d0d0d">
@@ -189,6 +189,7 @@ button{color:white;font-weight:bold;cursor:pointer;}
     .button-grid,.button-grid-three{grid-template-columns:1fr;}
 }
 </style>
+
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
@@ -200,7 +201,7 @@ button{color:white;font-weight:bold;cursor:pointer;}
 <div id="inventory-topbar"></div>
 
 <h1>Move Stock</h1>
-<p class="subtitle">Move single items, scanned bundles, or the full remaining contents of one box into another box</p>
+<p class="subtitle" id="moveSubtitle">Move single items, scanned bundles, or the full remaining contents of one box into another box</p>
 
 <div class="form-card">
     <div class="section-title">
@@ -285,11 +286,11 @@ button{color:white;font-weight:bold;cursor:pointer;}
 
 <div class="form-card">
     <div class="section-title">
-        <span>Bulk Box Move</span>
-        <span class="section-badge">whole box</span>
+        <span id="bulkMoveTitle">Bulk Box Move</span>
+        <span class="section-badge" id="bulkMoveBadge">whole box</span>
     </div>
 
-    <div class="warning-text">
+    <div class="warning-text" id="bulkMoveWarning">
         This moves everything currently left in the selected box into another box. Example: move all remaining stock from BOX 2 to BOX 3.
     </div>
 
@@ -299,7 +300,7 @@ button{color:white;font-weight:bold;cursor:pointer;}
     <div class="input-label">Move Everything To</div>
     <select id="bulkToLocation"><option value="">To Box</option></select>
 
-    <button class="bulk-button" onclick="moveWholeBox()">Move Whole Box</button>
+    <button class="bulk-button" id="moveWholeLocationButton" onclick="moveWholeBox()">Move Whole Box</button>
 </div>
 
 <div id="progressBox"></div>
@@ -322,13 +323,13 @@ button{color:white;font-weight:bold;cursor:pointer;}
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/inventoryTopbar.js?v=2"></script>
-<script src="js/workspace.js?v=3"></script>
+<script src="js/inventoryTopbar.js?v=4"></script>
+<script src="js/workspace.js?v=4"></script>
+
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
 }
-
 
 let scannerStarted = false;
 let codeReader = null;
@@ -340,51 +341,157 @@ let lastScannedBarcode = "";
 let lastScanTime = 0;
 let bundleBarcodes = [];
 
-function showLoading(){document.getElementById("loadingOverlay").style.display = "flex";}
-function hideLoading(){document.getElementById("loadingOverlay").style.display = "none";}
+function showLoading(){
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
+
+function hideLoading(){
+    document.getElementById("loadingOverlay").style.display = "none";
+}
+
+function readLocationSettings(){
+    try{
+        if(
+            typeof InventoryWorkspace !== "undefined" &&
+            InventoryWorkspace &&
+            typeof InventoryWorkspace.getSettings === "function"
+        ){
+            return InventoryWorkspace.getSettings();
+        }
+    }catch(error){
+        console.error("Could not read location settings from InventoryWorkspace:", error);
+    }
+
+    try{
+        const workspace = JSON.parse(
+            localStorage.getItem("inventoryos_workspace") || "null"
+        );
+
+        if(workspace && workspace.settings){
+            return workspace.settings;
+        }
+    }catch(error){
+        console.error("Could not read cached workspace settings:", error);
+    }
+
+    return {};
+}
+
+function locationWords(){
+    const settings = readLocationSettings();
+
+    const singular =
+        String(settings.location_label_singular || "Box").trim() ||
+        "Box";
+
+    const plural =
+        String(settings.location_label_plural || "Boxes").trim() ||
+        "Boxes";
+
+    return {
+        singular:singular,
+        plural:plural,
+        singularLower:singular.toLocaleLowerCase(),
+        pluralLower:plural.toLocaleLowerCase()
+    };
+}
+
+function applyMoveLocationWording(){
+    const words = locationWords();
+
+    document.getElementById("moveSubtitle").textContent =
+        "Move single items, scanned bundles, or the full remaining contents of one " +
+        words.singularLower +
+        " into another " +
+        words.singularLower;
+
+    document.getElementById("bulkMoveTitle").textContent =
+        "Bulk " + words.singular + " Move";
+
+    document.getElementById("bulkMoveBadge").textContent =
+        "whole " + words.singularLower;
+
+    document.getElementById("bulkMoveWarning").textContent =
+        "This moves everything currently left in the selected " +
+        words.singularLower +
+        " into another " +
+        words.singularLower +
+        ". Example: move all remaining stock from BOX 2 to BOX 3.";
+
+    document.getElementById("moveWholeLocationButton").textContent =
+        "Move Whole " + words.singular;
+
+    const bulkFrom = document.getElementById("bulkFromLocation");
+    const bulkTo = document.getElementById("bulkToLocation");
+
+    if(bulkFrom && bulkFrom.options.length){
+        bulkFrom.options[0].textContent =
+            "From " + words.singular;
+    }
+
+    if(bulkTo && bulkTo.options.length){
+        bulkTo.options[0].textContent =
+            "To " + words.singular;
+    }
+}
 
 function normaliseBarcode(value){
     let barcode = String(value || "").trim().toUpperCase().replace(/\s+/g, "");
+
     if(!barcode) return "";
     if(/^\d+$/.test(barcode)) return "ITEM-" + barcode;
     if(/^ITEM\d+$/.test(barcode)) return barcode.replace("ITEM", "ITEM-");
+
     return barcode;
 }
 
 function beep(){
     try{
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioCtx =
+            new (window.AudioContext || window.webkitAudioContext)();
+
         const oscillator = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
+
         oscillator.type = "sine";
         oscillator.frequency.value = 900;
         gain.gain.value = 0.15;
+
         oscillator.connect(gain);
         gain.connect(audioCtx.destination);
         oscillator.start();
-        setTimeout(function(){oscillator.stop();audioCtx.close();},120);
-    }catch(error){console.log("Beep not supported");}
+
+        setTimeout(function(){
+            oscillator.stop();
+            audioCtx.close();
+        },120);
+    }catch(error){
+        console.log("Beep not supported");
+    }
 }
 
 function scanFeedback(){
-    if(navigator.vibrate) navigator.vibrate(100);
+    if(navigator.vibrate){
+        navigator.vibrate(100);
+    }
+
     beep();
 }
 
-function setResult(message){document.getElementById("result").innerHTML = message;}
+function setResult(message){
+    document.getElementById("result").innerHTML = message;
+}
+
 function setProgress(message){
     const box = document.getElementById("progressBox");
     box.style.display = "block";
     box.innerHTML = message;
 }
+
 function clearProgress(){
     const box = document.getElementById("progressBox");
     box.style.display = "none";
     box.innerHTML = "";
-}
-
-function copyOptions(sourceSelect, targetSelect){
-    targetSelect.innerHTML = sourceSelect.innerHTML;
 }
 
 function loadBoxes(){
@@ -393,17 +500,47 @@ function loadBoxes(){
     InventoryAPI.request("/boxes?_t=" + Date.now())
     .then(data=>{
         hideLoading();
-        if(!data.success){setResult(data.error || "Could not load boxes");return;}
 
-        const boxes = (data.boxes || []).map(item => ({
-            box: item.box || item.box_name || ""
-        })).filter(item => item.box);
+        const words = locationWords();
+
+        if(!data.success){
+            setResult(
+                data.error ||
+                "Could not load " + words.pluralLower
+            );
+            return;
+        }
+
+        const boxes = (data.boxes || [])
+            .map(item => ({
+                box:item.box || item.box_name || ""
+            }))
+            .filter(item => item.box);
 
         boxes.sort((a,b) => {
-            const na = Number(String(a.box).match(/\d+/)?.[0] || 0);
-            const nb = Number(String(b.box).match(/\d+/)?.[0] || 0);
-            if(na && nb && na !== nb) return na - nb;
-            return String(a.box).localeCompare(String(b.box), undefined, {numeric:true});
+            const na =
+                Number(
+                    String(a.box).match(/\d+/)?.[0] ||
+                    0
+                );
+
+            const nb =
+                Number(
+                    String(b.box).match(/\d+/)?.[0] ||
+                    0
+                );
+
+            if(na && nb && na !== nb){
+                return na - nb;
+            }
+
+            return String(a.box).localeCompare(
+                String(b.box),
+                undefined,
+                {
+                    numeric:true
+                }
+            );
         });
 
         const selects = [
@@ -416,159 +553,353 @@ function loadBoxes(){
         ];
 
         selects.forEach(select=>{
-            const firstText = select.id.toLowerCase().includes("to") ? "To Location" : "From Location";
-            select.innerHTML = '<option value="">' + firstText + '</option>';
+            let firstText;
+
+            if(select.id === "bulkFromLocation"){
+                firstText = "From " + words.singular;
+            }else if(select.id === "bulkToLocation"){
+                firstText = "To " + words.singular;
+            }else{
+                firstText =
+                    select.id.toLowerCase().includes("to")
+                        ? "To Location"
+                        : "From Location";
+            }
+
+            select.innerHTML =
+                '<option value="">' +
+                firstText +
+                "</option>";
         });
 
         boxes.forEach(item=>{
             selects.forEach(select=>{
-                const option = document.createElement("option");
+                const option =
+                    document.createElement("option");
+
                 option.value = item.box;
                 option.textContent = item.box;
                 select.appendChild(option);
             });
         });
+
+        applyMoveLocationWording();
     })
     .catch(error=>{
         hideLoading();
         console.error(error);
-        alert("Could not load boxes");
+
+        const words = locationWords();
+
+        alert(
+            "Could not load " +
+            words.pluralLower
+        );
     });
 }
 
 async function toggleTorch(){
     try{
         const video = document.getElementById("reader");
-        if(!video.srcObject){alert("Start scanner first");return;}
-        const track = video.srcObject.getVideoTracks()[0];
+
+        if(!video.srcObject){
+            alert("Start scanner first");
+            return;
+        }
+
+        const track =
+            video.srcObject.getVideoTracks()[0];
+
         activeTrack = track;
         torchOn = !torchOn;
-        await track.applyConstraints({advanced:[{torch:torchOn}]});
-        setResult(torchOn ? "Flashlight on" : "Flashlight off");
-    }catch(error){torchOn = false;alert("Flashlight not supported on this device/browser");}
+
+        await track.applyConstraints({
+            advanced:[
+                {
+                    torch:torchOn
+                }
+            ]
+        });
+
+        setResult(
+            torchOn
+                ? "Flashlight on"
+                : "Flashlight off"
+        );
+    }catch(error){
+        torchOn = false;
+
+        alert(
+            "Flashlight not supported on this device/browser"
+        );
+    }
 }
 
 async function refocusCamera(){
     try{
         const video = document.getElementById("reader");
-        if(!video.srcObject){alert("Start scanner first");return;}
-        const track = video.srcObject.getVideoTracks()[0];
+
+        if(!video.srcObject){
+            alert("Start scanner first");
+            return;
+        }
+
+        const track =
+            video.srcObject.getVideoTracks()[0];
+
         activeTrack = track;
-        await track.applyConstraints({advanced:[{focusMode:"continuous"}]});
-        setResult("Refocus requested. Hold the barcode steady on the red line.");
+
+        await track.applyConstraints({
+            advanced:[
+                {
+                    focusMode:"continuous"
+                }
+            ]
+        });
+
+        setResult(
+            "Refocus requested. Hold the barcode steady on the red line."
+        );
     }catch(error){
-        setResult("Refocus not supported on this device/browser, but you can still move the phone back slightly to refocus.");
+        setResult(
+            "Refocus not supported on this device/browser, but you can still move the phone back slightly to refocus."
+        );
     }
 }
 
 async function toggleZoom(){
     try{
         const video = document.getElementById("reader");
-        if(!video.srcObject){alert("Start scanner first");return;}
-        const track = video.srcObject.getVideoTracks()[0];
-        activeTrack = track;
-        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-        const maxZoom = capabilities.zoom && capabilities.zoom.max ? capabilities.zoom.max : 1;
 
-        currentZoom = currentZoom === 1 ? Math.min(2, maxZoom) : 1;
+        if(!video.srcObject){
+            alert("Start scanner first");
+            return;
+        }
+
+        const track =
+            video.srcObject.getVideoTracks()[0];
+
+        activeTrack = track;
+
+        const capabilities =
+            track.getCapabilities
+                ? track.getCapabilities()
+                : {};
+
+        const maxZoom =
+            capabilities.zoom &&
+            capabilities.zoom.max
+                ? capabilities.zoom.max
+                : 1;
+
+        currentZoom =
+            currentZoom === 1
+                ? Math.min(2,maxZoom)
+                : 1;
 
         if(maxZoom <= 1){
-            setResult("Zoom not supported on this device/browser.");
+            setResult(
+                "Zoom not supported on this device/browser."
+            );
+
             currentZoom = 1;
             return;
         }
 
-        await track.applyConstraints({advanced:[{zoom:currentZoom}]});
-        document.getElementById("zoomButton").innerText = "Zoom " + currentZoom + "x";
-        setResult("Zoom set to " + currentZoom + "x");
+        await track.applyConstraints({
+            advanced:[
+                {
+                    zoom:currentZoom
+                }
+            ]
+        });
+
+        document.getElementById("zoomButton").innerText =
+            "Zoom " + currentZoom + "x";
+
+        setResult(
+            "Zoom set to " +
+            currentZoom +
+            "x"
+        );
     }catch(error){
         currentZoom = 1;
-        document.getElementById("zoomButton").innerText = "Zoom 1x";
-        setResult("Zoom not supported on this device/browser.");
+
+        document.getElementById("zoomButton").innerText =
+            "Zoom 1x";
+
+        setResult(
+            "Zoom not supported on this device/browser."
+        );
     }
 }
 
 function startScanner(){
     const video = document.getElementById("reader");
-    const scannerWrap = document.getElementById("scannerWrap");
+    const scannerWrap =
+        document.getElementById("scannerWrap");
+
     scannerWrap.style.display = "block";
-    scannerWrap.scrollIntoView({block:"nearest",behavior:"instant"});
 
-    if(scannerStarted) return;
+    scannerWrap.scrollIntoView({
+        block:"nearest",
+        behavior:"instant"
+    });
 
-    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+    if(scannerStarted){
+        return;
+    }
 
-    codeReader.decodeFromVideoDevice(null,"reader",function(result,error,ctrl){
-        if(ctrl) controls = ctrl;
+    codeReader =
+        new ZXingBrowser.BrowserMultiFormatReader();
 
-        if(result){
-            const barcode = normaliseBarcode(result.getText());
-            const now = Date.now();
-
-            if(barcode === lastScannedBarcode && now - lastScanTime < 1400){
-                return;
+    codeReader.decodeFromVideoDevice(
+        null,
+        "reader",
+        function(result,error,ctrl){
+            if(ctrl){
+                controls = ctrl;
             }
 
-            lastScannedBarcode = barcode;
-            lastScanTime = now;
-            scanFeedback();
+            if(result){
+                const barcode =
+                    normaliseBarcode(
+                        result.getText()
+                    );
 
-            if(document.getElementById("scanToBundle").checked){
-                addBundleBarcode(barcode);
-                setResult(barcode + " added to bundle move list. Scanner is still open for the next item.");
-            }else{
-                document.getElementById("barcode").value = barcode;
-                setResult("Scanned: " + barcode);
-                stopScanner();
+                const now = Date.now();
+
+                if(
+                    barcode === lastScannedBarcode &&
+                    now - lastScanTime < 1400
+                ){
+                    return;
+                }
+
+                lastScannedBarcode = barcode;
+                lastScanTime = now;
+                scanFeedback();
+
+                if(
+                    document
+                        .getElementById("scanToBundle")
+                        .checked
+                ){
+                    addBundleBarcode(barcode);
+
+                    setResult(
+                        barcode +
+                        " added to bundle move list. Scanner is still open for the next item."
+                    );
+                }else{
+                    document.getElementById("barcode").value =
+                        barcode;
+
+                    setResult(
+                        "Scanned: " +
+                        barcode
+                    );
+
+                    stopScanner();
+                }
             }
         }
-    })
+    )
     .then(function(ctrl){
         controls = ctrl;
         scannerStarted = true;
+
         setTimeout(function(){
             if(video && video.srcObject){
-                activeTrack = video.srcObject.getVideoTracks()[0] || null;
+                activeTrack =
+                    video.srcObject
+                        .getVideoTracks()[0] ||
+                    null;
+
                 if(activeTrack){
-                    activeTrack.applyConstraints({advanced:[{focusMode:"continuous"},{exposureMode:"continuous"}]}).catch(function(){});
+                    activeTrack
+                        .applyConstraints({
+                            advanced:[
+                                {
+                                    focusMode:"continuous"
+                                },
+                                {
+                                    exposureMode:"continuous"
+                                }
+                            ]
+                        })
+                        .catch(function(){});
                 }
             }
         },500);
     })
     .catch(function(error){
         console.error(error);
-        alert("Could not start scanner. Check camera permissions.");
+
+        alert(
+            "Could not start scanner. Check camera permissions."
+        );
+
         scannerStarted = false;
         scannerWrap.style.display = "none";
     });
 }
 
 function stopScanner(){
-    if(controls){controls.stop();controls = null;}
+    if(controls){
+        controls.stop();
+        controls = null;
+    }
+
     const video = document.getElementById("reader");
+
     if(video && video.srcObject){
-        video.srcObject.getTracks().forEach(track=>track.stop());
+        video.srcObject
+            .getTracks()
+            .forEach(track=>track.stop());
+
         video.srcObject = null;
     }
-    document.getElementById("scannerWrap").style.display = "none";
+
+    document.getElementById("scannerWrap").style.display =
+        "none";
+
     scannerStarted = false;
     torchOn = false;
     activeTrack = null;
     currentZoom = 1;
-    document.getElementById("zoomButton").innerText = "Zoom 1x";
+
+    document.getElementById("zoomButton").innerText =
+        "Zoom 1x";
 }
 
 function addBundleBarcodeFromInput(){
-    const input = document.getElementById("bundleBarcodeInput");
-    const barcode = normaliseBarcode(input.value);
-    if(!barcode){alert("Enter or scan a barcode first");return;}
+    const input =
+        document.getElementById(
+            "bundleBarcodeInput"
+        );
+
+    const barcode =
+        normaliseBarcode(input.value);
+
+    if(!barcode){
+        alert(
+            "Enter or scan a barcode first"
+        );
+        return;
+    }
+
     addBundleBarcode(barcode);
     input.value = "";
 }
 
 function addBundleBarcode(barcode){
     barcode = normaliseBarcode(barcode);
-    if(!barcode) return;
+
+    if(!barcode){
+        return;
+    }
+
     bundleBarcodes.push(barcode);
     renderBundleList();
 }
@@ -581,11 +912,16 @@ function removeBundleBarcode(index){
 function clearBundleList(){
     bundleBarcodes = [];
     renderBundleList();
-    setResult("Bundle move list cleared.");
+
+    setResult(
+        "Bundle move list cleared."
+    );
 }
 
 function renderBundleList(){
-    const bundleBox = document.getElementById("bundleBox");
+    const bundleBox =
+        document.getElementById("bundleBox");
+
     if(bundleBarcodes.length === 0){
         bundleBox.style.display = "none";
         bundleBox.innerHTML = "";
@@ -593,6 +929,7 @@ function renderBundleList(){
     }
 
     bundleBox.style.display = "block";
+
     let html = `
         <div class="bundle-title">
             <span>Bundle Move List</span>
@@ -612,59 +949,166 @@ function renderBundleList(){
     bundleBox.innerHTML = html;
 }
 
-function moveRequest(barcode, fromLocation, toLocation, qty){
-    return InventoryAPI.request("/move/item",{
-        method:"POST",
-        body:JSON.stringify({
-            barcode:barcode,
-            fromLocation:fromLocation,
-            toLocation:toLocation,
-            qty:Number(qty || 1)
-        })
-    });
+function moveRequest(
+    barcode,
+    fromLocation,
+    toLocation,
+    qty
+){
+    return InventoryAPI.request(
+        "/move/item",
+        {
+            method:"POST",
+            body:JSON.stringify({
+                barcode:barcode,
+                fromLocation:fromLocation,
+                toLocation:toLocation,
+                qty:Number(qty || 1)
+            })
+        }
+    );
 }
 
 function moveStock(){
-    const barcode = normaliseBarcode(document.getElementById("barcode").value);
-    const fromLocation = document.getElementById("fromLocation").value;
-    const toLocation = document.getElementById("toLocation").value;
-    const qty = document.getElementById("qty").value || 1;
+    const barcode =
+        normaliseBarcode(
+            document
+                .getElementById("barcode")
+                .value
+        );
 
-    if(!barcode || !fromLocation || !toLocation){alert("Enter barcode, from location and to location");return;}
-    if(fromLocation === toLocation){alert("From and To locations are the same");return;}
+    const fromLocation =
+        document
+            .getElementById("fromLocation")
+            .value;
 
-    document.getElementById("barcode").value = barcode;
+    const toLocation =
+        document
+            .getElementById("toLocation")
+            .value;
+
+    const qty =
+        document
+            .getElementById("qty")
+            .value ||
+        1;
+
+    if(
+        !barcode ||
+        !fromLocation ||
+        !toLocation
+    ){
+        alert(
+            "Enter barcode, from location and to location"
+        );
+        return;
+    }
+
+    if(fromLocation === toLocation){
+        alert(
+            "From and To locations are the same"
+        );
+        return;
+    }
+
+    document.getElementById("barcode").value =
+        barcode;
+
     showLoading();
 
-    moveRequest(barcode,fromLocation,toLocation,qty)
+    moveRequest(
+        barcode,
+        fromLocation,
+        toLocation,
+        qty
+    )
     .then(data=>{
         hideLoading();
+
         if(data.success){
-            setResult("Moved " + data.qty + " of " + data.barcode + " from " + data.fromLocation + " to " + data.toLocation);
-            document.getElementById("barcode").value = "";
-            document.getElementById("qty").value = "1";
+            setResult(
+                "Moved " +
+                data.qty +
+                " of " +
+                data.barcode +
+                " from " +
+                data.fromLocation +
+                " to " +
+                data.toLocation
+            );
+
+            document.getElementById("barcode").value =
+                "";
+
+            document.getElementById("qty").value =
+                "1";
         }else{
-            setResult(data.error || "Move failed");
+            setResult(
+                data.error ||
+                "Move failed"
+            );
         }
     })
-    .catch(error=>{hideLoading();console.error(error);alert("Error moving stock");});
+    .catch(error=>{
+        hideLoading();
+        console.error(error);
+
+        alert(
+            "Error moving stock"
+        );
+    });
 }
 
 async function moveBundleStock(){
-    const fromLocation = document.getElementById("bundleFromLocation").value;
-    const toLocation = document.getElementById("bundleToLocation").value;
+    const fromLocation =
+        document
+            .getElementById("bundleFromLocation")
+            .value;
 
-    if(bundleBarcodes.length === 0){alert("Add at least one barcode to the bundle move list");return;}
-    if(!fromLocation || !toLocation){alert("Select bundle from and to locations");return;}
-    if(fromLocation === toLocation){alert("From and To locations are the same");return;}
+    const toLocation =
+        document
+            .getElementById("bundleToLocation")
+            .value;
+
+    if(bundleBarcodes.length === 0){
+        alert(
+            "Add at least one barcode to the bundle move list"
+        );
+        return;
+    }
+
+    if(!fromLocation || !toLocation){
+        alert(
+            "Select bundle from and to locations"
+        );
+        return;
+    }
+
+    if(fromLocation === toLocation){
+        alert(
+            "From and To locations are the same"
+        );
+        return;
+    }
 
     const counts = {};
+
     bundleBarcodes.forEach(barcode=>{
-        const normal = normaliseBarcode(barcode);
-        counts[normal] = (counts[normal] || 0) + 1;
+        const normal =
+            normaliseBarcode(barcode);
+
+        counts[normal] =
+            (counts[normal] || 0) +
+            1;
     });
 
-    const items = Object.keys(counts).map(barcode=>({barcode:barcode,qty:counts[barcode]}));
+    const items =
+        Object.keys(counts).map(
+            barcode=>({
+                barcode:barcode,
+                qty:counts[barcode]
+            })
+        );
 
     showLoading();
     clearProgress();
@@ -672,49 +1116,146 @@ async function moveBundleStock(){
     let moved = 0;
     let failed = [];
 
-    for(let i = 0; i < items.length; i++){
+    for(
+        let i = 0;
+        i < items.length;
+        i++
+    ){
         const item = items[i];
-        setProgress("Moving bundle item " + (i + 1) + " of " + items.length + "<br>" + item.barcode + " x " + item.qty);
+
+        setProgress(
+            "Moving bundle item " +
+            (i + 1) +
+            " of " +
+            items.length +
+            "<br>" +
+            item.barcode +
+            " x " +
+            item.qty
+        );
 
         try{
-            const data = await moveRequest(item.barcode,fromLocation,toLocation,item.qty);
+            const data =
+                await moveRequest(
+                    item.barcode,
+                    fromLocation,
+                    toLocation,
+                    item.qty
+                );
+
             if(data.success){
                 moved += item.qty;
             }else{
-                failed.push(item.barcode + " — " + (data.error || "Move failed"));
+                failed.push(
+                    item.barcode +
+                    " — " +
+                    (
+                        data.error ||
+                        "Move failed"
+                    )
+                );
             }
         }catch(error){
             console.error(error);
-            failed.push(item.barcode + " — request error");
+
+            failed.push(
+                item.barcode +
+                " — request error"
+            );
         }
     }
 
     hideLoading();
 
     if(failed.length === 0){
-        setResult("Bundle move complete. Moved " + moved + " item" + (moved === 1 ? "" : "s") + " from " + fromLocation + " to " + toLocation + ".");
+        setResult(
+            "Bundle move complete. Moved " +
+            moved +
+            " item" +
+            (
+                moved === 1
+                    ? ""
+                    : "s"
+            ) +
+            " from " +
+            fromLocation +
+            " to " +
+            toLocation +
+            "."
+        );
+
         bundleBarcodes = [];
         renderBundleList();
-        document.getElementById("bundleBarcodeInput").value = "";
+
+        document
+            .getElementById("bundleBarcodeInput")
+            .value = "";
     }else{
-        setResult("Bundle move partly completed. Moved " + moved + " item" + (moved === 1 ? "" : "s") + ".<br><br>Failed:<br>" + failed.join("<br>"));
+        setResult(
+            "Bundle move partly completed. Moved " +
+            moved +
+            " item" +
+            (
+                moved === 1
+                    ? ""
+                    : "s"
+            ) +
+            ".<br><br>Failed:<br>" +
+            failed.join("<br>")
+        );
     }
 
     clearProgress();
 }
 
 function getBoxContents(box){
-    return InventoryAPI.request("/boxes/" + encodeURIComponent(box) + "/contents?_t=" + Date.now());
+    return InventoryAPI.request(
+        "/boxes/" +
+        encodeURIComponent(box) +
+        "/contents?_t=" +
+        Date.now()
+    );
 }
 
 async function moveWholeBox(){
-    const fromLocation = document.getElementById("bulkFromLocation").value;
-    const toLocation = document.getElementById("bulkToLocation").value;
+    const words = locationWords();
 
-    if(!fromLocation || !toLocation){alert("Select from and to boxes");return;}
-    if(fromLocation === toLocation){alert("From and To boxes are the same");return;}
+    const fromLocation =
+        document
+            .getElementById("bulkFromLocation")
+            .value;
 
-    if(!confirm("Move everything currently left in " + fromLocation + " to " + toLocation + "?")){
+    const toLocation =
+        document
+            .getElementById("bulkToLocation")
+            .value;
+
+    if(!fromLocation || !toLocation){
+        alert(
+            "Select from and to " +
+            words.pluralLower
+        );
+        return;
+    }
+
+    if(fromLocation === toLocation){
+        alert(
+            "From and To " +
+            words.pluralLower +
+            " are the same"
+        );
+        return;
+    }
+
+    if(
+        !confirm(
+            "Move everything currently left in " +
+            fromLocation +
+            " to " +
+            toLocation +
+            "?"
+        )
+    ){
         return;
     }
 
@@ -722,17 +1263,36 @@ async function moveWholeBox(){
     clearProgress();
 
     try{
-        const contents = await getBoxContents(fromLocation);
+        const contents =
+            await getBoxContents(
+                fromLocation
+            );
 
         if(!contents.success){
             hideLoading();
-            setResult(contents.error || "Could not load box contents");
+
+            setResult(
+                contents.error ||
+                "Could not load " +
+                words.singularLower +
+                " contents"
+            );
+
             return;
         }
 
-        if(!contents.results || contents.results.length === 0){
+        if(
+            !contents.results ||
+            contents.results.length === 0
+        ){
             hideLoading();
-            setResult("No stock found in " + fromLocation + ".");
+
+            setResult(
+                "No stock found in " +
+                fromLocation +
+                "."
+            );
+
             return;
         }
 
@@ -740,26 +1300,72 @@ async function moveWholeBox(){
         let movedLines = 0;
         let failed = [];
 
-        for(let i = 0; i < contents.results.length; i++){
-            const item = contents.results[i];
-            const barcode = normaliseBarcode(item.barcode);
-            const qty = Number(item.qty || 0);
+        for(
+            let i = 0;
+            i < contents.results.length;
+            i++
+        ){
+            const item =
+                contents.results[i];
 
-            if(!barcode || qty <= 0) continue;
+            const barcode =
+                normaliseBarcode(
+                    item.barcode
+                );
 
-            setProgress("Moving box item " + (i + 1) + " of " + contents.results.length + "<br>" + barcode + " x " + qty + "<br>From " + fromLocation + " to " + toLocation);
+            const qty =
+                Number(item.qty || 0);
+
+            if(!barcode || qty <= 0){
+                continue;
+            }
+
+            setProgress(
+                "Moving " +
+                words.singularLower +
+                " item " +
+                (i + 1) +
+                " of " +
+                contents.results.length +
+                "<br>" +
+                barcode +
+                " x " +
+                qty +
+                "<br>From " +
+                fromLocation +
+                " to " +
+                toLocation
+            );
 
             try{
-                const data = await moveRequest(barcode,fromLocation,toLocation,qty);
+                const data =
+                    await moveRequest(
+                        barcode,
+                        fromLocation,
+                        toLocation,
+                        qty
+                    );
+
                 if(data.success){
                     movedQty += qty;
                     movedLines++;
                 }else{
-                    failed.push(barcode + " — " + (data.error || "Move failed"));
+                    failed.push(
+                        barcode +
+                        " — " +
+                        (
+                            data.error ||
+                            "Move failed"
+                        )
+                    );
                 }
             }catch(error){
                 console.error(error);
-                failed.push(barcode + " — request error");
+
+                failed.push(
+                    barcode +
+                    " — request error"
+                );
             }
         }
 
@@ -767,47 +1373,147 @@ async function moveWholeBox(){
         clearProgress();
 
         if(failed.length === 0){
-            setResult("Whole box move complete. Moved " + movedQty + " total item" + (movedQty === 1 ? "" : "s") + " across " + movedLines + " product line" + (movedLines === 1 ? "" : "s") + " from " + fromLocation + " to " + toLocation + ".");
+            setResult(
+                "Whole " +
+                words.singularLower +
+                " move complete. Moved " +
+                movedQty +
+                " total item" +
+                (
+                    movedQty === 1
+                        ? ""
+                        : "s"
+                ) +
+                " across " +
+                movedLines +
+                " product line" +
+                (
+                    movedLines === 1
+                        ? ""
+                        : "s"
+                ) +
+                " from " +
+                fromLocation +
+                " to " +
+                toLocation +
+                "."
+            );
         }else{
-            setResult("Box move partly completed. Moved " + movedQty + " item" + (movedQty === 1 ? "" : "s") + ".<br><br>Failed:<br>" + failed.join("<br>"));
+            setResult(
+                words.singular +
+                " move partly completed. Moved " +
+                movedQty +
+                " item" +
+                (
+                    movedQty === 1
+                        ? ""
+                        : "s"
+                ) +
+                ".<br><br>Failed:<br>" +
+                failed.join("<br>")
+            );
         }
 
         loadBoxes();
-
     }catch(error){
         hideLoading();
         clearProgress();
         console.error(error);
-        alert("Error moving whole box");
+
+        alert(
+            "Error moving whole " +
+            words.singularLower
+        );
     }
 }
 
-document.getElementById("barcode").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        document.getElementById("barcode").value = normaliseBarcode(this.value);
-        moveStock();
-    }
-});
+document
+    .getElementById("barcode")
+    .addEventListener(
+        "keydown",
+        function(e){
+            if(e.key === "Enter"){
+                e.preventDefault();
 
-document.getElementById("bundleBarcodeInput").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        addBundleBarcodeFromInput();
-    }
-});
+                document
+                    .getElementById("barcode")
+                    .value =
+                    normaliseBarcode(
+                        this.value
+                    );
 
-window.addEventListener("inventory-selection-changed", function(){
-    bundleBarcodes = [];
-    renderBundleList();
-    document.getElementById("barcode").value = "";
-    document.getElementById("bundleBarcodeInput").value = "";
-    clearProgress();
-    setResult("Inventory changed. Ready to move stock.");
+                moveStock();
+            }
+        }
+    );
+
+document
+    .getElementById("bundleBarcodeInput")
+    .addEventListener(
+        "keydown",
+        function(e){
+            if(e.key === "Enter"){
+                e.preventDefault();
+                addBundleBarcodeFromInput();
+            }
+        }
+    );
+
+window.addEventListener(
+    "inventory-selection-changed",
+    function(){
+        bundleBarcodes = [];
+        renderBundleList();
+
+        document.getElementById("barcode").value =
+            "";
+
+        document
+            .getElementById("bundleBarcodeInput")
+            .value = "";
+
+        clearProgress();
+        applyMoveLocationWording();
+
+        setResult(
+            "Inventory changed. Ready to move stock."
+        );
+
+        loadBoxes();
+    }
+);
+
+async function initialiseMovePage(){
+    try{
+        if(
+            typeof InventoryWorkspace !== "undefined" &&
+            InventoryWorkspace &&
+            typeof InventoryWorkspace.init === "function"
+        ){
+            await InventoryWorkspace.init();
+        }
+    }catch(error){
+        console.error(
+            "Could not initialise workspace wording:",
+            error
+        );
+    }
+
+    applyMoveLocationWording();
     loadBoxes();
-});
+}
 
-loadBoxes();
+if(document.readyState === "loading"){
+    document.addEventListener(
+        "DOMContentLoaded",
+        initialiseMovePage,
+        {
+            once:true
+        }
+    );
+}else{
+    initialiseMovePage();
+}
 </script>
 
 </body>
