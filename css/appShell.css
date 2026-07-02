@@ -1045,3 +1045,64 @@ body.inventoryos-shell-active.error-flash::after{
         width:275px !important;
     }
 }
+
+
+/* ============================================================
+   V1.2 — SIDEBAR OVERFLOW + ACTIVE PAGE FIX
+   ============================================================ */
+
+/* The sidebar only needs vertical scrolling. Prevent the browser from
+   producing the horizontal scrollbar and arrow controls shown at the bottom. */
+.ios-shell-sidebar{
+    overflow:hidden;
+}
+
+.ios-shell-sidebar-scroll{
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain;
+}
+
+.ios-shell-nav{
+    width:100%;
+    min-width:0;
+    overflow-x:hidden;
+}
+
+.ios-shell-nav-link{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    overflow:hidden;
+}
+
+.ios-shell-nav-link > span:last-child{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+/* Make the currently selected page unmistakable while still using whichever
+   accent colour is selected in Settings. */
+.ios-shell-nav-link.active{
+    color:#fff !important;
+    border-color:rgba(var(--accent-rgb),0.48) !important;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(var(--accent-rgb),0.24),
+            rgba(var(--accent-rgb),0.085)
+        ) !important;
+    box-shadow:
+        inset 3px 0 0 var(--accent),
+        0 0 0 1px rgba(var(--accent-rgb),0.055),
+        0 10px 24px rgba(var(--accent-rgb),0.08) !important;
+}
+
+.ios-shell-nav-link.active .ios-shell-nav-icon{
+    color:var(--accent) !important;
+    filter:drop-shadow(
+        0 0 7px rgba(var(--accent-rgb),0.35)
+    );
+}
