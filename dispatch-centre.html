@@ -492,7 +492,7 @@ button:disabled{
 
     <div class="panel">
         <h2 style="margin-top:0;">Email Label Import</h2>
-        <div class="muted small">Connect Gmail, scan for Vinted/eBay courier label PDFs, then import selected labels into this Dispatch Centre.</div>
+        <div class="muted small">Connect Gmail, scan for new Vinted/eBay courier labels, and hide attachments that have already been imported.</div>
         <div class="email-import-grid">
             <div class="email-status-card">
                 <div id="gmailStatus" class="muted">Checking Gmail connection...</div>
@@ -579,6 +579,11 @@ button:disabled{
         <div class="actions">
             <button id="refreshPrintPreviewBtn" class="secondary" type="button">Refresh Preview</button>
             <button id="printPreviewLabelsBtn" type="button">Print Labels to JD-668BT</button>
+            <button id="mobileShareLabelsBtn" class="secondary" type="button">📱 Share / Mobile Print</button>
+        </div>
+
+        <div id="mobileShareStatus" class="qz-print-status">
+            On mobile, share the combined 4×6 PDF to your Jadens printing app.
         </div>
 
         <div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send each 600-DPI 4×6 shipping label directly to JD-668BT using Chrome/PDFium-rendered images.</div>
@@ -608,6 +613,10 @@ let selectedFiles = [];
 let croppedLabels = [];
 let queueCache = [];
 let currentView = "location";
+
+let preparedMobilePrintFile = null;
+let preparedMobilePrintSignature = "";
+let preparedMobilePrintUrl = "";
 
 /*
     DIRECT QZ SHIPPING-LABEL PRINTING
@@ -847,6 +856,263 @@ function printDispatchImagesWithQz(printLabels){
         });
 }
 
+
+function setMobileShareStatus(message, state){
+    const element = document.getElementById("mobileShareStatus");
+
+    if(!element){
+        return;
+    }
+
+    element.textContent = message || "";
+    element.classList.remove("ok", "error", "busy", "warn");
+
+    if(state){
+        element.classList.add(state);
+    }
+}
+
+function getMobilePrintSignature(labels){
+    return labels
+        .map(label => {
+            return `${label.packId}:${label.labelOrder}`;
+        })
+        .join("|");
+}
+
+function clearPreparedMobilePrint(){
+    preparedMobilePrintFile = null;
+    preparedMobilePrintSignature = "";
+
+    if(preparedMobilePrintUrl){
+        URL.revokeObjectURL(preparedMobilePrintUrl);
+        preparedMobilePrintUrl = "";
+    }
+}
+
+function formatMobilePrintFilename(){
+    const date = new Date();
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+
+    return `InventoryOS-Shipping-Labels-${yyyy}-${mm}-${dd}-${hh}${min}.pdf`;
+}
+
+async function fetchMobilePrintPdf(pdfUrl){
+    const headers = {};
+    const token = InventoryAPI.getToken();
+
+    if(token){
+        headers.Authorization = "Bearer " + token;
+    }
+
+    const response = await fetch(pdfUrl, {
+        method:"GET",
+        headers,
+        cache:"no-store"
+    });
+
+    if(!response.ok){
+        throw new Error(
+            "Could not download the combined shipping-label PDF. HTTP " +
+            response.status
+        );
+    }
+
+    const blob = await response.blob();
+
+    if(!blob.size){
+        throw new Error("The combined shipping-label PDF was empty.");
+    }
+
+    return blob;
+}
+
+async function prepareMobilePrintFile(labels){
+    const signature = getMobilePrintSignature(labels);
+
+    if(
+        preparedMobilePrintFile &&
+        preparedMobilePrintSignature === signature
+    ){
+        return preparedMobilePrintFile;
+    }
+
+    clearPreparedMobilePrint();
+
+    setMobileShareStatus(
+        "Preparing the combined 4×6 shipping-label PDF...",
+        "busy"
+    );
+
+    const data = await InventoryAPI.request(
+        "/shipping-labels/print-pdf",
+        {
+            method:"POST",
+            body:JSON.stringify({
+                pack_ids:labels.map(label => label.packId)
+            })
+        }
+    );
+
+    if(!data.success || !data.print_url){
+        throw new Error(
+            data.error ||
+            "Could not create the combined shipping-label PDF."
+        );
+    }
+
+    const pdfUrl = InventoryAPI.API_BASE + data.print_url;
+    const blob = await fetchMobilePrintPdf(pdfUrl);
+
+    preparedMobilePrintFile = new File(
+        [blob],
+        formatMobilePrintFilename(),
+        {
+            type:"application/pdf",
+            lastModified:Date.now()
+        }
+    );
+
+    preparedMobilePrintSignature = signature;
+
+    setMobileShareStatus(
+        `${Number(data.label_count || labels.length)} label` +
+        `${Number(data.label_count || labels.length) === 1 ? "" : "s"} ready to share.`,
+        "ok"
+    );
+
+    return preparedMobilePrintFile;
+}
+
+function openMobilePrintFallback(file){
+    if(preparedMobilePrintUrl){
+        URL.revokeObjectURL(preparedMobilePrintUrl);
+    }
+
+    preparedMobilePrintUrl = URL.createObjectURL(file);
+
+    const opened = window.open(
+        preparedMobilePrintUrl,
+        "_blank",
+        "noopener,noreferrer"
+    );
+
+    if(!opened){
+        const link = document.createElement("a");
+        link.href = preparedMobilePrintUrl;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+
+    setMobileShareStatus(
+        "The PDF has opened. Use your phone's Share button and choose the Jadens app.",
+        "ok"
+    );
+}
+
+async function shareLabelsForMobile(){
+    const labels = getQueuedCourierLabels();
+
+    if(!labels.length){
+        alert("There are no cropped courier labels ready to share.");
+        return;
+    }
+
+    const button = document.getElementById("mobileShareLabelsBtn");
+    button.disabled = true;
+
+    try{
+        const signature = getMobilePrintSignature(labels);
+        const wasAlreadyPrepared =
+            preparedMobilePrintFile &&
+            preparedMobilePrintSignature === signature;
+
+        button.textContent = wasAlreadyPrepared
+            ? "Opening Share Sheet..."
+            : "Preparing Mobile PDF...";
+
+        const file = await prepareMobilePrintFile(labels);
+
+        const shareData = {
+            title:"InventoryOS Shipping Labels",
+            text:"4×6 shipping labels from InventoryOS",
+            files:[file]
+        };
+
+        const canShareFiles =
+            navigator.share &&
+            (
+                !navigator.canShare ||
+                navigator.canShare(shareData)
+            );
+
+        if(canShareFiles){
+            try{
+                await navigator.share(shareData);
+
+                setMobileShareStatus(
+                    "Shared successfully. Choose your Jadens printing app to print the 4×6 labels.",
+                    "ok"
+                );
+
+                return;
+            }catch(error){
+                if(error && error.name === "AbortError"){
+                    setMobileShareStatus(
+                        "Sharing was cancelled. Tap the button again when ready.",
+                        "warn"
+                    );
+
+                    return;
+                }
+
+                /*
+                    Some mobile browsers require the share call to happen
+                    immediately on a fresh tap. The PDF remains cached, so the
+                    next tap can open the share sheet without downloading it.
+                */
+                if(error && error.name === "NotAllowedError"){
+                    setMobileShareStatus(
+                        "The PDF is ready. Tap Share / Mobile Print once more to open the share sheet.",
+                        "warn"
+                    );
+
+                    return;
+                }
+
+                console.warn(
+                    "File sharing was unavailable; opening PDF fallback:",
+                    error
+                );
+            }
+        }
+
+        openMobilePrintFallback(file);
+    }catch(error){
+        console.error(error);
+
+        setMobileShareStatus(
+            error.message ||
+            "Could not prepare labels for mobile printing.",
+            "error"
+        );
+
+        alert(
+            error.message ||
+            "Could not prepare labels for mobile printing."
+        );
+    }finally{
+        button.disabled = false;
+        button.textContent = "📱 Share / Mobile Print";
+    }
+}
+
 const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("fileInput");
 const browseBtn = document.getElementById("browseBtn");
@@ -872,9 +1138,249 @@ async function loadGmailStatus(){ try{ const data=await InventoryAPI.request("/e
 async function connectGmail(){ try{ setGmailStatus("Opening Google connection page...","warn"); const data=await InventoryAPI.request("/email-labels/gmail/connect"); if(!data.success||!data.url) throw new Error(data.error||"Could not start Gmail connection."); window.location.href=data.url; }catch(e){ console.error(e); setGmailStatus(e.message||"Could not connect Gmail.","error"); } }
 async function disconnectGmail(){ if(!confirm("Disconnect Gmail from InventoryOS?"))return; try{ const data=await InventoryAPI.request("/email-labels/gmail/disconnect",{method:"POST"}); if(!data.success) throw new Error(data.error||"Could not disconnect Gmail."); gmailLabelResults=[]; renderGmailResults([]); setGmailScanStatus(""); await loadGmailStatus(); }catch(e){ console.error(e); setGmailStatus(e.message||"Could not disconnect Gmail.","error"); } }
 function renderGmailResults(labels){ const container=document.getElementById("gmailResults"); const actions=document.getElementById("gmailImportActions"); if(!labels||!labels.length){ container.innerHTML=""; actions.style.display="none"; return; } actions.style.display="flex"; container.innerHTML=labels.map((label,index)=>`<div class="email-result"><label><input type="checkbox" class="gmail-label-check" data-index="${index}" checked><div><div class="email-result-title">${escapeHtml(label.item_name||"Review item name")}</div><div><span class="email-pill">${escapeHtml(label.marketplace||"Email")}</span>${label.courier?`<span class="email-pill">${escapeHtml(label.courier)}</span>`:""}</div><div class="email-result-meta">${escapeHtml(label.subject||"")}<br>From: ${escapeHtml(label.from||"")}<br>Attachment: ${escapeHtml(label.filename||"label.pdf")}</div></div></label></div>`).join(""); }
-async function scanGmail(){ showLoading("Scanning Gmail for shipping labels..."); setGmailScanStatus("Scanning Gmail...","warn"); try{ const data=await InventoryAPI.request("/email-labels/gmail/scan",{method:"POST",body:JSON.stringify({max_results:15})}); if(!data.success) throw new Error(data.error||"Gmail scan failed."); gmailLabelResults=data.labels||[]; renderGmailResults(gmailLabelResults); setGmailScanStatus(gmailLabelResults.length?`Found ${gmailLabelResults.length} label attachment${gmailLabelResults.length===1?"":"s"}. Tick the ones to import.`:"No label PDFs found in recent Gmail results.", gmailLabelResults.length?"ok":"warn"); }catch(e){ console.error(e); setGmailScanStatus(e.message||"Could not scan Gmail.","error"); }finally{ hideLoading(); } }
+async function scanGmail(){
+    showLoading("Scanning Gmail for new shipping labels...");
+    setGmailScanStatus("Scanning Gmail for labels not already imported...", "warn");
+
+    try{
+        const data = await InventoryAPI.request("/email-labels/gmail/scan", {
+            method:"POST",
+            body:JSON.stringify({
+                max_results:15
+            })
+        });
+
+        if(!data.success){
+            throw new Error(data.error || "Gmail scan failed.");
+        }
+
+        gmailLabelResults = data.labels || [];
+        renderGmailResults(gmailLabelResults);
+
+        const skipped = Number(data.already_imported_count || 0);
+
+        if(gmailLabelResults.length){
+            let message =
+                `Found ${gmailLabelResults.length} new label attachment` +
+                `${gmailLabelResults.length === 1 ? "" : "s"}.`;
+
+            if(skipped){
+                message +=
+                    ` Hidden ${skipped} previously imported label` +
+                    `${skipped === 1 ? "" : "s"}.`;
+            }
+
+            message += " Tick the ones to import.";
+            setGmailScanStatus(message, "ok");
+        }else if(skipped){
+            setGmailScanStatus(
+                `No new labels found. ${skipped} previously imported label` +
+                `${skipped === 1 ? " was" : "s were"} hidden.`,
+                "ok"
+            );
+        }else{
+            setGmailScanStatus(
+                "No new shipping-label PDFs were found in recent Gmail results.",
+                "warn"
+            );
+        }
+    }catch(error){
+        console.error(error);
+        setGmailScanStatus(
+            error.message || "Could not scan Gmail.",
+            "error"
+        );
+    }finally{
+        hideLoading();
+    }
+}
+
 function base64ToBlob(base64,mimeType){ const binary=atob(base64); const bytes=new Uint8Array(binary.length); for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i); return new Blob([bytes],{type:mimeType||"application/pdf"}); }
-async function importSelectedGmailLabels(){ const selected=Array.from(document.querySelectorAll(".gmail-label-check:checked")).map(input=>gmailLabelResults[Number(input.dataset.index)]).filter(Boolean); if(!selected.length){ alert("Tick at least one Gmail label to import."); return; } showLoading("Downloading Gmail labels..."); try{ const form=new FormData(); for(let i=0;i<selected.length;i++){ const label=selected[i]; document.getElementById("loadingText").innerText=`Downloading Gmail label ${i+1} of ${selected.length}...`; const att=await InventoryAPI.request("/email-labels/gmail/attachment",{method:"POST",body:JSON.stringify({message_id:label.message_id,attachment_id:label.attachment_id})}); if(!att.success) throw new Error(att.error||"Could not download Gmail attachment."); const blob=base64ToBlob(att.base64,att.mime_type||"application/pdf"); const safeName=String(label.import_filename||label.filename||"gmail-label.pdf").replace(/[<>:"/\\|?*]+/g," ").replace(/\s+/g,"_"); const file=new File([blob],safeName.endsWith(".pdf")?safeName:safeName+".pdf",{type:"application/pdf"}); form.append("labels",file); } document.getElementById("loadingText").innerText="Auto-cropping Gmail labels..."; const cropData=await InventoryAPI.request("/shipping-labels/autocrop",{method:"POST",body:form}); if(!cropData.success) throw new Error(cropData.error||"Could not auto-crop Gmail labels."); const cropped=cropData.labels||[]; if(!cropped.length) throw new Error("No Gmail labels were cropped."); document.getElementById("loadingText").innerText="Adding Gmail labels to packing queue..."; const queueData=await InventoryAPI.request("/shipping-labels/create-from-crops",{method:"POST",body:JSON.stringify({labels:cropped})}); if(!queueData.success) throw new Error(queueData.error||"Could not add Gmail labels to packing queue."); gmailLabelResults=[]; renderGmailResults([]); setGmailScanStatus(`Imported ${cropped.length} Gmail label${cropped.length===1?"":"s"} to the packing queue.`,"ok"); await loadQueue(); }catch(e){ console.error(e); setGmailScanStatus(e.message||"Could not import Gmail labels.","error"); alert(e.message||"Could not import Gmail labels."); }finally{ hideLoading(); } }
+async function importSelectedGmailLabels(){
+    const selected = Array.from(
+        document.querySelectorAll(".gmail-label-check:checked")
+    )
+        .map(input => {
+            return gmailLabelResults[Number(input.dataset.index)];
+        })
+        .filter(Boolean);
+
+    if(!selected.length){
+        alert("Tick at least one Gmail label to import.");
+        return;
+    }
+
+    showLoading("Downloading Gmail labels...");
+
+    try{
+        const form = new FormData();
+
+        for(let i = 0; i < selected.length; i++){
+            const label = selected[i];
+
+            document.getElementById("loadingText").innerText =
+                `Downloading Gmail label ${i + 1} of ${selected.length}...`;
+
+            const attachment = await InventoryAPI.request(
+                "/email-labels/gmail/attachment",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        message_id:label.message_id,
+                        attachment_id:label.attachment_id
+                    })
+                }
+            );
+
+            if(!attachment.success){
+                throw new Error(
+                    attachment.error ||
+                    "Could not download Gmail attachment."
+                );
+            }
+
+            const blob = base64ToBlob(
+                attachment.base64,
+                attachment.mime_type || "application/pdf"
+            );
+
+            const safeName = String(
+                label.import_filename ||
+                label.filename ||
+                "gmail-label.pdf"
+            )
+                .replace(/[<>:"/\\|?*]+/g, " ")
+                .replace(/\s+/g, "_");
+
+            const file = new File(
+                [blob],
+                safeName.endsWith(".pdf")
+                    ? safeName
+                    : safeName + ".pdf",
+                {
+                    type:"application/pdf"
+                }
+            );
+
+            form.append("labels", file);
+        }
+
+        document.getElementById("loadingText").innerText =
+            "Auto-cropping Gmail labels...";
+
+        const cropData = await InventoryAPI.request(
+            "/shipping-labels/autocrop",
+            {
+                method:"POST",
+                body:form
+            }
+        );
+
+        if(!cropData.success){
+            throw new Error(
+                cropData.error ||
+                "Could not auto-crop Gmail labels."
+            );
+        }
+
+        const cropped = cropData.labels || [];
+
+        if(!cropped.length){
+            throw new Error("No Gmail labels were cropped.");
+        }
+
+        document.getElementById("loadingText").innerText =
+            "Adding Gmail labels to packing queue...";
+
+        const queueData = await InventoryAPI.request(
+            "/shipping-labels/create-from-crops",
+            {
+                method:"POST",
+                body:JSON.stringify({
+                    labels:cropped
+                })
+            }
+        );
+
+        if(!queueData.success){
+            throw new Error(
+                queueData.error ||
+                "Could not add Gmail labels to packing queue."
+            );
+        }
+
+        /*
+            Only mark Gmail attachments after the packing queue import succeeds.
+            This means a failed crop/import can still be attempted again.
+        */
+        let historySaved = true;
+
+        try{
+            const historyData = await InventoryAPI.request(
+                "/email-labels/gmail/mark-imported",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        labels:selected.map(label => ({
+                            message_id:label.message_id,
+                            attachment_id:label.attachment_id,
+                            filename:label.filename || ""
+                        }))
+                    })
+                }
+            );
+
+            if(!historyData.success){
+                throw new Error(
+                    historyData.error ||
+                    "Could not save Gmail import history."
+                );
+            }
+        }catch(historyError){
+            historySaved = false;
+            console.warn(
+                "Labels imported, but Gmail import history was not saved:",
+                historyError
+            );
+        }
+
+        gmailLabelResults = [];
+        renderGmailResults([]);
+
+        if(historySaved){
+            setGmailScanStatus(
+                `Imported ${cropped.length} Gmail label` +
+                `${cropped.length === 1 ? "" : "s"} to the packing queue. ` +
+                "They will be hidden from future scans.",
+                "ok"
+            );
+        }else{
+            setGmailScanStatus(
+                `Imported ${cropped.length} Gmail label` +
+                `${cropped.length === 1 ? "" : "s"}, but import history ` +
+                "could not be saved. They may appear in the next scan.",
+                "warn"
+            );
+        }
+
+        await loadQueue();
+    }catch(error){
+        console.error(error);
+
+        setGmailScanStatus(
+            error.message || "Could not import Gmail labels.",
+            "error"
+        );
+
+        alert(
+            error.message ||
+            "Could not import Gmail labels."
+        );
+    }finally{
+        hideLoading();
+    }
+}
+
 function handleGmailRedirectNotice(){ const params=new URLSearchParams(window.location.search); if(params.get("gmail")==="connected"){ setGmailScanStatus("Gmail connected successfully. You can now scan your inbox.","ok"); window.history.replaceState({},document.title,window.location.pathname); } if(params.get("gmail")==="error"){ setGmailScanStatus("Gmail connection failed: "+(params.get("reason")||"Unknown error"),"error"); window.history.replaceState({},document.title,window.location.pathname); } }
 
 function showLoading(text){
@@ -1180,6 +1686,11 @@ document.getElementById("printBtn").addEventListener("click", () => {
 });
 
 document.getElementById("refreshPrintPreviewBtn").addEventListener("click", renderPrintPreviewLabels);
+
+document.getElementById("mobileShareLabelsBtn").addEventListener(
+    "click",
+    shareLabelsForMobile
+);
 
 document.getElementById("printPreviewLabelsBtn").addEventListener("click", async () => {
     const labels = getQueuedCourierLabels();
@@ -1496,7 +2007,20 @@ async function loadQueue(){
 
         if(!data.success) throw new Error(data.error || "Could not load packing queue");
 
+        const previousSignature = getMobilePrintSignature(
+            getQueuedCourierLabels()
+        );
+
         queueCache = data.packs || [];
+
+        const nextSignature = getMobilePrintSignature(
+            getQueuedCourierLabels()
+        );
+
+        if(previousSignature !== nextSignature){
+            clearPreparedMobilePrint();
+        }
+
         renderQueue();
     }catch(err){
         queueEl.innerHTML = `<div class="error">${escapeHtml(err.message || "Could not load packing queue.")}</div>`;
