@@ -917,3 +917,131 @@ body.inventoryos-shell-active.error-flash::after{
         box-shadow:none !important;
     }
 }
+
+
+/* ============================================================
+   V1.1 — FULL-WIDTH HORIZONTAL WORKSPACE / INVENTORY TOP BAR
+   ============================================================ */
+
+.ios-shell-topbar-host .inventory-switcher-menu{
+    display:none !important;
+}
+
+.ios-shell-topbar-host
+.inventory-switcher.open
+> .inventory-switcher-menu{
+    display:block !important;
+}
+
+@media(min-width:901px){
+    .ios-shell-header{
+        display:grid;
+        grid-template-columns:minmax(0,1fr);
+        align-items:start;
+        gap:15px;
+    }
+
+    .ios-shell-header-tools{
+        grid-column:1;
+        grid-row:1;
+        display:flex;
+        align-items:center;
+        justify-content:flex-end;
+        width:100%;
+        min-width:0;
+        padding:10px 12px;
+        border:1px solid rgba(255,255,255,0.065);
+        border-radius:16px;
+        background:
+            linear-gradient(
+                145deg,
+                rgba(255,255,255,0.028),
+                rgba(255,255,255,0.01)
+            );
+        box-shadow:0 14px 36px rgba(0,0,0,0.13);
+    }
+
+    .ios-shell-heading{
+        grid-column:1;
+        grid-row:2;
+        width:100%;
+        min-width:0;
+    }
+
+    .ios-shell-topbar-host{
+        flex:1 1 auto;
+        width:100%;
+        min-width:0;
+    }
+
+    .ios-shell-topbar-host .inventory-topbar{
+        width:100%;
+    }
+
+    .ios-shell-topbar-host .inventory-topbar-right{
+        display:flex !important;
+        flex-direction:row !important;
+        align-items:center !important;
+        justify-content:flex-end !important;
+        flex-wrap:nowrap !important;
+        width:100%;
+        gap:10px;
+    }
+
+    .ios-shell-topbar-host .inventory-switcher{
+        position:relative;
+        flex:0 1 270px;
+        min-width:185px;
+        max-width:320px;
+    }
+
+    .ios-shell-topbar-host .inventory-switcher-btn{
+        width:100% !important;
+        min-width:0;
+        justify-content:flex-start;
+    }
+
+    .ios-shell-topbar-host
+    .inventory-switcher-btn
+    > span:not(.box):not(.chev){
+        min-width:0;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+    }
+
+    .ios-shell-topbar-host .inventory-switcher-btn .chev{
+        margin-left:auto;
+    }
+
+    .ios-shell-topbar-host .topbar-settings{
+        flex:0 0 42px;
+        width:42px !important;
+        min-width:42px;
+    }
+
+    .ios-shell-topbar-host .inventory-switcher-menu{
+        position:absolute !important;
+        top:calc(100% + 8px) !important;
+        right:0 !important;
+        left:auto !important;
+        width:300px !important;
+        max-width:calc(100vw - 280px) !important;
+        z-index:99999 !important;
+    }
+
+    .ios-shell-header-avatar{
+        flex:0 0 42px;
+    }
+}
+
+@media(min-width:901px) and (max-width:1120px){
+    .ios-shell-topbar-host .inventory-switcher{
+        flex-basis:230px;
+        min-width:165px;
+    }
+
+    .ios-shell-topbar-host .inventory-switcher-menu{
+        width:275px !important;
+    }
+}
