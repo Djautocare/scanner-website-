@@ -807,19 +807,29 @@ a{
 }
 
 .quick-action-icon{
-    display:grid;
+    display:grid !important;
     place-items:center;
-    width:34px;
-    height:34px;
-    border:1px solid rgba(var(--accent-rgb),0.16);
-    border-radius:10px;
+    width:38px;
+    height:38px;
+    border:1px solid rgba(var(--accent-rgb),0.2);
+    border-radius:11px;
     color:var(--accent);
-    background:rgba(var(--accent-rgb),0.08);
-    font-size:15px;
+    background:rgba(var(--accent-rgb),0.09);
+    box-shadow:inset 0 0 16px rgba(var(--accent-rgb),0.04);
 }
 
-.quick-action strong,
-.quick-action span{
+.quick-action-icon svg{
+    width:20px;
+    height:20px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+}
+
+.quick-action > strong,
+.quick-action > span:not(.quick-action-icon){
     display:block;
 }
 
@@ -1506,8 +1516,15 @@ a{
                     class="quick-action"
                     href="add.html"
                 >
-                    <span class="quick-action-icon">
-                        ＋
+                    <span
+                        class="quick-action-icon"
+                        aria-hidden="true"
+                    >
+                        <svg viewBox="0 0 24 24">
+                            <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"></path>
+                            <path d="m4 7.5 8 4.5 8-4.5M12 12v9"></path>
+                            <path d="M18 3v5M15.5 5.5h5"></path>
+                        </svg>
                     </span>
 
                     <strong>Add stock</strong>
@@ -1521,8 +1538,15 @@ a{
                     class="quick-action"
                     href="search.html"
                 >
-                    <span class="quick-action-icon">
-                        ⌕
+                    <span
+                        class="quick-action-icon"
+                        aria-hidden="true"
+                    >
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="10.5" cy="10.5" r="5.5"></circle>
+                            <path d="m15 15 5 5"></path>
+                            <path d="M8 10.5h5M10.5 8v5"></path>
+                        </svg>
                     </span>
 
                     <strong>Search stock</strong>
@@ -1536,8 +1560,15 @@ a{
                     class="quick-action"
                     href="remove.html"
                 >
-                    <span class="quick-action-icon">
-                        −
+                    <span
+                        class="quick-action-icon"
+                        aria-hidden="true"
+                    >
+                        <svg viewBox="0 0 24 24">
+                            <path d="M4 6h16v12H4z"></path>
+                            <path d="M8 10h8M8 14h4"></path>
+                            <path d="M17 3v6M14 6h6"></path>
+                        </svg>
                     </span>
 
                     <strong>Record a sale</strong>
@@ -1551,8 +1582,15 @@ a{
                     class="quick-action"
                     href="dispatch-centre.html"
                 >
-                    <span class="quick-action-icon">
-                        ▣
+                    <span
+                        class="quick-action-icon"
+                        aria-hidden="true"
+                    >
+                        <svg viewBox="0 0 24 24">
+                            <path d="M5 8V4h14v4M5 17H3V9h18v8h-2"></path>
+                            <path d="M6 14h12v7H6z"></path>
+                            <path d="M17 11h1"></path>
+                        </svg>
                     </span>
 
                     <strong>Dispatch Centre</strong>
@@ -1624,6 +1662,11 @@ a{
 <script src="js/inventoryTopbar.js?v=2"></script>
 
 <script>
+/*
+    Inventory totals come from /dashboard.
+    Sales, profit, chart and latest-sale data come from /sales/tracker,
+    matching the figures shown on the Sales Tracker page.
+*/
 const DashboardPage = (function(){
     let loadingDashboard = false;
 
@@ -1821,78 +1864,97 @@ const DashboardPage = (function(){
         );
     }
 
-    function setStats(data){
+    function latestMonthlyRow(salesData){
+        const rows =
+            Array.isArray(
+                salesData?.monthlyBreakdown
+            )
+                ? salesData.monthlyBreakdown
+                : [];
+
+        if(!rows.length){
+            return {};
+        }
+
+        return rows[rows.length - 1] || {};
+    }
+
+    function setStats(
+        dashboardData,
+        salesData
+    ){
         const month =
-            monthData(data);
+            salesData?.thisMonth ||
+            {};
+
+        const monthRow =
+            latestMonthlyRow(
+                salesData
+            );
 
         const activeStock =
             numberValue(
-                data.totalStock,
-                data.total_stock,
-                data.activeStock,
-                data.active_stock
+                dashboardData.totalStock,
+                dashboardData.total_stock,
+                dashboardData.activeStock,
+                dashboardData.active_stock
             );
 
         const activeProducts =
             numberValue(
-                data.totalProducts,
-                data.total_products,
-                data.activeProducts,
-                data.active_products
+                dashboardData.totalProducts,
+                dashboardData.total_products,
+                dashboardData.activeProducts,
+                dashboardData.active_products
             );
 
         const activeLocations =
             numberValue(
-                data.totalBoxes,
-                data.total_boxes,
-                data.activeBoxes,
-                data.active_locations
+                dashboardData.totalBoxes,
+                dashboardData.total_boxes,
+                dashboardData.activeBoxes,
+                dashboardData.active_locations
             );
 
         const monthIncome =
             numberValue(
                 month.income,
                 month.revenue,
-                data.thisMonthIncome,
-                data.monthIncome,
-                data.currentMonthIncome
+                monthRow.income
             );
 
         const monthProfit =
             numberValue(
                 month.profit,
-                data.thisMonthProfit,
-                data.monthProfit,
-                data.currentMonthProfit
+                monthRow.profit
             );
 
         const monthSales =
             numberValue(
                 month.salesCount,
                 month.sales_count,
-                data.thisMonthSalesCount,
-                data.monthSalesCount,
-                data.currentMonthSalesCount
+                monthRow.salesCount,
+                monthRow.sales_count
             );
 
         const todayIncome =
             numberValue(
-                data.todayIncome,
-                data.today_income
+                dashboardData.todayIncome,
+                dashboardData.today_income
             );
 
         const todaySales =
             numberValue(
-                data.todaySalesCount,
-                data.today_sales_count,
-                data.todaySales
+                dashboardData.todaySalesCount,
+                dashboardData.today_sales_count,
+                dashboardData.todaySales
             );
 
         const trend =
             numberValue(
-                data.rolling3Trend,
-                data.rolling_3_trend,
-                data.threeDayTrend
+                dashboardData.rolling3Trend,
+                dashboardData.rolling_3_trend,
+                dashboardData.threeDayTrend
             );
 
         byId("activeStockValue")
@@ -1936,7 +1998,9 @@ const DashboardPage = (function(){
                     ? "+"
                     : ""
             ) +
-            Number(trend.toFixed(1)) +
+            Number(
+                trend.toFixed(1)
+            ) +
             "%";
 
         trendElement.classList.remove(
@@ -2482,30 +2546,112 @@ const DashboardPage = (function(){
         }
 
         loadingDashboard = true;
+
         setStatus(
             "Refreshing dashboard..."
         );
 
         try{
-            const data =
-                await InventoryAPI.request(
-                    "/dashboard"
+            const results =
+                await Promise.allSettled([
+                    InventoryAPI.request(
+                        "/dashboard?_t=" +
+                        Date.now()
+                    ),
+
+                    InventoryAPI.request(
+                        "/sales/tracker?_t=" +
+                        Date.now()
+                    )
+                ]);
+
+            const dashboardResult =
+                results[0];
+
+            const salesResult =
+                results[1];
+
+            const dashboardData =
+                dashboardResult.status ===
+                    "fulfilled"
+                    ? dashboardResult.value
+                    : null;
+
+            const salesData =
+                salesResult.status ===
+                    "fulfilled"
+                    ? salesResult.value
+                    : null;
+
+            const dashboardOk =
+                Boolean(
+                    dashboardData?.success
+                );
+
+            const salesOk =
+                Boolean(
+                    salesData?.success
                 );
 
             if(
-                !data ||
-                !data.success
+                !dashboardOk &&
+                !salesOk
             ){
                 throw new Error(
-                    data?.error ||
-                    "Could not load dashboard"
+                    dashboardData?.error ||
+                    salesData?.error ||
+                    "Could not load dashboard data"
                 );
             }
 
-            setStats(data);
-            renderChart(data);
-            renderActivity(data);
-            setStatus("");
+            setStats(
+                dashboardOk
+                    ? dashboardData
+                    : {},
+
+                salesOk
+                    ? salesData
+                    : {}
+            );
+
+            if(salesOk){
+                renderChart(
+                    salesData
+                );
+
+                renderActivity(
+                    salesData
+                );
+            }else{
+                renderChart({});
+                renderActivity({});
+
+                console.error(
+                    "Sales tracker dashboard data failed:",
+                    salesData?.error ||
+                    salesResult.reason
+                );
+            }
+
+            if(!dashboardOk){
+                console.error(
+                    "Inventory dashboard data failed:",
+                    dashboardData?.error ||
+                    dashboardResult.reason
+                );
+            }
+
+            if(
+                dashboardOk &&
+                salesOk
+            ){
+                setStatus("");
+            }else{
+                setStatus(
+                    "Some dashboard information could not be refreshed.",
+                    "error"
+                );
+            }
         }catch(error){
             console.error(error);
 
