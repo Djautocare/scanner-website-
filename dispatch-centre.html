@@ -802,7 +802,7 @@ button:disabled{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/qzClient.js?v=2"></script>
+<script src="js/qzClient.js?v=4"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
 <script src="js/workspace.js"></script>
 
@@ -977,44 +977,61 @@ function printSingleDispatchLabelHtml(
 }
 
 function printDispatchImagesWithQz(printLabels){
-    let foundPrinter = null;
+    let foundPrinter = "";
 
     return connectDispatchQz()
         .then(function(){
             setDispatchQzStatus(
-                "Finding printer " + QZ_PRINTER_NAME + "...",
+                "Finding your selected 4×6 printer...",
                 "busy"
             );
 
-            return qz.printers.find(QZ_PRINTER_NAME);
+            return InventoryOSQZ
+                .requirePrinter(
+                    "shipping"
+                );
         })
         .then(function(printer){
             foundPrinter = printer;
 
             /*
-                Print each 4×6 label as its own trusted QZ HTML job.
-                This uses the same stable method as the Add Stock test print,
-                but with a full-page 4×6 PNG inside the HTML instead of a
-                generated 2×1 barcode.
+                Print each 4×6 shipping label as its own trusted QZ job.
+                The selected printer comes from Printer Setup on this
+                computer rather than a hardcoded printer name.
             */
-            let chain = Promise.resolve();
+            let chain =
+                Promise.resolve();
 
-            printLabels.forEach(function(label, index){
-                chain = chain.then(function(){
-                    return printSingleDispatchLabelHtml(
-                        foundPrinter,
-                        label,
-                        index,
-                        printLabels.length
+            printLabels.forEach(
+                function(label,index){
+                    chain = chain.then(
+                        function(){
+                            return printSingleDispatchLabelHtml(
+                                foundPrinter,
+                                label,
+                                index,
+                                printLabels.length
+                            );
+                        }
                     );
-                });
-            });
+                }
+            );
 
             return chain;
         })
         .then(function(){
             setDispatchQzStatus(
-                `Sent ${printLabels.length} cropped label${printLabels.length === 1 ? "" : "s"} directly to ${QZ_PRINTER_NAME}.`,
+                "Sent " +
+                printLabels.length +
+                " cropped label" +
+                (
+                    printLabels.length === 1
+                        ? ""
+                        : "s"
+                ) +
+                " directly to " +
+                foundPrinter +
+                ".",
                 "ok"
             );
         });
