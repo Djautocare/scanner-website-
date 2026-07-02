@@ -492,7 +492,7 @@ button:disabled{
 
     <div class="panel">
         <h2 style="margin-top:0;">Email Label Import</h2>
-        <div class="muted small">Connect Gmail, scan for new Vinted/eBay courier labels, import selected labels, or hide repeated PDFs from future scans.</div>
+        <div class="muted small">Connect Gmail, scan for courier labels, and mark imported messages with the InventoryOS-Imported Gmail label.</div>
         <div class="email-import-grid">
             <div class="email-status-card">
                 <div id="gmailStatus" class="muted">Checking Gmail connection...</div>
@@ -504,7 +504,7 @@ button:disabled{
             </div>
             <div class="email-status-card">
                 <strong>What it scans</strong>
-                <div class="muted small" style="margin-top:8px;">Gmail readonly only. Looks for PDF attachments from Vinted, eBay, Evri, InPost, Royal Mail, DPD and Yodel. It does not send, delete or edit emails.</div>
+                <div class="muted small" style="margin-top:8px;">InventoryOS can read shipping-label PDFs and add an InventoryOS-Imported label to processed Gmail messages. It does not send or delete emails.</div>
             </div>
         </div>
         <div id="gmailScanStatus" class="small muted" style="margin-top:10px;"></div>
@@ -1135,30 +1135,94 @@ function apiFetch(path, options = {}){
 let gmailLabelResults = [];
 function setGmailStatus(message,state){ const el=document.getElementById("gmailStatus"); if(!el)return; el.textContent=message||""; el.classList.remove("ok","error","warn"); if(state)el.classList.add(state); }
 function setGmailScanStatus(message,state){ const el=document.getElementById("gmailScanStatus"); if(!el)return; el.textContent=message||""; el.classList.remove("ok","error","warn"); if(state)el.classList.add(state); }
-async function loadGmailStatus(){ try{ const data=await InventoryAPI.request("/email-labels/gmail/status"); if(data.connected){ setGmailStatus("Gmail connected: "+(data.email||"Connected account"),"ok"); gmailConnectBtn.disabled=true; gmailScanBtn.disabled=false; gmailDisconnectBtn.disabled=false; }else{ setGmailStatus("Gmail is not connected yet.","warn"); gmailConnectBtn.disabled=false; gmailScanBtn.disabled=true; gmailDisconnectBtn.disabled=true; } }catch(e){ console.error(e); setGmailStatus("Could not check Gmail connection.","error"); } }
+async function loadGmailStatus(){
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/status"
+        );
+
+        if(data.connected && data.can_modify){
+            setGmailStatus(
+                "Gmail connected: " +
+                (data.email || "Connected account") +
+                " · imported-message label enabled",
+                "ok"
+            );
+
+            gmailConnectBtn.textContent = "Reconnect Gmail";
+            gmailConnectBtn.disabled = false;
+            gmailScanBtn.disabled = false;
+            gmailDisconnectBtn.disabled = false;
+            return;
+        }
+
+        if(data.connected && data.needs_reconnect){
+            setGmailStatus(
+                "Gmail is connected with the old read-only permission. " +
+                "Tap Reconnect Gmail once to enable reliable duplicate prevention.",
+                "warn"
+            );
+
+            gmailConnectBtn.textContent = "Reconnect Gmail";
+            gmailConnectBtn.disabled = false;
+            gmailScanBtn.disabled = true;
+            gmailDisconnectBtn.disabled = false;
+            return;
+        }
+
+        setGmailStatus(
+            "Gmail is not connected yet.",
+            "warn"
+        );
+
+        gmailConnectBtn.textContent = "Connect Gmail";
+        gmailConnectBtn.disabled = false;
+        gmailScanBtn.disabled = true;
+        gmailDisconnectBtn.disabled = true;
+    }catch(error){
+        console.error(error);
+
+        setGmailStatus(
+            "Could not check Gmail connection.",
+            "error"
+        );
+    }
+}
 async function connectGmail(){ try{ setGmailStatus("Opening Google connection page...","warn"); const data=await InventoryAPI.request("/email-labels/gmail/connect"); if(!data.success||!data.url) throw new Error(data.error||"Could not start Gmail connection."); window.location.href=data.url; }catch(e){ console.error(e); setGmailStatus(e.message||"Could not connect Gmail.","error"); } }
 async function disconnectGmail(){ if(!confirm("Disconnect Gmail from InventoryOS?"))return; try{ const data=await InventoryAPI.request("/email-labels/gmail/disconnect",{method:"POST"}); if(!data.success) throw new Error(data.error||"Could not disconnect Gmail."); gmailLabelResults=[]; renderGmailResults([]); setGmailScanStatus(""); await loadGmailStatus(); }catch(e){ console.error(e); setGmailStatus(e.message||"Could not disconnect Gmail.","error"); } }
 function renderGmailResults(labels){ const container=document.getElementById("gmailResults"); const actions=document.getElementById("gmailImportActions"); if(!labels||!labels.length){ container.innerHTML=""; actions.style.display="none"; return; } actions.style.display="flex"; container.innerHTML=labels.map((label,index)=>`<div class="email-result"><label><input type="checkbox" class="gmail-label-check" data-index="${index}" checked><div><div class="email-result-title">${escapeHtml(label.item_name||"Review item name")}</div><div><span class="email-pill">${escapeHtml(label.marketplace||"Email")}</span>${label.courier?`<span class="email-pill">${escapeHtml(label.courier)}</span>`:""}</div><div class="email-result-meta">${escapeHtml(label.subject||"")}<br>From: ${escapeHtml(label.from||"")}<br>Attachment: ${escapeHtml(label.filename||"label.pdf")}</div></div></label></div>`).join(""); }
 async function scanGmail(){
     showLoading("Scanning Gmail for new shipping labels...");
-    setGmailScanStatus("Scanning Gmail for labels not already imported...", "warn");
+
+    setGmailScanStatus(
+        "Scanning Gmail and ignoring messages already labelled InventoryOS-Imported...",
+        "warn"
+    );
 
     try{
-        const data = await InventoryAPI.request("/email-labels/gmail/scan", {
-            method:"POST",
-            body:JSON.stringify({
-                max_results:15
-            })
-        });
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/scan",
+            {
+                method:"POST",
+                body:JSON.stringify({
+                    max_results:15
+                })
+            }
+        );
 
         if(!data.success){
-            throw new Error(data.error || "Gmail scan failed.");
+            throw new Error(
+                data.error ||
+                "Gmail scan failed."
+            );
         }
 
         gmailLabelResults = data.labels || [];
         renderGmailResults(gmailLabelResults);
 
-        const skipped = Number(data.already_imported_count || 0);
+        const skipped = Number(
+            data.hidden_by_gmail_label_count || 0
+        );
 
         if(gmailLabelResults.length){
             let message =
@@ -1166,29 +1230,23 @@ async function scanGmail(){
                 `${gmailLabelResults.length === 1 ? "" : "s"}.`;
 
             if(skipped){
-                const hashDuplicates = Number(
-                    data.hidden_by_pdf_hash_count || 0
-                );
-
                 message +=
-                    ` Hidden ${skipped} previously imported label` +
-                    `${skipped === 1 ? "" : "s"}`;
-
-                if(hashDuplicates){
-                    message +=
-                        `, including ${hashDuplicates} duplicate PDF` +
-                        `${hashDuplicates === 1 ? "" : "s"} matched by file content`;
-                }
-
-                message += ".";
+                    ` Ignored ${skipped} Gmail message` +
+                    `${skipped === 1 ? "" : "s"} already labelled ` +
+                    `${data.imported_label_name || "InventoryOS-Imported"}.`;
             }
 
             message += " Tick the ones to import.";
-            setGmailScanStatus(message, "ok");
+
+            setGmailScanStatus(
+                message,
+                "ok"
+            );
         }else if(skipped){
             setGmailScanStatus(
-                `No new labels found. ${skipped} previously imported label` +
-                `${skipped === 1 ? " was" : "s were"} hidden.`,
+                `No new labels found. Ignored ${skipped} Gmail message` +
+                `${skipped === 1 ? "" : "s"} already labelled ` +
+                `${data.imported_label_name || "InventoryOS-Imported"}.`,
                 "ok"
             );
         }else{
@@ -1199,10 +1257,20 @@ async function scanGmail(){
         }
     }catch(error){
         console.error(error);
+
         setGmailScanStatus(
-            error.message || "Could not scan Gmail.",
+            error.message ||
+            "Could not scan Gmail.",
             "error"
         );
+
+        if(
+            String(error.message || "")
+                .toLowerCase()
+                .includes("reconnect gmail")
+        ){
+            await loadGmailStatus();
+        }
     }finally{
         hideLoading();
     }
@@ -1241,9 +1309,7 @@ async function importSelectedGmailLabels(){
                     body:JSON.stringify({
                         message_id:label.message_id,
                         attachment_id:label.attachment_id,
-                        filename:label.filename || "",
-                        content_hash:label.content_hash || "",
-                        content_hash:label.content_hash || ""
+                        filename:label.filename || ""
                     })
                 }
             );
@@ -1253,10 +1319,6 @@ async function importSelectedGmailLabels(){
                     attachment.error ||
                     "Could not download Gmail attachment."
                 );
-            }
-
-            if(attachment.content_hash){
-                label.content_hash = attachment.content_hash;
             }
 
             const blob = base64ToBlob(
@@ -1330,59 +1392,42 @@ async function importSelectedGmailLabels(){
         }
 
         /*
-            Only mark Gmail attachments after the packing queue import succeeds.
-            This means a failed crop/import can still be attempted again.
+            The queue import has succeeded. Now apply InventoryOS-Imported
+            directly to the Gmail message. Gmail itself becomes the permanent
+            duplicate source of truth.
         */
-        let historySaved = true;
-
-        try{
-            const historyData = await InventoryAPI.request(
-                "/email-labels/gmail/mark-imported",
-                {
-                    method:"POST",
-                    body:JSON.stringify({
-                        labels:selected.map(label => ({
-                            message_id:label.message_id,
-                            attachment_id:label.attachment_id,
-                            filename:label.filename || "",
-                            content_hash:label.content_hash || ""
-                        }))
-                    })
-                }
-            );
-
-            if(!historyData.success){
-                throw new Error(
-                    historyData.error ||
-                    "Could not save Gmail import history."
-                );
+        const historyData = await InventoryAPI.request(
+            "/email-labels/gmail/mark-imported",
+            {
+                method:"POST",
+                body:JSON.stringify({
+                    labels:selected.map(label => ({
+                        message_id:label.message_id,
+                        attachment_id:label.attachment_id,
+                        filename:label.filename || ""
+                    }))
+                })
             }
-        }catch(historyError){
-            historySaved = false;
-            console.warn(
-                "Labels imported, but Gmail import history was not saved:",
-                historyError
+        );
+
+        if(!historyData.success){
+            throw new Error(
+                historyData.error ||
+                "The packs were imported, but Gmail could not be labelled. " +
+                "Use Hide Selected before scanning again."
             );
         }
 
         gmailLabelResults = [];
         renderGmailResults([]);
 
-        if(historySaved){
-            setGmailScanStatus(
-                `Imported ${cropped.length} Gmail label` +
-                `${cropped.length === 1 ? "" : "s"} to the packing queue. ` +
-                "They will be hidden from future scans.",
-                "ok"
-            );
-        }else{
-            setGmailScanStatus(
-                `Imported ${cropped.length} Gmail label` +
-                `${cropped.length === 1 ? "" : "s"}, but import history ` +
-                "could not be saved. They may appear in the next scan.",
-                "warn"
-            );
-        }
+        setGmailScanStatus(
+            `Imported ${cropped.length} Gmail label` +
+            `${cropped.length === 1 ? "" : "s"} to the packing queue. ` +
+            `The Gmail message${cropped.length === 1 ? " is" : "s are"} now labelled ` +
+            `${historyData.imported_label_name || "InventoryOS-Imported"}.`,
+            "ok"
+        );
 
         await loadQueue();
     }catch(error){
@@ -1418,7 +1463,7 @@ async function hideSelectedGmailLabels(){
     }
 
     const confirmed = confirm(
-        "Hide the selected Gmail label PDFs from future scans?\\n\\n" +
+        "Apply InventoryOS-Imported to the selected Gmail messages?\\n\\n" +
         "Use this for labels you have already imported/printed and do not " +
         "want to see again."
     );
@@ -1463,8 +1508,8 @@ async function hideSelectedGmailLabels(){
         renderGmailResults(gmailLabelResults);
 
         setGmailScanStatus(
-            `Hidden ${selected.length} Gmail label` +
-            `${selected.length === 1 ? "" : "s"} from future scans.`,
+            `Applied InventoryOS-Imported to ${selected.length} Gmail message` +
+            `${selected.length === 1 ? "" : "s"}.`,
             "ok"
         );
     }catch(error){
@@ -1485,7 +1530,7 @@ async function hideSelectedGmailLabels(){
     }
 }
 
-function handleGmailRedirectNotice(){ const params=new URLSearchParams(window.location.search); if(params.get("gmail")==="connected"){ setGmailScanStatus("Gmail connected successfully. You can now scan your inbox.","ok"); window.history.replaceState({},document.title,window.location.pathname); } if(params.get("gmail")==="error"){ setGmailScanStatus("Gmail connection failed: "+(params.get("reason")||"Unknown error"),"error"); window.history.replaceState({},document.title,window.location.pathname); } }
+function handleGmailRedirectNotice(){ const params=new URLSearchParams(window.location.search); if(params.get("gmail")==="connected"){ setGmailScanStatus("Gmail connected successfully. InventoryOS can now label imported messages.","ok"); window.history.replaceState({},document.title,window.location.pathname); } if(params.get("gmail")==="error"){ setGmailScanStatus("Gmail connection failed: "+(params.get("reason")||"Unknown error"),"error"); window.history.replaceState({},document.title,window.location.pathname); } }
 
 function showLoading(text){
     document.getElementById("loadingText").innerText = text || "Working...";
