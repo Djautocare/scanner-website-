@@ -9,8 +9,6 @@ const InventoryOSRemovePreferences = (function(){
 
     let current = {...DEFAULTS};
     let canEdit = false;
-    let currentRole = "";
-    let lastLoadError = "";
     let originalRemoveBundleStock = null;
     let originalToggleUsbScannerMode = null;
     let originalSpeakText = null;
@@ -71,98 +69,94 @@ const InventoryOSRemovePreferences = (function(){
         };
     }
 
-    function normaliseRole(value){
-        return String(value || "")
-            .trim()
-            .toLowerCase();
+
+    function selectedWorkspaceId(){
+        try{
+            if(
+                window.InventoryTopbar &&
+                typeof InventoryTopbar
+                    .getSelectedWorkspaceId ===
+                    "function"
+            ){
+                const selected =
+                    InventoryTopbar
+                        .getSelectedWorkspaceId();
+
+                if(selected){
+                    return String(selected);
+                }
+            }
+        }catch(error){}
+
+        return String(
+            localStorage.getItem(
+                "inventoryos_selected_workspace_id"
+            ) || ""
+        ).trim();
     }
 
-    function cachedWorkspaceRole(){
-        try{
-            const workspace = JSON.parse(
-                localStorage.getItem(
-                    "inventoryos_workspace"
-                ) || "null"
-            );
+    function workspaceRequestOptions(
+        options = {}
+    ){
+        const workspaceId =
+            selectedWorkspaceId();
 
-            return normaliseRole(
-                workspace?.role ||
-                workspace?.membership_role ||
-                ""
-            );
-        }catch(error){
-            return "";
+        const headers = {
+            ...(options.headers || {})
+        };
+
+        if(workspaceId){
+            headers["X-Workspace-Id"] =
+                workspaceId;
         }
+
+        return {
+            ...options,
+            headers
+        };
     }
 
     async function load(){
         current = readCache();
-        canEdit = false;
-        currentRole = "";
-        lastLoadError = "";
 
         if(
             typeof InventoryAPI === "undefined" ||
             !InventoryAPI ||
             !InventoryAPI.isLoggedIn()
         ){
-            lastLoadError =
-                "You are not logged in.";
-
             return {
                 settings:current,
-                can_edit:false,
-                error:lastLoadError
+                can_edit:false
             };
         }
 
         try{
             const data = await InventoryAPI.request(
                 "/remove-preferences?_t=" +
-                Date.now()
+                Date.now(),
+                workspaceRequestOptions()
             );
 
             if(data && data.success){
                 current = normalise(data.settings);
-
-                currentRole = normaliseRole(
-                    data.role ||
-                    cachedWorkspaceRole()
-                );
-
-                canEdit =
-                    data.can_edit === true ||
-                    currentRole === "owner" ||
-                    currentRole === "admin";
-
+                canEdit = !!data.can_edit;
                 writeCache(current);
 
                 return {
                     settings:current,
-                    can_edit:canEdit,
-                    role:currentRole
+                    can_edit:canEdit
                 };
             }
-
-            lastLoadError =
-                data?.error ||
-                "The Remove preferences route did not return a successful response.";
         }catch(error){
             console.error(
                 "Could not load Remove page preferences:",
                 error
             );
-
-            lastLoadError =
-                error?.message ||
-                "Could not contact the Remove preferences route.";
         }
 
         return {
             settings:current,
-            can_edit:false,
-            role:currentRole,
-            error:lastLoadError
+            can_edit:false
         };
     }
 
@@ -171,10 +165,10 @@ const InventoryOSRemovePreferences = (function(){
 
         const data = await InventoryAPI.request(
             "/remove-preferences",
-            {
+            workspaceRequestOptions({
                 method:"POST",
                 body:JSON.stringify(payload)
-            }
+            })
         );
 
         if(!data || !data.success){
@@ -186,7 +180,6 @@ const InventoryOSRemovePreferences = (function(){
 
         current = normalise(data.settings);
         canEdit = true;
-        lastLoadError = "";
         writeCache(current);
 
         return current;
@@ -460,28 +453,12 @@ const InventoryOSRemovePreferences = (function(){
         }
 
         if(result){
-            result.className =
-                lastLoadError
-                    ? "result error"
-                    : "result";
+            result.className = "result";
 
-            if(lastLoadError){
-                result.textContent =
-                    "Could not load Remove page settings: " +
-                    lastLoadError;
-            }else if(canEdit){
-                result.textContent =
-                    "These settings apply to everyone using this workspace.";
-            }else{
-                const roleText =
-                    currentRole
-                        ? " Current role: " + currentRole + "."
-                        : "";
-
-                result.textContent =
-                    "Only workspace owners and admins can change these settings." +
-                    roleText;
-            }
+            result.textContent =
+                canEdit
+                    ? "These settings apply to everyone using this workspace."
+                    : "Only workspace owners and admins can change these settings.";
         }
     }
 
