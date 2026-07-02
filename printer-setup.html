@@ -99,7 +99,7 @@ button.success{background:linear-gradient(135deg,#28a745,#1f8b3a)}
 
 <div class="card">
     <div class="grid">
-        <button type="button" onclick="refreshPrinters()">Refresh Printers</button>
+        <button id="refreshPrintersButton" type="button" onclick="refreshPrinters()">Refresh Printers</button>
         <button class="secondary" type="button" onclick="checkBackend()">Check Secure Signing</button>
     </div>
 
@@ -140,7 +140,7 @@ button.success{background:linear-gradient(135deg,#28a745,#1f8b3a)}
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/qzClient.js?v=1"></script>
+<script src="js/qzClient.js?v=2"></script>
 
 <script>
 if(!InventoryAPI.requireLogin()){
@@ -190,58 +190,94 @@ function fillSelect(
     }
 }
 
-async function refreshPrinters(){
-    setStatus(
-        "Connecting to QZ Tray...",
-        ""
-    );
+let printerRefreshPromise = null;
 
-    try{
-        const printers =
-            await InventoryOSQZ.listPrinters();
-
-        fillSelect(
-            document.getElementById(
-                "productPrinter"
-            ),
-            printers,
-            InventoryOSQZ
-                .getProductPrinterName()
-        );
-
-        fillSelect(
-            document.getElementById(
-                "shippingPrinter"
-            ),
-            printers,
-            InventoryOSQZ
-                .getShippingPrinterName()
-        );
-
-        setStatus(
-            printers.length
-                ? printers.length +
-                  " printer" +
-                  (
-                    printers.length === 1
-                        ? ""
-                        : "s"
-                  ) +
-                  " found."
-                : "QZ Tray connected, but no printers were found.",
-            printers.length
-                ? "ok"
-                : "error"
-        );
-    }catch(error){
-        console.error(error);
-
-        setStatus(
-            error.message ||
-            String(error),
-            "error"
-        );
+function refreshPrinters(){
+    if(printerRefreshPromise){
+        return printerRefreshPromise;
     }
+
+    const button =
+        document.getElementById(
+            "refreshPrintersButton"
+        );
+
+    printerRefreshPromise =
+        (async function(){
+            if(button){
+                button.disabled = true;
+                button.textContent =
+                    "Connecting...";
+            }
+
+            setStatus(
+                "Connecting to QZ Tray...",
+                ""
+            );
+
+            try{
+                const printers =
+                    await InventoryOSQZ
+                        .listPrinters();
+
+                fillSelect(
+                    document.getElementById(
+                        "productPrinter"
+                    ),
+                    printers,
+                    InventoryOSQZ
+                        .getProductPrinterName()
+                );
+
+                fillSelect(
+                    document.getElementById(
+                        "shippingPrinter"
+                    ),
+                    printers,
+                    InventoryOSQZ
+                        .getShippingPrinterName()
+                );
+
+                setStatus(
+                    printers.length
+                        ? printers.length +
+                          " printer" +
+                          (
+                            printers.length === 1
+                                ? ""
+                                : "s"
+                          ) +
+                          " found."
+                        : "QZ Tray connected, but no printers were found.",
+                    printers.length
+                        ? "ok"
+                        : "error"
+                );
+
+                return printers;
+            }catch(error){
+                console.error(error);
+
+                setStatus(
+                    error.message ||
+                    String(error),
+                    "error"
+                );
+
+                throw error;
+            }finally{
+                if(button){
+                    button.disabled = false;
+                    button.textContent =
+                        "Refresh Printers";
+                }
+            }
+        })()
+        .finally(function(){
+            printerRefreshPromise = null;
+        });
+
+    return printerRefreshPromise;
 }
 
 async function checkBackend(){
@@ -443,9 +479,14 @@ function testShippingPrinter(){
 
 document.addEventListener(
     "DOMContentLoaded",
-    function(){
-        checkBackend();
-        refreshPrinters();
+    async function(){
+        await checkBackend();
+
+        try{
+            await refreshPrinters();
+        }catch(error){
+            // The visible status box already explains the connection error.
+        }
     },
     {
         once:true
