@@ -266,7 +266,36 @@ const InventoryWorkspace = (function(){
             /\bmove\s+everything\b[\s\S]{0,80}\bboxes?\b/i,
             /\bprint\s+product\s+labels,\s*box\s+labels\b/i,
             /\badd\s+item,\s*choose\s+box\b/i,
-            /\bstorage\s+boxes?\b/i
+            /\bstorage\s+boxes?\b/i,
+            /\bbox\s+locations?\b/i,
+            /\bbox\s+labels?\b/i,
+            /\bbox\s+suggestions?\b/i,
+            /\bbox\s+contents?\b/i,
+            /\bactive\s+boxes?\b/i,
+            /\bempty\s+boxes?\b/i,
+            /\blargest\s+box\b/i,
+            /\bsmallest\s+box\b/i,
+            /\bcreate\s+next\s+available\s+box\b/i,
+            /\bcreate\s+new\s+box\b/i,
+            /\bsort\s+by\s+box\s+number\b/i,
+            /\bsearch\s+box\b/i,
+            /\bselect\s+box\b/i,
+            /\bloading\s+boxes?\b/i,
+            /\bprint\s+box\s+label\b/i,
+            /\bmove\s+whole\s+box\b/i,
+            /\bbulk\s+box\s+move\b/i,
+            /\bmove\s+everything\s+from\b[\s\S]{0,80}\bbox\b/i,
+            /\bmove\s+everything\s+to\b[\s\S]{0,80}\bbox\b/i,
+            /\bpick\s+from\s+the\s+boxes?\s+shown\s+below\b/i,
+            /\breturn\s+box\s*\/\s*location\b/i,
+            /\bselected\s+box\b/i,
+            /\bclosest\s+available\s+box\b/i,
+            /\bbox\s+number\b/i,
+            /\bboxes?\s+shown\s+below\b/i,
+            /\bboxes?\s+are\s+currently\b/i,
+            /\bboxes?\s+remaining\b/i,
+            /\bboxes?\s+available\b/i,
+            /\bboxes?\s+found\b/i
         ];
 
         return patterns.some(pattern => pattern.test(text));
@@ -450,27 +479,34 @@ const InventoryWorkspace = (function(){
             return;
         }
 
-        const elements = [];
+        /*
+            V1.0 only walked headings, buttons and a small selector list.
+            Several existing pages place their interface wording inside plain
+            div, p, span and strong elements, so those nodes were never seen.
 
-        if(
-            root.nodeType === 1 &&
-            root.matches?.(UI_TEXT_SELECTOR)
-        ){
-            elements.push(root);
+            Walk every text node under the supplied root. The safety checks in
+            textNodeShouldTranslate still protect product names, user notes,
+            stored location names such as BOX-15, scripts and styles.
+        */
+        if(root.nodeType === 3){
+            translateTextNode(root);
+            return;
         }
 
-        if(root.querySelectorAll){
-            elements.push(
-                ...root.querySelectorAll(
-                    UI_TEXT_SELECTOR
-                )
-            );
-        }
-
-        elements.forEach(
-            translateElementText
+        const walker = document.createTreeWalker(
+            root,
+            NodeFilter.SHOW_TEXT
         );
 
+        const nodes = [];
+        let current = walker.nextNode();
+
+        while(current){
+            nodes.push(current);
+            current = walker.nextNode();
+        }
+
+        nodes.forEach(translateTextNode);
         translateAttributes(root);
     }
 
@@ -685,9 +721,18 @@ const InventoryWorkspace = (function(){
 window.InventoryWorkspace =
     InventoryWorkspace;
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function(){
-        InventoryWorkspace.init();
-    }
-);
+function initialiseInventoryWorkspace(){
+    InventoryWorkspace.init();
+}
+
+if(document.readyState === "loading"){
+    document.addEventListener(
+        "DOMContentLoaded",
+        initialiseInventoryWorkspace,
+        {
+            once:true
+        }
+    );
+}else{
+    initialiseInventoryWorkspace();
+}
