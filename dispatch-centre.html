@@ -46,6 +46,56 @@ h1{text-align:center;font-size:34px;margin:10px 0 6px 0;}
 
 .email-import-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin-top:12px;}
 .email-status-card{background:linear-gradient(145deg,#242424,#191919);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px;}
+
+.gmail-scan-controls{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+    margin-top:12px;
+}
+
+.gmail-control-card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:14px;
+}
+
+.gmail-control-row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-top:10px;
+}
+
+.gmail-control-row select{
+    flex:1 1 170px;
+    min-width:0;
+}
+
+.gmail-control-row button{
+    flex:1 1 170px;
+}
+
+.gmail-toggle-row{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-top:10px;
+}
+
+.gmail-toggle-row input{
+    width:auto;
+    margin:3px 0 0 0;
+}
+
+@media(max-width:700px){
+    .gmail-scan-controls{
+        grid-template-columns:1fr;
+    }
+}
+
 .email-results{display:grid;gap:10px;margin-top:12px;}
 .email-result{background:#1d1d1d;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:11px;}
 .email-result label{display:flex;gap:10px;align-items:flex-start;}
@@ -492,26 +542,158 @@ button:disabled{
 
     <div class="panel">
         <h2 style="margin-top:0;">Email Label Import</h2>
-        <div class="muted small">Connect Gmail, scan for courier labels, and mark imported messages with the InventoryOS-Imported Gmail label.</div>
+
+        <div class="muted small">
+            Normal scanning now uses the email received date and your last successful scan time.
+        </div>
+
         <div class="email-import-grid">
             <div class="email-status-card">
-                <div id="gmailStatus" class="muted">Checking Gmail connection...</div>
+                <div id="gmailStatus" class="muted">
+                    Checking Gmail connection...
+                </div>
+
                 <div class="actions">
-                    <button id="gmailConnectBtn" type="button">Connect Gmail</button>
-                    <button id="gmailScanBtn" class="success" type="button" disabled>Scan Gmail</button>
-                    <button id="gmailDisconnectBtn" class="danger" type="button" disabled>Disconnect</button>
+                    <button id="gmailConnectBtn" type="button">
+                        Connect Gmail
+                    </button>
+
+                    <button
+                        id="gmailScanBtn"
+                        class="success"
+                        type="button"
+                        disabled
+                    >
+                        Scan New Emails
+                    </button>
+
+                    <button
+                        id="gmailDisconnectBtn"
+                        class="danger"
+                        type="button"
+                        disabled
+                    >
+                        Disconnect
+                    </button>
                 </div>
             </div>
+
             <div class="email-status-card">
-                <strong>What it scans</strong>
-                <div class="muted small" style="margin-top:8px;">InventoryOS can read shipping-label PDFs and add an InventoryOS-Imported label to processed Gmail messages. It does not send or delete emails.</div>
+                <strong>Date/time cursor</strong>
+
+                <div
+                    id="gmailCursorStatus"
+                    class="muted small"
+                    style="margin-top:8px;"
+                >
+                    Loading last successful scan time...
+                </div>
+
+                <div
+                    class="muted small"
+                    style="margin-top:8px;"
+                >
+                    New-email scans only check shipping-label emails received after this saved time.
+                </div>
             </div>
         </div>
-        <div id="gmailScanStatus" class="small muted" style="margin-top:10px;"></div>
+
+        <div class="gmail-scan-controls">
+            <div class="gmail-control-card">
+                <strong>Continuous scan</strong>
+
+                <label class="gmail-toggle-row">
+                    <input
+                        id="gmailContinuousToggle"
+                        type="checkbox"
+                    >
+
+                    <span>
+                        Automatically scan and import new labels while this Dispatch Centre page is open
+                    </span>
+                </label>
+
+                <div class="gmail-control-row">
+                    <select id="gmailScanInterval">
+                        <option value="1">Every 1 minute</option>
+                        <option value="5" selected>Every 5 minutes</option>
+                        <option value="10">Every 10 minutes</option>
+                        <option value="15">Every 15 minutes</option>
+                        <option value="30">Every 30 minutes</option>
+                        <option value="60">Every 60 minutes</option>
+                    </select>
+                </div>
+
+                <div
+                    id="gmailContinuousStatus"
+                    class="muted small"
+                    style="margin-top:8px;"
+                >
+                    Continuous scan is off.
+                </div>
+            </div>
+
+            <div class="gmail-control-card">
+                <strong>Rescan older emails</strong>
+
+                <div
+                    class="muted small"
+                    style="margin-top:8px;"
+                >
+                    This checks an older period without changing the normal last-scan time.
+                </div>
+
+                <div class="gmail-control-row">
+                    <select id="gmailRescanWindow">
+                        <option value="1">Past 1 hour</option>
+                        <option value="6">Past 6 hours</option>
+                        <option value="24" selected>Past 24 hours</option>
+                        <option value="48">Past 2 days</option>
+                        <option value="168">Past 7 days</option>
+                        <option value="720">Past 30 days</option>
+                    </select>
+
+                    <button
+                        id="gmailRescanBtn"
+                        class="secondary"
+                        type="button"
+                        disabled
+                    >
+                        Rescan
+                    </button>
+                </div>
+
+                <button
+                    id="gmailStartFreshBtn"
+                    class="secondary"
+                    type="button"
+                    disabled
+                >
+                    Start Fresh From Now
+                </button>
+            </div>
+        </div>
+
+        <div
+            id="gmailScanStatus"
+            class="small muted"
+            style="margin-top:10px;"
+        ></div>
+
         <div id="gmailResults" class="email-results"></div>
-        <div class="actions" id="gmailImportActions" style="display:none;">
-            <button id="gmailImportSelectedBtn" class="success" type="button">Import Selected To Packing Queue</button>
-            <button id="gmailHideSelectedBtn" class="secondary" type="button">Hide Selected</button>
+
+        <div
+            class="actions"
+            id="gmailImportActions"
+            style="display:none;"
+        >
+            <button
+                id="gmailImportSelectedBtn"
+                class="success"
+                type="button"
+            >
+                Import Selected To Packing Queue
+            </button>
         </div>
     </div>
 
@@ -1133,52 +1315,372 @@ function apiFetch(path, options = {}){
 
 
 let gmailLabelResults = [];
-function setGmailStatus(message,state){ const el=document.getElementById("gmailStatus"); if(!el)return; el.textContent=message||""; el.classList.remove("ok","error","warn"); if(state)el.classList.add(state); }
-function setGmailScanStatus(message,state){ const el=document.getElementById("gmailScanStatus"); if(!el)return; el.textContent=message||""; el.classList.remove("ok","error","warn"); if(state)el.classList.add(state); }
+
+let gmailScanContext = {
+    mode:"cursor",
+    commitAt:0
+};
+
+let gmailContinuousTimer = null;
+let gmailContinuousRunning = false;
+let gmailConnected = false;
+
+const gmailConnectBtn =
+    document.getElementById("gmailConnectBtn");
+
+const gmailScanBtn =
+    document.getElementById("gmailScanBtn");
+
+const gmailDisconnectBtn =
+    document.getElementById("gmailDisconnectBtn");
+
+const gmailRescanBtn =
+    document.getElementById("gmailRescanBtn");
+
+const gmailStartFreshBtn =
+    document.getElementById("gmailStartFreshBtn");
+
+const gmailContinuousToggle =
+    document.getElementById("gmailContinuousToggle");
+
+const gmailScanInterval =
+    document.getElementById("gmailScanInterval");
+
+function setGmailStatus(message, state){
+    const element =
+        document.getElementById("gmailStatus");
+
+    if(!element){
+        return;
+    }
+
+    element.textContent = message || "";
+    element.classList.remove(
+        "ok",
+        "error",
+        "warn"
+    );
+
+    if(state){
+        element.classList.add(state);
+    }
+}
+
+function setGmailScanStatus(message, state){
+    const element =
+        document.getElementById("gmailScanStatus");
+
+    if(!element){
+        return;
+    }
+
+    element.textContent = message || "";
+    element.classList.remove(
+        "ok",
+        "error",
+        "warn"
+    );
+
+    if(state){
+        element.classList.add(state);
+    }
+}
+
+function setGmailContinuousStatus(message, state){
+    const element =
+        document.getElementById(
+            "gmailContinuousStatus"
+        );
+
+    if(!element){
+        return;
+    }
+
+    element.textContent = message || "";
+    element.classList.remove(
+        "ok",
+        "error",
+        "warn"
+    );
+
+    if(state){
+        element.classList.add(state);
+    }
+}
+
+function formatScanDate(timestamp){
+    const value = Number(timestamp || 0);
+
+    if(!value){
+        return "Not set";
+    }
+
+    return new Date(value).toLocaleString(
+        "en-GB",
+        {
+            dateStyle:"medium",
+            timeStyle:"short"
+        }
+    );
+}
+
+function updateGmailCursorDisplay(timestamp){
+    const element =
+        document.getElementById(
+            "gmailCursorStatus"
+        );
+
+    if(!element){
+        return;
+    }
+
+    element.textContent =
+        "Last successful new-email scan: " +
+        formatScanDate(timestamp);
+}
+
+function renderGmailResults(labels){
+    const container =
+        document.getElementById("gmailResults");
+
+    const actions =
+        document.getElementById(
+            "gmailImportActions"
+        );
+
+    if(!labels || !labels.length){
+        container.innerHTML = "";
+        actions.style.display = "none";
+        return;
+    }
+
+    actions.style.display = "flex";
+
+    container.innerHTML = labels
+        .map((label, index) => {
+            const received = label.internal_date
+                ? formatScanDate(label.internal_date)
+                : (label.date || "");
+
+            return `
+                <div class="email-result">
+                    <label>
+                        <input
+                            type="checkbox"
+                            class="gmail-label-check"
+                            data-index="${index}"
+                            checked
+                        >
+
+                        <div>
+                            <div class="email-result-title">
+                                ${escapeHtml(
+                                    label.item_name ||
+                                    "Review item name"
+                                )}
+                            </div>
+
+                            <div>
+                                <span class="email-pill">
+                                    ${escapeHtml(
+                                        label.marketplace ||
+                                        "Email"
+                                    )}
+                                </span>
+
+                                ${
+                                    label.courier
+                                        ? `<span class="email-pill">${escapeHtml(label.courier)}</span>`
+                                        : ""
+                                }
+                            </div>
+
+                            <div class="email-result-meta">
+                                ${escapeHtml(label.subject || "")}
+                                <br>
+                                Received: ${escapeHtml(received)}
+                                <br>
+                                Attachment: ${escapeHtml(
+                                    label.filename ||
+                                    "label.pdf"
+                                )}
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            `;
+        })
+        .join("");
+}
+
+function stopGmailContinuousTimer(){
+    if(gmailContinuousTimer){
+        clearInterval(gmailContinuousTimer);
+        gmailContinuousTimer = null;
+    }
+}
+
+function scheduleGmailContinuousTimer(){
+    stopGmailContinuousTimer();
+
+    if(
+        !gmailConnected ||
+        !gmailContinuousToggle.checked
+    ){
+        setGmailContinuousStatus(
+            "Continuous scan is off.",
+            "warn"
+        );
+
+        return;
+    }
+
+    const minutes = Number(
+        gmailScanInterval.value || 5
+    );
+
+    setGmailContinuousStatus(
+        `Continuous scanning is on. ` +
+        `InventoryOS will scan every ${minutes} minute` +
+        `${minutes === 1 ? "" : "s"} while this page is open.`,
+        "ok"
+    );
+
+    gmailContinuousTimer = setInterval(
+        runContinuousGmailScan,
+        minutes * 60 * 1000
+    );
+}
+
+async function loadGmailScanSettings(){
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/scan-settings"
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Could not load Gmail scan settings."
+            );
+        }
+
+        gmailContinuousToggle.checked =
+            Boolean(data.continuous_enabled);
+
+        gmailScanInterval.value = String(
+            Number(
+                data.scan_interval_minutes ||
+                5
+            )
+        );
+
+        updateGmailCursorDisplay(
+            data.last_successful_scan_at
+        );
+
+        scheduleGmailContinuousTimer();
+    }catch(error){
+        console.error(error);
+
+        setGmailContinuousStatus(
+            error.message ||
+            "Could not load continuous scan settings.",
+            "error"
+        );
+    }
+}
+
+async function saveGmailScanSettings(){
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/scan-settings",
+            {
+                method:"POST",
+                body:JSON.stringify({
+                    continuous_enabled:
+                        gmailContinuousToggle.checked,
+                    scan_interval_minutes:
+                        Number(
+                            gmailScanInterval.value ||
+                            5
+                        )
+                })
+            }
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Could not save Gmail scan settings."
+            );
+        }
+
+        updateGmailCursorDisplay(
+            data.last_successful_scan_at
+        );
+
+        scheduleGmailContinuousTimer();
+    }catch(error){
+        console.error(error);
+
+        setGmailContinuousStatus(
+            error.message ||
+            "Could not save continuous scan settings.",
+            "error"
+        );
+    }
+}
+
 async function loadGmailStatus(){
     try{
         const data = await InventoryAPI.request(
             "/email-labels/gmail/status"
         );
 
-        if(data.connected && data.can_modify){
+        gmailConnected = Boolean(
+            data.connected
+        );
+
+        if(data.connected){
             setGmailStatus(
                 "Gmail connected: " +
-                (data.email || "Connected account") +
-                " · imported-message label enabled",
+                (
+                    data.email ||
+                    "Connected account"
+                ),
                 "ok"
             );
 
-            gmailConnectBtn.textContent = "Reconnect Gmail";
+            gmailConnectBtn.textContent =
+                "Reconnect Gmail";
+
             gmailConnectBtn.disabled = false;
             gmailScanBtn.disabled = false;
             gmailDisconnectBtn.disabled = false;
-            return;
-        }
+            gmailRescanBtn.disabled = false;
+            gmailStartFreshBtn.disabled = false;
 
-        if(data.connected && data.needs_reconnect){
+            updateGmailCursorDisplay(
+                data.last_successful_scan_at
+            );
+        }else{
             setGmailStatus(
-                "Gmail is connected with the old read-only permission. " +
-                "Tap Reconnect Gmail once to enable reliable duplicate prevention.",
+                "Gmail is not connected yet.",
                 "warn"
             );
 
-            gmailConnectBtn.textContent = "Reconnect Gmail";
+            gmailConnectBtn.textContent =
+                "Connect Gmail";
+
             gmailConnectBtn.disabled = false;
             gmailScanBtn.disabled = true;
-            gmailDisconnectBtn.disabled = false;
-            return;
+            gmailDisconnectBtn.disabled = true;
+            gmailRescanBtn.disabled = true;
+            gmailStartFreshBtn.disabled = true;
         }
 
-        setGmailStatus(
-            "Gmail is not connected yet.",
-            "warn"
-        );
-
-        gmailConnectBtn.textContent = "Connect Gmail";
-        gmailConnectBtn.disabled = false;
-        gmailScanBtn.disabled = true;
-        gmailDisconnectBtn.disabled = true;
+        scheduleGmailContinuousTimer();
     }catch(error){
         console.error(error);
 
@@ -1188,14 +1690,129 @@ async function loadGmailStatus(){
         );
     }
 }
-async function connectGmail(){ try{ setGmailStatus("Opening Google connection page...","warn"); const data=await InventoryAPI.request("/email-labels/gmail/connect"); if(!data.success||!data.url) throw new Error(data.error||"Could not start Gmail connection."); window.location.href=data.url; }catch(e){ console.error(e); setGmailStatus(e.message||"Could not connect Gmail.","error"); } }
-async function disconnectGmail(){ if(!confirm("Disconnect Gmail from InventoryOS?"))return; try{ const data=await InventoryAPI.request("/email-labels/gmail/disconnect",{method:"POST"}); if(!data.success) throw new Error(data.error||"Could not disconnect Gmail."); gmailLabelResults=[]; renderGmailResults([]); setGmailScanStatus(""); await loadGmailStatus(); }catch(e){ console.error(e); setGmailStatus(e.message||"Could not disconnect Gmail.","error"); } }
-function renderGmailResults(labels){ const container=document.getElementById("gmailResults"); const actions=document.getElementById("gmailImportActions"); if(!labels||!labels.length){ container.innerHTML=""; actions.style.display="none"; return; } actions.style.display="flex"; container.innerHTML=labels.map((label,index)=>`<div class="email-result"><label><input type="checkbox" class="gmail-label-check" data-index="${index}" checked><div><div class="email-result-title">${escapeHtml(label.item_name||"Review item name")}</div><div><span class="email-pill">${escapeHtml(label.marketplace||"Email")}</span>${label.courier?`<span class="email-pill">${escapeHtml(label.courier)}</span>`:""}</div><div class="email-result-meta">${escapeHtml(label.subject||"")}<br>From: ${escapeHtml(label.from||"")}<br>Attachment: ${escapeHtml(label.filename||"label.pdf")}</div></div></label></div>`).join(""); }
-async function scanGmail(){
-    showLoading("Scanning Gmail for new shipping labels...");
+
+async function connectGmail(){
+    try{
+        setGmailStatus(
+            "Opening Google connection page...",
+            "warn"
+        );
+
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/connect"
+        );
+
+        if(!data.success || !data.url){
+            throw new Error(
+                data.error ||
+                "Could not start Gmail connection."
+            );
+        }
+
+        window.location.href = data.url;
+    }catch(error){
+        console.error(error);
+
+        setGmailStatus(
+            error.message ||
+            "Could not connect Gmail.",
+            "error"
+        );
+    }
+}
+
+async function disconnectGmail(){
+    if(
+        !confirm(
+            "Disconnect Gmail from InventoryOS?"
+        )
+    ){
+        return;
+    }
+
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/disconnect",
+            {
+                method:"POST"
+            }
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Could not disconnect Gmail."
+            );
+        }
+
+        gmailConnected = false;
+        gmailLabelResults = [];
+        renderGmailResults([]);
+        setGmailScanStatus("");
+        stopGmailContinuousTimer();
+
+        await loadGmailStatus();
+    }catch(error){
+        console.error(error);
+
+        setGmailStatus(
+            error.message ||
+            "Could not disconnect Gmail.",
+            "error"
+        );
+    }
+}
+
+async function commitGmailScanCursor(cursorAt){
+    const data = await InventoryAPI.request(
+        "/email-labels/gmail/commit-scan",
+        {
+            method:"POST",
+            body:JSON.stringify({
+                cursor_at:Number(cursorAt || 0)
+            })
+        }
+    );
+
+    if(!data.success){
+        throw new Error(
+            data.error ||
+            "Could not save the last Gmail scan time."
+        );
+    }
+
+    updateGmailCursorDisplay(
+        data.last_successful_scan_at
+    );
+
+    return data.last_successful_scan_at;
+}
+
+async function scanGmail(options = {}){
+    const mode =
+        options.mode === "rescan"
+            ? "rescan"
+            : "cursor";
+
+    const automatic =
+        Boolean(options.automatic);
+
+    const hours = Number(
+        options.hours || 24
+    );
+
+    if(!automatic){
+        showLoading(
+            mode === "rescan"
+                ? "Rescanning older Gmail labels..."
+                : "Scanning Gmail for new labels..."
+        );
+    }
 
     setGmailScanStatus(
-        "Scanning Gmail and ignoring messages already labelled InventoryOS-Imported...",
+        mode === "rescan"
+            ? `Rescanning the previous ${hours} hour${hours === 1 ? "" : "s"}...`
+            : "Scanning for shipping-label emails received after the last successful scan...",
         "warn"
     );
 
@@ -1205,7 +1822,9 @@ async function scanGmail(){
             {
                 method:"POST",
                 body:JSON.stringify({
-                    max_results:15
+                    mode,
+                    hours,
+                    max_messages:100
                 })
             }
         );
@@ -1217,44 +1836,77 @@ async function scanGmail(){
             );
         }
 
-        gmailLabelResults = data.labels || [];
-        renderGmailResults(gmailLabelResults);
+        gmailScanContext = {
+            mode:data.mode || mode,
+            commitAt:Number(
+                data.commit_at || 0
+            )
+        };
 
-        const skipped = Number(
-            data.hidden_by_gmail_label_count || 0
+        gmailLabelResults =
+            data.labels || [];
+
+        renderGmailResults(
+            gmailLabelResults
         );
 
-        if(gmailLabelResults.length){
-            let message =
-                `Found ${gmailLabelResults.length} new label attachment` +
-                `${gmailLabelResults.length === 1 ? "" : "s"}.`;
-
-            if(skipped){
-                message +=
-                    ` Ignored ${skipped} Gmail message` +
-                    `${skipped === 1 ? "" : "s"} already labelled ` +
-                    `${data.imported_label_name || "InventoryOS-Imported"}.`;
+        if(!gmailLabelResults.length){
+            if(
+                mode === "cursor" &&
+                gmailScanContext.commitAt
+            ){
+                await commitGmailScanCursor(
+                    gmailScanContext.commitAt
+                );
             }
 
-            message += " Tick the ones to import.";
+            setGmailScanStatus(
+                mode === "rescan"
+                    ? "No shipping-label PDFs were found in that rescan period."
+                    : "No new shipping-label PDFs were found. The scan time has been updated.",
+                "ok"
+            );
 
-            setGmailScanStatus(
-                message,
-                "ok"
-            );
-        }else if(skipped){
-            setGmailScanStatus(
-                `No new labels found. Ignored ${skipped} Gmail message` +
-                `${skipped === 1 ? "" : "s"} already labelled ` +
-                `${data.imported_label_name || "InventoryOS-Imported"}.`,
-                "ok"
-            );
-        }else{
-            setGmailScanStatus(
-                "No new shipping-label PDFs were found in recent Gmail results.",
-                "warn"
-            );
+            return {
+                success:true,
+                count:0
+            };
         }
+
+        setGmailScanStatus(
+            `Found ${gmailLabelResults.length} shipping-label attachment` +
+            `${gmailLabelResults.length === 1 ? "" : "s"}. ` +
+            (
+                automatic
+                    ? "Importing them automatically..."
+                    : "Tick the ones to import."
+            ),
+            "ok"
+        );
+
+        if(automatic){
+            const labelsForImport = [
+                ...gmailLabelResults
+            ];
+
+            const imported =
+                await importGmailLabels(
+                    labelsForImport,
+                    {
+                        automatic:true
+                    }
+                );
+
+            return {
+                success:imported,
+                count:labelsForImport.length
+            };
+        }
+
+        return {
+            success:true,
+            count:gmailLabelResults.length
+        };
     }catch(error){
         console.error(error);
 
@@ -1264,55 +1916,189 @@ async function scanGmail(){
             "error"
         );
 
-        if(
-            String(error.message || "")
-                .toLowerCase()
-                .includes("reconnect gmail")
-        ){
-            await loadGmailStatus();
+        return {
+            success:false,
+            count:0
+        };
+    }finally{
+        if(!automatic){
+            hideLoading();
         }
+    }
+}
+
+async function runContinuousGmailScan(){
+    if(
+        gmailContinuousRunning ||
+        !gmailConnected ||
+        !gmailContinuousToggle.checked ||
+        document.hidden
+    ){
+        return;
+    }
+
+    gmailContinuousRunning = true;
+
+    setGmailContinuousStatus(
+        "Continuous scan is checking Gmail now...",
+        "warn"
+    );
+
+    try{
+        const result = await scanGmail({
+            mode:"cursor",
+            automatic:true
+        });
+
+        const minutes = Number(
+            gmailScanInterval.value || 5
+        );
+
+        if(result.success){
+            setGmailContinuousStatus(
+                `Last automatic scan completed at ` +
+                `${new Date().toLocaleTimeString("en-GB", {
+                    hour:"2-digit",
+                    minute:"2-digit"
+                })}. Next check in ${minutes} minute` +
+                `${minutes === 1 ? "" : "s"}.`,
+                "ok"
+            );
+        }else{
+            setGmailContinuousStatus(
+                "The last automatic Gmail scan failed. InventoryOS will try again at the next interval.",
+                "error"
+            );
+        }
+    }finally{
+        gmailContinuousRunning = false;
+    }
+}
+
+async function startFreshFromNow(){
+    const confirmed = confirm(
+        "Start normal Gmail scanning from right now?\n\n" +
+        "Emails received before this moment will only appear when you use the Rescan dropdown."
+    );
+
+    if(!confirmed){
+        return;
+    }
+
+    showLoading(
+        "Starting Gmail scan from now..."
+    );
+
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/start-fresh",
+            {
+                method:"POST"
+            }
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Could not start fresh from now."
+            );
+        }
+
+        gmailLabelResults = [];
+        renderGmailResults([]);
+
+        updateGmailCursorDisplay(
+            data.last_successful_scan_at
+        );
+
+        setGmailScanStatus(
+            "Normal scanning will now only look at emails received after this moment.",
+            "ok"
+        );
+    }catch(error){
+        console.error(error);
+
+        setGmailScanStatus(
+            error.message ||
+            "Could not start fresh from now.",
+            "error"
+        );
     }finally{
         hideLoading();
     }
 }
 
-function base64ToBlob(base64,mimeType){ const binary=atob(base64); const bytes=new Uint8Array(binary.length); for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i); return new Blob([bytes],{type:mimeType||"application/pdf"}); }
-async function importSelectedGmailLabels(){
-    const selected = Array.from(
-        document.querySelectorAll(".gmail-label-check:checked")
-    )
-        .map(input => {
-            return gmailLabelResults[Number(input.dataset.index)];
-        })
-        .filter(Boolean);
+function base64ToBlob(base64, mimeType){
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
 
-    if(!selected.length){
-        alert("Tick at least one Gmail label to import.");
-        return;
+    for(let index = 0;
+        index < binary.length;
+        index++
+    ){
+        bytes[index] =
+            binary.charCodeAt(index);
     }
 
-    showLoading("Downloading Gmail labels...");
+    return new Blob(
+        [bytes],
+        {
+            type:
+                mimeType ||
+                "application/pdf"
+        }
+    );
+}
+
+async function importGmailLabels(labels, options = {}){
+    const selected = Array.isArray(labels)
+        ? labels.filter(Boolean)
+        : [];
+
+    if(!selected.length){
+        alert(
+            "Tick at least one Gmail label to import."
+        );
+
+        return false;
+    }
+
+    showLoading(
+        options.automatic
+            ? "Importing new Gmail labels..."
+            : "Downloading Gmail labels..."
+    );
 
     try{
         const form = new FormData();
 
-        for(let i = 0; i < selected.length; i++){
-            const label = selected[i];
+        for(let index = 0;
+            index < selected.length;
+            index++
+        ){
+            const label = selected[index];
 
-            document.getElementById("loadingText").innerText =
-                `Downloading Gmail label ${i + 1} of ${selected.length}...`;
+            document.getElementById(
+                "loadingText"
+            ).innerText =
+                `Downloading Gmail label ` +
+                `${index + 1} of ${selected.length}...`;
 
-            const attachment = await InventoryAPI.request(
-                "/email-labels/gmail/attachment",
-                {
-                    method:"POST",
-                    body:JSON.stringify({
-                        message_id:label.message_id,
-                        attachment_id:label.attachment_id,
-                        filename:label.filename || ""
-                    })
-                }
-            );
+            const attachment =
+                await InventoryAPI.request(
+                    "/email-labels/gmail/attachment",
+                    {
+                        method:"POST",
+                        body:JSON.stringify({
+                            message_id:
+                                label.message_id,
+                            attachment_id:
+                                label.attachment_id,
+                            filename:
+                                label.filename || ""
+                        })
+                    }
+                );
 
             if(!attachment.success){
                 throw new Error(
@@ -1323,7 +2109,8 @@ async function importSelectedGmailLabels(){
 
             const blob = base64ToBlob(
                 attachment.base64,
-                attachment.mime_type || "application/pdf"
+                attachment.mime_type ||
+                "application/pdf"
             );
 
             const safeName = String(
@@ -1331,7 +2118,10 @@ async function importSelectedGmailLabels(){
                 label.filename ||
                 "gmail-label.pdf"
             )
-                .replace(/[<>:"/\\|?*]+/g, " ")
+                .replace(
+                    /[<>:"/\\|?*]+/g,
+                    " "
+                )
                 .replace(/\s+/g, "_");
 
             const file = new File(
@@ -1344,19 +2134,25 @@ async function importSelectedGmailLabels(){
                 }
             );
 
-            form.append("labels", file);
+            form.append(
+                "labels",
+                file
+            );
         }
 
-        document.getElementById("loadingText").innerText =
+        document.getElementById(
+            "loadingText"
+        ).innerText =
             "Auto-cropping Gmail labels...";
 
-        const cropData = await InventoryAPI.request(
-            "/shipping-labels/autocrop",
-            {
-                method:"POST",
-                body:form
-            }
-        );
+        const cropData =
+            await InventoryAPI.request(
+                "/shipping-labels/autocrop",
+                {
+                    method:"POST",
+                    body:form
+                }
+            );
 
         if(!cropData.success){
             throw new Error(
@@ -1365,135 +2161,35 @@ async function importSelectedGmailLabels(){
             );
         }
 
-        const cropped = cropData.labels || [];
+        const cropped =
+            cropData.labels || [];
 
         if(!cropped.length){
-            throw new Error("No Gmail labels were cropped.");
+            throw new Error(
+                "No Gmail labels were cropped."
+            );
         }
 
-        document.getElementById("loadingText").innerText =
+        document.getElementById(
+            "loadingText"
+        ).innerText =
             "Adding Gmail labels to packing queue...";
 
-        const queueData = await InventoryAPI.request(
-            "/shipping-labels/create-from-crops",
-            {
-                method:"POST",
-                body:JSON.stringify({
-                    labels:cropped
-                })
-            }
-        );
+        const queueData =
+            await InventoryAPI.request(
+                "/shipping-labels/create-from-crops",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        labels:cropped
+                    })
+                }
+            );
 
         if(!queueData.success){
             throw new Error(
                 queueData.error ||
-                "Could not add Gmail labels to packing queue."
-            );
-        }
-
-        /*
-            The queue import has succeeded. Now apply InventoryOS-Imported
-            directly to the Gmail message. Gmail itself becomes the permanent
-            duplicate source of truth.
-        */
-        const historyData = await InventoryAPI.request(
-            "/email-labels/gmail/mark-imported",
-            {
-                method:"POST",
-                body:JSON.stringify({
-                    labels:selected.map(label => ({
-                        message_id:label.message_id,
-                        attachment_id:label.attachment_id,
-                        filename:label.filename || ""
-                    }))
-                })
-            }
-        );
-
-        if(!historyData.success){
-            throw new Error(
-                historyData.error ||
-                "The packs were imported, but Gmail could not be labelled. " +
-                "Use Hide Selected before scanning again."
-            );
-        }
-
-        gmailLabelResults = [];
-        renderGmailResults([]);
-
-        setGmailScanStatus(
-            `Imported ${cropped.length} Gmail label` +
-            `${cropped.length === 1 ? "" : "s"} to the packing queue. ` +
-            `The Gmail message${cropped.length === 1 ? " is" : "s are"} now labelled ` +
-            `${historyData.imported_label_name || "InventoryOS-Imported"}.`,
-            "ok"
-        );
-
-        await loadQueue();
-    }catch(error){
-        console.error(error);
-
-        setGmailScanStatus(
-            error.message || "Could not import Gmail labels.",
-            "error"
-        );
-
-        alert(
-            error.message ||
-            "Could not import Gmail labels."
-        );
-    }finally{
-        hideLoading();
-    }
-}
-
-
-async function hideSelectedGmailLabels(){
-    const selected = Array.from(
-        document.querySelectorAll(".gmail-label-check:checked")
-    )
-        .map(input => {
-            return gmailLabelResults[Number(input.dataset.index)];
-        })
-        .filter(Boolean);
-
-    if(!selected.length){
-        alert("Tick at least one Gmail label to hide.");
-        return;
-    }
-
-    const confirmed = confirm(
-        "Apply InventoryOS-Imported to the selected Gmail messages?\\n\\n" +
-        "Use this for labels you have already imported/printed and do not " +
-        "want to see again."
-    );
-
-    if(!confirmed){
-        return;
-    }
-
-    showLoading("Hiding selected Gmail labels...");
-
-    try{
-        const data = await InventoryAPI.request(
-            "/email-labels/gmail/mark-imported",
-            {
-                method:"POST",
-                body:JSON.stringify({
-                    labels:selected.map(label => ({
-                        message_id:label.message_id,
-                        attachment_id:label.attachment_id,
-                        filename:label.filename || "",
-                        content_hash:label.content_hash || ""
-                    }))
-                })
-            }
-        );
-
-        if(!data.success){
-            throw new Error(
-                data.error ||
-                "Could not hide selected Gmail labels."
+                "Could not add Gmail labels to the packing queue."
             );
         }
 
@@ -1501,36 +2197,136 @@ async function hideSelectedGmailLabels(){
             selected.map(label => label.id)
         );
 
-        gmailLabelResults = gmailLabelResults.filter(label => {
-            return !selectedIds.has(label.id);
-        });
+        const importedEveryCurrentResult =
+            gmailLabelResults.length > 0 &&
+            gmailLabelResults.every(label => {
+                return selectedIds.has(label.id);
+            });
 
-        renderGmailResults(gmailLabelResults);
+        if(
+            gmailScanContext.mode === "cursor" &&
+            gmailScanContext.commitAt &&
+            importedEveryCurrentResult
+        ){
+            await commitGmailScanCursor(
+                gmailScanContext.commitAt
+            );
+        }
+
+        gmailLabelResults =
+            gmailLabelResults.filter(label => {
+                return !selectedIds.has(label.id);
+            });
+
+        renderGmailResults(
+            gmailLabelResults
+        );
+
+        let message =
+            `Imported ${cropped.length} Gmail label` +
+            `${cropped.length === 1 ? "" : "s"} ` +
+            "to the packing queue.";
+
+        if(
+            gmailScanContext.mode === "cursor" &&
+            !importedEveryCurrentResult
+        ){
+            message +=
+                " The scan time was not advanced because some new results were left unimported.";
+        }else if(
+            gmailScanContext.mode === "rescan"
+        ){
+            message +=
+                " Rescans do not change the normal last-scan time.";
+        }
 
         setGmailScanStatus(
-            `Applied InventoryOS-Imported to ${selected.length} Gmail message` +
-            `${selected.length === 1 ? "" : "s"}.`,
+            message,
             "ok"
         );
+
+        await loadQueue();
+
+        return true;
     }catch(error){
         console.error(error);
 
         setGmailScanStatus(
             error.message ||
-            "Could not hide selected Gmail labels.",
+            "Could not import Gmail labels.",
             "error"
         );
 
-        alert(
-            error.message ||
-            "Could not hide selected Gmail labels."
-        );
+        if(!options.automatic){
+            alert(
+                error.message ||
+                "Could not import Gmail labels."
+            );
+        }
+
+        return false;
     }finally{
         hideLoading();
     }
 }
 
-function handleGmailRedirectNotice(){ const params=new URLSearchParams(window.location.search); if(params.get("gmail")==="connected"){ setGmailScanStatus("Gmail connected successfully. InventoryOS can now label imported messages.","ok"); window.history.replaceState({},document.title,window.location.pathname); } if(params.get("gmail")==="error"){ setGmailScanStatus("Gmail connection failed: "+(params.get("reason")||"Unknown error"),"error"); window.history.replaceState({},document.title,window.location.pathname); } }
+async function importSelectedGmailLabels(){
+    const selected = Array.from(
+        document.querySelectorAll(
+            ".gmail-label-check:checked"
+        )
+    )
+        .map(input => {
+            return gmailLabelResults[
+                Number(input.dataset.index)
+            ];
+        })
+        .filter(Boolean);
+
+    return importGmailLabels(
+        selected,
+        {
+            automatic:false
+        }
+    );
+}
+
+function handleGmailRedirectNotice(){
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    if(params.get("gmail") === "connected"){
+        setGmailScanStatus(
+            "Gmail connected successfully. New-email scanning uses the saved date/time cursor.",
+            "ok"
+        );
+
+        window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+        );
+    }
+
+    if(params.get("gmail") === "error"){
+        setGmailScanStatus(
+            "Gmail connection failed: " +
+            (
+                params.get("reason") ||
+                "Unknown error"
+            ),
+            "error"
+        );
+
+        window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+        );
+    }
+}
 
 function showLoading(text){
     document.getElementById("loadingText").innerText = text || "Working...";
@@ -1595,11 +2391,72 @@ dropzone.addEventListener("drop", e => {
 });
 
 processBtn.addEventListener("click", processSelectedFiles);
-document.getElementById("gmailConnectBtn").addEventListener("click", connectGmail);
-document.getElementById("gmailScanBtn").addEventListener("click", scanGmail);
-document.getElementById("gmailDisconnectBtn").addEventListener("click", disconnectGmail);
-document.getElementById("gmailImportSelectedBtn").addEventListener("click", importSelectedGmailLabels);
-document.getElementById("gmailHideSelectedBtn").addEventListener("click", hideSelectedGmailLabels);
+document.getElementById("gmailConnectBtn").addEventListener(
+    "click",
+    connectGmail
+);
+
+document.getElementById("gmailScanBtn").addEventListener(
+    "click",
+    function(){
+        scanGmail({
+            mode:"cursor",
+            automatic:false
+        });
+    }
+);
+
+document.getElementById("gmailDisconnectBtn").addEventListener(
+    "click",
+    disconnectGmail
+);
+
+document.getElementById("gmailImportSelectedBtn").addEventListener(
+    "click",
+    importSelectedGmailLabels
+);
+
+document.getElementById("gmailRescanBtn").addEventListener(
+    "click",
+    function(){
+        scanGmail({
+            mode:"rescan",
+            hours:Number(
+                document.getElementById(
+                    "gmailRescanWindow"
+                ).value || 24
+            ),
+            automatic:false
+        });
+    }
+);
+
+document.getElementById("gmailStartFreshBtn").addEventListener(
+    "click",
+    startFreshFromNow
+);
+
+document.getElementById("gmailContinuousToggle").addEventListener(
+    "change",
+    saveGmailScanSettings
+);
+
+document.getElementById("gmailScanInterval").addEventListener(
+    "change",
+    saveGmailScanSettings
+);
+
+document.addEventListener(
+    "visibilitychange",
+    function(){
+        if(
+            !document.hidden &&
+            gmailContinuousToggle.checked
+        ){
+            runContinuousGmailScan();
+        }
+    }
+);
 
 async function processSelectedFiles(){
     if(!selectedFiles.length) return;
@@ -2290,6 +3147,7 @@ window.addEventListener("inventory-selection-changed", function(){
 
 handleGmailRedirectNotice();
 loadGmailStatus();
+loadGmailScanSettings();
 loadQueue();
 
 setTimeout(function(){
