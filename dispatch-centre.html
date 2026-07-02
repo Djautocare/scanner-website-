@@ -9,7 +9,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Dispatch Centre</title>
- 
+
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.6/jsrsasign-all-min.js"></script>
 
@@ -623,6 +623,20 @@ button:disabled{
                         <option value="60">Every 60 minutes</option>
                     </select>
                 </div>
+
+                <label class="gmail-toggle-row">
+                    <input
+                        id="gmailAutoPrintToggle"
+                        type="checkbox"
+                    >
+
+                    <span>
+                        Auto-print newly imported labels to JD-668BT
+                        <span class="muted small">
+                            (desktop QZ Tray only)
+                        </span>
+                    </span>
+                </label>
 
                 <div
                     id="gmailContinuousStatus"
@@ -1343,6 +1357,9 @@ const gmailStartFreshBtn =
 const gmailContinuousToggle =
     document.getElementById("gmailContinuousToggle");
 
+const gmailAutoPrintToggle =
+    document.getElementById("gmailAutoPrintToggle");
+
 const gmailScanInterval =
     document.getElementById("gmailScanInterval");
 
@@ -1542,7 +1559,12 @@ function scheduleGmailContinuousTimer(){
     setGmailContinuousStatus(
         `Continuous scanning is on. ` +
         `InventoryOS will scan every ${minutes} minute` +
-        `${minutes === 1 ? "" : "s"} while this page is open.`,
+        `${minutes === 1 ? "" : "s"} while this page is open.` +
+        (
+            gmailAutoPrintToggle.checked
+                ? " New labels will auto-print through QZ Tray."
+                : ""
+        ),
         "ok"
     );
 
@@ -1575,6 +1597,9 @@ async function loadGmailScanSettings(){
             )
         );
 
+        gmailAutoPrintToggle.checked =
+            Boolean(data.auto_print_enabled);
+
         updateGmailCursorDisplay(
             data.last_successful_scan_at
         );
@@ -1604,7 +1629,9 @@ async function saveGmailScanSettings(){
                         Number(
                             gmailScanInterval.value ||
                             5
-                        )
+                        ),
+                    auto_print_enabled:
+                        gmailAutoPrintToggle.checked
                 })
             }
         );
@@ -2050,6 +2077,53 @@ function base64ToBlob(base64, mimeType){
     );
 }
 
+
+async function autoPrintNewlyCreatedPacks(packs){
+    const packIds = (Array.isArray(packs) ? packs : [])
+        .map(pack => Number(pack.id || 0))
+        .filter(Boolean);
+
+    if(!packIds.length){
+        throw new Error(
+            "The new packing-queue entries did not return printable pack IDs."
+        );
+    }
+
+    const data = await InventoryAPI.request(
+        "/shipping-labels/print-images",
+        {
+            method:"POST",
+            body:JSON.stringify({
+                pack_ids:packIds
+            })
+        }
+    );
+
+    if(!data.success){
+        throw new Error(
+            data.error ||
+            "Could not render the newly imported shipping labels."
+        );
+    }
+
+    const printLabels =
+        Array.isArray(data.labels)
+            ? data.labels
+            : [];
+
+    if(!printLabels.length){
+        throw new Error(
+            "The backend returned no printable shipping labels."
+        );
+    }
+
+    await printDispatchImagesWithQz(
+        printLabels
+    );
+
+    return printLabels.length;
+}
+
 async function importGmailLabels(labels, options = {}){
     const selected = Array.isArray(labels)
         ? labels.filter(Boolean)
@@ -2193,6 +2267,46 @@ async function importGmailLabels(labels, options = {}){
             );
         }
 
+        let autoPrintMessage = "";
+
+        if(
+            options.automatic &&
+            gmailAutoPrintToggle.checked
+        ){
+            document.getElementById(
+                "loadingText"
+            ).innerText =
+                "Auto-printing the new shipping labels...";
+
+            try{
+                const printedCount =
+                    await autoPrintNewlyCreatedPacks(
+                        queueData.packs || []
+                    );
+
+                autoPrintMessage =
+                    ` Auto-printed ${printedCount} label` +
+                    `${printedCount === 1 ? "" : "s"} to JD-668BT.`;
+            }catch(printError){
+                console.error(
+                    "Automatic shipping-label print failed:",
+                    printError
+                );
+
+                autoPrintMessage =
+                    " The labels were imported, but automatic printing failed.";
+
+                setDispatchQzStatus(
+                    "Automatic print failed: " +
+                    (
+                        printError.message ||
+                        "Unknown QZ print error"
+                    ),
+                    "error"
+                );
+            }
+        }
+
         const selectedIds = new Set(
             selected.map(label => label.id)
         );
@@ -2240,9 +2354,13 @@ async function importGmailLabels(labels, options = {}){
                 " Rescans do not change the normal last-scan time.";
         }
 
+        message += autoPrintMessage;
+
         setGmailScanStatus(
             message,
-            "ok"
+            autoPrintMessage.includes("failed")
+                ? "warn"
+                : "ok"
         );
 
         await loadQueue();
@@ -2442,6 +2560,11 @@ document.getElementById("gmailContinuousToggle").addEventListener(
 );
 
 document.getElementById("gmailScanInterval").addEventListener(
+    "change",
+    saveGmailScanSettings
+);
+
+document.getElementById("gmailAutoPrintToggle").addEventListener(
     "change",
     saveGmailScanSettings
 );
@@ -2932,6 +3055,30 @@ function renderPackCard(pack){
 
     const itemHtml = packItems.map(item => {
         const locations = Array.isArray(item.locations) ? item.locations : [];
+        const closest = locations[0] || null;
+
+        const closestMatchHtml = closest
+            ? `
+                <div class="muted small" style="margin-top:8px;">
+                    Closest match:
+                    <strong>${escapeHtml(
+                        closest.description ||
+                        item.description
+                    )}</strong>
+                    —
+                    <strong>${escapeHtml(
+                        closest.location ||
+                        "Location not found"
+                    )}</strong>
+                    ${
+                        closest.match_percent
+                            ? ` (${escapeHtml(closest.match_percent)}% match)`
+                            : ""
+                    }
+                </div>
+            `
+            : "";
+
         const locationHtml = locations.length
             ? locations.map(loc => `
                 <div class="location ok">
@@ -2940,7 +3087,7 @@ function renderPackCard(pack){
                     ${loc.barcode ? ` — ${escapeHtml(loc.barcode)}` : ""}
                 </div>
             `).join("")
-            : `<div class="location ${item.status === "missing" ? "error" : ""}">${item.status === "missing" ? "No stock location found" : "Locations not searched yet"}</div>`;
+            : `<div class="location ${item.status === "missing" ? "error" : ""}">${item.status === "missing" ? "No close active-stock match found" : "Locations not searched yet"}</div>`;
 
         return `
             <div class="item-row">
@@ -2948,6 +3095,7 @@ function renderPackCard(pack){
                     <div style="width:100%;">
                         <strong>${escapeHtml(item.description)}</strong>
                         <div class="muted small">Qty needed: ${escapeHtml(item.qty)}</div>
+                        ${closestMatchHtml}
                         ${locationHtml}
 
                         <div class="inline-edit">
