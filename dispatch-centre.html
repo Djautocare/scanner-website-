@@ -11,7 +11,6 @@
 <title>Dispatch Centre</title>
 
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.6/jsrsasign-all-min.js"></script>
 
 <style>
 html{touch-action:manipulation;}
@@ -631,7 +630,7 @@ button:disabled{
                     >
 
                     <span>
-                        Auto-print newly imported labels to JD-668BT
+                        Auto-print newly imported labels to your selected 4×6 printer
                         <span class="muted small">
                             (desktop QZ Tray only)
                         </span>
@@ -775,7 +774,7 @@ button:disabled{
 
         <div class="actions">
             <button id="refreshPrintPreviewBtn" class="secondary" type="button">Refresh Preview</button>
-            <button id="printPreviewLabelsBtn" type="button">Print Labels to JD-668BT</button>
+            <button id="printPreviewLabelsBtn" type="button">Print Shipping Labels</button>
             <button id="mobileShareLabelsBtn" class="secondary" type="button">📱 Share / Mobile Print</button>
         </div>
 
@@ -783,7 +782,8 @@ button:disabled{
             On mobile, share the combined 4×6 PDF to your Jadens printing app.
         </div>
 
-        <div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send each 600-DPI 4×6 shipping label directly to JD-668BT using Chrome/PDFium-rendered images.</div>
+        <div style="margin-top:10px;"><a class="link-card" href="printer-setup.html">Open Printer Setup</a></div>
+<div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send each 600-DPI 4×6 shipping label directly to your selected 4×6 printer using Chrome/PDFium-rendered images.</div>
         <div id="printPreviewGrid" class="print-preview-grid"></div>
     </div>
 
@@ -802,6 +802,7 @@ button:disabled{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
+<script src="js/qzClient.js?v=1"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
 <script src="js/workspace.js"></script>
 
@@ -814,86 +815,6 @@ let currentView = "location";
 let preparedMobilePrintFile = null;
 let preparedMobilePrintSignature = "";
 let preparedMobilePrintUrl = "";
-
-/*
-    DIRECT QZ SHIPPING-LABEL PRINTING
-    Reuses the same trusted QZ certificate, signing key and printer name
-    as the working Add Stock "Test Auto Print Only" button.
-*/
-const QZ_CERTIFICATE = `-----BEGIN CERTIFICATE-----
-MIIDaTCCAlGgAwIBAgIUEYjhN8XGDWd4zQ/41gWdGPPJOBUwDQYJKoZIhvcNAQEL
-BQAwRDEbMBkGA1UEAwwSRHlsYW4gSW52ZW50b3J5IFFaMRgwFgYDVQQKDA9JbnZl
-bnRvcnkgTG9jYWwxCzAJBgNVBAYTAkdCMB4XDTI2MDYxNjIyMzIyN1oXDTM2MDYx
-MzIyMzIyN1owRDEbMBkGA1UEAwwSRHlsYW4gSW52ZW50b3J5IFFaMRgwFgYDVQQK
-DA9JbnZlbnRvcnkgTG9jYWwxCzAJBgNVBAYTAkdCMIIBIjANBgkqhkiG9w0BAQEF
-AAOCAQ8AMIIBCgKCAQEAl83ZITFbTwCbGPFQfTZvz4NIlKKanaokfoc2E/iDoNcS
-xTMoRhaC4nrunDca1TUHA4HHPBU//QmbWEVnOMne++DamjAOGzBMcWouq/333b1h
-XYyUsV/1ix3DFmg1mtWBwUt+XSCFD+pwQrNYcy7HRyIo8661CUOf7Hz1UZkIY5DZ
-hs+VKYAq98drDaWJ5ut/hgd7GKEtyJePGbRnG4dGIxLMZqaNETcbJjuQz+JI4uh3
-vnFUwnTF0PrCNh1w46DoJ4CxRpeeBE1j0plFvbc7dqGSJsmkL9ygjpQlmw7lXhTB
-OXAI48o5tj/Fde+r9ZHXSoj8TVJSfBC/WZ4VD6JJJwIDAQABo1MwUTAdBgNVHQ4E
-FgQUmqwdcoR87EWIpu2xQBxRM2HSznMwHwYDVR0jBBgwFoAUmqwdcoR87EWIpu2x
-QBxRM2HSznMwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAchSO
-f62o1MaZASerIdk/Xdvalz3364DSmd4180wQKwu1uAtkcXnChDCTeRfoJZ34ngLA
-6+YN+55iy/Ij8IMehcoaeg7Wh8qMwMC2JQ3W3VIwG/j025qk59LOt5x76JkzW4Ie
-OMloenZqQihGzLd61E5YGqVOTHoRTzDunhPV3xZZMCsvWZxfn4akBCZeHAmEJf66
-WcpnqMfgQHEmrpkv8yke6xCTfdhtH/tVGC1dcg6KGqA3QGmWm9cHkQiiOZy4415V
-0rt/vlCcPtm3zko62Pyobh5XQyXMymSxO3mtwz4x2vmNrEcRQGzge21IpVv2ohNv
-DE5h//qR1wlqo6QIbw==
------END CERTIFICATE-----
-`;
-const QZ_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCXzdkhMVtPAJsY
-8VB9Nm/Pg0iUopqdqiR+hzYT+IOg1xLFMyhGFoLieu6cNxrVNQcDgcc8FT/9CZtY
-RWc4yd774NqaMA4bMExxai6r/ffdvWFdjJSxX/WLHcMWaDWa1YHBS35dIIUP6nBC
-s1hzLsdHIijzrrUJQ5/sfPVRmQhjkNmGz5UpgCr3x2sNpYnm63+GB3sYoS3Il48Z
-tGcbh0YjEsxmpo0RNxsmO5DP4kji6He+cVTCdMXQ+sI2HXDjoOgngLFGl54ETWPS
-mUW9tzt2oZImyaQv3KCOlCWbDuVeFME5cAjjyjm2P8V176v1kddKiPxNUlJ8EL9Z
-nhUPokknAgMBAAECggEAJtn7OUCNkvGfwEl6hSFaimyaNdhL5BA4mN14HLJc1dxV
-pHzMUOvQAbDewsJjrq+MpPwhBqKVpug/ht70ZRddZ2+L4yxrX9ADsH8xhLlSJ8Eh
-WzTwlVju2fT7ChAPsBn2xIbSx3jcNU+V/awy9f/B5tW6T2umT8Gr+3Wbv4+AEyMJ
-NpahUePk5tplhC7zYumC98Yv/jfRqF3+7a7fLwEtRxs5q5G51v/w2oD9mVsJpcEQ
-ZZwYdWaQ4B7Gbs/+HsvwIk3nq5LSudUo/fhpR+nKVRMwdvv1lV/mEuGEnotvDvZR
-mmSJ26Jk/4SLLPMclAPaiZ1NU2Nv0Loey64G2oqs8QKBgQDS1kMrK1tFXL1/eNyG
-w4muxSF+mC6N2mVickAD7yzBDGZFmzzdV9c45VKSuM/5tJn7oBWGGgYAscryDBvu
-qd+kyA6UxZDp9d5ZS6CRFPMm0t6Z0VNSQX5QBe4d9KkPNmmSHS/Sobgd76akm7Tj
-kTOI+mqk67gDA5+30E+y1+yuKQKBgQC4UmFnxY/zvh97DmfrApWSpUFh6mtFIVip
-ia4okRDvOHUsI0IqTWzjyc2QZHF8qqu8twnUpgk9Ivor/YYsJcpgQuOHPlYUZjni
-UtAeWRQlBL9j7sTOmz2lTkZ2hEj3ORfE2zrZ1xs9vIglTTa+0gn8muCW9G7PEEKE
-KKKrxliGzwKBgQDHMB4tPrzv/voY4DqYJ0yAjUVjsKrq4ZY/N+k6zk/d4rUMtej+
-xOpUmnM0ot3576I6k7dCBnv9U/uESeRpypu7tjXwX+bU4rC6dDSyXLSLzVT4xUaO
-w8luGOwp6Od/s8xxepmfyaGExtENWv2+sYOaudrfDMPANUBEDM3/DPhSYQKBgDF9
-xTO042MiEJfdFWAP0JOQlc6xv93PB1x2YHH6CZ8B/Mw+J1zubyd2nyB/J82+keBZ
-EWWss1xcEOpQ537hIsbYDvnYbgqKLE6tx73uUy9hZ/ZwPR3wpwvEyby25lSjWtN7
-vgCR9nmMLs49Pk7cXNwbxeQie8JTbljIBG21Ez4XAoGATeiulzNxYZX9S+oDvBVY
-hHrULZ9jk4B3B+uvXfttU1VYxqXzXX71fuUgVPpqysoXPDw/6JXD9fyBUaOB/wx9
-GDH1xlD9nUCnnidLpRCY6+HPEKxxP90UMcd1Ih/zIa9dG3Dwbn8cBXrMgYKJ/kBS
-1CIACY/ljKI7qEPi2/iq+6I=
------END PRIVATE KEY-----
-`;
-
-qz.security.setCertificatePromise(function(resolve, reject){
-    resolve(QZ_CERTIFICATE);
-});
-
-qz.security.setSignatureAlgorithm("SHA512");
-
-qz.security.setSignaturePromise(function(toSign){
-    return function(resolve, reject){
-        try{
-            const pk = KEYUTIL.getKey(QZ_PRIVATE_KEY);
-            const sig = new KJUR.crypto.Signature({"alg":"SHA512withRSA"});
-            sig.init(pk);
-            sig.updateString(toSign);
-            const hex = sig.sign();
-            resolve(stob64(hextorstr(hex)));
-        }catch(err){
-            reject(err);
-        }
-    };
-});
-
-const QZ_PRINTER_NAME = "JD-668BT";
 
 function setDispatchQzStatus(message, state){
     const element = document.getElementById("dispatchQzStatus");
@@ -909,19 +830,39 @@ function setDispatchQzStatus(message, state){
 
 function connectDispatchQz(){
     if(!window.qz){
-        setDispatchQzStatus("QZ Tray library did not load.", "error");
-        return Promise.reject(new Error("QZ Tray library did not load."));
+        setDispatchQzStatus(
+            "QZ Tray library did not load.",
+            "error"
+        );
+
+        return Promise.reject(
+            new Error(
+                "QZ Tray library did not load."
+            )
+        );
     }
 
-    if(qz.websocket.isActive()){
-        return Promise.resolve();
-    }
+    setDispatchQzStatus(
+        "Connecting to QZ Tray...",
+        "busy"
+    );
 
-    setDispatchQzStatus("Connecting to QZ Tray...", "busy");
+    return InventoryOSQZ.connect()
+        .then(function(){
+            const printer =
+                InventoryOSQZ
+                    .getShippingPrinterName();
 
-    return qz.websocket.connect().then(function(){
-        setDispatchQzStatus("Connected to QZ Tray. JD-668BT is ready.", "ok");
-    });
+            setDispatchQzStatus(
+                printer
+                    ? "Connected. 4×6 printer: " +
+                      printer
+                    : "Connected. Select a 4×6 printer in Printer Setup.",
+                printer
+                    ? "ok"
+                    : "warn"
+            );
+        });
 }
 
 function buildShippingLabelHtml(label){
@@ -980,33 +921,59 @@ html,body{
 </html>`;
 }
 
-function printSingleDispatchLabelHtml(printer, label, index, total){
-    const config = qz.configs.create(printer, {
-        size:{width:4,height:6},
-        units:"in",
-        margins:0,
-        orientation:"portrait",
-        copies:1,
-        scaleContent:false,
-        colorType:"grayscale",
-        density:"best",
-        interpolation:"nearest-neighbor",
-        jobName:`InventoryOS Dispatch Label ${index + 1} of ${total}`
-    });
+function printSingleDispatchLabelHtml(
+    printer,
+    label,
+    index,
+    total
+){
+    const config = qz.configs.create(
+        printer,
+        {
+            size:{
+                width:4,
+                height:6
+            },
+            units:"in",
+            margins:0,
+            orientation:"portrait",
+            copies:1,
+            scaleContent:false,
+            colorType:"grayscale",
+            density:"best",
+            interpolation:"nearest-neighbor",
+            jobName:
+                "InventoryOS Dispatch Label " +
+                (index + 1) +
+                " of " +
+                total
+        }
+    );
 
     const data = [{
         type:"pixel",
         format:"html",
         flavor:"plain",
-        data:buildShippingLabelHtml(label)
+        data:buildShippingLabelHtml(
+            label
+        )
     }];
 
     setDispatchQzStatus(
-        `Sending label ${index + 1} of ${total} to ${QZ_PRINTER_NAME}...`,
+        "Sending label " +
+        (index + 1) +
+        " of " +
+        total +
+        " to " +
+        printer +
+        "...",
         "busy"
     );
 
-    return qz.print(config, data);
+    return qz.print(
+        config,
+        data
+    );
 }
 
 function printDispatchImagesWithQz(printLabels){
@@ -2286,7 +2253,7 @@ async function importGmailLabels(labels, options = {}){
 
                 autoPrintMessage =
                     ` Auto-printed ${printedCount} label` +
-                    `${printedCount === 1 ? "" : "s"} to JD-668BT.`;
+                    `${printedCount === 1 ? "" : "s"} to your selected 4×6 printer.`;
             }catch(printError){
                 console.error(
                     "Automatic shipping-label print failed:",
@@ -2859,7 +2826,7 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", async
         }
 
         document.getElementById("loadingText").innerText =
-            "Sending 4×6 label images directly to JD-668BT...";
+            "Sending 4×6 label images directly to your selected 4×6 printer...";
 
         await printDispatchImagesWithQz(printLabels);
     }catch(err){
@@ -2875,14 +2842,14 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", async
         );
 
         alert(
-            "Could not print directly to JD-668BT.\n\n" +
+            "Could not print directly to your selected 4×6 printer.\n\n" +
             detail +
             "\n\nMake sure QZ Tray is open and the printer is connected."
         );
     }finally{
         hideLoading();
         button.disabled = false;
-        button.textContent = "Print Labels to JD-668BT";
+        button.textContent = "Print Shipping Labels";
     }
 });
 
