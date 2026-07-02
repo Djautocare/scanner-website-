@@ -343,6 +343,7 @@ button{
         </div>
     </div>
 </div>
+
 <div class="card">
     <div class="card-title"><span class="card-icon">👥</span>Workspace Members</div>
     <div class="helper">
@@ -364,6 +365,7 @@ button{
 </div>
 
 <div class="settings-grid">
+
 <div class="card">
     <div class="card-title">
         <span class="card-icon">🏢</span>
@@ -522,6 +524,7 @@ button{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
+
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -529,6 +532,7 @@ if(!InventoryAPI.requireLogin()){
 
 InventoryTheme.loadFromAccount().then(function(theme){
     const result = document.getElementById("themeResult");
+
     if(result){
         result.innerText = "Current theme: " + theme;
     }
@@ -540,6 +544,7 @@ document.querySelectorAll("[data-theme-choice]").forEach(button=>{
         await InventoryTheme.save(theme);
 
         const result = document.getElementById("themeResult");
+
         if(result){
             result.className = "result success";
             result.innerText = "Theme updated ✅";
@@ -666,61 +671,100 @@ async function runImport(){
     setResult("Importing...");
 
     try{
-        const response = await fetch(InventoryAPI.API_BASE + "/import/google-sheets", {
-            method:"POST",
-            headers:{
-                "Authorization":"Bearer " + InventoryAPI.getToken()
-            },
-            body:formData
-        });
+        const response = await fetch(
+            InventoryAPI.API_BASE +
+            "/import/google-sheets",
+            {
+                method:"POST",
+                headers:{
+                    "Authorization":
+                        "Bearer " +
+                        InventoryAPI.getToken()
+                },
+                body:formData
+            }
+        );
 
         const data = await response.json();
 
         hideLoading();
 
         if(!data.success){
-            setResult(data.error || "Import failed", "error");
+            setResult(
+                data.error ||
+                "Import failed",
+                "error"
+            );
+
             return;
         }
 
-        let output = "Import complete ✅\n\n";
+        let output =
+            "Import complete ✅\n\n";
 
-        Object.keys(data.summary || {}).forEach(key=>{
-            output += key + ": " + data.summary[key] + "\n";
-        });
+        Object
+            .keys(data.summary || {})
+            .forEach(key=>{
+                output +=
+                    key +
+                    ": " +
+                    data.summary[key] +
+                    "\n";
+            });
 
-        if(data.warnings && data.warnings.length){
+        if(
+            data.warnings &&
+            data.warnings.length
+        ){
             output += "\nWarnings:\n";
+
             data.warnings.forEach(warning=>{
-                output += "- " + warning + "\n";
+                output +=
+                    "- " +
+                    warning +
+                    "\n";
             });
         }
 
-        setResult(output, "success");
+        setResult(
+            output,
+            "success"
+        );
 
     }catch(error){
         hideLoading();
         console.error(error);
-        setResult("Import error: " + error.message, "error");
+
+        setResult(
+            "Import error: " +
+            error.message,
+            "error"
+        );
     }
 }
 
-
 async function showAdminCard(){
     try{
-        const data=await InventoryAPI.request("/admin/me");
+        const data =
+            await InventoryAPI.request(
+                "/admin/me"
+            );
+
         if(data.success && data.admin){
-            document.getElementById("adminCard").style.display="block";
+            document.getElementById(
+                "adminCard"
+            ).style.display = "block";
         }
-    }catch(e){
+    }catch(error){
         // Not an admin - keep hidden.
     }
 }
 
-
 loadProfile();
 showAdminCard();
 </script>
+
+<script src="js/removePreferences.js?v=1"></script>
 
 </body>
 </html>
