@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0d0d0d">
+<title>Printer Setup</title>
+
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    padding:18px;
+    font-family:Arial,sans-serif;
+    color:white;
+    background:
+        radial-gradient(circle at top left,rgba(142,68,255,.16),transparent 35%),
+        radial-gradient(circle at top right,rgba(32,201,151,.12),transparent 35%),
+        #0d0d0d;
+}
+.page{max-width:760px;margin:auto}
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:20px;
+    padding:22px;
+    box-shadow:0 20px 60px rgba(0,0,0,.35)
+}
+h1{text-align:center;margin:8px 0}
+.subtitle{text-align:center;color:#aaa;line-height:1.45;margin:0 0 20px}
+.card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:16px;
+    padding:16px;
+    margin-top:14px
+}
+label{display:block;font-weight:bold;margin-bottom:7px}
+select,button{
+    width:100%;
+    border:0;
+    border-radius:12px;
+    padding:13px;
+    margin:5px 0 10px;
+    font-size:16px
+}
+select{
+    background:#2a2a2a;
+    color:white;
+    border:1px solid rgba(255,255,255,.09)
+}
+button{
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    background:linear-gradient(135deg,#8e44ff,#6f2fd9)
+}
+button.secondary{background:linear-gradient(135deg,#333,#222)}
+button.success{background:linear-gradient(135deg,#28a745,#1f8b3a)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.status{
+    margin-top:14px;
+    border-radius:14px;
+    padding:13px;
+    background:#111;
+    border:1px solid rgba(255,255,255,.08);
+    color:#bbb;
+    line-height:1.45
+}
+.status.ok{color:#8dffb0;border-color:rgba(40,167,69,.35)}
+.status.error{color:#ff9b9b;border-color:rgba(220,53,69,.35)}
+.link{
+    display:block;
+    text-align:center;
+    text-decoration:none;
+    color:white;
+    padding:14px;
+    border-radius:14px;
+    margin-top:14px;
+    background:linear-gradient(135deg,rgba(0,123,255,.25),rgba(0,123,255,.08));
+    border:1px solid rgba(0,123,255,.35);
+    font-weight:bold
+}
+.small{font-size:13px;color:#aaa;line-height:1.4}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+</style>
+
+<link rel="stylesheet" href="css/theme.css">
+</head>
+<body>
+<div class="page">
+<div class="panel">
+<h1>Printer Setup</h1>
+<p class="subtitle">
+    Choose the printers used on this computer. These selections are saved only in this browser.
+</p>
+
+<div class="card">
+    <div class="grid">
+        <button type="button" onclick="refreshPrinters()">Refresh Printers</button>
+        <button class="secondary" type="button" onclick="checkBackend()">Check Secure Signing</button>
+    </div>
+
+    <div id="status" class="status">
+        Ready to connect to QZ Tray.
+    </div>
+</div>
+
+<div class="card">
+    <label for="productPrinter">2×1 product and barcode labels</label>
+    <select id="productPrinter">
+        <option value="">Refresh printers first</option>
+    </select>
+
+    <button type="button" onclick="testProductPrinter()">Print 2×1 Test Label</button>
+</div>
+
+<div class="card">
+    <label for="shippingPrinter">4×6 shipping labels</label>
+    <select id="shippingPrinter">
+        <option value="">Refresh printers first</option>
+    </select>
+
+    <button type="button" onclick="testShippingPrinter()">Print 4×6 Test Label</button>
+</div>
+
+<button class="success" type="button" onclick="saveSettings()">
+    Save Printer Settings
+</button>
+
+<p class="small">
+    QZ Tray must be running. The private signing key remains on the InventoryOS backend and is never sent to this browser.
+</p>
+
+<a class="link" href="index.html">← Back to Dashboard</a>
+</div>
+</div>
+
+<script src="js/theme.js"></script>
+<script src="js/api.js"></script>
+<script src="js/qzClient.js?v=1"></script>
+
+<script>
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
+function setStatus(message,state){
+    const box =
+        document.getElementById(
+            "status"
+        );
+
+    box.textContent = message;
+    box.className =
+        "status" +
+        (
+            state
+                ? " " + state
+                : ""
+        );
+}
+
+function fillSelect(
+    select,
+    printers,
+    selected
+){
+    select.innerHTML =
+        '<option value="">Select printer</option>';
+
+    printers.forEach(function(name){
+        const option =
+            document.createElement(
+                "option"
+            );
+
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+    });
+
+    if(
+        selected &&
+        printers.includes(selected)
+    ){
+        select.value = selected;
+    }
+}
+
+async function refreshPrinters(){
+    setStatus(
+        "Connecting to QZ Tray...",
+        ""
+    );
+
+    try{
+        const printers =
+            await InventoryOSQZ.listPrinters();
+
+        fillSelect(
+            document.getElementById(
+                "productPrinter"
+            ),
+            printers,
+            InventoryOSQZ
+                .getProductPrinterName()
+        );
+
+        fillSelect(
+            document.getElementById(
+                "shippingPrinter"
+            ),
+            printers,
+            InventoryOSQZ
+                .getShippingPrinterName()
+        );
+
+        setStatus(
+            printers.length
+                ? printers.length +
+                  " printer" +
+                  (
+                    printers.length === 1
+                        ? ""
+                        : "s"
+                  ) +
+                  " found."
+                : "QZ Tray connected, but no printers were found.",
+            printers.length
+                ? "ok"
+                : "error"
+        );
+    }catch(error){
+        console.error(error);
+
+        setStatus(
+            error.message ||
+            String(error),
+            "error"
+        );
+    }
+}
+
+async function checkBackend(){
+    setStatus(
+        "Checking secure QZ signing...",
+        ""
+    );
+
+    try{
+        const data =
+            await InventoryOSQZ.getStatus();
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "QZ signing is not configured"
+            );
+        }
+
+        setStatus(
+            "Secure backend signing is working. Certificate valid until " +
+            data.certificate.valid_to +
+            ".",
+            "ok"
+        );
+    }catch(error){
+        console.error(error);
+
+        setStatus(
+            error.message ||
+            String(error),
+            "error"
+        );
+    }
+}
+
+function saveSettings(){
+    const product =
+        document.getElementById(
+            "productPrinter"
+        ).value;
+
+    const shipping =
+        document.getElementById(
+            "shippingPrinter"
+        ).value;
+
+    if(!product || !shipping){
+        setStatus(
+            "Select both printers before saving.",
+            "error"
+        );
+
+        return;
+    }
+
+    InventoryOSQZ.savePrinterNames(
+        product,
+        shipping
+    );
+
+    setStatus(
+        "Printer settings saved for this computer.",
+        "ok"
+    );
+}
+
+function productTestHtml(){
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+@page{size:2in 1in;margin:0}
+html,body{width:2in;height:1in;margin:0;padding:0;background:white;overflow:hidden}
+*{box-sizing:border-box}
+.label{width:2in;height:1in;padding:.08in;text-align:center;font-family:Arial;color:black}
+.title{font-size:13px;font-weight:bold;margin-top:.04in}
+.box{border:3px solid black;margin:.08in 0;padding:.08in;font-size:18px;font-weight:bold}
+.small{font-size:9px}
+</style>
+</head>
+<body>
+<div class="label">
+<div class="title">InventoryOS</div>
+<div class="box">2×1 TEST</div>
+<div class="small">Product label printer</div>
+</div>
+</body>
+</html>`;
+}
+
+function shippingTestHtml(){
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+@page{size:4in 6in;margin:0}
+html,body{width:4in;height:6in;margin:0;padding:0;background:white;overflow:hidden}
+*{box-sizing:border-box}
+.label{width:4in;height:6in;padding:.25in;font-family:Arial;color:black}
+.header{font-size:28px;font-weight:bold;border-bottom:5px solid black;padding-bottom:.15in}
+.box{border:5px solid black;margin-top:.35in;padding:.35in;text-align:center;font-size:34px;font-weight:bold}
+.lines{margin-top:.4in;font-size:22px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="label">
+<div class="header">InventoryOS</div>
+<div class="box">4×6 TEST</div>
+<div class="lines">
+Shipping label printer<br>
+Portrait orientation<br>
+Full 4×6 page
+</div>
+</div>
+</body>
+</html>`;
+}
+
+async function printTest(
+    role,
+    html,
+    width,
+    height
+){
+    saveSettings();
+
+    try{
+        setStatus(
+            "Sending test label...",
+            ""
+        );
+
+        const printer =
+            await InventoryOSQZ
+                .requirePrinter(role);
+
+        const config =
+            qz.configs.create(
+                printer,
+                {
+                    size:{
+                        width,
+                        height
+                    },
+                    units:"in",
+                    margins:0,
+                    copies:1,
+                    scaleContent:false
+                }
+            );
+
+        await qz.print(
+            config,
+            [{
+                type:"pixel",
+                format:"html",
+                flavor:"plain",
+                data:html
+            }]
+        );
+
+        setStatus(
+            "Test label sent to " +
+            printer +
+            ".",
+            "ok"
+        );
+    }catch(error){
+        console.error(error);
+
+        setStatus(
+            error.message ||
+            String(error),
+            "error"
+        );
+    }
+}
+
+function testProductPrinter(){
+    printTest(
+        "product",
+        productTestHtml(),
+        2,
+        1
+    );
+}
+
+function testShippingPrinter(){
+    printTest(
+        "shipping",
+        shippingTestHtml(),
+        4,
+        6
+    );
+}
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function(){
+        checkBackend();
+        refreshPrinters();
+    },
+    {
+        once:true
+    }
+);
+</script>
+</body>
+</html>
