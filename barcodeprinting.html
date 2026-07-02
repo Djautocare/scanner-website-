@@ -409,6 +409,7 @@ button{
 }
 </style>
 <link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
 </head>
 
 <body>
@@ -416,12 +417,14 @@ button{
 <div class="page">
 <div class="panel">
 
+<div id="inventory-topbar"></div>
+
 <h1>Barcode Printing</h1>
-<p class="subtitle">Print product labels, box labels, barcode ranges and saved print jobs</p>
+<p class="subtitle" id="barcodePrintingSubtitle">Print product labels, box labels, barcode ranges and saved print jobs</p>
 
 <div class="tab-grid">
     <button class="tab-button active" onclick="showSection('productSection', this)">Product Labels</button>
-    <button class="tab-button" onclick="showSection('boxSection', this)">Box Labels</button>
+    <button class="tab-button" id="locationLabelsTab" onclick="showSection('boxSection', this)">Box Labels</button>
     <button class="tab-button" onclick="showSection('rangeSection', this)">Bulk Range</button>
     <button class="tab-button" onclick="showSection('jobSection', this)">Print Jobs</button>
     <button class="tab-button" onclick="showSection('quickSection', this)">Quick Print</button>
@@ -437,12 +440,12 @@ button{
 
 <div id="boxSection" class="section">
     <div class="form-card">
-        <div class="input-label">Select Box</div>
+        <div class="input-label" id="selectLocationLabel">Select Box</div>
         <select id="boxSelect">
             <option value="">Loading boxes...</option>
         </select>
 
-        <button class="box-button" onclick="printBoxLabel()">Print Box Label</button>
+        <button class="box-button" id="printLocationLabelButton" onclick="printBoxLabel()">Print Box Label</button>
     </div>
 </div>
 
@@ -517,8 +520,8 @@ button{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/inventoryTopbar.js?v=2"></script>
-<script src="js/workspace.js?v=3"></script>
+<script src="js/inventoryTopbar.js?v=4"></script>
+<script src="js/workspace.js?v=4"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -527,6 +530,129 @@ if(!InventoryAPI.requireLogin()){
 
 let liveSearchTimer = null;
 let loadedLabels = [];
+
+function readLocationSettings(){
+    try{
+        if(
+            typeof InventoryWorkspace !== "undefined" &&
+            InventoryWorkspace &&
+            typeof InventoryWorkspace.getSettings === "function"
+        ){
+            return InventoryWorkspace.getSettings();
+        }
+    }catch(error){
+        console.error(
+            "Could not read location settings from InventoryWorkspace:",
+            error
+        );
+    }
+
+    try{
+        const workspace = JSON.parse(
+            localStorage.getItem("inventoryos_workspace") ||
+            "null"
+        );
+
+        if(workspace && workspace.settings){
+            return workspace.settings;
+        }
+    }catch(error){
+        console.error(
+            "Could not read cached workspace settings:",
+            error
+        );
+    }
+
+    return {};
+}
+
+function locationWords(){
+    const settings = readLocationSettings();
+
+    const singular =
+        String(
+            settings.location_label_singular ||
+            "Box"
+        ).trim() ||
+        "Box";
+
+    const plural =
+        String(
+            settings.location_label_plural ||
+            "Boxes"
+        ).trim() ||
+        "Boxes";
+
+    return {
+        singular:singular,
+        plural:plural,
+        singularLower:singular.toLocaleLowerCase(),
+        pluralLower:plural.toLocaleLowerCase()
+    };
+}
+
+function applyBarcodePrintingLocationWording(){
+    const words = locationWords();
+
+    document.getElementById(
+        "barcodePrintingSubtitle"
+    ).textContent =
+        "Print product labels, " +
+        words.singularLower +
+        " labels, barcode ranges and saved print jobs";
+
+    document.getElementById(
+        "locationLabelsTab"
+    ).textContent =
+        words.singular +
+        " Labels";
+
+    document.getElementById(
+        "selectLocationLabel"
+    ).textContent =
+        "Select " +
+        words.singular;
+
+    document.getElementById(
+        "printLocationLabelButton"
+    ).textContent =
+        "Print " +
+        words.singular +
+        " Label";
+
+    const select =
+        document.getElementById("boxSelect");
+
+    if(select && select.options.length){
+        const firstOption =
+            select.options[0];
+
+        if(
+            !firstOption.value &&
+            (
+                /loading/i.test(firstOption.textContent) ||
+                /select/i.test(firstOption.textContent) ||
+                /no .* found/i.test(firstOption.textContent)
+            )
+        ){
+            if(/loading/i.test(firstOption.textContent)){
+                firstOption.textContent =
+                    "Loading " +
+                    words.pluralLower +
+                    "...";
+            }else if(/no .* found/i.test(firstOption.textContent)){
+                firstOption.textContent =
+                    "No " +
+                    words.pluralLower +
+                    " found";
+            }else{
+                firstOption.textContent =
+                    "Select " +
+                    words.singular;
+            }
+        }
+    }
+}
 
 function showLoading(){
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -695,53 +821,100 @@ function liveSearchProducts(query){
     });
 }
 
-/* BOX LABELS */
+/* LOCATION LABELS */
 
 function loadBoxes(){
-    const cached = localStorage.getItem("inventoryBoxes");
+    const words = locationWords();
+    const select =
+        document.getElementById("boxSelect");
 
-    if(cached){
-        try{
-            fillBoxes(JSON.parse(cached));
-        }catch(e){}
-    }
+    select.innerHTML =
+        '<option value="">' +
+        "Loading " +
+        words.pluralLower +
+        "..." +
+        "</option>";
 
-    InventoryAPI.request("/boxes")
+    InventoryAPI.request(
+        "/boxes?_t=" +
+        Date.now()
+    )
     .then(data=>{
         if(data.success && data.boxes){
-            localStorage.setItem("inventoryBoxes", JSON.stringify(data.boxes));
             fillBoxes(data.boxes);
+            return;
         }
+
+        select.innerHTML =
+            '<option value="">' +
+            "Could not load " +
+            words.pluralLower +
+            "</option>";
     })
     .catch(error=>{
         console.error(error);
+
+        select.innerHTML =
+            '<option value="">' +
+            "Could not load " +
+            words.pluralLower +
+            "</option>";
     });
 }
 
 function fillBoxes(boxes){
-    const select = document.getElementById("boxSelect");
+    const words = locationWords();
+    const select =
+        document.getElementById("boxSelect");
 
-    select.innerHTML = '<option value="">Select Box</option>';
+    select.innerHTML =
+        '<option value="">' +
+        "Select " +
+        words.singular +
+        "</option>";
 
     if(!boxes || boxes.length === 0){
-        select.innerHTML = '<option value="">No boxes found</option>';
+        select.innerHTML =
+            '<option value="">' +
+            "No " +
+            words.pluralLower +
+            " found" +
+            "</option>";
+
+        applyBarcodePrintingLocationWording();
         return;
     }
 
     boxes.forEach(item=>{
-        const option = document.createElement("option");
-        const boxName = item.box || item.box_name;
+        const option =
+            document.createElement("option");
+
+        const boxName =
+            item.box ||
+            item.box_name;
+
         option.value = boxName;
         option.textContent = boxName;
         select.appendChild(option);
     });
+
+    applyBarcodePrintingLocationWording();
 }
 
 function printBoxLabel(){
-    const box = document.getElementById("boxSelect").value;
+    const words = locationWords();
+
+    const box =
+        document
+            .getElementById("boxSelect")
+            .value;
 
     if(!box){
-        alert("Select a box first");
+        alert(
+            "Select a " +
+            words.singularLower +
+            " first"
+        );
         return;
     }
 
@@ -937,9 +1110,53 @@ document.getElementById("rangeEnd").addEventListener("keydown",function(e){
     }
 });
 
-restoreActiveTab();
-loadBoxes();
-loadPrintJobs();
+window.addEventListener(
+    "inventory-selection-changed",
+    function(){
+        loadedLabels = [];
+        document.getElementById(
+            "printLabels"
+        ).innerHTML = "";
+
+        applyBarcodePrintingLocationWording();
+        loadBoxes();
+        loadPrintJobs();
+    }
+);
+
+async function initialiseBarcodePrintingPage(){
+    try{
+        if(
+            typeof InventoryWorkspace !== "undefined" &&
+            InventoryWorkspace &&
+            typeof InventoryWorkspace.init === "function"
+        ){
+            await InventoryWorkspace.init();
+        }
+    }catch(error){
+        console.error(
+            "Could not initialise workspace wording:",
+            error
+        );
+    }
+
+    applyBarcodePrintingLocationWording();
+    restoreActiveTab();
+    loadBoxes();
+    loadPrintJobs();
+}
+
+if(document.readyState === "loading"){
+    document.addEventListener(
+        "DOMContentLoaded",
+        initialiseBarcodePrintingPage,
+        {
+            once:true
+        }
+    );
+}else{
+    initialiseBarcodePrintingPage();
+}
 </script>
 
 </body>
