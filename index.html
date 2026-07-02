@@ -1,707 +1,2707 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
 <meta charset="UTF-8">
 
-<meta name="viewport" 
-content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+>
 
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="theme-color" content="#0d0d0d">
-<link rel="apple-touch-icon" href="icon.png">
+<meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+>
+
+<meta
+    name="mobile-web-app-capable"
+    content="yes"
+>
+
+<meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="black"
+>
+
+<meta
+    name="theme-color"
+    content="#09080d"
+>
+
+<link
+    rel="apple-touch-icon"
+    href="icon.png"
+>
 
 <title>InventoryOS Dashboard</title>
 
-<link rel="stylesheet" href="css/inventoryTopbar.css">
+<link
+    rel="stylesheet"
+    href="css/theme.css"
+>
+
+<link
+    rel="stylesheet"
+    href="css/inventoryTopbar.css"
+>
 
 <style>
-html{touch-action:manipulation;}
-*{box-sizing:border-box;}
+html{
+    touch-action:manipulation;
+}
 
-:root{--accent:var(--accent);--accent-rgb:69,211,106;--accent2:var(--accent2);--accent2-rgb:77,163,255;}
-html[data-theme="green"]{--accent:var(--accent);--accent-rgb:69,211,106;--accent2:var(--accent2);--accent2-rgb:77,163,255;}
-html[data-theme="purple"]{--accent:#b56cff;--accent-rgb:181,108,255;--accent2:var(--accent);--accent2-rgb:69,211,106;}
-html[data-theme="blue"]{--accent:var(--accent2);--accent-rgb:77,163,255;--accent2:#20e0d0;--accent2-rgb:32,224,208;}
-html[data-theme="gold"]{--accent:#ffc107;--accent-rgb:255,193,7;--accent2:#ff8c42;--accent2-rgb:255,140,66;}
-html[data-theme="red"]{--accent:#ff5c6c;--accent-rgb:255,92,108;--accent2:#ffc107;--accent2-rgb:255,193,7;}
-html[data-theme="cyan"]{--accent:#20e0d0;--accent-rgb:32,224,208;--accent2:var(--accent2);--accent2-rgb:77,163,255;}
+*{
+    box-sizing:border-box;
+}
 
-body{
-    font-family:Arial,sans-serif;
-    background:
-        radial-gradient(circle at top left, rgba(var(--accent-rgb),0.13), transparent 35%),
-        radial-gradient(circle at top right, rgba(var(--accent2-rgb),0.10), transparent 35%),
-        #0d0d0d;
-    color:white;
-    padding:18px;
+body.dashboard-body{
+    min-height:100vh;
     margin:0;
     overflow-x:hidden;
+    color:var(--text,#fff);
+    background:
+        radial-gradient(
+            circle at 92% 0,
+            rgba(var(--accent-rgb),0.12),
+            transparent 32rem
+        ),
+        radial-gradient(
+            circle at 0 90%,
+            rgba(var(--accent-2-rgb),0.07),
+            transparent 28rem
+        ),
+        #08070b !important;
+    font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
 }
 
-.page{max-width:1050px;margin:0 auto;}
-
-.panel{
-    background:linear-gradient(180deg,#1d1d1d,#151515);
-    border:1px solid rgba(255,255,255,0.08);
-    padding:24px;
-    border-radius:18px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+button,
+input,
+select{
+    font:inherit;
 }
 
-#loginBox{max-width:430px;margin:70px auto;text-align:center;}
-#app{display:none;}
+button,
+a{
+    -webkit-tap-highlight-color:transparent;
+}
 
-.app-logo{
-    text-align:center;
-    font-size:38px;
-    margin-top:4px;
+a{
+    color:inherit;
+    text-decoration:none;
+}
+
+.dashboard-app{
+    display:grid;
+    grid-template-columns:244px minmax(0,1fr);
+    min-height:100vh;
+}
+
+.dashboard-sidebar{
+    position:fixed;
+    z-index:100;
+    inset:0 auto 0 0;
+    display:flex;
+    flex-direction:column;
+    width:244px;
+    padding:24px 16px;
+    border-right:1px solid rgba(255,255,255,0.07);
+    background:
+        linear-gradient(
+            180deg,
+            rgba(18,15,22,0.99),
+            rgba(8,7,11,0.99)
+        );
+    box-shadow:20px 0 55px rgba(0,0,0,0.18);
+}
+
+.sidebar-brand{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    padding:0 10px 23px;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+}
+
+.sidebar-mark{
+    display:grid;
+    grid-template-columns:repeat(3,5px);
+    align-items:end;
+    gap:3px;
+    width:34px;
+    height:34px;
+    padding:8px 6px;
+    border:1px solid rgba(var(--accent-rgb),0.38);
+    border-radius:11px;
+    background:rgba(var(--accent-rgb),0.11);
+    box-shadow:
+        inset 0 0 20px rgba(var(--accent-rgb),0.07),
+        0 9px 25px rgba(0,0,0,0.24);
+}
+
+.sidebar-mark span{
+    display:block;
+    border-radius:4px 4px 2px 2px;
+    background:linear-gradient(
+        180deg,
+        var(--accent),
+        rgba(var(--accent-rgb),0.55)
+    );
+}
+
+.sidebar-mark span:nth-child(1){
+    height:8px;
+}
+
+.sidebar-mark span:nth-child(2){
+    height:17px;
+}
+
+.sidebar-mark span:nth-child(3){
+    height:12px;
+}
+
+.sidebar-brand-name{
+    color:#fff;
+    font-size:18px;
+    font-weight:850;
+    letter-spacing:-0.045em;
+}
+
+.sidebar-brand-name span{
     color:var(--accent);
 }
 
-h1{text-align:center;font-size:34px;margin:8px 0 6px 0;}
-
-.subtitle{
-    text-align:center;
-    color:#aaa;
-    margin:0 0 22px 0;
-    font-size:15px;
+.sidebar-scroll{
+    flex:1;
+    min-height:0;
+    margin-top:20px;
+    overflow:auto;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(var(--accent-rgb),0.35) transparent;
 }
 
-input,button{
-    width:100%;
-    padding:14px;
-    margin:10px 0;
-    border:none;
+.sidebar-section-label{
+    margin:20px 11px 8px;
+    color:#706978;
+    font-size:10px;
+    font-weight:850;
+    letter-spacing:0.13em;
+    text-transform:uppercase;
+}
+
+.sidebar-section-label:first-child{
+    margin-top:0;
+}
+
+.sidebar-nav{
+    display:grid;
+    gap:5px;
+}
+
+.sidebar-link{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-height:43px;
+    padding:0 12px;
+    color:#a9a1b0;
+    border:1px solid transparent;
     border-radius:12px;
-    font-size:16px;
+    font-size:13px;
+    font-weight:680;
+    transition:
+        color 150ms ease,
+        border-color 150ms ease,
+        background 150ms ease,
+        transform 150ms ease;
 }
 
-input{background:#2a2a2a;color:white;outline:none;}
+.sidebar-link:hover{
+    color:#fff;
+    background:rgba(255,255,255,0.035);
+    transform:translateX(2px);
+}
 
-button{
-    background:var(--accent);
-    color:white;
-    font-weight:bold;
+.sidebar-link.active{
+    color:#fff;
+    border-color:rgba(var(--accent-rgb),0.29);
+    background:
+        linear-gradient(
+            135deg,
+            rgba(var(--accent-rgb),0.18),
+            rgba(var(--accent-rgb),0.07)
+        );
+    box-shadow:inset 3px 0 0 var(--accent);
+}
+
+.sidebar-icon{
+    display:grid;
+    place-items:center;
+    width:22px;
+    flex:0 0 22px;
+    color:var(--accent);
+    font-size:16px;
+    font-weight:900;
+}
+
+.sidebar-footer{
+    margin-top:18px;
+    padding-top:16px;
+    border-top:1px solid rgba(255,255,255,0.06);
+}
+
+.sidebar-user{
+    display:grid;
+    grid-template-columns:38px 1fr auto;
+    align-items:center;
+    gap:10px;
+    padding:9px;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:13px;
+    background:rgba(255,255,255,0.025);
+}
+
+.sidebar-avatar,
+.dashboard-avatar{
+    display:grid;
+    place-items:center;
+    border:1px solid rgba(var(--accent-rgb),0.32);
+    color:#fff;
+    background:rgba(var(--accent-rgb),0.14);
+    font-weight:850;
+}
+
+.sidebar-avatar{
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    font-size:11px;
+}
+
+.sidebar-user-details{
+    min-width:0;
+}
+
+.sidebar-user-details strong,
+.sidebar-user-details span{
+    display:block;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.sidebar-user-details strong{
+    color:#f2eef5;
+    font-size:11px;
+}
+
+.sidebar-user-details span{
+    margin-top:2px;
+    color:#77707f;
+    font-size:9px;
+}
+
+.sidebar-logout{
+    display:grid;
+    place-items:center;
+    width:31px;
+    height:31px;
+    padding:0;
+    border:1px solid rgba(255,92,108,0.16);
+    border-radius:9px;
+    color:#ff7f8d;
+    background:rgba(255,92,108,0.07);
     cursor:pointer;
 }
 
-#loginError{color:#ff7777;font-weight:bold;}
-
-.stats-grid{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:16px;
-    margin:24px 0;
+.dashboard-main{
+    grid-column:2;
+    min-width:0;
+    padding:24px 28px 42px;
 }
 
-.stat-card{
-    background:linear-gradient(145deg,#242424,#191919);
-    border:1px solid rgba(255,255,255,0.08);
-    padding:12px;
-    border-radius:14px;
+.dashboard-frame{
+    width:min(100%,1420px);
+    margin:0 auto;
+}
+
+.dashboard-top{
+    position:relative;
+    z-index:45;
     display:flex;
     align-items:center;
-    gap:10px;
-    min-height:70px;
+    justify-content:space-between;
+    gap:28px;
+    min-height:65px;
+    margin-bottom:24px;
 }
 
-.stat-icon{
+.mobile-menu-button{
+    display:none;
+    place-items:center;
     width:42px;
     height:42px;
+    padding:0;
+    border:1px solid rgba(255,255,255,0.08);
     border-radius:12px;
+    color:#fff;
+    background:rgba(255,255,255,0.035);
+    cursor:pointer;
+}
+
+.dashboard-heading{
+    min-width:210px;
+}
+
+.dashboard-kicker{
+    display:block;
+    margin-bottom:3px;
+    color:#857d8d;
+    font-size:11px;
+    font-weight:650;
+}
+
+.dashboard-heading h1{
+    margin:0;
+    color:#fff !important;
+    font-size:26px;
+    line-height:1.1;
+    letter-spacing:-0.045em;
+}
+
+.dashboard-toolbar{
     display:flex;
     align-items:center;
-    justify-content:center;
-    font-size:20px;
-    flex-shrink:0;
-}
-.stat-value{
-    font-size:20px;
-    font-weight:bold;
-    line-height:1;
+    justify-content:flex-end;
+    min-width:0;
+    flex:1;
 }
 
-.stat-label{
-    color:#ddd;
-    margin-top:2px;
-    font-size:13px;
+.dashboard-toolbar #inventory-topbar{
+    width:100%;
+    margin:0;
 }
 
-.stat-note{
+.dashboard-toolbar .inventory-topbar{
+    justify-content:flex-end;
+    padding:0;
+    border:0;
+    background:transparent;
+    box-shadow:none;
+}
+
+.dashboard-toolbar .inventory-topbar-left{
     display:none;
 }
 
-.green-icon{background:rgba(var(--accent-rgb),0.18);color:var(--accent);border:1px solid rgba(var(--accent-rgb),0.35);}
-.blue-icon{background:rgba(var(--accent2-rgb),0.18);color:var(--accent2);border:1px solid rgba(var(--accent2-rgb),0.35);}
-.purple-icon{background:rgba(156,39,176,0.20);color:#d45cff;border:1px solid rgba(156,39,176,0.35);}
-
-.accordion-section{
-    margin-top:18px;
-    border-radius:18px;
-    overflow:hidden;
-    border:1px solid rgba(255,255,255,0.08);
-    background:linear-gradient(145deg,#202020,#171717);
+.dashboard-toolbar .inventory-topbar-right{
+    flex-wrap:nowrap;
 }
 
-.accordion-header{
-    width:100%;
-    margin:0;
-    padding:18px;
-    border-radius:0;
-    background:transparent;
+.dashboard-toolbar .inventory-switcher-btn,
+.dashboard-toolbar .topbar-settings{
+    min-height:42px;
+    padding:0 12px;
+    border-color:rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.035);
+    font-size:11px;
+}
+
+.dashboard-toolbar .inventory-switcher-menu{
+    border-color:rgba(var(--accent-rgb),0.18);
+    background:#121016;
+}
+
+.dashboard-toolbar .inventory-menu-row.active,
+.dashboard-toolbar .inventory-menu-row:hover{
+    border-color:rgba(var(--accent-rgb),0.35);
+    background:rgba(var(--accent-rgb),0.1);
+}
+
+.dashboard-toolbar .menu-create{
+    border-color:rgba(var(--accent-rgb),0.35);
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            rgba(var(--accent-rgb),0.62)
+        );
+}
+
+.dashboard-avatar{
+    width:42px;
+    height:42px;
+    margin-left:10px;
+    border-radius:13px;
+    flex:0 0 42px;
+    font-size:11px;
+}
+
+.dashboard-status{
+    min-height:22px;
+    margin-bottom:12px;
+    color:#8c8494;
+    font-size:11px;
+}
+
+.dashboard-status.error{
+    color:#ff818f;
+}
+
+.stat-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:14px;
+}
+
+.stat-card{
+    position:relative;
+    min-height:132px;
+    padding:22px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,0.07) !important;
+    border-radius:18px;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.035),
+            rgba(255,255,255,0.012)
+        );
+    box-shadow:0 18px 46px rgba(0,0,0,0.17);
+}
+
+.stat-card::after{
+    content:"";
+    position:absolute;
+    width:110px;
+    height:110px;
+    right:-60px;
+    bottom:-65px;
+    border-radius:50%;
+    background:rgba(var(--accent-rgb),0.11);
+    filter:blur(17px);
+}
+
+.stat-card-head{
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:12px;
-    text-align:left;
-    color:white;
-    border:none;
 }
 
-.header-left{
-    display:flex;
-    align-items:center;
-    gap:14px;
+.stat-label{
+    color:#8b8392;
+    font-size:11px;
+    font-weight:650;
 }
 
-.header-icon{
-    width:48px;
-    height:48px;
-    border-radius:14px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:24px;
-    background:rgba(255,255,255,0.12);
-}
-
-.header-title{font-size:21px;font-weight:bold;}
-
-.header-subtitle{
-    font-size:14px;
-    color:#ccc;
-    margin-top:4px;
-    font-weight:normal;
-}
-
-.header-arrow{
-    font-size:28px;
-    opacity:0.85;
-    transition:transform 0.2s ease;
-}
-
-.accordion-section.open .header-arrow{transform:rotate(180deg);}
-
-.accordion-content{
-    display:none;
-    padding:18px 24px 24px 24px;
-    border-top:1px solid rgba(255,255,255,0.06);
-}
-
-.accordion-section.open .accordion-content{display:block;}
-
-.quick-grid{
+.stat-icon{
     display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:16px;
+    place-items:center;
+    width:31px;
+    height:31px;
+    border:1px solid rgba(var(--accent-rgb),0.18);
+    border-radius:9px;
+    color:var(--accent);
+    background:rgba(var(--accent-rgb),0.08);
+    font-size:13px;
 }
 
-.quick-grid.two{
-    grid-template-columns:repeat(2,1fr);
+.stat-value{
+    display:block;
+    margin-top:15px;
+    color:#fff !important;
+    font-size:31px;
+    line-height:1;
+    font-weight:850;
+    letter-spacing:-0.055em;
 }
 
-.quick-grid.one{
-    grid-template-columns:1fr;
-}
-
-.quick-card{
-    min-height:120px;
-    text-decoration:none;
-    color:white;
-    background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:14px;
+.stat-note{
     display:flex;
-    flex-direction:column;
     align-items:center;
-    justify-content:center;
-    gap:12px;
+    gap:7px;
+    margin-top:9px;
+    color:#77707f;
+    font-size:10px;
+}
+
+.stat-note strong{
+    color:var(--accent);
+}
+
+.dashboard-content-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.62fr) minmax(300px,0.78fr);
+    gap:14px;
+    margin-top:14px;
+}
+
+.dashboard-panel{
+    min-width:0;
+    border:1px solid rgba(255,255,255,0.07);
+    border-radius:19px;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.03),
+            rgba(255,255,255,0.01)
+        );
+    box-shadow:0 18px 46px rgba(0,0,0,0.15);
+}
+
+.panel-heading{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    min-height:71px;
+    padding:0 21px;
+    border-bottom:1px solid rgba(255,255,255,0.055);
+}
+
+.panel-heading-copy{
+    min-width:0;
+}
+
+.panel-heading-copy span,
+.panel-heading-copy strong{
+    display:block;
+}
+
+.panel-heading-copy span{
+    color:#817989;
+    font-size:10px;
+}
+
+.panel-heading-copy strong{
+    margin-top:2px;
+    color:#f4f0f6;
+    font-size:14px;
+}
+
+.period-pill{
+    padding:7px 10px;
+    color:var(--accent);
+    border:1px solid rgba(var(--accent-rgb),0.18);
+    border-radius:9px;
+    background:rgba(var(--accent-rgb),0.07);
+    font-size:9px;
+    font-weight:800;
+}
+
+.chart-wrap{
+    position:relative;
+    min-height:310px;
+    padding:27px 21px 17px;
+}
+
+.chart-summary{
+    display:flex;
+    align-items:end;
+    gap:10px;
+    min-height:51px;
+    margin-bottom:19px;
+}
+
+.chart-summary strong{
+    color:#fff;
+    font-size:29px;
+    line-height:1;
+    letter-spacing:-0.045em;
+}
+
+.chart-summary span{
+    padding-bottom:2px;
+    color:#7e7686;
+    font-size:10px;
+}
+
+.chart-bars{
+    display:flex;
+    align-items:end;
+    justify-content:space-between;
+    gap:8px;
+    height:196px;
+    padding-top:12px;
+    border-bottom:1px solid rgba(255,255,255,0.07);
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,0.045) 0 1px,
+            transparent 1px 49px
+        );
+}
+
+.chart-column{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    flex-direction:column;
+    gap:8px;
+    height:100%;
+    min-width:0;
+    flex:1;
+}
+
+.chart-bar{
+    position:relative;
+    width:min(64%,24px);
+    min-height:4px;
+    border-radius:5px 5px 1px 1px;
+    background:
+        linear-gradient(
+            180deg,
+            var(--accent),
+            rgba(var(--accent-rgb),0.35)
+        );
+    box-shadow:0 0 18px rgba(var(--accent-rgb),0.09);
+    transition:height 280ms ease;
+}
+
+.chart-bar:hover::after{
+    content:attr(data-value);
+    position:absolute;
+    left:50%;
+    bottom:calc(100% + 7px);
+    padding:5px 7px;
+    border:1px solid rgba(var(--accent-rgb),0.18);
+    border-radius:7px;
+    color:#fff;
+    background:#0d0b10;
+    white-space:nowrap;
+    font-size:8px;
+    transform:translateX(-50%);
+}
+
+.chart-label{
+    width:100%;
+    overflow:hidden;
+    color:#706978;
     text-align:center;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:8px;
+}
+
+.activity-list{
+    padding:7px 18px 15px;
+}
+
+.activity-empty{
+    display:grid;
+    place-items:center;
+    min-height:238px;
+    padding:30px;
+    color:#7f7787;
+    text-align:center;
+    font-size:11px;
+}
+
+.activity-row{
+    display:grid;
+    grid-template-columns:38px minmax(0,1fr) auto;
+    align-items:center;
+    gap:11px;
+    min-height:69px;
+    border-bottom:1px solid rgba(255,255,255,0.055);
+}
+
+.activity-row:last-child{
+    border-bottom:0;
+}
+
+.activity-icon{
+    display:grid;
+    place-items:center;
+    width:38px;
+    height:38px;
+    border:1px solid rgba(var(--accent-rgb),0.15);
+    border-radius:11px;
+    color:var(--accent);
+    background:rgba(var(--accent-rgb),0.08);
+    font-size:13px;
+    font-weight:850;
+}
+
+.activity-copy{
+    min-width:0;
+}
+
+.activity-copy strong,
+.activity-copy span{
+    display:block;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.activity-copy strong{
+    color:#eeeaf1;
+    font-size:10px;
+}
+
+.activity-copy span{
+    margin-top:3px;
+    color:#756e7c;
+    font-size:8px;
+}
+
+.activity-meta{
+    text-align:right;
+}
+
+.activity-meta strong,
+.activity-meta time{
+    display:block;
+}
+
+.activity-meta strong{
+    color:#dcd6e1;
+    font-size:9px;
+}
+
+.activity-meta time{
+    margin-top:3px;
+    color:#6f6876;
+    font-size:7px;
+}
+
+.dashboard-lower-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.3fr) minmax(310px,0.7fr);
+    gap:14px;
+    margin-top:14px;
+}
+
+.quick-actions{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
     padding:16px;
 }
 
-.quick-card:hover{
-    filter:brightness(1.08);
+.quick-action{
+    min-height:104px;
+    padding:15px;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;
+    background:rgba(255,255,255,0.02);
+    transition:
+        transform 150ms ease,
+        border-color 150ms ease,
+        background 150ms ease;
 }
 
-.quick-icon{
-    width:58px;
-    height:58px;
-    border-radius:18px;
+.quick-action:hover{
+    transform:translateY(-2px);
+    border-color:rgba(var(--accent-rgb),0.27);
+    background:rgba(var(--accent-rgb),0.055);
+}
+
+.quick-action-icon{
+    display:grid;
+    place-items:center;
+    width:34px;
+    height:34px;
+    border:1px solid rgba(var(--accent-rgb),0.16);
+    border-radius:10px;
+    color:var(--accent);
+    background:rgba(var(--accent-rgb),0.08);
+    font-size:15px;
+}
+
+.quick-action strong,
+.quick-action span{
+    display:block;
+}
+
+.quick-action strong{
+    margin-top:12px;
+    color:#efebf2;
+    font-size:10px;
+}
+
+.quick-action span{
+    margin-top:3px;
+    color:#746d7b;
+    font-size:8px;
+    line-height:1.5;
+}
+
+.insight-list{
+    padding:8px 18px 14px;
+}
+
+.insight-row{
     display:flex;
     align-items:center;
-    justify-content:center;
-    font-size:34px;
-    border:1px solid currentColor;
-    background:rgba(255,255,255,0.06);
+    justify-content:space-between;
+    gap:20px;
+    min-height:52px;
+    border-bottom:1px solid rgba(255,255,255,0.055);
 }
 
-.quick-title{
-    font-size:17px;
-    font-weight:bold;
+.insight-row:last-child{
+    border-bottom:0;
 }
 
-.add-quick{color:var(--accent);}
-.remove-quick{color:#ff5c6c;}
-.search-quick{color:var(--accent2);}
-.move-quick{color:#ffae33;}
-.location-quick{color:var(--accent2);}
-.mystery-quick{color:#c77dff;}
-.snapshot-quick{color:#ffc107;}
-.print-quick{color:#20e0d0;}
-.dispatch-quick{color:#8dffb0;}
-.sales-quick{color:#ffc107;}
-.stale-quick{color:#ffc107;}
-.expenses-quick{color:#c77dff;}
-.settings-quick{color:#ffffff;}
-
-.inventory-header{background:linear-gradient(135deg,rgba(var(--accent-rgb),0.22),rgba(var(--accent2-rgb),0.08));}
-.locations-header{background:linear-gradient(135deg,rgba(0,123,255,0.22),rgba(var(--accent2-rgb),0.08));}
-.mystery-header{background:linear-gradient(135deg,rgba(156,39,176,0.26),rgba(255,193,7,0.08));}
-.printing-header{background:linear-gradient(135deg,rgba(32,201,151,0.24),rgba(23,162,184,0.08));}
-.reports-header{background:linear-gradient(135deg,rgba(255,193,7,0.22),rgba(156,39,176,0.08));}
-
-.logout-card{
-    margin-top:24px;
-    width:100%;
-    background:linear-gradient(135deg,rgba(var(--accent-rgb),0.22),rgba(0,123,255,0.06));
-    border:1px solid rgba(var(--accent-rgb),0.35);
-    border-radius:16px;
-    padding:18px;
-    color:white;
-    font-size:16px;
-    font-weight:bold;
+.insight-row span{
+    color:#817989;
+    font-size:10px;
 }
 
-#loadingOverlay{
-    display:none;
+.insight-row strong{
+    color:#eeeaf1;
+    font-size:11px;
+}
+
+.trend-positive{
+    color:#58dda0 !important;
+}
+
+.trend-negative{
+    color:#ff7585 !important;
+}
+
+.dashboard-overlay{
     position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:rgba(0,0,0,0.85);
+    z-index:90;
+    inset:0;
+    display:none;
+    background:rgba(0,0,0,0.63);
+    backdrop-filter:blur(3px);
+}
+
+.dashboard-overlay.show{
+    display:block;
+}
+
+.loading-overlay{
+    position:fixed;
     z-index:9999;
-    justify-content:center;
-    align-items:center;
+    inset:0;
+    display:grid;
+    place-items:center;
+    background:#08070b;
 }
 
-.loaderBox{text-align:center;color:white;font-weight:bold;}
+.loading-card{
+    display:grid;
+    justify-items:center;
+    gap:13px;
+    color:#a69eac;
+    font-size:11px;
+}
 
-.spinner{
-    width:55px;
-    height:55px;
-    border:6px solid #333;
-    border-top:6px solid var(--accent);
+.loading-spinner{
+    width:45px;
+    height:45px;
+    border:4px solid rgba(255,255,255,0.08);
+    border-top-color:var(--accent);
     border-radius:50%;
-    animation:spin 1s linear infinite;
-    margin:0 auto 15px auto;
+    animation:dashboardSpin 800ms linear infinite;
 }
 
-@keyframes spin{
-    0%{transform:rotate(0deg);}
-    100%{transform:rotate(360deg);}
+@keyframes dashboardSpin{
+    to{
+        transform:rotate(360deg);
+    }
+}
+
+@media(max-width:1120px){
+    .dashboard-app{
+        grid-template-columns:210px minmax(0,1fr);
+    }
+
+    .dashboard-sidebar{
+        width:210px;
+    }
+
+    .dashboard-main{
+        padding:22px 20px 38px;
+    }
+
+    .quick-actions{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
 }
 
 @media(max-width:900px){
-    .quick-grid{grid-template-columns:repeat(2,1fr);}
+    .dashboard-app{
+        display:block;
+    }
+
+    .dashboard-sidebar{
+        width:min(286px,86vw);
+        transform:translateX(-105%);
+        transition:transform 190ms ease;
+    }
+
+    body.sidebar-open{
+        overflow:hidden;
+    }
+
+    body.sidebar-open .dashboard-sidebar{
+        transform:translateX(0);
+    }
+
+    .dashboard-main{
+        width:100%;
+    }
+
+    .mobile-menu-button{
+        display:grid;
+        flex:0 0 42px;
+    }
+
+    .dashboard-top{
+        align-items:flex-start;
+    }
+
+    .dashboard-heading{
+        flex:1;
+    }
+
+    .dashboard-toolbar{
+        width:auto;
+        flex:0 1 auto;
+    }
+
+    .dashboard-toolbar .inventory-topbar-right{
+        display:flex;
+    }
+
+    .dashboard-toolbar .inventory-switcher-btn{
+        max-width:185px;
+    }
+
+    .dashboard-content-grid,
+    .dashboard-lower-grid{
+        grid-template-columns:1fr;
+    }
 }
 
-@media(max-width:760px){
-    .stats-grid{grid-template-columns:1fr;}
-    .quick-grid,.quick-grid.two,.quick-grid.one{grid-template-columns:1fr;}
-    h1{font-size:30px;}
-    .panel{padding:18px;}
-    .accordion-header{padding:16px;}
-    .accordion-content{padding:14px;}
+@media(max-width:680px){
+    .dashboard-main{
+        padding:14px 12px 30px;
+    }
+
+    .dashboard-top{
+        display:grid;
+        grid-template-columns:42px minmax(0,1fr) 42px;
+        gap:10px;
+        margin-bottom:15px;
+    }
+
+    .dashboard-heading{
+        min-width:0;
+    }
+
+    .dashboard-heading h1{
+        font-size:20px;
+    }
+
+    .dashboard-kicker{
+        font-size:9px;
+    }
+
+    .dashboard-avatar{
+        grid-column:3;
+        grid-row:1;
+        margin:0;
+    }
+
+    .dashboard-toolbar{
+        grid-column:1 / -1;
+        grid-row:2;
+        width:100%;
+    }
+
+    .dashboard-toolbar #inventory-topbar{
+        width:100%;
+    }
+
+    .dashboard-toolbar .inventory-topbar{
+        align-items:stretch;
+    }
+
+    .dashboard-toolbar .inventory-topbar-right{
+        display:grid;
+        grid-template-columns:1fr 1fr 42px;
+        width:100%;
+    }
+
+    .dashboard-toolbar .inventory-switcher-btn,
+    .dashboard-toolbar .topbar-settings{
+        width:100%;
+        max-width:none;
+        justify-content:center;
+    }
+
+    .dashboard-toolbar .inventory-switcher-btn{
+        overflow:hidden;
+    }
+
+    .dashboard-toolbar .inventory-switcher-btn > span:not(.box):not(.chev){
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+    }
+
+    .dashboard-toolbar .inventory-switcher-menu{
+        position:fixed;
+        width:calc(100vw - 24px);
+        max-width:none;
+        left:12px;
+        right:12px;
+        top:135px;
+    }
+
+    .stat-grid{
+        grid-template-columns:1fr;
+    }
+
+    .stat-card{
+        min-height:113px;
+    }
+
+    .chart-wrap{
+        padding-right:13px;
+        padding-left:13px;
+    }
+
+    .chart-bars{
+        gap:3px;
+    }
+
+    .chart-bar{
+        width:72%;
+    }
+
+    .quick-actions{
+        grid-template-columns:1fr 1fr;
+        padding:12px;
+    }
 }
 
-
-.dashboard-title{
-    text-align:center;
-    margin:10px 0 20px;
+@media(max-width:390px){
+    .quick-actions{
+        grid-template-columns:1fr;
+    }
 }
-
-/* InventoryOS modern dashboard tweaks */
-.panel{max-width:1180px;margin:0 auto;}
-.app-logo{display:none;}
-#app h1{font-size:48px;letter-spacing:-1px;}
-.stats-grid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));}
-.stat-card{min-height:105px;}
-.quick-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
-.quick-grid.two,.quick-grid.one{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}
-.accordion-section{box-shadow:0 14px 40px rgba(0,0,0,0.22);}
-.quick-card{min-height:118px;}
-.logout-card{background:linear-gradient(135deg,rgba(255,92,108,0.22),rgba(255,255,255,0.02));border-color:rgba(255,92,108,0.35);color:#ff7777;}
 </style>
 </head>
 
-<body>
+<body class="dashboard-body">
 
-<div class="page">
-
-<div class="panel" id="loginBox">
-    <h1>Inventory Login</h1>
-    <p class="subtitle">Enter your password to access the dashboard</p>
-    <input type="password" id="password" placeholder="Enter password">
-    <button onclick="login()">Login</button>
-    <p id="loginError"></p>
-</div>
-
-<div class="panel" id="app">
-    <div id="inventory-topbar"></div>
-
-<div class="top-header">
-
-    <div>
-
-        <div class="app-logo">▱</div>
-        <h1>Inventory<span style="color:var(--accent);">OS</span></h1>
-        <p class="subtitle">Inventory Management System</p>
-
+<div
+    class="loading-overlay"
+    id="loadingOverlay"
+>
+    <div class="loading-card">
+        <div class="loading-spinner"></div>
+        <strong>Loading your dashboard...</strong>
     </div>
 </div>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon green-icon">□</div>
-        <div>
-            <div class="stat-value" id="productsValue">...</div>
-            <div class="stat-label">Products</div>
-            <div class="stat-note">Unique items</div>
+<div
+    class="dashboard-overlay"
+    id="dashboardOverlay"
+></div>
+
+<div class="dashboard-app">
+
+<aside
+    class="dashboard-sidebar"
+    id="dashboardSidebar"
+>
+    <a
+        class="sidebar-brand"
+        href="index.html"
+    >
+        <span
+            class="sidebar-mark"
+            aria-hidden="true"
+        >
+            <span></span>
+            <span></span>
+            <span></span>
+        </span>
+
+        <span class="sidebar-brand-name">
+            Inventory<span>OS</span>
+        </span>
+    </a>
+
+    <div class="sidebar-scroll">
+        <div class="sidebar-section-label">
+            Workspace
         </div>
-    </div>
 
-    <div class="stat-card">
-        <div class="stat-icon blue-icon">▣</div>
-        <div>
-            <div class="stat-value" id="stockValue">...</div>
-            <div class="stat-label">Stock Units</div>
-            <div class="stat-note">Total in stock</div>
+        <nav
+            class="sidebar-nav"
+            aria-label="Main navigation"
+        >
+            <a
+                class="sidebar-link active"
+                href="index.html"
+            >
+                <span class="sidebar-icon">⌂</span>
+                Dashboard
+            </a>
+
+            <a
+                class="sidebar-link"
+                href="add.html"
+            >
+                <span class="sidebar-icon">＋</span>
+                Add stock
+            </a>
+
+            <a
+                class="sidebar-link"
+                href="remove.html"
+            >
+                <span class="sidebar-icon">−</span>
+                Remove stock
+            </a>
+
+            <a
+                class="sidebar-link"
+                href="refund.html"
+            >
+                <span class="sidebar-icon">↶</span>
+                Refunds
+            </a>
+
+            <a
+                class="sidebar-link"
+                href="search.html"
+            >
+                <span class="sidebar-icon">⌕</span>
+                Search stock
+            </a>
+
+            <a
+                class="sidebar-link"
+                href="move.html"
+            >
+                <span class="sidebar-icon">↔</span>
+                Move stock
+            </a>
+
+            <a
+                class="sidebar-link"
+                href="boxes.html"
+            >
+                <span class="sidebar-icon">▦</span>
+                <span data-location-plural>Locations</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-section-label">
+            Operations
         </div>
-    </div>
 
-    <div class="stat-card">
-        <div class="stat-icon purple-icon">▤</div>
-        <div>
-            <div class="stat-value" id="boxesValue">...</div>
-            <div class="stat-label">Boxes Used</div>
-            <div class="stat-note">Active boxes</div>
+        <nav
+            class="sidebar-nav"
+            aria-label="Operations navigation"
+        >
+            <a
+                class="sidebar-link"
+                href="barcodeprinting.html"
+            >
+                <span class="sidebar-icon">▥</span>
+                Barcode printing
+            </a>
+
+            <a
+                class="sidebar-link"
+                href="dispatch-centre.html"
+            >
+                <span class="sidebar-icon">▣</span>
+                Dispatch Centre
+            </a>
+        </nav>
+
+        <div class="sidebar-section-label">
+            Reports
         </div>
-    </div>
-</div>
-<div class="stat-card">
-    <div class="stat-icon green-icon">💷</div>
-    <div>
-        <div class="stat-value" id="todayIncomeValue">£0</div>
-        <div class="stat-label">Today's Income</div>
-        <div class="stat-note">Sales value today</div>
-    </div>
-</div>
 
-<div class="stat-card">
-    <div class="stat-icon blue-icon">🛒</div>
-    <div>
-        <div class="stat-value" id="todaySalesValue">0</div>
-        <div class="stat-label">Today's Sales</div>
-        <div class="stat-note">Items sold today</div>
-    </div>
-</div>
+        <nav
+            class="sidebar-nav"
+            aria-label="Reports navigation"
+        >
+            <a
+                class="sidebar-link"
+                href="salestracker.html"
+            >
+                <span class="sidebar-icon">⌁</span>
+                Sales tracker
+            </a>
 
-<div class="stat-card">
-    <div class="stat-icon purple-icon">📈</div>
-    <div>
-        <div class="stat-value" id="trendValue">0%</div>
-        <div class="stat-label">3 Day Trend</div>
-        <div class="stat-note">vs previous 3 days</div>
+            <a
+                class="sidebar-link"
+                href="expenses.html"
+            >
+                <span class="sidebar-icon">£</span>
+                Expenses
+            </a>
+
+            <a
+                class="sidebar-link"
+                href="stale.html"
+            >
+                <span class="sidebar-icon">◷</span>
+                Stale stock
+            </a>
+
+            <a
+                class="sidebar-link"
+                href="settings.html"
+            >
+                <span class="sidebar-icon">⚙</span>
+                Settings
+            </a>
+        </nav>
     </div>
-</div>
-<div class="accordion-section open" id="section_inventory">
-    <button class="accordion-header inventory-header" onclick="toggleSection('section_inventory')">
-        <div class="header-left">
-            <div class="header-icon">📦</div>
-            <div>
-                <div class="header-title">Inventory</div>
-                <div class="header-subtitle">Add, remove, search and move stock</div>
+
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <div
+                class="sidebar-avatar"
+                id="sidebarAvatar"
+            >
+                OS
             </div>
-        </div>
-        <div class="header-arrow">⌄</div>
-    </button>
 
-    <div class="accordion-content">
-        <div class="quick-grid">
-            <a class="quick-card add-quick" href="add.html">
-                <div class="quick-icon">＋</div>
-                <div class="quick-title">Add Stock</div>
-            </a>
+            <div class="sidebar-user-details">
+                <strong id="sidebarUserName">
+                    InventoryOS User
+                </strong>
 
-            <a class="quick-card remove-quick" href="remove.html">
-                <div class="quick-icon">−</div>
-                <div class="quick-title">Remove Stock</div>
-            </a>
-
-             <a class="quick-card remove-quick" href="refund.html">
-                <div class="quick-icon">−</div>
-                <div class="quick-title">Refunds</div>
-            </a>
-
-            <a class="quick-card search-quick" href="search.html">
-                <div class="quick-icon">⌕</div>
-                <div class="quick-title">Search Stock</div>
-            </a>
-
-            <a class="quick-card move-quick" href="move.html">
-                <div class="quick-icon">⇄</div>
-                <div class="quick-title">Move Stock</div>
-            </a>
-
-            <a class="quick-card location-quick" href="boxes.html">
-                <div class="quick-icon">📍</div>
-                <div class="quick-title">Locations</div>
-            </a>
-        </div>
-    </div>
-</div>
-
-<div class="accordion-section" id="section_printing">
-    <button class="accordion-header printing-header" onclick="toggleSection('section_printing')">
-        <div class="header-left">
-            <div class="header-icon">🖨️</div>
-            <div>
-                <div class="header-title">Printing</div>
-                <div class="header-subtitle">Print product labels and manage shipping dispatch</div>
+                <span id="sidebarUserEmail">
+                    Signed in
+                </span>
             </div>
-        </div>
-        <div class="header-arrow">⌄</div>
-    </button>
 
-    <div class="accordion-content">
-        <div class="quick-grid two">
-            <a class="quick-card print-quick" href="barcodeprinting.html">
-                <div class="quick-icon">🖨️</div>
-                <div class="quick-title">Barcode Printing</div>
-            </a>
-
-            <a class="quick-card dispatch-quick" href="dispatch-centre.html">
-                <div class="quick-icon">🚚</div>
-                <div class="quick-title">Dispatch Centre</div>
-            </a>
+            <button
+                class="sidebar-logout"
+                type="button"
+                id="logoutButton"
+                title="Log out"
+                aria-label="Log out"
+            >
+                ↪
+            </button>
         </div>
     </div>
-</div>
+</aside>
 
-<div class="accordion-section" id="section_reports">
-    <button class="accordion-header reports-header" onclick="toggleSection('section_reports')">
-        <div class="header-left">
-            <div class="header-icon">📊</div>
-            <div>
-                <div class="header-title">Reports</div>
-                <div class="header-subtitle">Sales, stale stock and performance</div>
+<main class="dashboard-main">
+<div class="dashboard-frame">
+
+    <header class="dashboard-top">
+        <button
+            class="mobile-menu-button"
+            id="mobileMenuButton"
+            type="button"
+            aria-label="Open navigation"
+            aria-expanded="false"
+        >
+            ☰
+        </button>
+
+        <div class="dashboard-heading">
+            <span
+                class="dashboard-kicker"
+                id="dashboardGreeting"
+            >
+                Good evening
+            </span>
+
+            <h1>
+                Your business at a glance
+            </h1>
+        </div>
+
+        <div class="dashboard-toolbar">
+            <div id="inventory-topbar"></div>
+        </div>
+
+        <div
+            class="dashboard-avatar"
+            id="dashboardAvatar"
+        >
+            OS
+        </div>
+    </header>
+
+    <div
+        class="dashboard-status"
+        id="dashboardStatus"
+    ></div>
+
+    <section
+        class="stat-grid"
+        aria-label="Business overview"
+    >
+        <article class="stat-card">
+            <div class="stat-card-head">
+                <span class="stat-label">
+                    Active stock
+                </span>
+
+                <span class="stat-icon">
+                    ▦
+                </span>
             </div>
-        </div>
-        <div class="header-arrow">⌄</div>
-    </button>
 
-    <div class="accordion-content">
-        <div class="quick-grid two">
-            <a class="quick-card sales-quick" href="salestracker.html">
-                <div class="quick-icon">📈</div>
-                <div class="quick-title">Sales Tracker</div>
-            </a>
+            <strong
+                class="stat-value"
+                id="activeStockValue"
+            >
+                —
+            </strong>
 
-            <a class="quick-card expenses-quick" href="expenses.html">
-                <div class="quick-icon">💷</div>
-                <div class="quick-title">Expenses</div>
-            </a>
+            <div class="stat-note">
+                <strong id="productCountValue">
+                    —
+                </strong>
 
-            <a class="quick-card stale-quick" href="stale.html">
-                <div class="quick-icon">◷</div>
-                <div class="quick-title">Stale Stock 14+ Days</div>
-            </a>
+                active products
+            </div>
+        </article>
 
-            <a class="quick-card search-quick" href="settings.html">
-                <div class="quick-icon">⚙</div>
-                <div class="quick-title">Settings</div>
-            </a>
-        </div>
-    </div>
+        <article class="stat-card">
+            <div class="stat-card-head">
+                <span class="stat-label">
+                    This month
+                </span>
+
+                <span class="stat-icon">
+                    £
+                </span>
+            </div>
+
+            <strong
+                class="stat-value"
+                id="monthIncomeValue"
+            >
+                £0.00
+            </strong>
+
+            <div class="stat-note">
+                <strong id="monthSalesValue">
+                    0
+                </strong>
+
+                sales recorded
+            </div>
+        </article>
+
+        <article class="stat-card">
+            <div class="stat-card-head">
+                <span class="stat-label">
+                    Profit
+                </span>
+
+                <span class="stat-icon">
+                    ↗
+                </span>
+            </div>
+
+            <strong
+                class="stat-value"
+                id="monthProfitValue"
+            >
+                £0.00
+            </strong>
+
+            <div class="stat-note">
+                After recorded expenses
+            </div>
+        </article>
+    </section>
+
+    <section class="dashboard-content-grid">
+        <article class="dashboard-panel">
+            <header class="panel-heading">
+                <div class="panel-heading-copy">
+                    <span>Sales performance</span>
+                    <strong id="chartHeading">
+                        Recent reporting periods
+                    </strong>
+                </div>
+
+                <span
+                    class="period-pill"
+                    id="chartPeriod"
+                >
+                    Overview
+                </span>
+            </header>
+
+            <div class="chart-wrap">
+                <div class="chart-summary">
+                    <strong id="chartTotal">
+                        £0.00
+                    </strong>
+
+                    <span>
+                        total shown
+                    </span>
+                </div>
+
+                <div
+                    class="chart-bars"
+                    id="chartBars"
+                    aria-label="Sales performance chart"
+                ></div>
+            </div>
+        </article>
+
+        <article class="dashboard-panel">
+            <header class="panel-heading">
+                <div class="panel-heading-copy">
+                    <span>Recent activity</span>
+                    <strong>Latest sales</strong>
+                </div>
+
+                <span class="period-pill">
+                    Live
+                </span>
+            </header>
+
+            <div
+                class="activity-list"
+                id="activityList"
+            >
+                <div class="activity-empty">
+                    Loading activity...
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <section class="dashboard-lower-grid">
+        <article class="dashboard-panel">
+            <header class="panel-heading">
+                <div class="panel-heading-copy">
+                    <span>Quick actions</span>
+                    <strong>Continue working</strong>
+                </div>
+            </header>
+
+            <div class="quick-actions">
+                <a
+                    class="quick-action"
+                    href="add.html"
+                >
+                    <span class="quick-action-icon">
+                        ＋
+                    </span>
+
+                    <strong>Add stock</strong>
+
+                    <span>
+                        Add products and print labels.
+                    </span>
+                </a>
+
+                <a
+                    class="quick-action"
+                    href="search.html"
+                >
+                    <span class="quick-action-icon">
+                        ⌕
+                    </span>
+
+                    <strong>Search stock</strong>
+
+                    <span>
+                        Find items and their locations.
+                    </span>
+                </a>
+
+                <a
+                    class="quick-action"
+                    href="remove.html"
+                >
+                    <span class="quick-action-icon">
+                        −
+                    </span>
+
+                    <strong>Record a sale</strong>
+
+                    <span>
+                        Remove sold stock and income.
+                    </span>
+                </a>
+
+                <a
+                    class="quick-action"
+                    href="dispatch-centre.html"
+                >
+                    <span class="quick-action-icon">
+                        ▣
+                    </span>
+
+                    <strong>Dispatch Centre</strong>
+
+                    <span>
+                        Prepare and print shipping labels.
+                    </span>
+                </a>
+            </div>
+        </article>
+
+        <article class="dashboard-panel">
+            <header class="panel-heading">
+                <div class="panel-heading-copy">
+                    <span>Today and inventory</span>
+                    <strong>Operational snapshot</strong>
+                </div>
+            </header>
+
+            <div class="insight-list">
+                <div class="insight-row">
+                    <span>Today's income</span>
+
+                    <strong id="todayIncomeValue">
+                        £0.00
+                    </strong>
+                </div>
+
+                <div class="insight-row">
+                    <span>Today's sales</span>
+
+                    <strong id="todaySalesValue">
+                        0
+                    </strong>
+                </div>
+
+                <div class="insight-row">
+                    <span>
+                        Active
+                        <span data-location-plural>
+                            locations
+                        </span>
+                    </span>
+
+                    <strong id="locationsValue">
+                        0
+                    </strong>
+                </div>
+
+                <div class="insight-row">
+                    <span>3-day sales trend</span>
+
+                    <strong id="trendValue">
+                        0%
+                    </strong>
+                </div>
+            </div>
+        </article>
+    </section>
+
 </div>
-
-<button class="logout-card" onclick="logout()">↪ Logout</button>
+</main>
 
 </div>
-</div>
-
-<div id="loadingOverlay">
-    <div class="loaderBox">
-        <div class="spinner"></div>
-        <p>Loading...</p>
-    </div>
-</div>
-
-<script>
-(function(){
-    const theme = localStorage.getItem("inventoryos_theme") || "green";
-    document.documentElement.setAttribute("data-theme", theme);
-})();
-</script>
 
 <script src="js/api.js"></script>
+<script src="js/theme.js"></script>
 <script src="js/workspace.js"></script>
-<script src="js/inventoryTopbar.js?v=1"></script>
+<script src="js/inventoryTopbar.js?v=2"></script>
+
 <script>
+const DashboardPage = (function(){
+    let loadingDashboard = false;
 
-
-const SECTION_IDS = [
-    "section_inventory",
-    "section_printing",
-    "section_reports"
-];
-
-function showLoading(){
-    document.getElementById("loadingOverlay").style.display = "flex";
-}
-
-function hideLoading(){
-    document.getElementById("loadingOverlay").style.display = "none";
-}
-
-function login(){
-    window.location.href = "login.html";
-}
-
-function logout(){
-    InventoryAPI.logout();
-}
-
-function showApp(){
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
-
-    restoreSectionStates();
-
-    if(window.InventoryTopbar){
-        InventoryTopbar.init("inventory-topbar");
+    function byId(id){
+        return document.getElementById(id);
     }
 
-    loadStats();
-}
+    function firstDefined(){
+        for(
+            let index = 0;
+            index < arguments.length;
+            index++
+        ){
+            const value = arguments[index];
 
-function toggleSection(sectionId){
-    const section = document.getElementById(sectionId);
+            if(
+                value !== undefined &&
+                value !== null &&
+                value !== ""
+            ){
+                return value;
+            }
+        }
 
-    if(!section){
-        return;
+        return null;
     }
 
-    section.classList.toggle("open");
+    function numberValue(){
+        const value =
+            firstDefined.apply(
+                null,
+                arguments
+            );
 
-    localStorage.setItem(
-        "dashboard_" + sectionId + "_open",
-        section.classList.contains("open") ? "yes" : "no"
-    );
-}
+        const number =
+            Number(value);
 
-function restoreSectionStates(){
-    SECTION_IDS.forEach(sectionId=>{
-        const section = document.getElementById(sectionId);
+        return Number.isFinite(number)
+            ? number
+            : 0;
+    }
 
-        if(!section){
+    function money(value){
+        return new Intl.NumberFormat(
+            "en-GB",
+            {
+                style:"currency",
+                currency:"GBP"
+            }
+        ).format(
+            numberValue(value)
+        );
+    }
+
+    function wholeNumber(value){
+        return new Intl.NumberFormat(
+            "en-GB",
+            {
+                maximumFractionDigits:0
+            }
+        ).format(
+            numberValue(value)
+        );
+    }
+
+    function safeText(value){
+        return String(
+            value === undefined ||
+            value === null
+                ? ""
+                : value
+        );
+    }
+
+    function getUser(){
+        return (
+            InventoryAPI.getUser() ||
+            {}
+        );
+    }
+
+    function userName(user){
+        return (
+            user.name ||
+            user.full_name ||
+            user.display_name ||
+            user.email ||
+            "InventoryOS User"
+        );
+    }
+
+    function initials(value){
+        const clean =
+            safeText(value)
+                .trim();
+
+        if(!clean){
+            return "OS";
+        }
+
+        const parts =
+            clean
+                .split(/\s+/)
+                .filter(Boolean);
+
+        if(parts.length >= 2){
+            return (
+                parts[0][0] +
+                parts[parts.length - 1][0]
+            ).toUpperCase();
+        }
+
+        return clean
+            .slice(0,2)
+            .toUpperCase();
+    }
+
+    function greeting(){
+        const hour =
+            new Date().getHours();
+
+        if(hour < 12){
+            return "Good morning";
+        }
+
+        if(hour < 18){
+            return "Good afternoon";
+        }
+
+        return "Good evening";
+    }
+
+    function setUserDetails(){
+        const user = getUser();
+        const name = userName(user);
+        const avatar = initials(name);
+
+        byId("dashboardGreeting")
+            .textContent =
+            greeting() +
+            (
+                user.name
+                    ? ", " +
+                      safeText(user.name)
+                          .split(/\s+/)[0]
+                    : ""
+            );
+
+        byId("sidebarUserName")
+            .textContent =
+            name;
+
+        byId("sidebarUserEmail")
+            .textContent =
+            user.email ||
+            "Signed in";
+
+        byId("sidebarAvatar")
+            .textContent =
+            avatar;
+
+        byId("dashboardAvatar")
+            .textContent =
+            avatar;
+    }
+
+    function setStatus(message, type){
+        const status =
+            byId("dashboardStatus");
+
+        status.className =
+            "dashboard-status" +
+            (
+                type
+                    ? " " + type
+                    : ""
+            );
+
+        status.textContent =
+            message || "";
+    }
+
+    function hideLoading(){
+        byId("loadingOverlay")
+            .style.display =
+            "none";
+    }
+
+    function monthData(data){
+        return (
+            data.thisMonth ||
+            data.currentMonth ||
+            data.month ||
+            {}
+        );
+    }
+
+    function setStats(data){
+        const month =
+            monthData(data);
+
+        const activeStock =
+            numberValue(
+                data.totalStock,
+                data.total_stock,
+                data.activeStock,
+                data.active_stock
+            );
+
+        const activeProducts =
+            numberValue(
+                data.totalProducts,
+                data.total_products,
+                data.activeProducts,
+                data.active_products
+            );
+
+        const activeLocations =
+            numberValue(
+                data.totalBoxes,
+                data.total_boxes,
+                data.activeBoxes,
+                data.active_locations
+            );
+
+        const monthIncome =
+            numberValue(
+                month.income,
+                month.revenue,
+                data.thisMonthIncome,
+                data.monthIncome,
+                data.currentMonthIncome
+            );
+
+        const monthProfit =
+            numberValue(
+                month.profit,
+                data.thisMonthProfit,
+                data.monthProfit,
+                data.currentMonthProfit
+            );
+
+        const monthSales =
+            numberValue(
+                month.salesCount,
+                month.sales_count,
+                data.thisMonthSalesCount,
+                data.monthSalesCount,
+                data.currentMonthSalesCount
+            );
+
+        const todayIncome =
+            numberValue(
+                data.todayIncome,
+                data.today_income
+            );
+
+        const todaySales =
+            numberValue(
+                data.todaySalesCount,
+                data.today_sales_count,
+                data.todaySales
+            );
+
+        const trend =
+            numberValue(
+                data.rolling3Trend,
+                data.rolling_3_trend,
+                data.threeDayTrend
+            );
+
+        byId("activeStockValue")
+            .textContent =
+            wholeNumber(activeStock);
+
+        byId("productCountValue")
+            .textContent =
+            wholeNumber(activeProducts);
+
+        byId("monthIncomeValue")
+            .textContent =
+            money(monthIncome);
+
+        byId("monthProfitValue")
+            .textContent =
+            money(monthProfit);
+
+        byId("monthSalesValue")
+            .textContent =
+            wholeNumber(monthSales);
+
+        byId("todayIncomeValue")
+            .textContent =
+            money(todayIncome);
+
+        byId("todaySalesValue")
+            .textContent =
+            wholeNumber(todaySales);
+
+        byId("locationsValue")
+            .textContent =
+            wholeNumber(activeLocations);
+
+        const trendElement =
+            byId("trendValue");
+
+        trendElement.textContent =
+            (
+                trend > 0
+                    ? "+"
+                    : ""
+            ) +
+            Number(trend.toFixed(1)) +
+            "%";
+
+        trendElement.classList.remove(
+            "trend-positive",
+            "trend-negative"
+        );
+
+        if(trend > 0){
+            trendElement.classList.add(
+                "trend-positive"
+            );
+        }else if(trend < 0){
+            trendElement.classList.add(
+                "trend-negative"
+            );
+        }
+    }
+
+    function extractChartArray(data){
+        const candidates = [
+            {
+                values:data.dailyBreakdown,
+                heading:"Last 30 days",
+                period:"Daily"
+            },
+            {
+                values:data.last30Days,
+                heading:"Last 30 days",
+                period:"Daily"
+            },
+            {
+                values:data.salesByDay,
+                heading:"Last 30 days",
+                period:"Daily"
+            },
+            {
+                values:data.chartData,
+                heading:"Sales performance",
+                period:"Recent"
+            },
+            {
+                values:data.monthlyBreakdown,
+                heading:"Recent months",
+                period:"Monthly"
+            }
+        ];
+
+        return (
+            candidates.find(
+                candidate =>
+                    Array.isArray(
+                        candidate.values
+                    ) &&
+                    candidate.values.length
+            ) ||
+            null
+        );
+    }
+
+    function labelForChartItem(item, index){
+        const raw =
+            firstDefined(
+                item.label,
+                item.day,
+                item.date,
+                item.month,
+                item.period,
+                item.name
+            );
+
+        if(raw === null){
+            return String(index + 1);
+        }
+
+        const value = safeText(raw);
+
+        const date =
+            new Date(value);
+
+        if(
+            !Number.isNaN(
+                date.getTime()
+            ) &&
+            (
+                value.includes("-") ||
+                value.includes("/") ||
+                value.includes("T")
+            )
+        ){
+            return date.toLocaleDateString(
+                "en-GB",
+                {
+                    day:"numeric",
+                    month:"short"
+                }
+            );
+        }
+
+        return value;
+    }
+
+    function valueForChartItem(item){
+        if(
+            typeof item === "number" ||
+            typeof item === "string"
+        ){
+            return numberValue(item);
+        }
+
+        return numberValue(
+            item.income,
+            item.revenue,
+            item.sales,
+            item.total,
+            item.amount,
+            item.value,
+            item.profit
+        );
+    }
+
+    function fallbackChart(data){
+        const periods = [
+            {
+                label:"Last month",
+                value:numberValue(
+                    data.lastMonth?.income,
+                    data.lastMonthIncome
+                )
+            },
+            {
+                label:"Last week",
+                value:numberValue(
+                    data.lastWeek?.income,
+                    data.lastWeekIncome
+                )
+            },
+            {
+                label:"This week",
+                value:numberValue(
+                    data.thisWeek?.income,
+                    data.thisWeekIncome
+                )
+            },
+            {
+                label:"This month",
+                value:numberValue(
+                    data.thisMonth?.income,
+                    data.thisMonthIncome
+                )
+            }
+        ];
+
+        return {
+            heading:"Performance summary",
+            period:"Overview",
+            values:periods
+        };
+    }
+
+    function renderChart(data){
+        const source =
+            extractChartArray(data) ||
+            fallbackChart(data);
+
+        let rows =
+            source.values
+                .map(
+                    function(item,index){
+                        return {
+                            label:
+                                labelForChartItem(
+                                    item,
+                                    index
+                                ),
+
+                            value:
+                                valueForChartItem(
+                                    item
+                                )
+                        };
+                    }
+                )
+                .filter(
+                    item =>
+                        Number.isFinite(
+                            item.value
+                        )
+                );
+
+        if(rows.length > 12){
+            rows =
+                rows.slice(-12);
+        }
+
+        if(rows.length === 0){
+            rows = [{
+                label:"No data",
+                value:0
+            }];
+        }
+
+        const maximum =
+            Math.max(
+                1,
+                ...rows.map(
+                    row =>
+                        Math.max(
+                            0,
+                            row.value
+                        )
+                )
+            );
+
+        const total =
+            rows.reduce(
+                (sum,row) =>
+                    sum + row.value,
+                0
+            );
+
+        byId("chartHeading")
+            .textContent =
+            source.heading;
+
+        byId("chartPeriod")
+            .textContent =
+            source.period;
+
+        byId("chartTotal")
+            .textContent =
+            money(total);
+
+        const container =
+            byId("chartBars");
+
+        container.innerHTML = "";
+
+        rows.forEach(
+            function(row){
+                const column =
+                    document.createElement(
+                        "div"
+                    );
+
+                column.className =
+                    "chart-column";
+
+                const bar =
+                    document.createElement(
+                        "div"
+                    );
+
+                bar.className =
+                    "chart-bar";
+
+                const percentage =
+                    Math.max(
+                        row.value > 0
+                            ? 4
+                            : 1,
+
+                        Math.round(
+                            (
+                                Math.max(
+                                    0,
+                                    row.value
+                                ) /
+                                maximum
+                            ) *
+                            100
+                        )
+                    );
+
+                bar.style.height =
+                    percentage + "%";
+
+                bar.dataset.value =
+                    money(row.value);
+
+                const label =
+                    document.createElement(
+                        "div"
+                    );
+
+                label.className =
+                    "chart-label";
+
+                label.textContent =
+                    row.label;
+
+                column.append(
+                    bar,
+                    label
+                );
+
+                container.appendChild(
+                    column
+                );
+            }
+        );
+    }
+
+    function salesArray(data){
+        const candidates = [
+            data.last10Sales,
+            data.recentSales,
+            data.latestSales,
+            data.recentActivity
+        ];
+
+        return (
+            candidates.find(
+                Array.isArray
+            ) ||
+            []
+        );
+    }
+
+    function saleDescription(item){
+        return firstDefined(
+            item.description,
+            item.product_description,
+            item.product,
+            item.item,
+            item.title,
+            item.name,
+            "Sale recorded"
+        );
+    }
+
+    function saleAmount(item){
+        return numberValue(
+            item.sale_amount,
+            item.amount,
+            item.income,
+            item.price,
+            item.total
+        );
+    }
+
+    function saleDate(item){
+        return firstDefined(
+            item.sale_date,
+            item.date,
+            item.created_at,
+            item.createdAt,
+            item.timestamp
+        );
+    }
+
+    function formatActivityDate(value){
+        if(!value){
+            return "";
+        }
+
+        const date =
+            new Date(value);
+
+        if(
+            Number.isNaN(
+                date.getTime()
+            )
+        ){
+            return safeText(value);
+        }
+
+        const now =
+            new Date();
+
+        const difference =
+            now.getTime() -
+            date.getTime();
+
+        const minutes =
+            Math.floor(
+                difference / 60000
+            );
+
+        if(
+            minutes >= 0 &&
+            minutes < 60
+        ){
+            return minutes <= 1
+                ? "Now"
+                : minutes + "m";
+        }
+
+        const hours =
+            Math.floor(
+                difference / 3600000
+            );
+
+        if(
+            hours >= 0 &&
+            hours < 24
+        ){
+            return hours + "h";
+        }
+
+        return date.toLocaleDateString(
+            "en-GB",
+            {
+                day:"numeric",
+                month:"short"
+            }
+        );
+    }
+
+    function renderActivity(data){
+        const sales =
+            salesArray(data)
+                .slice(0,5);
+
+        const container =
+            byId("activityList");
+
+        container.innerHTML = "";
+
+        if(!sales.length){
+            const empty =
+                document.createElement(
+                    "div"
+                );
+
+            empty.className =
+                "activity-empty";
+
+            empty.textContent =
+                "No recent sales were returned for the selected inventory.";
+
+            container.appendChild(
+                empty
+            );
+
             return;
         }
 
-        const saved = localStorage.getItem("dashboard_" + sectionId + "_open");
+        sales.forEach(
+            function(item){
+                const row =
+                    document.createElement(
+                        "div"
+                    );
 
-        if(saved === null){
-            if(sectionId === "section_inventory"){
-                section.classList.add("open");
-            }else{
-                section.classList.remove("open");
+                row.className =
+                    "activity-row";
+
+                const icon =
+                    document.createElement(
+                        "span"
+                    );
+
+                icon.className =
+                    "activity-icon";
+
+                icon.textContent = "£";
+
+                const copy =
+                    document.createElement(
+                        "div"
+                    );
+
+                copy.className =
+                    "activity-copy";
+
+                const title =
+                    document.createElement(
+                        "strong"
+                    );
+
+                title.textContent =
+                    safeText(
+                        saleDescription(item)
+                    );
+
+                const detail =
+                    document.createElement(
+                        "span"
+                    );
+
+                detail.textContent =
+                    item.quantity
+                        ? wholeNumber(
+                            item.quantity
+                          ) +
+                          " sold"
+                        : "Sale recorded";
+
+                copy.append(
+                    title,
+                    detail
+                );
+
+                const meta =
+                    document.createElement(
+                        "div"
+                    );
+
+                meta.className =
+                    "activity-meta";
+
+                const amount =
+                    document.createElement(
+                        "strong"
+                    );
+
+                amount.textContent =
+                    money(
+                        saleAmount(item)
+                    );
+
+                const time =
+                    document.createElement(
+                        "time"
+                    );
+
+                time.textContent =
+                    formatActivityDate(
+                        saleDate(item)
+                    );
+
+                meta.append(
+                    amount,
+                    time
+                );
+
+                row.append(
+                    icon,
+                    copy,
+                    meta
+                );
+
+                container.appendChild(
+                    row
+                );
+            }
+        );
+    }
+
+    async function loadDashboard(){
+        if(loadingDashboard){
+            return;
+        }
+
+        loadingDashboard = true;
+        setStatus(
+            "Refreshing dashboard..."
+        );
+
+        try{
+            const data =
+                await InventoryAPI.request(
+                    "/dashboard"
+                );
+
+            if(
+                !data ||
+                !data.success
+            ){
+                throw new Error(
+                    data?.error ||
+                    "Could not load dashboard"
+                );
             }
 
+            setStats(data);
+            renderChart(data);
+            renderActivity(data);
+            setStatus("");
+        }catch(error){
+            console.error(error);
+
+            setStatus(
+                error?.message ||
+                "Could not load dashboard",
+                "error"
+            );
+        }finally{
+            loadingDashboard = false;
+            hideLoading();
+        }
+    }
+
+    function openSidebar(){
+        document.body.classList.add(
+            "sidebar-open"
+        );
+
+        byId("dashboardOverlay")
+            .classList
+            .add("show");
+
+        byId("mobileMenuButton")
+            .setAttribute(
+                "aria-expanded",
+                "true"
+            );
+    }
+
+    function closeSidebar(){
+        document.body.classList.remove(
+            "sidebar-open"
+        );
+
+        byId("dashboardOverlay")
+            .classList
+            .remove("show");
+
+        byId("mobileMenuButton")
+            .setAttribute(
+                "aria-expanded",
+                "false"
+            );
+    }
+
+    function bindEvents(){
+        byId("logoutButton")
+            .addEventListener(
+                "click",
+                function(){
+                    InventoryAPI.logout();
+                }
+            );
+
+        byId("mobileMenuButton")
+            .addEventListener(
+                "click",
+                function(){
+                    if(
+                        document.body
+                            .classList
+                            .contains(
+                                "sidebar-open"
+                            )
+                    ){
+                        closeSidebar();
+                    }else{
+                        openSidebar();
+                    }
+                }
+            );
+
+        byId("dashboardOverlay")
+            .addEventListener(
+                "click",
+                closeSidebar
+            );
+
+        document
+            .querySelectorAll(
+                ".sidebar-link"
+            )
+            .forEach(
+                function(link){
+                    link.addEventListener(
+                        "click",
+                        closeSidebar
+                    );
+                }
+            );
+
+        window.addEventListener(
+            "inventory-selection-changed",
+            function(){
+                loadDashboard();
+
+                if(
+                    window.InventoryWorkspace
+                ){
+                    InventoryWorkspace.init();
+                }
+            }
+        );
+
+        window.addEventListener(
+            "resize",
+            function(){
+                if(
+                    window.innerWidth >
+                    900
+                ){
+                    closeSidebar();
+                }
+            }
+        );
+    }
+
+    async function start(){
+        if(
+            !InventoryAPI.isLoggedIn()
+        ){
+            window.location.replace(
+                "login.html"
+            );
+
             return;
         }
 
-        if(saved === "yes"){
-            section.classList.add("open");
-        }else{
-            section.classList.remove("open");
+        setUserDetails();
+        bindEvents();
+
+        try{
+            if(
+                window.InventoryTheme
+            ){
+                await InventoryTheme
+                    .loadFromAccount();
+            }
+        }catch(error){
+            console.warn(
+                "Could not load account theme",
+                error
+            );
         }
-    });
-}
 
-function loadStats(){
-    showLoading();
-
-    InventoryAPI.request("/dashboard")
-    .then(data=>{
-        hideLoading();
-
-        if(data.success){
-            document.getElementById("productsValue").innerText = data.totalProducts;
-            document.getElementById("stockValue").innerText = data.totalStock;
-            document.getElementById("boxesValue").innerText = data.totalBoxes;
-
-            document.getElementById("todaySalesValue").innerText =
-                data.todaySalesCount || 0;
-
-            document.getElementById("todayIncomeValue").innerText =
-                "£" + Number(data.todayIncome || 0).toFixed(2);
-
-            const trend = Number(data.rolling3Trend || 0);
-
-            document.getElementById("trendValue").innerText =
-                (trend > 0 ? "+" : "") + trend + "%";
-        }else{
-            document.getElementById("productsValue").innerText = "-";
-            document.getElementById("stockValue").innerText = "-";
-            document.getElementById("boxesValue").innerText = "-";
-            document.getElementById("todaySalesValue").innerText = "-";
-            document.getElementById("todayIncomeValue").innerText = "-";
-            document.getElementById("trendValue").innerText = "-";
+        try{
+            if(
+                window.InventoryTopbar
+            ){
+                await InventoryTopbar.init(
+                    "inventory-topbar"
+                );
+            }
+        }catch(error){
+            console.warn(
+                "Could not initialise inventory selector",
+                error
+            );
         }
-    })
-    .catch(error=>{
-        hideLoading();
 
-        console.error(error);
+        try{
+            if(
+                window.InventoryWorkspace
+            ){
+                await InventoryWorkspace.init();
+            }
+        }catch(error){
+            console.warn(
+                "Could not initialise workspace wording",
+                error
+            );
+        }
 
-        document.getElementById("productsValue").innerText = "-";
-        document.getElementById("stockValue").innerText = "-";
-        document.getElementById("boxesValue").innerText = "-";
-        document.getElementById("todaySalesValue").innerText = "-";
-        document.getElementById("todayIncomeValue").innerText = "-";
-        document.getElementById("trendValue").innerText = "-";
-    });
-}
-
-document.getElementById("password").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        login();
+        await loadDashboard();
     }
-});
 
-window.addEventListener("inventory-selection-changed",function(){
-    location.reload();
-});
+    return {
+        start,
+        loadDashboard
+    };
+})();
 
-if(InventoryAPI.isLoggedIn()){
-    showApp();
+if(
+    document.readyState ===
+    "loading"
+){
+    document.addEventListener(
+        "DOMContentLoaded",
+        DashboardPage.start,
+        {
+            once:true
+        }
+    );
 }else{
-    window.location.href = "login.html";
+    DashboardPage.start();
 }
 </script>
 
