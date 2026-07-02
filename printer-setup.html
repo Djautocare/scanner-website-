@@ -7,6 +7,7 @@
 <title>Printer Setup</title>
 
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
 <style>
 *{box-sizing:border-box}
@@ -108,7 +109,7 @@ button.success{background:linear-gradient(135deg,#28a745,#1f8b3a)}
     </div>
 
     <div class="small" style="margin-top:10px;">
-        Test labels are sent as PNG images, which is more reliable for thermal label-printer drivers than browser-rendered HTML.
+        Test labels are sent as small PDF files. This avoids the image-dimension problem some QZ/Java thermal-printer combinations have.
     </div>
 </div>
 
@@ -144,7 +145,7 @@ button.success{background:linear-gradient(135deg,#28a745,#1f8b3a)}
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/qzClient.js?v=3"></script>
+<script src="js/qzClient.js?v=4"></script>
 
 <script>
 if(!InventoryAPI.requireLogin()){
@@ -364,283 +365,232 @@ function saveSettings(requireBoth = true){
     return true;
 }
 
-function makeTestLabelBase64(
+async function makeTestLabelPdfBase64(
     role,
     widthInches,
     heightInches
 ){
-    const scale = 300;
+    if(
+        typeof PDFLib === "undefined" ||
+        !PDFLib
+    ){
+        throw new Error(
+            "PDF library did not load"
+        );
+    }
 
-    const canvas =
-        document.createElement(
-            "canvas"
+    const PDFDocument =
+        PDFLib.PDFDocument;
+
+    const StandardFonts =
+        PDFLib.StandardFonts;
+
+    const rgb =
+        PDFLib.rgb;
+
+    const document =
+        await PDFDocument.create();
+
+    const widthPoints =
+        widthInches * 72;
+
+    const heightPoints =
+        heightInches * 72;
+
+    const page =
+        document.addPage([
+            widthPoints,
+            heightPoints
+        ]);
+
+    const boldFont =
+        await document.embedFont(
+            StandardFonts.HelveticaBold
         );
 
-    canvas.width =
-        Math.round(
-            widthInches * scale
+    const regularFont =
+        await document.embedFont(
+            StandardFonts.Helvetica
         );
-
-    canvas.height =
-        Math.round(
-            heightInches * scale
-        );
-
-    const context =
-        canvas.getContext(
-            "2d"
-        );
-
-    context.fillStyle = "white";
-    context.fillRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    context.fillStyle = "black";
-    context.strokeStyle = "black";
-
-    const padding =
-        Math.round(
-            canvas.width * 0.045
-        );
-
-    context.lineWidth =
-        Math.max(
-            4,
-            Math.round(
-                canvas.width * 0.008
-            )
-        );
-
-    context.strokeRect(
-        padding,
-        padding,
-        canvas.width - padding * 2,
-        canvas.height - padding * 2
-    );
 
     const isProduct =
         role === "product";
 
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-
-    context.font =
-        "bold " +
-        Math.round(
-            canvas.width *
-            (
-                isProduct
-                    ? 0.085
-                    : 0.075
-            )
-        ) +
-        "px Arial";
-
-    context.fillText(
-        "InventoryOS",
-        canvas.width / 2,
-        canvas.height *
-        (
-            isProduct
-                ? 0.18
-                : 0.10
-        )
-    );
-
-    context.font =
-        "bold " +
-        Math.round(
-            canvas.width *
-            (
-                isProduct
-                    ? 0.105
-                    : 0.11
-            )
-        ) +
-        "px Arial";
-
-    context.fillText(
+    const border =
         isProduct
-            ? "2×1 TEST"
-            : "4×6 TEST",
+            ? 3
+            : 5;
 
-        canvas.width / 2,
-        canvas.height *
-        (
-            isProduct
-                ? 0.42
-                : 0.29
-        )
+    const padding =
+        isProduct
+            ? 5
+            : 14;
+
+    page.drawRectangle({
+        x:padding,
+        y:padding,
+        width:
+            widthPoints -
+            padding * 2,
+
+        height:
+            heightPoints -
+            padding * 2,
+
+        borderWidth:border,
+        borderColor:rgb(0,0,0)
+    });
+
+    function centredText(
+        text,
+        y,
+        size,
+        font = boldFont
+    ){
+        const textWidth =
+            font.widthOfTextAtSize(
+                text,
+                size
+            );
+
+        page.drawText(
+            text,
+            {
+                x:
+                    (
+                        widthPoints -
+                        textWidth
+                    ) / 2,
+
+                y,
+                size,
+                font,
+                color:rgb(0,0,0)
+            }
+        );
+    }
+
+    centredText(
+        "InventoryOS",
+        isProduct
+            ? heightPoints - 19
+            : heightPoints - 45,
+
+        isProduct
+            ? 10
+            : 24
     );
 
-    const barcodeTop =
-        canvas.height *
-        (
-            isProduct
-                ? 0.56
-                : 0.43
-        );
+    centredText(
+        isProduct
+            ? "2 x 1 TEST"
+            : "4 x 6 TEST",
 
-    const barcodeHeight =
-        canvas.height *
-        (
-            isProduct
-                ? 0.22
-                : 0.26
-        );
+        isProduct
+            ? heightPoints - 37
+            : heightPoints - 120,
+
+        isProduct
+            ? 13
+            : 34
+    );
 
     const barcodeLeft =
-        canvas.width * 0.14;
+        widthPoints *
+        (
+            isProduct
+                ? 0.13
+                : 0.14
+        );
+
+    const barcodeBottom =
+        heightPoints *
+        (
+            isProduct
+                ? 0.19
+                : 0.36
+        );
 
     const barcodeWidth =
-        canvas.width * 0.72;
+        widthPoints * 0.74;
+
+    const barcodeHeight =
+        heightPoints *
+        (
+            isProduct
+                ? 0.23
+                : 0.25
+        );
 
     let x = barcodeLeft;
     let index = 0;
 
+    const unit =
+        isProduct
+            ? 1.1
+            : 2.5;
+
+    const barPattern =
+        [1,2,1,3,2,1,2,3];
+
+    const gapPattern =
+        [1,1,2,1,2,1,1,2];
+
     while(
         x <
-        barcodeLeft + barcodeWidth
+        barcodeLeft +
+        barcodeWidth
     ){
-        const unit =
-            Math.max(
-                2,
-                Math.round(
-                    canvas.width *
-                    0.006
-                )
-            );
-
-        const barUnits =
-            [1,2,1,3,2,1,2,3][
-                index % 8
-            ];
-
-        const gapUnits =
-            [1,1,2,1,2,1,1,2][
-                index % 8
-            ];
-
         const barWidth =
-            unit * barUnits;
+            unit *
+            barPattern[
+                index %
+                barPattern.length
+            ];
 
-        context.fillRect(
+        page.drawRectangle({
             x,
-            barcodeTop,
-            barWidth,
-            barcodeHeight
-        );
+            y:barcodeBottom,
+            width:barWidth,
+            height:barcodeHeight,
+            color:rgb(0,0,0)
+        });
 
         x +=
             barWidth +
-            unit * gapUnits;
+            unit *
+            gapPattern[
+                index %
+                gapPattern.length
+            ];
 
         index++;
     }
 
-    context.font =
-        "bold " +
-        Math.round(
-            canvas.width *
-            (
-                isProduct
-                    ? 0.045
-                    : 0.05
-            )
-        ) +
-        "px Arial";
-
-    context.fillText(
+    centredText(
         isProduct
             ? "PRODUCT LABEL PRINTER"
             : "SHIPPING LABEL PRINTER",
 
-        canvas.width / 2,
-        canvas.height *
-        (
-            isProduct
-                ? 0.88
-                : 0.78
-        )
+        isProduct
+            ? 8
+            : 70,
+
+        isProduct
+            ? 6.2
+            : 16
     );
 
     if(!isProduct){
-        context.font =
-            Math.round(
-                canvas.width * 0.042
-            ) +
-            "px Arial";
-
-        context.fillText(
-            "Portrait • Full 4×6 page",
-            canvas.width / 2,
-            canvas.height * 0.87
+        centredText(
+            "Portrait - Full 4 x 6 page",
+            42,
+            13,
+            regularFont
         );
     }
 
-    return canvas
-        .toDataURL(
-            "image/png"
-        )
-        .split(",")[1];
-}
-
-function productTestHtml(){
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-@page{size:2in 1in;margin:0}
-html,body{width:2in;height:1in;margin:0;padding:0;background:white;overflow:hidden}
-*{box-sizing:border-box}
-.label{width:2in;height:1in;padding:.08in;text-align:center;font-family:Arial;color:black}
-.title{font-size:13px;font-weight:bold;margin-top:.04in}
-.box{border:3px solid black;margin:.08in 0;padding:.08in;font-size:18px;font-weight:bold}
-.small{font-size:9px}
-</style>
-</head>
-<body>
-<div class="label">
-<div class="title">InventoryOS</div>
-<div class="box">2×1 TEST</div>
-<div class="small">Product label printer</div>
-</div>
-</body>
-</html>`;
-}
-
-function shippingTestHtml(){
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-@page{size:4in 6in;margin:0}
-html,body{width:4in;height:6in;margin:0;padding:0;background:white;overflow:hidden}
-*{box-sizing:border-box}
-.label{width:4in;height:6in;padding:.25in;font-family:Arial;color:black}
-.header{font-size:28px;font-weight:bold;border-bottom:5px solid black;padding-bottom:.15in}
-.box{border:5px solid black;margin-top:.35in;padding:.35in;text-align:center;font-size:34px;font-weight:bold}
-.lines{margin-top:.4in;font-size:22px;line-height:1.7}
-</style>
-</head>
-<body>
-<div class="label">
-<div class="header">InventoryOS</div>
-<div class="box">4×6 TEST</div>
-<div class="lines">
-Shipping label printer<br>
-Portrait orientation<br>
-Full 4×6 page
-</div>
-</div>
-</body>
-</html>`;
+    return document.saveAsBase64();
 }
 
 async function printTest(
@@ -685,12 +635,12 @@ async function printTest(
 
     try{
         setStatus(
-            "Building test image...",
+            "Building test PDF...",
             ""
         );
 
-        const base64Image =
-            makeTestLabelBase64(
+        const pdfBase64 =
+            await makeTestLabelPdfBase64(
                 role,
                 width,
                 height
@@ -719,9 +669,6 @@ async function printTest(
                     copies:1,
                     orientation:"portrait",
                     colorType:"grayscale",
-                    interpolation:
-                        "nearest-neighbor",
-                    density:"best",
                     scaleContent:true,
 
                     jobName:
@@ -732,7 +679,7 @@ async function printTest(
             );
 
         setStatus(
-            "Sending PNG test label to " +
+            "Sending PDF test label to " +
             printer +
             "...",
             ""
@@ -742,21 +689,25 @@ async function printTest(
             config,
             [{
                 type:"pixel",
-                format:"image",
+                format:"pdf",
                 flavor:"base64",
-                data:base64Image
+                data:pdfBase64,
+
+                options:{
+                    ignoreTransparency:true
+                }
             }]
         );
 
         setStatus(
-            "QZ Tray accepted the test job for " +
+            "QZ Tray accepted the PDF test job for " +
             printer +
-            ". Check the printer and the Windows print queue.",
+            ". Check the printer and Windows print queue.",
             "ok"
         );
     }catch(error){
         console.error(
-            "QZ test print failed:",
+            "QZ PDF test print failed:",
             error
         );
 
