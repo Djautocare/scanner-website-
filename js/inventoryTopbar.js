@@ -1,35 +1,68 @@
 const InventoryTopbar = (function(){
-    const STORAGE_KEY = "inventoryos_selected_inventory_ids";
-    const WORKSPACE_KEY = "inventoryos_selected_workspace_id";
+    const STORAGE_KEY =
+        "inventoryos_selected_inventory_ids";
+
+    const WORKSPACE_KEY =
+        "inventoryos_selected_workspace_id";
+
     let apiPatched = false;
 
     function hasInventoryAPI(){
-        return typeof InventoryAPI !== "undefined" && InventoryAPI;
+        return (
+            typeof InventoryAPI !== "undefined" &&
+            InventoryAPI
+        );
     }
 
     function getSelectedIds(){
         try{
-            const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-            return Array.isArray(parsed) ? parsed.map(String) : [];
+            const parsed = JSON.parse(
+                localStorage.getItem(
+                    STORAGE_KEY
+                ) || "[]"
+            );
+
+            return Array.isArray(parsed)
+                ? parsed.map(String)
+                : [];
         }catch(error){
             return [];
         }
     }
 
     function saveSelectedIds(ids){
-        const clean = [...new Set((ids || []).filter(Boolean).map(String))];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+        const clean = [
+            ...new Set(
+                (ids || [])
+                    .filter(Boolean)
+                    .map(String)
+            )
+        ];
+
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(clean)
+        );
+
         return clean;
     }
 
     function getSelectedWorkspaceId(){
-        return String(localStorage.getItem(WORKSPACE_KEY) || "").trim();
+        return String(
+            localStorage.getItem(
+                WORKSPACE_KEY
+            ) || ""
+        ).trim();
     }
 
     function saveSelectedWorkspaceId(id){
         if(id){
-            localStorage.setItem(WORKSPACE_KEY, String(id));
+            localStorage.setItem(
+                WORKSPACE_KEY,
+                String(id)
+            );
         }
+
         return getSelectedWorkspaceId();
     }
 
@@ -38,38 +71,79 @@ const InventoryTopbar = (function(){
     }
 
     function patchApiRequests(){
-        if(!hasInventoryAPI() || apiPatched || InventoryAPI.__inventoryTopbarPatched) return;
+        if(
+            !hasInventoryAPI() ||
+            apiPatched ||
+            InventoryAPI.__inventoryTopbarPatched
+        ){
+            return;
+        }
 
-        const originalRequest = InventoryAPI.request;
+        const originalRequest =
+            InventoryAPI.request.bind(
+                InventoryAPI
+            );
 
-        InventoryAPI.request = function(path, options = {}){
-            const selected = getHeaderValue();
+        InventoryAPI.request =
+            function(path, options = {}){
+                const selectedInventories =
+                    getHeaderValue();
 
-            options.headers = {
-                ...(options.headers || {})
+                const selectedWorkspace =
+                    getSelectedWorkspaceId();
+
+                options = {
+                    ...options,
+                    headers:{
+                        ...(options.headers || {})
+                    }
+                };
+
+                if(selectedWorkspace){
+                    options.headers[
+                        "X-Workspace-Id"
+                    ] = selectedWorkspace;
+                }
+
+                if(selectedInventories){
+                    options.headers[
+                        "X-Inventory-Ids"
+                    ] = selectedInventories;
+                }
+
+                return originalRequest(
+                    path,
+                    options
+                );
             };
 
-            if(selected){
-                options.headers["X-Inventory-Ids"] = selected;
-            }
-
-            return originalRequest(path, options);
-        };
-
         apiPatched = true;
-        InventoryAPI.__inventoryTopbarPatched = true;
+        InventoryAPI.__inventoryTopbarPatched =
+            true;
     }
 
     async function loadWorkspace(){
-        const data = await InventoryAPI.request("/workspaces/current");
-        return data.success ? data.workspace : null;
+        const data =
+            await InventoryAPI.request(
+                "/workspaces/current"
+            );
+
+        return data.success
+            ? data.workspace
+            : null;
     }
 
     async function loadInventories(){
-        const data = await InventoryAPI.request("/workspaces/inventories");
+        const data =
+            await InventoryAPI.request(
+                "/workspaces/inventories"
+            );
 
         if(!data.success){
-            throw new Error(data.error || "Could not load inventories");
+            throw new Error(
+                data.error ||
+                "Could not load inventories"
+            );
         }
 
         return data.inventories || [];
@@ -79,43 +153,145 @@ const InventoryTopbar = (function(){
         const map = new Map();
 
         inventories.forEach(inv=>{
-            const workspaceId = String(inv.workspace_id || "");
+            const workspaceId =
+                String(
+                    inv.workspace_id ||
+                    ""
+                );
+
             if(!map.has(workspaceId)){
-                map.set(workspaceId, {
-                    id: workspaceId,
-                    name: inv.workspace_name || "Workspace",
-                    role: inv.workspace_role || "user",
-                    owner_user_id: inv.owner_user_id || "",
-                    inventories: []
-                });
+                map.set(
+                    workspaceId,
+                    {
+                        id:workspaceId,
+                        name:
+                            inv.workspace_name ||
+                            "Workspace",
+
+                        role:
+                            inv.workspace_role ||
+                            "user",
+
+                        owner_user_id:
+                            inv.owner_user_id ||
+                            "",
+
+                        inventories:[]
+                    }
+                );
             }
 
-            map.get(workspaceId).inventories.push(inv);
+            map.get(workspaceId)
+                .inventories
+                .push(inv);
         });
 
-        return Array.from(map.values());
+        return Array.from(
+            map.values()
+        );
     }
 
-    function ensureWorkspaceAndSelection(inventories, currentWorkspace){
-        const groups = groupByWorkspace(inventories);
+    function ensureWorkspaceAndSelection(
+        inventories,
+        currentWorkspace
+    ){
+        const groups =
+            groupByWorkspace(inventories);
 
-        let selectedWorkspaceId = getSelectedWorkspaceId();
+        let selectedWorkspaceId =
+            getSelectedWorkspaceId();
 
-        if(!selectedWorkspaceId || !groups.some(group => String(group.id) === String(selectedWorkspaceId))){
-            const personalGroup = groups.find(group => String(group.owner_user_id || "") === String(currentWorkspace?.owner_user_id || ""));
-            selectedWorkspaceId = String((personalGroup || groups[0] || {}).id || "");
-            saveSelectedWorkspaceId(selectedWorkspaceId);
+        if(
+            !selectedWorkspaceId ||
+            !groups.some(
+                group =>
+                    String(group.id) ===
+                    String(
+                        selectedWorkspaceId
+                    )
+            )
+        ){
+            const currentGroup =
+                groups.find(
+                    group =>
+                        String(group.id) ===
+                        String(
+                            currentWorkspace?.id ||
+                            ""
+                        )
+                );
+
+            const personalGroup =
+                groups.find(
+                    group =>
+                        String(
+                            group.owner_user_id ||
+                            ""
+                        ) ===
+                        String(
+                            currentWorkspace
+                                ?.owner_user_id ||
+                            ""
+                        )
+                );
+
+            selectedWorkspaceId =
+                String(
+                    (
+                        currentGroup ||
+                        personalGroup ||
+                        groups[0] ||
+                        {}
+                    ).id ||
+                    ""
+                );
+
+            saveSelectedWorkspaceId(
+                selectedWorkspaceId
+            );
         }
 
-        const workspaceInventories = inventories.filter(inv => String(inv.workspace_id) === String(selectedWorkspaceId));
-        let selectedIds = getSelectedIds().filter(id => workspaceInventories.some(inv => String(inv.id) === String(id)));
+        const workspaceInventories =
+            inventories.filter(
+                inv =>
+                    String(
+                        inv.workspace_id
+                    ) ===
+                    String(
+                        selectedWorkspaceId
+                    )
+            );
 
-        if(selectedIds.length === 0 && workspaceInventories.length){
-            const defaultInv = workspaceInventories.find(inv => inv.is_default) || workspaceInventories[0];
-            selectedIds = [String(defaultInv.id)];
+        let selectedIds =
+            getSelectedIds().filter(
+                id =>
+                    workspaceInventories.some(
+                        inv =>
+                            String(inv.id) ===
+                            String(id)
+                    )
+            );
+
+        if(
+            selectedIds.length === 0 &&
+            workspaceInventories.length
+        ){
+            const defaultInv =
+                workspaceInventories.find(
+                    inv =>
+                        inv.is_default
+                ) ||
+                workspaceInventories[0];
+
+            selectedIds = [
+                String(defaultInv.id)
+            ];
         }
 
-        selectedIds = saveSelectedIds(selectedIds);
+        selectedIds =
+            saveSelectedIds(
+                selectedIds
+            );
 
         return {
             groups,
@@ -134,78 +310,173 @@ const InventoryTopbar = (function(){
             .replaceAll("'","&#039;");
     }
 
-    function selectedInventoryText(inventories, selectedIds){
-        if(!inventories.length) return "No inventories";
+    function selectedInventoryText(
+        inventories,
+        selectedIds
+    ){
+        if(!inventories.length){
+            return "No inventories";
+        }
 
-        if(selectedIds.length === inventories.length && inventories.length > 1){
+        if(
+            selectedIds.length ===
+                inventories.length &&
+            inventories.length > 1
+        ){
             return "All Inventories";
         }
 
         if(selectedIds.length === 1){
-            const inv = inventories.find(i => String(i.id) === String(selectedIds[0]));
-            return inv ? inv.name : "Inventory";
+            const inv =
+                inventories.find(
+                    item =>
+                        String(item.id) ===
+                        String(selectedIds[0])
+                );
+
+            return inv
+                ? inv.name
+                : "Inventory";
         }
 
-        return selectedIds.length + " selected";
+        return (
+            selectedIds.length +
+            " selected"
+        );
     }
 
     async function createWorkspace(){
-        const name = prompt("New workspace name, e.g. My Warehouse, Family Stock, Trade Outlet");
+        const name = prompt(
+            "New workspace name, e.g. My Warehouse, Family Stock, Trade Outlet"
+        );
 
-        if(!name || !name.trim()) return;
-
-        const data = await InventoryAPI.request("/workspaces", {
-            method:"POST",
-            body:JSON.stringify({ name:name.trim() })
-        });
-
-        if(!data.success){
-            alert(data.error || "Could not create workspace");
+        if(!name || !name.trim()){
             return;
         }
 
-        saveSelectedWorkspaceId(data.workspace.id);
-        saveSelectedIds([String(data.inventory.id)]);
-
-        await init();
-        window.dispatchEvent(new CustomEvent("inventory-selection-changed", {
-            detail:{ selectedIds:getSelectedIds(), workspaceId:getSelectedWorkspaceId() }
-        }));
-    }
-
-    async function createInventory(workspaceId){
-        const name = prompt("New inventory name, e.g. Main, Van, Returns, Clothing");
-
-        if(!name || !name.trim()) return;
-
-        const data = await InventoryAPI.request("/workspaces/inventories", {
-            method:"POST",
-            body:JSON.stringify({
-                name:name.trim(),
-                workspace_id: workspaceId || getSelectedWorkspaceId()
-            })
-        });
+        const data =
+            await InventoryAPI.request(
+                "/workspaces",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        name:name.trim()
+                    })
+                }
+            );
 
         if(!data.success){
-            alert(data.error || "Could not create inventory");
+            alert(
+                data.error ||
+                "Could not create workspace"
+            );
+
             return;
         }
 
-        saveSelectedWorkspaceId(data.inventory.workspace_id);
-        saveSelectedIds([String(data.inventory.id)]);
+        saveSelectedWorkspaceId(
+            data.workspace.id
+        );
+
+        saveSelectedIds([
+            String(data.inventory.id)
+        ]);
 
         await init();
-        window.dispatchEvent(new CustomEvent("inventory-selection-changed", {
-            detail:{ selectedIds:getSelectedIds(), workspaceId:getSelectedWorkspaceId() }
-        }));
+
+        window.dispatchEvent(
+            new CustomEvent(
+                "inventory-selection-changed",
+                {
+                    detail:{
+                        selectedIds:
+                            getSelectedIds(),
+
+                        workspaceId:
+                            getSelectedWorkspaceId()
+                    }
+                }
+            )
+        );
     }
 
-    async function init(containerId = "inventory-topbar"){
+    async function createInventory(
+        workspaceId
+    ){
+        const name = prompt(
+            "New inventory name, e.g. Main, Van, Returns, Clothing"
+        );
+
+        if(!name || !name.trim()){
+            return;
+        }
+
+        const data =
+            await InventoryAPI.request(
+                "/workspaces/inventories",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        name:name.trim(),
+
+                        workspace_id:
+                            workspaceId ||
+                            getSelectedWorkspaceId()
+                    })
+                }
+            );
+
+        if(!data.success){
+            alert(
+                data.error ||
+                "Could not create inventory"
+            );
+
+            return;
+        }
+
+        saveSelectedWorkspaceId(
+            data.inventory.workspace_id
+        );
+
+        saveSelectedIds([
+            String(data.inventory.id)
+        ]);
+
+        await init();
+
+        window.dispatchEvent(
+            new CustomEvent(
+                "inventory-selection-changed",
+                {
+                    detail:{
+                        selectedIds:
+                            getSelectedIds(),
+
+                        workspaceId:
+                            getSelectedWorkspaceId()
+                    }
+                }
+            )
+        );
+    }
+
+    async function init(
+        containerId =
+            "inventory-topbar"
+    ){
         patchApiRequests();
 
-        const container = document.getElementById(containerId);
+        const container =
+            document.getElementById(
+                containerId
+            );
 
-        if(!container || !hasInventoryAPI() || !InventoryAPI.isLoggedIn()){
+        if(
+            !container ||
+            !hasInventoryAPI() ||
+            !InventoryAPI.isLoggedIn()
+        ){
             return false;
         }
 
@@ -213,238 +484,606 @@ const InventoryTopbar = (function(){
         let inventories = [];
 
         try{
-            [workspace, inventories] = await Promise.all([
+            [
+                workspace,
+                inventories
+            ] = await Promise.all([
                 loadWorkspace(),
                 loadInventories()
             ]);
         }catch(error){
             console.error(error);
+
             container.innerHTML = `
                 <div class="inventory-topbar">
                     <div class="inventory-topbar-left">
-                        <div class="inventory-topbar-brand">Inventory<span>OS</span></div>
-                        <div class="inventory-topbar-sub">Could not load inventories</div>
+                        <div class="inventory-topbar-brand">
+                            Inventory<span>OS</span>
+                        </div>
+
+                        <div class="inventory-topbar-sub">
+                            Could not load inventories
+                        </div>
                     </div>
                 </div>
             `;
+
             return false;
         }
 
-        let state = ensureWorkspaceAndSelection(inventories, workspace);
-        const selectedWorkspace = state.groups.find(group => String(group.id) === String(state.selectedWorkspaceId)) || state.groups[0] || null;
+        let state =
+            ensureWorkspaceAndSelection(
+                inventories,
+                workspace
+            );
+
+        /*
+            The first request can use a stale workspace saved by a previous
+            login. After validating the user's accessible workspaces above,
+            reload the current workspace once with the corrected workspace ID.
+        */
+        try{
+            workspace =
+                await loadWorkspace() ||
+                workspace;
+        }catch(error){
+            console.error(error);
+        }
+
+        const selectedWorkspace =
+            state.groups.find(
+                group =>
+                    String(group.id) ===
+                    String(
+                        state.selectedWorkspaceId
+                    )
+            ) ||
+            state.groups[0] ||
+            null;
 
         container.innerHTML = `
             <div class="inventory-topbar">
                 <div class="inventory-topbar-left">
-                    <div class="inventory-topbar-brand">Inventory<span>OS</span></div>
+                    <div class="inventory-topbar-brand">
+                        Inventory<span>OS</span>
+                    </div>
+
                     <div class="inventory-topbar-sub">
-                        <span>${escapeHtml(selectedWorkspace?.name || workspace?.name || "Workspace")}</span>
+                        <span>
+                            ${escapeHtml(
+                                selectedWorkspace?.name ||
+                                workspace?.name ||
+                                "Workspace"
+                            )}
+                        </span>
+
                         <span class="dot">•</span>
-                        <span>${escapeHtml(selectedWorkspace?.role || workspace?.role || "user")}</span>
+
+                        <span>
+                            ${escapeHtml(
+                                selectedWorkspace?.role ||
+                                workspace?.role ||
+                                "user"
+                            )}
+                        </span>
                     </div>
                 </div>
 
                 <div class="inventory-topbar-right">
-                    <div class="inventory-switcher" id="workspaceSwitcher">
-                        <button class="inventory-switcher-btn" type="button" id="workspaceSwitcherBtn">
+                    <div
+                        class="inventory-switcher"
+                        id="workspaceSwitcher"
+                    >
+                        <button
+                            class="inventory-switcher-btn"
+                            type="button"
+                            id="workspaceSwitcherBtn"
+                        >
                             <span class="box">🏢</span>
-                            <span id="workspaceSwitcherLabel">${escapeHtml(selectedWorkspace?.name || "Workspace")}</span>
+
+                            <span id="workspaceSwitcherLabel">
+                                ${escapeHtml(
+                                    selectedWorkspace?.name ||
+                                    "Workspace"
+                                )}
+                            </span>
+
                             <span class="chev">▾</span>
                         </button>
 
-                        <div class="inventory-switcher-menu" id="workspaceSwitcherMenu">
-                            <div class="menu-title">Workspace</div>
-                            <div class="menu-list" id="workspaceSwitcherList"></div>
-                            <button class="menu-create" type="button" id="workspaceCreateBtn">＋ Create Workspace</button>
+                        <div
+                            class="inventory-switcher-menu"
+                            id="workspaceSwitcherMenu"
+                        >
+                            <div class="menu-title">
+                                Workspace
+                            </div>
+
+                            <div
+                                class="menu-list"
+                                id="workspaceSwitcherList"
+                            ></div>
+
+                            <button
+                                class="menu-create"
+                                type="button"
+                                id="workspaceCreateBtn"
+                            >
+                                ＋ Create Workspace
+                            </button>
                         </div>
                     </div>
 
-                    <div class="inventory-switcher" id="inventorySwitcher">
-                        <button class="inventory-switcher-btn" type="button" id="inventorySwitcherBtn">
+                    <div
+                        class="inventory-switcher"
+                        id="inventorySwitcher"
+                    >
+                        <button
+                            class="inventory-switcher-btn"
+                            type="button"
+                            id="inventorySwitcherBtn"
+                        >
                             <span class="box">📦</span>
-                            <span id="inventorySwitcherLabel">${escapeHtml(selectedInventoryText(state.workspaceInventories, state.selectedIds))}</span>
+
+                            <span id="inventorySwitcherLabel">
+                                ${escapeHtml(
+                                    selectedInventoryText(
+                                        state.workspaceInventories,
+                                        state.selectedIds
+                                    )
+                                )}
+                            </span>
+
                             <span class="chev">▾</span>
                         </button>
 
-                        <div class="inventory-switcher-menu" id="inventorySwitcherMenu">
-                            <div class="menu-title">Inventory</div>
-                            <div class="menu-list" id="inventorySwitcherList"></div>
-                            <button class="menu-create" type="button" id="inventoryCreateBtn">＋ Create Inventory</button>
+                        <div
+                            class="inventory-switcher-menu"
+                            id="inventorySwitcherMenu"
+                        >
+                            <div class="menu-title">
+                                Inventory
+                            </div>
+
+                            <div
+                                class="menu-list"
+                                id="inventorySwitcherList"
+                            ></div>
+
+                            <button
+                                class="menu-create"
+                                type="button"
+                                id="inventoryCreateBtn"
+                            >
+                                ＋ Create Inventory
+                            </button>
                         </div>
                     </div>
 
-                    <button class="topbar-settings" type="button" onclick="window.location.href='settings.html'">⚙</button>
+                    <button
+                        class="topbar-settings"
+                        type="button"
+                        onclick="window.location.href='settings.html'"
+                    >
+                        ⚙
+                    </button>
                 </div>
             </div>
         `;
 
-        const workspaceSwitcher = document.getElementById("workspaceSwitcher");
-        const workspaceBtn = document.getElementById("workspaceSwitcherBtn");
-        const workspaceList = document.getElementById("workspaceSwitcherList");
-        const workspaceCreateBtn = document.getElementById("workspaceCreateBtn");
+        const workspaceSwitcher =
+            document.getElementById(
+                "workspaceSwitcher"
+            );
 
-        const inventorySwitcher = document.getElementById("inventorySwitcher");
-        const inventoryBtn = document.getElementById("inventorySwitcherBtn");
-        const inventoryList = document.getElementById("inventorySwitcherList");
-        const inventoryLabel = document.getElementById("inventorySwitcherLabel");
-        const inventoryCreateBtn = document.getElementById("inventoryCreateBtn");
+        const workspaceBtn =
+            document.getElementById(
+                "workspaceSwitcherBtn"
+            );
+
+        const workspaceList =
+            document.getElementById(
+                "workspaceSwitcherList"
+            );
+
+        const workspaceCreateBtn =
+            document.getElementById(
+                "workspaceCreateBtn"
+            );
+
+        const inventorySwitcher =
+            document.getElementById(
+                "inventorySwitcher"
+            );
+
+        const inventoryBtn =
+            document.getElementById(
+                "inventorySwitcherBtn"
+            );
+
+        const inventoryList =
+            document.getElementById(
+                "inventorySwitcherList"
+            );
+
+        const inventoryLabel =
+            document.getElementById(
+                "inventorySwitcherLabel"
+            );
+
+        const inventoryCreateBtn =
+            document.getElementById(
+                "inventoryCreateBtn"
+            );
 
         function closeMenus(except){
-            if(except !== "workspace") workspaceSwitcher.classList.remove("open");
-            if(except !== "inventory") inventorySwitcher.classList.remove("open");
+            if(except !== "workspace"){
+                workspaceSwitcher
+                    .classList
+                    .remove("open");
+            }
+
+            if(except !== "inventory"){
+                inventorySwitcher
+                    .classList
+                    .remove("open");
+            }
         }
 
         function updateInventoryLabel(){
-            inventoryLabel.textContent = selectedInventoryText(state.workspaceInventories, state.selectedIds);
+            inventoryLabel.textContent =
+                selectedInventoryText(
+                    state.workspaceInventories,
+                    state.selectedIds
+                );
         }
 
         function dispatchSelection(){
-            window.dispatchEvent(new CustomEvent("inventory-selection-changed", {
-                detail:{
-                    selectedIds:state.selectedIds,
-                    workspaceId:state.selectedWorkspaceId
-                }
-            }));
+            window.dispatchEvent(
+                new CustomEvent(
+                    "inventory-selection-changed",
+                    {
+                        detail:{
+                            selectedIds:
+                                state.selectedIds,
+
+                            workspaceId:
+                                state.selectedWorkspaceId
+                        }
+                    }
+                )
+            );
         }
 
         function renderWorkspaceList(){
             workspaceList.innerHTML = "";
 
             state.groups.forEach(group=>{
-                const row = document.createElement("button");
+                const row =
+                    document.createElement(
+                        "button"
+                    );
+
                 row.type = "button";
-                row.className = "inventory-menu-row";
+                row.className =
+                    "inventory-menu-row";
+
                 row.innerHTML = `
                     <div>
-                        <div class="inv-name">${escapeHtml(group.name)}</div>
-                        <div class="inv-meta">${escapeHtml(group.role)} • ${group.inventories.length} inventor${group.inventories.length === 1 ? "y" : "ies"}</div>
+                        <div class="inv-name">
+                            ${escapeHtml(group.name)}
+                        </div>
+
+                        <div class="inv-meta">
+                            ${escapeHtml(group.role)}
+                            •
+                            ${group.inventories.length}
+                            inventor${group.inventories.length === 1 ? "y" : "ies"}
+                        </div>
                     </div>
                 `;
 
-                if(String(group.id) === String(state.selectedWorkspaceId)){
-                    row.classList.add("active");
+                if(
+                    String(group.id) ===
+                    String(
+                        state.selectedWorkspaceId
+                    )
+                ){
+                    row.classList.add(
+                        "active"
+                    );
                 }
 
-                row.addEventListener("click", function(){
-                    saveSelectedWorkspaceId(group.id);
+                row.addEventListener(
+                    "click",
+                    async function(){
+                        saveSelectedWorkspaceId(
+                            group.id
+                        );
 
-                    const invs = inventories.filter(inv => String(inv.workspace_id) === String(group.id));
-                    const defaultInv = invs.find(inv => inv.is_default) || invs[0];
+                        const invs =
+                            inventories.filter(
+                                inv =>
+                                    String(
+                                        inv.workspace_id
+                                    ) ===
+                                    String(group.id)
+                            );
 
-                    saveSelectedIds(defaultInv ? [String(defaultInv.id)] : []);
+                        const defaultInv =
+                            invs.find(
+                                inv =>
+                                    inv.is_default
+                            ) ||
+                            invs[0];
 
-                    closeMenus();
-                    init().then(dispatchSelection);
-                });
+                        saveSelectedIds(
+                            defaultInv
+                                ? [
+                                    String(
+                                        defaultInv.id
+                                    )
+                                ]
+                                : []
+                        );
 
-                workspaceList.appendChild(row);
+                        closeMenus();
+
+                        await init();
+                        dispatchSelection();
+                    }
+                );
+
+                workspaceList.appendChild(
+                    row
+                );
             });
         }
 
         function renderInventoryList(){
             inventoryList.innerHTML = "";
 
-            if(state.workspaceInventories.length > 1){
-                const allRow = document.createElement("label");
-                allRow.className = "inventory-menu-row";
+            if(
+                state.workspaceInventories
+                    .length > 1
+            ){
+                const allRow =
+                    document.createElement(
+                        "label"
+                    );
 
-                const allChecked = state.selectedIds.length === state.workspaceInventories.length;
+                allRow.className =
+                    "inventory-menu-row";
+
+                const allChecked =
+                    state.selectedIds.length ===
+                    state.workspaceInventories
+                        .length;
 
                 allRow.innerHTML = `
-                    <input type="checkbox" ${allChecked ? "checked" : ""}>
+                    <input
+                        type="checkbox"
+                        ${allChecked ? "checked" : ""}
+                    >
+
                     <div>
-                        <div class="inv-name">All Inventories</div>
-                        <div class="inv-meta">View combined data only</div>
-                    </div>
-                `;
+                        <div class="inv-name">
+                            All Inventories
+                        </div>
 
-                const allCheckbox = allRow.querySelector("input");
-                allCheckbox.addEventListener("change", function(){
-                    if(allCheckbox.checked){
-                        state.selectedIds = saveSelectedIds(state.workspaceInventories.map(inv => String(inv.id)));
-                    }else{
-                        const defaultInv = state.workspaceInventories.find(inv => inv.is_default) || state.workspaceInventories[0];
-                        state.selectedIds = saveSelectedIds(defaultInv ? [String(defaultInv.id)] : []);
-                    }
-
-                    renderInventoryList();
-                    updateInventoryLabel();
-                    dispatchSelection();
-                });
-
-                inventoryList.appendChild(allRow);
-            }
-
-            state.workspaceInventories.forEach(inv=>{
-                const id = String(inv.id);
-
-                const row = document.createElement("label");
-                row.className = "inventory-menu-row";
-
-                row.innerHTML = `
-                    <input type="checkbox" value="${escapeHtml(id)}">
-                    <div>
-                        <div class="inv-name">${escapeHtml(inv.name)}</div>
                         <div class="inv-meta">
-                            ${Number(inv.total_stock || 0)} stock
-                            ${inv.is_default ? " • Default" : ""}
+                            View combined data only
                         </div>
                     </div>
                 `;
 
-                const checkbox = row.querySelector("input");
-                checkbox.checked = state.selectedIds.includes(id);
+                const allCheckbox =
+                    allRow.querySelector(
+                        "input"
+                    );
 
-                checkbox.addEventListener("change", function(){
-                    if(checkbox.checked){
-                        state.selectedIds.push(id);
-                    }else{
-                        state.selectedIds = state.selectedIds.filter(x => x !== id);
+                allCheckbox.addEventListener(
+                    "change",
+                    function(){
+                        if(allCheckbox.checked){
+                            state.selectedIds =
+                                saveSelectedIds(
+                                    state
+                                        .workspaceInventories
+                                        .map(
+                                            inv =>
+                                                String(
+                                                    inv.id
+                                                )
+                                        )
+                                );
+                        }else{
+                            const defaultInv =
+                                state
+                                    .workspaceInventories
+                                    .find(
+                                        inv =>
+                                            inv.is_default
+                                    ) ||
+                                state
+                                    .workspaceInventories[0];
+
+                            state.selectedIds =
+                                saveSelectedIds(
+                                    defaultInv
+                                        ? [
+                                            String(
+                                                defaultInv.id
+                                            )
+                                        ]
+                                        : []
+                                );
+                        }
+
+                        renderInventoryList();
+                        updateInventoryLabel();
+                        dispatchSelection();
                     }
+                );
 
-                    if(state.selectedIds.length === 0){
-                        checkbox.checked = true;
-                        state.selectedIds = [id];
-                    }
+                inventoryList.appendChild(
+                    allRow
+                );
+            }
 
-                    state.selectedIds = saveSelectedIds(state.selectedIds);
-                    renderInventoryList();
-                    updateInventoryLabel();
-                    dispatchSelection();
+            state.workspaceInventories
+                .forEach(inv=>{
+                    const id =
+                        String(inv.id);
+
+                    const row =
+                        document.createElement(
+                            "label"
+                        );
+
+                    row.className =
+                        "inventory-menu-row";
+
+                    row.innerHTML = `
+                        <input
+                            type="checkbox"
+                            value="${escapeHtml(id)}"
+                        >
+
+                        <div>
+                            <div class="inv-name">
+                                ${escapeHtml(inv.name)}
+                            </div>
+
+                            <div class="inv-meta">
+                                ${Number(inv.total_stock || 0)}
+                                stock
+                                ${inv.is_default ? " • Default" : ""}
+                            </div>
+                        </div>
+                    `;
+
+                    const checkbox =
+                        row.querySelector(
+                            "input"
+                        );
+
+                    checkbox.checked =
+                        state.selectedIds
+                            .includes(id);
+
+                    checkbox.addEventListener(
+                        "change",
+                        function(){
+                            if(checkbox.checked){
+                                state.selectedIds
+                                    .push(id);
+                            }else{
+                                state.selectedIds =
+                                    state.selectedIds
+                                        .filter(
+                                            item =>
+                                                item !== id
+                                        );
+                            }
+
+                            if(
+                                state.selectedIds
+                                    .length === 0
+                            ){
+                                checkbox.checked =
+                                    true;
+
+                                state.selectedIds =
+                                    [id];
+                            }
+
+                            state.selectedIds =
+                                saveSelectedIds(
+                                    state.selectedIds
+                                );
+
+                            renderInventoryList();
+                            updateInventoryLabel();
+                            dispatchSelection();
+                        }
+                    );
+
+                    inventoryList.appendChild(
+                        row
+                    );
                 });
-
-                inventoryList.appendChild(row);
-            });
         }
 
-        workspaceBtn.addEventListener("click", function(e){
-            e.stopPropagation();
-            const open = workspaceSwitcher.classList.contains("open");
-            closeMenus();
-            if(!open) workspaceSwitcher.classList.add("open");
-        });
+        workspaceBtn.addEventListener(
+            "click",
+            function(event){
+                event.stopPropagation();
 
-        inventoryBtn.addEventListener("click", function(e){
-            e.stopPropagation();
-            const open = inventorySwitcher.classList.contains("open");
-            closeMenus();
-            if(!open) inventorySwitcher.classList.add("open");
-        });
+                const open =
+                    workspaceSwitcher
+                        .classList
+                        .contains("open");
 
-        workspaceCreateBtn.addEventListener("click", createWorkspace);
-
-        inventoryCreateBtn.addEventListener("click", function(){
-            createInventory(state.selectedWorkspaceId);
-        });
-
-        document.addEventListener("click", function(e){
-            if(
-                !workspaceSwitcher.contains(e.target) &&
-                !inventorySwitcher.contains(e.target)
-            ){
                 closeMenus();
+
+                if(!open){
+                    workspaceSwitcher
+                        .classList
+                        .add("open");
+                }
             }
-        });
+        );
+
+        inventoryBtn.addEventListener(
+            "click",
+            function(event){
+                event.stopPropagation();
+
+                const open =
+                    inventorySwitcher
+                        .classList
+                        .contains("open");
+
+                closeMenus();
+
+                if(!open){
+                    inventorySwitcher
+                        .classList
+                        .add("open");
+                }
+            }
+        );
+
+        workspaceCreateBtn
+            .addEventListener(
+                "click",
+                createWorkspace
+            );
+
+        inventoryCreateBtn
+            .addEventListener(
+                "click",
+                function(){
+                    createInventory(
+                        state.selectedWorkspaceId
+                    );
+                }
+            );
+
+        document.addEventListener(
+            "click",
+            function(event){
+                if(
+                    !workspaceSwitcher
+                        .contains(event.target) &&
+                    !inventorySwitcher
+                        .contains(event.target)
+                ){
+                    closeMenus();
+                }
+            }
+        );
 
         renderWorkspaceList();
         renderInventoryList();
@@ -456,10 +1095,19 @@ const InventoryTopbar = (function(){
     function start(){
         patchApiRequests();
 
-        if(document.readyState === "loading"){
-            document.addEventListener("DOMContentLoaded", function(){
-                init();
-            });
+        if(
+            document.readyState ===
+            "loading"
+        ){
+            document.addEventListener(
+                "DOMContentLoaded",
+                function(){
+                    init();
+                },
+                {
+                    once:true
+                }
+            );
         }else{
             init();
         }
@@ -476,5 +1124,8 @@ const InventoryTopbar = (function(){
         patchApiRequests
     };
 })();
+
+window.InventoryTopbar =
+    InventoryTopbar;
 
 InventoryTopbar.start();
