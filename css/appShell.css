@@ -1,0 +1,919 @@
+/* InventoryOS shared application shell
+   Visual-only layout layer. Existing page IDs, forms, handlers and scripts
+   remain untouched. Colours continue to come from css/theme.css. */
+
+html{
+    min-height:100%;
+}
+
+body.inventoryos-shell-active{
+    min-height:100vh;
+    margin:0 !important;
+    padding:0 !important;
+    overflow-x:hidden;
+    color:var(--text,#fff);
+    background:
+        radial-gradient(
+            circle at 92% 0,
+            rgba(var(--accent-rgb),0.12),
+            transparent 32rem
+        ),
+        radial-gradient(
+            circle at 0 92%,
+            rgba(var(--accent-2-rgb),0.07),
+            transparent 28rem
+        ),
+        #08070b !important;
+    font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif !important;
+}
+
+body.inventoryos-shell-active::before{
+    content:"";
+    position:fixed;
+    z-index:-1;
+    inset:0;
+    pointer-events:none;
+    background:
+        linear-gradient(
+            rgba(255,255,255,0.011) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,0.009) 1px,
+            transparent 1px
+        );
+    background-size:42px 42px;
+    mask-image:
+        linear-gradient(
+            to bottom,
+            rgba(0,0,0,0.25),
+            transparent 56%
+        );
+}
+
+body.inventoryos-shell-active a{
+    color:inherit;
+}
+
+.ios-shell-app{
+    display:grid;
+    grid-template-columns:244px minmax(0,1fr);
+    min-height:100vh;
+}
+
+.ios-shell-sidebar{
+    position:fixed;
+    z-index:100;
+    inset:0 auto 0 0;
+    display:flex;
+    flex-direction:column;
+    width:244px;
+    padding:24px 16px;
+    border-right:1px solid rgba(255,255,255,0.07);
+    background:
+        linear-gradient(
+            180deg,
+            rgba(18,15,22,0.99),
+            rgba(8,7,11,0.99)
+        );
+    box-shadow:20px 0 55px rgba(0,0,0,0.18);
+}
+
+.ios-shell-brand{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    padding:0 10px 23px;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+    text-decoration:none;
+}
+
+.ios-shell-brand-mark{
+    display:grid;
+    grid-template-columns:repeat(3,5px);
+    align-items:end;
+    gap:3px;
+    width:34px;
+    height:34px;
+    padding:8px 6px;
+    border:1px solid rgba(var(--accent-rgb),0.38);
+    border-radius:11px;
+    background:rgba(var(--accent-rgb),0.11);
+    box-shadow:
+        inset 0 0 20px rgba(var(--accent-rgb),0.07),
+        0 9px 25px rgba(0,0,0,0.24);
+}
+
+.ios-shell-brand-mark span{
+    display:block;
+    border-radius:4px 4px 2px 2px;
+    background:
+        linear-gradient(
+            180deg,
+            var(--accent),
+            rgba(var(--accent-rgb),0.55)
+        );
+}
+
+.ios-shell-brand-mark span:nth-child(1){
+    height:8px;
+}
+
+.ios-shell-brand-mark span:nth-child(2){
+    height:17px;
+}
+
+.ios-shell-brand-mark span:nth-child(3){
+    height:12px;
+}
+
+.ios-shell-brand-name{
+    color:#fff;
+    font-size:18px;
+    font-weight:850;
+    letter-spacing:-0.045em;
+}
+
+.ios-shell-brand-name span{
+    color:var(--accent);
+}
+
+.ios-shell-sidebar-scroll{
+    flex:1;
+    min-height:0;
+    margin-top:20px;
+    overflow:auto;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(var(--accent-rgb),0.35) transparent;
+}
+
+.ios-shell-nav-label{
+    margin:20px 11px 8px;
+    color:#706978;
+    font-size:10px;
+    font-weight:850;
+    letter-spacing:0.13em;
+    text-transform:uppercase;
+}
+
+.ios-shell-nav-label:first-child{
+    margin-top:0;
+}
+
+.ios-shell-nav{
+    display:grid;
+    gap:5px;
+}
+
+.ios-shell-nav-link{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-height:43px;
+    padding:0 12px;
+    color:#a9a1b0;
+    border:1px solid transparent;
+    border-radius:12px;
+    text-decoration:none;
+    font-size:13px;
+    font-weight:680;
+    transition:
+        color 150ms ease,
+        border-color 150ms ease,
+        background 150ms ease,
+        transform 150ms ease;
+}
+
+.ios-shell-nav-link:hover{
+    color:#fff;
+    background:rgba(255,255,255,0.035);
+    transform:translateX(2px);
+}
+
+.ios-shell-nav-link.active{
+    color:#fff;
+    border-color:rgba(var(--accent-rgb),0.29);
+    background:
+        linear-gradient(
+            135deg,
+            rgba(var(--accent-rgb),0.18),
+            rgba(var(--accent-rgb),0.07)
+        );
+    box-shadow:inset 3px 0 0 var(--accent);
+}
+
+.ios-shell-nav-icon{
+    display:grid;
+    place-items:center;
+    width:22px;
+    flex:0 0 22px;
+    color:var(--accent);
+    font-size:16px;
+    font-weight:900;
+}
+
+.ios-shell-sidebar-footer{
+    margin-top:18px;
+    padding-top:16px;
+    border-top:1px solid rgba(255,255,255,0.06);
+}
+
+.ios-shell-user{
+    display:grid;
+    grid-template-columns:38px minmax(0,1fr) auto;
+    align-items:center;
+    gap:10px;
+    padding:9px;
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:13px;
+    background:rgba(255,255,255,0.025);
+}
+
+.ios-shell-avatar{
+    display:grid;
+    place-items:center;
+    width:38px;
+    height:38px;
+    border:1px solid rgba(var(--accent-rgb),0.32);
+    border-radius:11px;
+    color:#fff;
+    background:rgba(var(--accent-rgb),0.14);
+    font-size:11px;
+    font-weight:850;
+}
+
+.ios-shell-user-copy{
+    min-width:0;
+}
+
+.ios-shell-user-copy strong,
+.ios-shell-user-copy span{
+    display:block;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.ios-shell-user-copy strong{
+    color:#f2eef5;
+    font-size:11px;
+}
+
+.ios-shell-user-copy span{
+    margin-top:2px;
+    color:#77707f;
+    font-size:9px;
+}
+
+.ios-shell-logout{
+    display:grid;
+    place-items:center;
+    width:31px !important;
+    height:31px;
+    min-width:31px;
+    margin:0 !important;
+    padding:0 !important;
+    border:1px solid rgba(255,92,108,0.16) !important;
+    border-radius:9px !important;
+    color:#ff7f8d !important;
+    background:rgba(255,92,108,0.07) !important;
+    box-shadow:none !important;
+    cursor:pointer;
+}
+
+.ios-shell-main{
+    grid-column:2;
+    min-width:0;
+    padding:24px 28px 42px;
+}
+
+.ios-shell-frame{
+    width:min(100%,1420px);
+    margin:0 auto;
+}
+
+.ios-shell-header{
+    position:relative;
+    z-index:80;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:24px;
+    min-height:67px;
+    margin-bottom:22px;
+}
+
+.ios-shell-mobile-menu{
+    display:none;
+    place-items:center;
+    width:42px !important;
+    height:42px;
+    margin:0 !important;
+    padding:0 !important;
+    border:1px solid rgba(255,255,255,0.08) !important;
+    border-radius:12px !important;
+    color:#fff !important;
+    background:rgba(255,255,255,0.035) !important;
+    box-shadow:none !important;
+    cursor:pointer;
+}
+
+.ios-shell-heading{
+    min-width:210px;
+    flex:1;
+}
+
+.ios-shell-heading h1{
+    margin:0 !important;
+    color:#fff !important;
+    text-align:left !important;
+    font-size:27px !important;
+    line-height:1.12;
+    letter-spacing:-0.045em;
+}
+
+.ios-shell-heading .subtitle{
+    margin:7px 0 0 !important;
+    max-width:720px;
+    color:#857d8d !important;
+    text-align:left !important;
+    font-size:12px !important;
+    line-height:1.55;
+}
+
+.ios-shell-header-tools{
+    display:flex;
+    align-items:flex-start;
+    justify-content:flex-end;
+    gap:10px;
+    min-width:0;
+}
+
+.ios-shell-topbar-host{
+    min-width:0;
+}
+
+.ios-shell-topbar-host #inventory-topbar{
+    width:100%;
+    margin:0;
+}
+
+.ios-shell-topbar-host .inventory-topbar{
+    justify-content:flex-end;
+    padding:0;
+    border:0;
+    background:transparent;
+    box-shadow:none;
+}
+
+.ios-shell-topbar-host .inventory-topbar-left{
+    display:none;
+}
+
+.ios-shell-topbar-host .inventory-topbar-right{
+    flex-wrap:nowrap;
+}
+
+.ios-shell-topbar-host .inventory-switcher-btn,
+.ios-shell-topbar-host .topbar-settings{
+    min-height:42px;
+    padding:0 12px;
+    border-color:rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.035);
+    font-size:11px;
+}
+
+.ios-shell-topbar-host .inventory-switcher-menu{
+    border-color:rgba(var(--accent-rgb),0.18);
+    background:#121016;
+}
+
+.ios-shell-topbar-host .inventory-menu-row{
+    background:#18151c;
+}
+
+.ios-shell-topbar-host .inventory-menu-row.active,
+.ios-shell-topbar-host .inventory-menu-row:hover{
+    border-color:rgba(var(--accent-rgb),0.35);
+    background:rgba(var(--accent-rgb),0.1);
+}
+
+.ios-shell-topbar-host .menu-create{
+    border-color:rgba(var(--accent-rgb),0.35);
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            rgba(var(--accent-rgb),0.62)
+        );
+}
+
+.ios-shell-header-avatar{
+    display:grid;
+    place-items:center;
+    width:42px;
+    height:42px;
+    flex:0 0 42px;
+    border:1px solid rgba(var(--accent-rgb),0.32);
+    border-radius:13px;
+    color:#fff;
+    background:rgba(var(--accent-rgb),0.14);
+    font-size:11px;
+    font-weight:850;
+}
+
+.ios-shell-content{
+    width:100%;
+}
+
+.ios-shell-content .page{
+    width:100% !important;
+    max-width:none !important;
+    margin:0 !important;
+}
+
+.ios-shell-content .page > .panel{
+    width:100%;
+    max-width:none !important;
+    margin:0 !important;
+    padding:0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+}
+
+body[data-ios-page="add"] .ios-shell-frame{
+    max-width:900px;
+}
+
+body[data-ios-page="remove"] .ios-shell-frame,
+body[data-ios-page="refund"] .ios-shell-frame{
+    max-width:980px;
+}
+
+body[data-ios-page="search"] .ios-shell-frame{
+    max-width:1100px;
+}
+
+body[data-ios-page="move"] .ios-shell-frame,
+body[data-ios-page="boxes"] .ios-shell-frame{
+    max-width:1250px;
+}
+
+/* Shared premium card language */
+.ios-shell-content :is(
+    .form-card,
+    .card,
+    .result-card,
+    .bundle-card,
+    .location-card,
+    .box-card,
+    .box-group-card,
+    .selected-bundle-box,
+    .selected-summary,
+    .warehouse-price-card,
+    .voice-card,
+    .toggle-box,
+    .checkbox-card,
+    .highlight-card,
+    .stat-card,
+    details,
+    .location-group,
+    .empty-state
+){
+    border-color:rgba(255,255,255,0.075) !important;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.032),
+            rgba(255,255,255,0.012)
+        ) !important;
+    box-shadow:0 17px 44px rgba(0,0,0,0.16);
+}
+
+.ios-shell-content :is(
+    .form-card,
+    .card,
+    .result-card,
+    .bundle-card,
+    .box-card,
+    .box-group-card
+){
+    border-radius:18px !important;
+}
+
+.ios-shell-content .form-card,
+.ios-shell-content .card{
+    padding:21px !important;
+}
+
+.ios-shell-content .input-label{
+    color:#c8c1cc !important;
+    font-size:12px !important;
+    font-weight:750 !important;
+}
+
+.ios-shell-content :is(input,select,textarea){
+    color:#fff !important;
+    border:1px solid rgba(255,255,255,0.08) !important;
+    background:#151219 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.018),
+        0 8px 20px rgba(0,0,0,0.08);
+}
+
+.ios-shell-content :is(input,select,textarea):focus{
+    border-color:rgba(var(--accent-rgb),0.48) !important;
+    outline:none !important;
+    box-shadow:
+        0 0 0 3px rgba(var(--accent-rgb),0.12),
+        inset 0 1px 0 rgba(255,255,255,0.025);
+}
+
+.ios-shell-content button{
+    transition:
+        transform 150ms ease,
+        filter 150ms ease,
+        border-color 150ms ease,
+        background 150ms ease;
+}
+
+.ios-shell-content button:hover{
+    filter:brightness(1.06);
+}
+
+.ios-shell-content button:active{
+    transform:translateY(1px);
+}
+
+/* Main positive/action buttons follow the Settings theme. */
+.ios-shell-content :is(
+    .primary-button,
+    .add-button,
+    .refund-button,
+    .search-button,
+    .move-button,
+    .bulk-button,
+    .create-button,
+    .green-button,
+    .refocus-button,
+    .focus-button,
+    .printjob-button
+){
+    color:#fff !important;
+    border-color:rgba(var(--accent-rgb),0.42) !important;
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            rgba(var(--accent-rgb),0.63)
+        ) !important;
+    box-shadow:0 11px 28px rgba(var(--accent-rgb),0.16) !important;
+}
+
+/* Destructive buttons remain visually clear. */
+.ios-shell-content :is(
+    .remove-button,
+    .delete-button,
+    .stop-button,
+    .small-remove,
+    .remove-selected-button
+){
+    color:#fff !important;
+    border-color:rgba(255,92,108,0.36) !important;
+    background:
+        linear-gradient(
+            135deg,
+            #e45467,
+            #9e2635
+        ) !important;
+}
+
+/* Neutral secondary controls. */
+.ios-shell-content :is(
+    .minor-button,
+    .clear-button,
+    .back-button
+){
+    color:#e9e4ed !important;
+    border-color:rgba(255,255,255,0.09) !important;
+    background:
+        linear-gradient(
+            135deg,
+            #242128,
+            #17141b
+        ) !important;
+    box-shadow:none !important;
+}
+
+.ios-shell-content :is(
+    .tab-button.active,
+    .location-toggle.open,
+    .stock-card.selected,
+    .suggest-item.active,
+    .choice-button:hover,
+    .live-result-button:hover
+){
+    border-color:rgba(var(--accent-rgb),0.48) !important;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(var(--accent-rgb),0.2),
+            rgba(var(--accent-rgb),0.065)
+        ) !important;
+    box-shadow:
+        0 0 0 2px rgba(var(--accent-rgb),0.075);
+}
+
+.ios-shell-content :is(
+    .badge,
+    .bundle-pill,
+    .section-badge,
+    .qty-badge
+){
+    color:var(--accent) !important;
+    border-color:rgba(var(--accent-rgb),0.28) !important;
+    background:rgba(var(--accent-rgb),0.1) !important;
+}
+
+.ios-shell-content :is(
+    .stat-number,
+    .sale-title,
+    .selected-bundle-title,
+    .box-group-title
+){
+    color:var(--accent) !important;
+}
+
+.ios-shell-content .capacity-bar{
+    background:
+        linear-gradient(
+            90deg,
+            var(--accent),
+            var(--accent-2)
+        ) !important;
+}
+
+.ios-shell-content .link-card{
+    color:#eee9f2 !important;
+    border-color:rgba(var(--accent-rgb),0.2) !important;
+    background:rgba(var(--accent-rgb),0.07) !important;
+    box-shadow:none !important;
+}
+
+.ios-shell-content .link-card:hover{
+    border-color:rgba(var(--accent-rgb),0.38) !important;
+    background:rgba(var(--accent-rgb),0.11) !important;
+}
+
+.ios-shell-content .matches-box,
+.ios-shell-content .suggest-panel,
+.ios-shell-content .contents-list,
+.ios-shell-content #result,
+.ios-shell-content .result,
+.ios-shell-content .sale-card{
+    border-color:rgba(var(--accent-rgb),0.16) !important;
+    background:#100e13 !important;
+}
+
+.ios-shell-content .match-summary,
+.ios-shell-content .scanner-mode-pill,
+.ios-shell-content .warehouse-status,
+.ios-shell-content .success{
+    color:var(--accent) !important;
+}
+
+.ios-shell-content .spinner{
+    border-top-color:var(--accent) !important;
+}
+
+.ios-shell-content summary{
+    color:#eee9f2;
+}
+
+.ios-shell-content .top-actions,
+.ios-shell-content .tab-grid{
+    margin-top:0;
+}
+
+.ios-shell-content .links-grid{
+    margin-top:20px;
+    padding-top:18px;
+    border-top:1px solid rgba(255,255,255,0.06);
+}
+
+.ios-shell-overlay{
+    position:fixed;
+    z-index:90;
+    inset:0;
+    display:none;
+    background:rgba(0,0,0,0.63);
+    backdrop-filter:blur(3px);
+}
+
+.ios-shell-overlay.show{
+    display:block;
+}
+
+/* Preserve the existing full-screen save feedback even after introducing
+   the shell layers. */
+body.inventoryos-shell-active.success-flash::after,
+body.inventoryos-shell-active.error-flash::after{
+    content:"";
+    position:fixed;
+    z-index:8999;
+    inset:0;
+    pointer-events:none;
+}
+
+body.inventoryos-shell-active.success-flash::after{
+    background:rgba(40,167,69,0.12);
+    box-shadow:inset 0 0 150px rgba(40,167,69,0.55);
+}
+
+body.inventoryos-shell-active.error-flash::after{
+    background:rgba(220,53,69,0.12);
+    box-shadow:inset 0 0 150px rgba(220,53,69,0.55);
+}
+
+@media(max-width:1120px){
+    .ios-shell-app{
+        grid-template-columns:210px minmax(0,1fr);
+    }
+
+    .ios-shell-sidebar{
+        width:210px;
+    }
+
+    .ios-shell-main{
+        padding:22px 20px 38px;
+    }
+}
+
+@media(max-width:900px){
+    .ios-shell-app{
+        display:block;
+    }
+
+    .ios-shell-sidebar{
+        width:min(286px,86vw);
+        transform:translateX(-105%);
+        transition:transform 190ms ease;
+    }
+
+    body.ios-shell-menu-open{
+        overflow:hidden !important;
+    }
+
+    body.ios-shell-menu-open .ios-shell-sidebar{
+        transform:translateX(0);
+    }
+
+    .ios-shell-main{
+        width:100%;
+    }
+
+    .ios-shell-mobile-menu{
+        display:grid;
+        flex:0 0 42px;
+    }
+
+    .ios-shell-header{
+        align-items:flex-start;
+    }
+}
+
+@media(max-width:680px){
+    .ios-shell-main{
+        padding:14px 12px 30px;
+    }
+
+    .ios-shell-header{
+        display:grid;
+        grid-template-columns:42px minmax(0,1fr) 42px;
+        gap:10px;
+        margin-bottom:15px;
+    }
+
+    .ios-shell-mobile-menu{
+        grid-column:1;
+        grid-row:1;
+    }
+
+    .ios-shell-heading{
+        grid-column:2;
+        grid-row:1;
+        min-width:0;
+    }
+
+    .ios-shell-heading h1{
+        font-size:21px !important;
+    }
+
+    .ios-shell-heading .subtitle{
+        font-size:10px !important;
+    }
+
+    .ios-shell-header-avatar{
+        grid-column:3;
+        grid-row:1;
+    }
+
+    .ios-shell-header-tools{
+        grid-column:1 / -1;
+        grid-row:2;
+        width:100%;
+    }
+
+    .ios-shell-topbar-host{
+        width:100%;
+    }
+
+    .ios-shell-topbar-host .inventory-topbar{
+        align-items:stretch;
+    }
+
+    .ios-shell-topbar-host .inventory-topbar-right{
+        display:grid;
+        grid-template-columns:1fr 1fr 42px;
+        width:100%;
+    }
+
+    .ios-shell-topbar-host .inventory-switcher-btn,
+    .ios-shell-topbar-host .topbar-settings{
+        width:100%;
+        max-width:none;
+        justify-content:center;
+    }
+
+    .ios-shell-topbar-host .inventory-switcher-btn{
+        overflow:hidden;
+    }
+
+    .ios-shell-topbar-host
+    .inventory-switcher-btn
+    > span:not(.box):not(.chev){
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+    }
+
+    .ios-shell-topbar-host .inventory-switcher-menu{
+        position:fixed;
+        width:calc(100vw - 24px);
+        max-width:none;
+        left:12px;
+        right:12px;
+        top:135px;
+    }
+
+    .ios-shell-content .form-card,
+    .ios-shell-content .card{
+        padding:16px !important;
+    }
+}
+
+@media print{
+    body.inventoryos-shell-active{
+        display:block !important;
+        min-height:0;
+        padding:0 !important;
+        background:white !important;
+    }
+
+    .ios-shell-sidebar,
+    .ios-shell-header,
+    .ios-shell-overlay{
+        display:none !important;
+    }
+
+    .ios-shell-app,
+    .ios-shell-main,
+    .ios-shell-frame,
+    .ios-shell-content{
+        display:block !important;
+        width:auto !important;
+        min-height:0 !important;
+        margin:0 !important;
+        padding:0 !important;
+        background:transparent !important;
+    }
+
+    .ios-shell-content .page,
+    .ios-shell-content .page > .panel{
+        width:auto !important;
+        margin:0 !important;
+        padding:0 !important;
+        background:transparent !important;
+        box-shadow:none !important;
+    }
+}
