@@ -13,6 +13,8 @@ html{touch-action:manipulation}*{box-sizing:border-box}body{font-family:Arial,sa
 </style>
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/inventoryTopbar.css">
+
+<link rel="stylesheet" href="css/appShell.css?v=1">
 </head>
 <body>
 <div class="page"><div class="panel">
@@ -145,5 +147,7 @@ window.addEventListener("inventory-selection-changed",async()=>{stopScanner();bu
 async function init(){try{await InventoryWorkspace.init()}catch(e){console.error(e)}applyWording();renderBulkList();restoreActiveTab();await loadLocations()}
 document.readyState==="loading"?document.addEventListener("DOMContentLoaded",init,{once:true}):init();
 </script>
+
+<script src="js/appShell.js?v=1"></script>
 </body>
 </html>
