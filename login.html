@@ -375,7 +375,7 @@ async function login(){
         setStatus("Login successful. Redirecting...", "success");
 
         setTimeout(function(){
-            window.location.href = "add.html";
+            window.location.href = "index.html";
         }, 600);
 
     }catch(error){
@@ -450,7 +450,7 @@ document.addEventListener("keydown", function(e){
 });
 
 if(InventoryAPI.isLoggedIn()){
-    window.location.href = "add.html";
+    window.location.href = "index.html";
 }
 </script>
 
