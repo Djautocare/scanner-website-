@@ -141,25 +141,83 @@ const InventoryOSAppShell = (function(){
         }
     ];
 
-    function currentFilename(){
+    function currentRouteName(){
         const path =
-            window.location.pathname ||
-            "";
+            decodeURIComponent(
+                window.location.pathname ||
+                ""
+            );
 
-        return (
-            path.split("/")
+        const part =
+            path
+                .split("/")
                 .filter(Boolean)
                 .pop() ||
-            "index.html"
-        ).toLowerCase();
+            "index";
+
+        return part
+            .toLowerCase()
+            .replace(
+                /\.html?$/,
+                ""
+            );
     }
 
     function currentPageKey(){
-        const filename =
-            currentFilename();
+        const route =
+            currentRouteName();
+
+        const routeAliases = {
+            "index":"dashboard",
+            "dashboard":"dashboard",
+
+            "add":"add",
+            "add-stock":"add",
+
+            "remove":"remove",
+            "remove-stock":"remove",
+
+            "refund":"refund",
+            "refunds":"refund",
+
+            "search":"search",
+            "scanner-search":"search",
+            "search-stock":"search",
+
+            "move":"move",
+            "move-stock":"move",
+
+            "boxes":"boxes",
+            "box-locations":"boxes",
+            "locations":"boxes",
+
+            "barcodeprinting":"barcode",
+            "barcode-printing":"barcode",
+
+            "dispatch-centre":"dispatch",
+            "dispatch-center":"dispatch",
+            "dispatch":"dispatch",
+
+            "salestracker":"sales",
+            "sales-tracker":"sales",
+
+            "expenses":"expenses",
+
+            "stale":"stale",
+            "stale-stock":"stale",
+
+            "settings":"settings"
+        };
+
+        if(routeAliases[route]){
+            return routeAliases[route];
+        }
+
+        const htmlName =
+            route + ".html";
 
         return (
-            PAGE_MAP[filename] ||
+            PAGE_MAP[htmlName] ||
             PAGE_MAP["index.html"]
         ).key;
     }
@@ -800,7 +858,8 @@ const InventoryOSAppShell = (function(){
         start,
         initialise,
         openMenu,
-        closeMenu
+        closeMenu,
+        currentPageKey
     };
 })();
 
