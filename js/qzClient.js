@@ -108,16 +108,33 @@ const InventoryOSQZ = (function(){
         ensureDependencies();
         configureSecurity();
 
-        if(qz.websocket.isActive()){
-            return Promise.resolve();
-        }
+        /*
+            Check the pending promise before isActive().
 
+            QZ can report an active socket while the connection is still
+            finishing its setup. A second caller must wait for the original
+            connection promise instead of trying to use the socket early.
+        */
         if(connectionPromise){
             return connectionPromise;
         }
 
+        if(qz.websocket.isActive()){
+            return Promise.resolve();
+        }
+
         connectionPromise =
-            qz.websocket.connect()
+            qz.websocket.connect({
+                retries:3,
+                delay:1
+            })
+            .then(function(){
+                if(!qz.websocket.isActive()){
+                    throw new Error(
+                        "QZ Tray did not finish connecting"
+                    );
+                }
+            })
             .finally(function(){
                 connectionPromise = null;
             });
@@ -128,25 +145,101 @@ const InventoryOSQZ = (function(){
     function disconnect(){
         if(
             typeof qz === "undefined" ||
-            !qz ||
-            !qz.websocket.isActive()
+            !qz
         ){
+            connectionPromise = null;
             return Promise.resolve();
         }
 
-        return qz.websocket.disconnect();
+        connectionPromise = null;
+
+        if(!qz.websocket.isActive()){
+            return Promise.resolve();
+        }
+
+        return qz.websocket.disconnect()
+            .catch(function(){
+                // A half-open QZ socket can fail while disconnecting.
+                // The following reconnect will create a fresh connection.
+            });
+    }
+
+    function shouldReconnect(error){
+        const message = String(
+            error?.message ||
+            error ||
+            ""
+        ).toLowerCase();
+
+        return (
+            message.includes(
+                "senddata is not a function"
+            ) ||
+            message.includes(
+                "socket is not open"
+            ) ||
+            message.includes(
+                "websocket"
+            ) ||
+            message.includes(
+                "connection"
+            ) ||
+            message.includes(
+                "disconnected"
+            )
+        );
+    }
+
+    function reconnect(){
+        return disconnect()
+            .then(function(){
+                return new Promise(
+                    function(resolve){
+                        setTimeout(
+                            resolve,
+                            250
+                        );
+                    }
+                );
+            })
+            .then(connect);
+    }
+
+    function runConnected(
+        operation,
+        hasRetried = false
+    ){
+        return connect()
+            .then(operation)
+            .catch(function(error){
+                if(
+                    hasRetried ||
+                    !shouldReconnect(error)
+                ){
+                    throw error;
+                }
+
+                return reconnect()
+                    .then(function(){
+                        return runConnected(
+                            operation,
+                            true
+                        );
+                    });
+            });
     }
 
     function listPrinters(){
-        return connect()
-            .then(function(){
+        return runConnected(
+            function(){
                 return qz.printers.find();
-            })
-            .then(function(printers){
-                return Array.isArray(printers)
-                    ? printers
-                    : [];
-            });
+            }
+        )
+        .then(function(printers){
+            return Array.isArray(printers)
+                ? printers
+                : [];
+        });
     }
 
     function getProductPrinterName(){
@@ -253,12 +346,13 @@ const InventoryOSQZ = (function(){
             );
         }
 
-        return connect()
-            .then(function(){
+        return runConnected(
+            function(){
                 return qz.printers.find(
                     name
                 );
-            })
+            }
+        )
             .then(function(printer){
                 if(!printer){
                     throw new Error(
@@ -281,6 +375,7 @@ const InventoryOSQZ = (function(){
     return {
         configureSecurity,
         connect,
+        reconnect,
         disconnect,
         listPrinters,
         requirePrinter,
