@@ -492,7 +492,7 @@ button:disabled{
 
     <div class="panel">
         <h2 style="margin-top:0;">Email Label Import</h2>
-        <div class="muted small">Connect Gmail, scan for new Vinted/eBay courier labels, and hide attachments that have already been imported.</div>
+        <div class="muted small">Connect Gmail, scan for new Vinted/eBay courier labels, import selected labels, or hide repeated PDFs from future scans.</div>
         <div class="email-import-grid">
             <div class="email-status-card">
                 <div id="gmailStatus" class="muted">Checking Gmail connection...</div>
@@ -511,6 +511,7 @@ button:disabled{
         <div id="gmailResults" class="email-results"></div>
         <div class="actions" id="gmailImportActions" style="display:none;">
             <button id="gmailImportSelectedBtn" class="success" type="button">Import Selected To Packing Queue</button>
+            <button id="gmailHideSelectedBtn" class="secondary" type="button">Hide Selected</button>
         </div>
     </div>
 
@@ -1165,9 +1166,21 @@ async function scanGmail(){
                 `${gmailLabelResults.length === 1 ? "" : "s"}.`;
 
             if(skipped){
+                const hashDuplicates = Number(
+                    data.hidden_by_pdf_hash_count || 0
+                );
+
                 message +=
                     ` Hidden ${skipped} previously imported label` +
-                    `${skipped === 1 ? "" : "s"}.`;
+                    `${skipped === 1 ? "" : "s"}`;
+
+                if(hashDuplicates){
+                    message +=
+                        `, including ${hashDuplicates} duplicate PDF` +
+                        `${hashDuplicates === 1 ? "" : "s"} matched by file content`;
+                }
+
+                message += ".";
             }
 
             message += " Tick the ones to import.";
@@ -1227,7 +1240,10 @@ async function importSelectedGmailLabels(){
                     method:"POST",
                     body:JSON.stringify({
                         message_id:label.message_id,
-                        attachment_id:label.attachment_id
+                        attachment_id:label.attachment_id,
+                        filename:label.filename || "",
+                        content_hash:label.content_hash || "",
+                        content_hash:label.content_hash || ""
                     })
                 }
             );
@@ -1237,6 +1253,10 @@ async function importSelectedGmailLabels(){
                     attachment.error ||
                     "Could not download Gmail attachment."
                 );
+            }
+
+            if(attachment.content_hash){
+                label.content_hash = attachment.content_hash;
             }
 
             const blob = base64ToBlob(
@@ -1324,7 +1344,8 @@ async function importSelectedGmailLabels(){
                         labels:selected.map(label => ({
                             message_id:label.message_id,
                             attachment_id:label.attachment_id,
-                            filename:label.filename || ""
+                            filename:label.filename || "",
+                            content_hash:label.content_hash || ""
                         }))
                     })
                 }
@@ -1375,6 +1396,89 @@ async function importSelectedGmailLabels(){
         alert(
             error.message ||
             "Could not import Gmail labels."
+        );
+    }finally{
+        hideLoading();
+    }
+}
+
+
+async function hideSelectedGmailLabels(){
+    const selected = Array.from(
+        document.querySelectorAll(".gmail-label-check:checked")
+    )
+        .map(input => {
+            return gmailLabelResults[Number(input.dataset.index)];
+        })
+        .filter(Boolean);
+
+    if(!selected.length){
+        alert("Tick at least one Gmail label to hide.");
+        return;
+    }
+
+    const confirmed = confirm(
+        "Hide the selected Gmail label PDFs from future scans?\\n\\n" +
+        "Use this for labels you have already imported/printed and do not " +
+        "want to see again."
+    );
+
+    if(!confirmed){
+        return;
+    }
+
+    showLoading("Hiding selected Gmail labels...");
+
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/mark-imported",
+            {
+                method:"POST",
+                body:JSON.stringify({
+                    labels:selected.map(label => ({
+                        message_id:label.message_id,
+                        attachment_id:label.attachment_id,
+                        filename:label.filename || "",
+                        content_hash:label.content_hash || ""
+                    }))
+                })
+            }
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Could not hide selected Gmail labels."
+            );
+        }
+
+        const selectedIds = new Set(
+            selected.map(label => label.id)
+        );
+
+        gmailLabelResults = gmailLabelResults.filter(label => {
+            return !selectedIds.has(label.id);
+        });
+
+        renderGmailResults(gmailLabelResults);
+
+        setGmailScanStatus(
+            `Hidden ${selected.length} Gmail label` +
+            `${selected.length === 1 ? "" : "s"} from future scans.`,
+            "ok"
+        );
+    }catch(error){
+        console.error(error);
+
+        setGmailScanStatus(
+            error.message ||
+            "Could not hide selected Gmail labels.",
+            "error"
+        );
+
+        alert(
+            error.message ||
+            "Could not hide selected Gmail labels."
         );
     }finally{
         hideLoading();
@@ -1450,6 +1554,7 @@ document.getElementById("gmailConnectBtn").addEventListener("click", connectGmai
 document.getElementById("gmailScanBtn").addEventListener("click", scanGmail);
 document.getElementById("gmailDisconnectBtn").addEventListener("click", disconnectGmail);
 document.getElementById("gmailImportSelectedBtn").addEventListener("click", importSelectedGmailLabels);
+document.getElementById("gmailHideSelectedBtn").addEventListener("click", hideSelectedGmailLabels);
 
 async function processSelectedFiles(){
     if(!selectedFiles.length) return;
