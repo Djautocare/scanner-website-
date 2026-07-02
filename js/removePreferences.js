@@ -9,6 +9,8 @@ const InventoryOSRemovePreferences = (function(){
 
     let current = {...DEFAULTS};
     let canEdit = false;
+    let currentRole = "";
+    let lastLoadError = "";
     let originalRemoveBundleStock = null;
     let originalToggleUsbScannerMode = null;
     let originalSpeakText = null;
@@ -69,17 +71,48 @@ const InventoryOSRemovePreferences = (function(){
         };
     }
 
+    function normaliseRole(value){
+        return String(value || "")
+            .trim()
+            .toLowerCase();
+    }
+
+    function cachedWorkspaceRole(){
+        try{
+            const workspace = JSON.parse(
+                localStorage.getItem(
+                    "inventoryos_workspace"
+                ) || "null"
+            );
+
+            return normaliseRole(
+                workspace?.role ||
+                workspace?.membership_role ||
+                ""
+            );
+        }catch(error){
+            return "";
+        }
+    }
+
     async function load(){
         current = readCache();
+        canEdit = false;
+        currentRole = "";
+        lastLoadError = "";
 
         if(
             typeof InventoryAPI === "undefined" ||
             !InventoryAPI ||
             !InventoryAPI.isLoggedIn()
         ){
+            lastLoadError =
+                "You are not logged in.";
+
             return {
                 settings:current,
-                can_edit:false
+                can_edit:false,
+                error:lastLoadError
             };
         }
 
@@ -91,24 +124,45 @@ const InventoryOSRemovePreferences = (function(){
 
             if(data && data.success){
                 current = normalise(data.settings);
-                canEdit = !!data.can_edit;
+
+                currentRole = normaliseRole(
+                    data.role ||
+                    cachedWorkspaceRole()
+                );
+
+                canEdit =
+                    data.can_edit === true ||
+                    currentRole === "owner" ||
+                    currentRole === "admin";
+
                 writeCache(current);
 
                 return {
                     settings:current,
-                    can_edit:canEdit
+                    can_edit:canEdit,
+                    role:currentRole
                 };
             }
+
+            lastLoadError =
+                data?.error ||
+                "The Remove preferences route did not return a successful response.";
         }catch(error){
             console.error(
                 "Could not load Remove page preferences:",
                 error
             );
+
+            lastLoadError =
+                error?.message ||
+                "Could not contact the Remove preferences route.";
         }
 
         return {
             settings:current,
-            can_edit:false
+            can_edit:false,
+            role:currentRole,
+            error:lastLoadError
         };
     }
 
@@ -132,6 +186,7 @@ const InventoryOSRemovePreferences = (function(){
 
         current = normalise(data.settings);
         canEdit = true;
+        lastLoadError = "";
         writeCache(current);
 
         return current;
@@ -405,12 +460,28 @@ const InventoryOSRemovePreferences = (function(){
         }
 
         if(result){
-            result.className = "result";
+            result.className =
+                lastLoadError
+                    ? "result error"
+                    : "result";
 
-            result.textContent =
-                canEdit
-                    ? "These settings apply to everyone using this workspace."
-                    : "Only workspace owners and admins can change these settings.";
+            if(lastLoadError){
+                result.textContent =
+                    "Could not load Remove page settings: " +
+                    lastLoadError;
+            }else if(canEdit){
+                result.textContent =
+                    "These settings apply to everyone using this workspace.";
+            }else{
+                const roleText =
+                    currentRole
+                        ? " Current role: " + currentRole + "."
+                        : "";
+
+                result.textContent =
+                    "Only workspace owners and admins can change these settings." +
+                    roleText;
+            }
         }
     }
 
