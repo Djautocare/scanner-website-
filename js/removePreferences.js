@@ -2,7 +2,11 @@ const InventoryOSRemovePreferences = (function(){
     const DEFAULTS = {
         track_sales_data:true,
         show_usb_scanner_mode:true,
-        show_listening_mode:true
+        show_listening_mode:true,
+        dispatch_require_scan:false,
+        dispatch_show_voice_mode:true,
+        dispatch_voice_prompts:true,
+        dispatch_auto_print_on_start:true
     };
 
     const CACHE_KEY = "inventoryos_remove_page_preferences";
@@ -34,7 +38,19 @@ const InventoryOSRemovePreferences = (function(){
                     parsed.show_usb_scanner_mode !== false,
 
                 show_listening_mode:
-                    parsed.show_listening_mode !== false
+                    parsed.show_listening_mode !== false,
+
+                dispatch_require_scan:
+                    parsed.dispatch_require_scan === true,
+
+                dispatch_show_voice_mode:
+                    parsed.dispatch_show_voice_mode !== false,
+
+                dispatch_voice_prompts:
+                    parsed.dispatch_voice_prompts !== false,
+
+                dispatch_auto_print_on_start:
+                    parsed.dispatch_auto_print_on_start !== false
             };
         }catch(error){
             return {...DEFAULTS};
@@ -65,7 +81,19 @@ const InventoryOSRemovePreferences = (function(){
                 source.show_usb_scanner_mode !== false,
 
             show_listening_mode:
-                source.show_listening_mode !== false
+                source.show_listening_mode !== false,
+
+            dispatch_require_scan:
+                source.dispatch_require_scan === true,
+
+            dispatch_show_voice_mode:
+                source.dispatch_show_voice_mode !== false,
+
+            dispatch_voice_prompts:
+                source.dispatch_voice_prompts !== false,
+
+            dispatch_auto_print_on_start:
+                source.dispatch_auto_print_on_start !== false
         };
     }
 
@@ -314,11 +342,11 @@ const InventoryOSRemovePreferences = (function(){
         card.innerHTML = `
             <div class="card-title">
                 <span class="card-icon">➖</span>
-                Remove Page
+                Selling & Dispatch
             </div>
 
             <div class="helper">
-                Choose which selling and scanner features appear on the Remove Stock page for this workspace.
+                Choose how Remove Stock and the Dispatch Centre record sales, verify packed items and use voice controls for this workspace.
             </div>
 
             <div class="remove-pref-list">
@@ -375,6 +403,78 @@ const InventoryOSRemovePreferences = (function(){
                         id="prefShowListening"
                     >
                 </label>
+
+                <label class="remove-pref-row">
+                    <span class="remove-pref-copy">
+                        <span class="remove-pref-title">
+                            Require barcode scans while packing
+                        </span>
+
+                        <span class="remove-pref-help">
+                            Dispatch Centre will block Complete Sale until every required unit in the current packing jobs has been scanned.
+                        </span>
+                    </span>
+
+                    <input
+                        class="remove-pref-switch"
+                        type="checkbox"
+                        id="prefDispatchRequireScan"
+                    >
+                </label>
+
+                <label class="remove-pref-row">
+                    <span class="remove-pref-copy">
+                        <span class="remove-pref-title">
+                            Show Dispatch voice mode
+                        </span>
+
+                        <span class="remove-pref-help">
+                            Allow spoken prices and commands such as next pick, previous pick and complete sale.
+                        </span>
+                    </span>
+
+                    <input
+                        class="remove-pref-switch"
+                        type="checkbox"
+                        id="prefDispatchVoiceMode"
+                    >
+                </label>
+
+                <label class="remove-pref-row">
+                    <span class="remove-pref-copy">
+                        <span class="remove-pref-title">
+                            Speak packing prompts
+                        </span>
+
+                        <span class="remove-pref-help">
+                            Read the current label, item and location aloud when moving between packing jobs.
+                        </span>
+                    </span>
+
+                    <input
+                        class="remove-pref-switch"
+                        type="checkbox"
+                        id="prefDispatchVoicePrompts"
+                    >
+                </label>
+
+                <label class="remove-pref-row">
+                    <span class="remove-pref-copy">
+                        <span class="remove-pref-title">
+                            Print labels when Let’s Pack starts
+                        </span>
+
+                        <span class="remove-pref-help">
+                            Automatically send the queued 4×6 shipping labels to the selected QZ printer before opening the simplified packing screen.
+                        </span>
+                    </span>
+
+                    <input
+                        class="remove-pref-switch"
+                        type="checkbox"
+                        id="prefDispatchAutoPrint"
+                    >
+                </label>
             </div>
 
             <button
@@ -382,14 +482,14 @@ const InventoryOSRemovePreferences = (function(){
                 id="saveRemovePreferencesButton"
                 type="button"
             >
-                Save Remove Page Settings
+                Save Selling & Dispatch Settings
             </button>
 
             <div
                 id="removePreferencesResult"
                 class="result"
             >
-                Loading Remove page settings...
+                Loading selling and dispatch settings...
             </div>
         `;
 
@@ -419,6 +519,26 @@ const InventoryOSRemovePreferences = (function(){
                 "prefShowListening"
             );
 
+        const dispatchRequireScan =
+            document.getElementById(
+                "prefDispatchRequireScan"
+            );
+
+        const dispatchVoiceMode =
+            document.getElementById(
+                "prefDispatchVoiceMode"
+            );
+
+        const dispatchVoicePrompts =
+            document.getElementById(
+                "prefDispatchVoicePrompts"
+            );
+
+        const dispatchAutoPrint =
+            document.getElementById(
+                "prefDispatchAutoPrint"
+            );
+
         const button =
             document.getElementById(
                 "saveRemovePreferencesButton"
@@ -429,7 +549,15 @@ const InventoryOSRemovePreferences = (function(){
                 "removePreferencesResult"
             );
 
-        if(!track || !usb || !listening){
+        if(
+            !track ||
+            !usb ||
+            !listening ||
+            !dispatchRequireScan ||
+            !dispatchVoiceMode ||
+            !dispatchVoicePrompts ||
+            !dispatchAutoPrint
+        ){
             return;
         }
 
@@ -442,7 +570,27 @@ const InventoryOSRemovePreferences = (function(){
         listening.checked =
             current.show_listening_mode;
 
-        [track,usb,listening].forEach(input=>{
+        dispatchRequireScan.checked =
+            current.dispatch_require_scan;
+
+        dispatchVoiceMode.checked =
+            current.dispatch_show_voice_mode;
+
+        dispatchVoicePrompts.checked =
+            current.dispatch_voice_prompts;
+
+        dispatchAutoPrint.checked =
+            current.dispatch_auto_print_on_start;
+
+        [
+            track,
+            usb,
+            listening,
+            dispatchRequireScan,
+            dispatchVoiceMode,
+            dispatchVoicePrompts,
+            dispatchAutoPrint
+        ].forEach(input=>{
             input.disabled = !canEdit;
         });
 
@@ -487,6 +635,26 @@ const InventoryOSRemovePreferences = (function(){
             show_listening_mode:
                 document.getElementById(
                     "prefShowListening"
+                ).checked,
+
+            dispatch_require_scan:
+                document.getElementById(
+                    "prefDispatchRequireScan"
+                ).checked,
+
+            dispatch_show_voice_mode:
+                document.getElementById(
+                    "prefDispatchVoiceMode"
+                ).checked,
+
+            dispatch_voice_prompts:
+                document.getElementById(
+                    "prefDispatchVoicePrompts"
+                ).checked,
+
+            dispatch_auto_print_on_start:
+                document.getElementById(
+                    "prefDispatchAutoPrint"
                 ).checked
         };
 
@@ -498,7 +666,7 @@ const InventoryOSRemovePreferences = (function(){
         if(result){
             result.className = "result";
             result.textContent =
-                "Saving Remove page settings...";
+                "Saving selling and dispatch settings...";
         }
 
         try{
@@ -509,7 +677,7 @@ const InventoryOSRemovePreferences = (function(){
                     "result success";
 
                 result.textContent =
-                    "Remove page settings saved.";
+                    "Selling and dispatch settings saved.";
             }
         }catch(error){
             console.error(error);
@@ -520,13 +688,13 @@ const InventoryOSRemovePreferences = (function(){
 
                 result.textContent =
                     error.message ||
-                    "Could not save Remove page settings.";
+                    "Could not save selling and dispatch settings.";
             }
         }finally{
             if(button){
                 button.disabled = !canEdit;
                 button.textContent =
-                    "Save Remove Page Settings";
+                    "Save Selling & Dispatch Settings";
             }
         }
     }
