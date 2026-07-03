@@ -19,6 +19,9 @@
     let dispatchSpeechRecognition = null;
     let dispatchVoiceListening = false;
     let dispatchCompletionResults = null;
+    const DISPATCH_STATE_KEY = "inventoryos_dispatch_existing_routes_state_v1";
+    let dispatchPriceMills = new Map();
+    let dispatchVerifiedQty = new Map();
 
     function escapeDispatchHtml(value){
         return String(value || "")
@@ -48,6 +51,177 @@
 
     function formatMills(mills){
         return (Number(mills || 0) / 1000).toFixed(3);
+    }
+
+
+    function parseDispatchMills(value){
+        const raw = String(value ?? "")
+            .replace(/£/g,"")
+            .replace(/,/g,"")
+            .trim();
+
+        if(!raw){
+            return 0;
+        }
+
+        if(!/^\d+(?:\.\d{0,3})?$/.test(raw)){
+            throw new Error("Sale price can use no more than three decimal places");
+        }
+
+        const parts = raw.split(".");
+        const whole = Number(parts[0] || 0);
+        const decimals = Number(String(parts[1] || "").padEnd(3,"0"));
+        const mills = whole * 1000 + decimals;
+
+        if(!Number.isSafeInteger(mills) || mills < 0){
+            throw new Error("Sale price is invalid");
+        }
+
+        return mills;
+    }
+
+    function readDispatchState(){
+        try{
+            const parsed = JSON.parse(localStorage.getItem(DISPATCH_STATE_KEY) || "{}");
+            dispatchSessionPackIds = Array.isArray(parsed.pack_ids)
+                ? parsed.pack_ids.map(Number).filter(Number.isInteger)
+                : [];
+            dispatchCurrentPackIndex = Number(parsed.current_index || 0);
+            dispatchPriceMills = new Map(
+                Object.entries(parsed.prices || {}).map(([key,value]) => [Number(key),Number(value || 0)])
+            );
+            dispatchVerifiedQty = new Map(
+                Object.entries(parsed.verified || {}).map(([key,value]) => [Number(key),Number(value || 0)])
+            );
+            dispatchManualPacked = new Set(
+                Array.isArray(parsed.manual_packed)
+                    ? parsed.manual_packed.map(Number).filter(Number.isInteger)
+                    : []
+            );
+        }catch(error){
+            dispatchSessionPackIds = [];
+            dispatchCurrentPackIndex = 0;
+            dispatchPriceMills = new Map();
+            dispatchVerifiedQty = new Map();
+            dispatchManualPacked = new Set();
+        }
+    }
+
+    function writeDispatchState(){
+        try{
+            localStorage.setItem(
+                DISPATCH_STATE_KEY,
+                JSON.stringify({
+                    pack_ids:dispatchSessionPackIds,
+                    current_index:dispatchCurrentPackIndex,
+                    prices:Object.fromEntries(dispatchPriceMills),
+                    verified:Object.fromEntries(dispatchVerifiedQty),
+                    manual_packed:Array.from(dispatchManualPacked)
+                })
+            );
+        }catch(error){}
+    }
+
+    function clearDispatchPackState(packId){
+        const id = Number(packId);
+        dispatchSessionPackIds = dispatchSessionPackIds.filter(value => Number(value) !== id);
+        dispatchPriceMills.delete(id);
+
+        const pack = findPack(id);
+        (pack?.items || []).forEach(item => {
+            dispatchVerifiedQty.delete(Number(item.id));
+            dispatchManualPacked.delete(Number(item.id));
+        });
+
+        writeDispatchState();
+    }
+
+    function dispatchItemLocations(item){
+        return Array.isArray(item?.locations)
+            ? item.locations.filter(location => Number(location.qty || 0) > 0)
+            : [];
+    }
+
+    function dispatchBestLocation(item){
+        const locations = dispatchItemLocations(item);
+        const required = Math.max(1,Number(item?.qty || 1));
+
+        return locations.find(location => {
+            return String(location.location || "") === String(item?.picked_location || "") &&
+                Number(location.qty || 0) >= required;
+        }) || locations.find(location => Number(location.qty || 0) >= required) || locations[0] || {};
+    }
+
+    function hydrateDispatchQueueState(){
+        const validPackIds = new Set((queueCache || []).map(pack => Number(pack.id)));
+        dispatchSessionPackIds = dispatchSessionPackIds.filter(id => validPackIds.has(Number(id)));
+
+        (queueCache || []).forEach(pack => {
+            const packId = Number(pack.id);
+            pack.sale_total_mills = Number(dispatchPriceMills.get(packId) || 0);
+
+            (pack.items || []).forEach(item => {
+                const best = dispatchBestLocation(item);
+                item.matched_barcode = best.barcode || item.matched_barcode || "";
+                item.matched_inventory_id = best.inventory_id || item.matched_inventory_id || "";
+                item.matched_product_id = best.product_id || item.matched_product_id || "";
+                item.matched_box_id = best.box_id || item.matched_box_id || "";
+                item.picked_location = item.picked_location || best.location || "";
+                item.verified_qty = Number(dispatchVerifiedQty.get(Number(item.id)) || 0);
+            });
+        });
+
+        writeDispatchState();
+    }
+
+    function validateDispatchPacks(packIds){
+        const errors = [];
+
+        packIds.forEach(packId => {
+            const pack = findPack(packId);
+
+            if(!pack){
+                errors.push(`Packing job ${packId} was not found.`);
+                return;
+            }
+
+            if(!(pack.items || []).length){
+                errors.push(`Label ${pack.label_order || pack.id} has no items.`);
+                return;
+            }
+
+            (pack.items || []).forEach(item => {
+                const locations = dispatchItemLocations(item);
+                const available = locations.reduce((sum,location) => sum + Number(location.qty || 0),0);
+                const barcode = dispatchBestLocation(item).barcode || item.matched_barcode || "";
+
+                if(!barcode || !locations.length){
+                    errors.push(`Label ${pack.label_order || pack.id}: ${item.description} has no active-stock match.`);
+                }else if(available < Number(item.qty || 0)){
+                    errors.push(`Label ${pack.label_order || pack.id}: ${item.description} needs ${item.qty}, but only ${available} are active.`);
+                }
+            });
+        });
+
+        return errors;
+    }
+
+    async function ensureExistingWorkflowBackend(){
+        const data = await InventoryAPI.request(
+            "/shipping-labels/queue?_dispatch_workflow_check=1&_t=" + Date.now()
+        );
+
+        if(
+            !data ||
+            !data.success ||
+            Number(data.dispatch_sale_workflow_version || 0) < 1
+        ){
+            throw new Error(
+                "The updated shippingLabelsRoutes.js is not running yet. Replace that backend file and restart Node before using Let’s Pack."
+            );
+        }
+
+        return data;
     }
 
     function injectDispatchWorkflowStyles(){
@@ -455,10 +629,7 @@
 
     function clearableDispatchPacks(){
         return (queueCache || []).filter(function(pack){
-            return (
-                String(pack.status || "") !== "packed" &&
-                String(pack.sale_status || "") !== "completed"
-            );
+            return String(pack.status || "") !== "packed";
         });
     }
 
@@ -470,11 +641,8 @@
         }
 
         const count = clearableDispatchPacks().length;
-
         button.disabled = count === 0;
-        button.textContent = count
-            ? `Clear All (${count})`
-            : "Clear All";
+        button.textContent = count ? `Clear All (${count})` : "Clear All";
     }
 
     window.dispatchClearAllPackingQueue = async function(){
@@ -488,8 +656,7 @@
 
         const confirmed = confirm(
             `Clear all ${clearable.length} unfinished packing job${clearable.length === 1 ? "" : "s"}?\n\n` +
-            "This removes the shipping labels and matched items from the packing queue. " +
-            "It will not remove stock and it will not delete completed sales."
+            "This removes their shipping labels and packing items. Stock and completed sales are not changed."
         );
 
         if(!confirmed){
@@ -498,61 +665,60 @@
 
         showLoading("Clearing packing queue...");
 
-        try{
-            const data = await InventoryAPI.request(
-                "/dispatch-workflow/queue",
-                {
-                    method:"DELETE"
-                }
-            );
+        const deleted = [];
+        const failed = [];
 
-            if(!data || !data.success){
-                throw new Error(
-                    data?.error ||
-                    "Could not clear the packing queue"
-                );
+        try{
+            for(const pack of clearable){
+                try{
+                    const data = await InventoryAPI.request(
+                        `/shipping-labels/${Number(pack.id)}`,
+                        {method:"DELETE"}
+                    );
+
+                    if(!data || !data.success){
+                        throw new Error(data?.error || "Could not remove packing job");
+                    }
+
+                    deleted.push(Number(pack.id));
+                    clearDispatchPackState(pack.id);
+                }catch(error){
+                    failed.push({
+                        pack_id:Number(pack.id),
+                        label_order:pack.label_order,
+                        error:error.message || "Could not remove packing job"
+                    });
+                }
             }
 
             stopDispatchVoice();
-
-            dispatchSessionPackIds = [];
-            dispatchCurrentPackIndex = 0;
             dispatchPackingActive = false;
-            dispatchManualPacked.clear();
-            dispatchCompletionResults = null;
+            document.body.classList.remove("dispatch-packing-active");
+            await loadQueue();
 
-            document.body.classList.remove(
-                "dispatch-packing-active"
-            );
-
-            if(typeof loadQueue === "function"){
-                await loadQueue();
-            }
-
-            const resultBox =
-                document.getElementById(
-                    "dispatchWorkflowResult"
-                );
+            const resultBox = document.getElementById("dispatchWorkflowResult");
 
             if(resultBox){
                 resultBox.innerHTML = `
-                    <div class="dispatch-complete">
-                        Cleared ${Number(data.deleted_count || 0)}
-                        unfinished packing job${Number(data.deleted_count || 0) === 1 ? "" : "s"}.
-                        Stock and completed sales were not changed.
+                    <div class="${failed.length ? "dispatch-failed" : "dispatch-complete"}">
+                        Cleared ${deleted.length} unfinished packing job${deleted.length === 1 ? "" : "s"}.
+                        ${failed.length ? `${failed.length} could not be cleared.` : "Stock and completed sales were not changed."}
                     </div>
+                    ${failed.map(item => `
+                        <div class="dispatch-failed">
+                            Label ${escapeDispatchHtml(item.label_order || item.pack_id)}: ${escapeDispatchHtml(item.error)}
+                        </div>
+                    `).join("")}
                 `;
             }
 
-            refreshLetsPackButton();
-            refreshClearAllButton();
-        }catch(error){
-            alert(
-                error.message ||
-                "Could not clear the packing queue"
-            );
+            if(failed.length){
+                alert(`${deleted.length} cleared. ${failed.length} could not be cleared.`);
+            }
         }finally{
             hideLoading();
+            refreshLetsPackButton();
+            refreshClearAllButton();
         }
     };
 
@@ -1028,33 +1194,37 @@
                 selected.innerHTML =
                     `Selected: <strong>${escapeDispatchHtml(suggestion.description)}</strong>` +
                     ` · ${escapeDispatchHtml(suggestion.barcode)}` +
-                    ` · Current Qty ${escapeDispatchHtml(suggestion.total_qty)}` +
-                    ` · Best stock location will be selected automatically`;
+                    ` · Current Qty ${escapeDispatchHtml(suggestion.total_qty)}`;
             }
 
             return;
         }
 
-        const qty = Number(document.getElementById(`dispatch-item-qty-${id}`)?.value || 1);
+        const qty = Math.max(1,Number(document.getElementById(`dispatch-item-qty-${id}`)?.value || 1));
         showLoading("Selecting active stock...");
 
         try{
             const data = await InventoryAPI.request(
-                `/dispatch-workflow/items/${id}/select`,
+                `/shipping-labels/item/${Number(id)}/update`,
                 {
                     method:"POST",
                     body:JSON.stringify({
+                        description:suggestion.description,
+                        qty,
+                        barcode:suggestion.barcode,
                         product_id:suggestion.product_id,
-                        inventory_id:suggestion.inventory_id,
-                        qty
+                        inventory_id:suggestion.inventory_id
                     })
                 }
             );
 
-            if(!data.success){
-                throw new Error(data.error || "Could not select item");
+            if(!data || !data.success){
+                throw new Error(data?.error || "Could not select item");
             }
 
+            dispatchVerifiedQty.delete(Number(id));
+            dispatchManualPacked.delete(Number(id));
+            writeDispatchState();
             await loadQueue();
         }catch(error){
             alert(error.message || "Could not select item");
@@ -1113,19 +1283,21 @@
 
         try{
             const data = await InventoryAPI.request(
-                `/dispatch-workflow/packs/${packId}/items`,
+                `/shipping-labels/${Number(packId)}/add-item`,
                 {
                     method:"POST",
                     body:JSON.stringify({
+                        description:match.description,
+                        qty,
+                        barcode:match.barcode,
                         product_id:match.product_id,
-                        inventory_id:match.inventory_id,
-                        qty
+                        inventory_id:match.inventory_id
                     })
                 }
             );
 
-            if(!data.success){
-                throw new Error(data.error || "Could not add item");
+            if(!data || !data.success){
+                throw new Error(data?.error || "Could not add item");
             }
 
             pendingAddMatches.delete(Number(packId));
@@ -1137,26 +1309,14 @@
         }
     };
 
-    function formatStartErrors(data){
-        const errors = Array.isArray(data?.errors) ? data.errors : [];
-
-        if(!errors.length){
-            return data?.error || "Some packing jobs need attention";
-        }
-
-        return errors.map(item => {
-            return `Label ${item.label_order || item.pack_id}: ${item.error}`;
-        }).join("\n");
-    }
-
     async function matchAllDispatchItems(){
         const data = await InventoryAPI.request(
-            "/dispatch-workflow/match-all",
+            "/shipping-labels/search-locations",
             {method:"POST",body:"{}"}
         );
 
-        if(!data.success){
-            throw new Error(data.error || "Could not match packing items");
+        if(!data || !data.success){
+            throw new Error(data?.error || "Could not match packing items");
         }
 
         await loadQueue();
@@ -1200,34 +1360,30 @@
 
         try{
             await loadDispatchPreferences();
+            await ensureExistingWorkflowBackend();
             await matchAllDispatchItems();
+            hydrateDispatchQueueState();
 
             const packIds = Array.isArray(requestedPackIds) && requestedPackIds.length
                 ? requestedPackIds.map(Number)
                 : (queueCache || [])
-                    .filter(pack => pack.status !== "packed" && pack.sale_status !== "completed")
+                    .filter(pack => String(pack.status || "") !== "packed")
                     .map(pack => Number(pack.id));
 
-            const data = await InventoryAPI.request(
-                "/dispatch-workflow/session/start",
-                {
-                    method:"POST",
-                    body:JSON.stringify({pack_ids:packIds})
-                }
-            );
-
-            if(!data.success){
-                throw new Error(formatStartErrors(data));
+            if(!packIds.length){
+                throw new Error("There are no unfinished packing jobs to start.");
             }
 
-            dispatchPreferences = {
-                ...dispatchPreferences,
-                ...(data.preferences || {})
-            };
+            const errors = validateDispatchPacks(packIds);
 
-            dispatchSessionPackIds = data.pack_ids || packIds;
+            if(errors.length){
+                throw new Error(errors.join("\n"));
+            }
+
+            dispatchSessionPackIds = packIds;
             dispatchCurrentPackIndex = 0;
             dispatchCompletionResults = null;
+            writeDispatchState();
 
             if(dispatchPreferences.dispatch_auto_print_on_start){
                 document.getElementById("loadingText").innerText = "Printing 4×6 shipping labels...";
@@ -1247,7 +1403,6 @@
                 }
             }
 
-            await loadQueue();
             enterDispatchPackingMode();
 
             if(resultBox){
@@ -1269,7 +1424,7 @@
     function activeSessionPacks(){
         return dispatchSessionPackIds
             .map(findPack)
-            .filter(pack => pack && pack.sale_status !== "completed" && pack.status !== "packed")
+            .filter(pack => pack && String(pack.status || "") !== "packed")
             .sort((left,right) => Number(left.label_order || 0) - Number(right.label_order || 0));
     }
 
@@ -1286,7 +1441,7 @@
 
     function itemIsComplete(item){
         if(dispatchPreferences.dispatch_require_scan){
-            return Number(item.verified_qty || 0) >= Number(item.qty || 0);
+            return Number(dispatchVerifiedQty.get(Number(item.id)) || 0) >= Number(item.qty || 0);
         }
 
         return dispatchManualPacked.has(Number(item.id));
@@ -1299,7 +1454,7 @@
 
         return activeSessionPacks().every(pack => {
             return (pack.items || []).every(item => {
-                return Number(item.verified_qty || 0) >= Number(item.qty || 0);
+                return Number(dispatchVerifiedQty.get(Number(item.id)) || 0) >= Number(item.qty || 0);
             });
         });
     }
@@ -1310,7 +1465,7 @@
         }
 
         return activeSessionPacks().every(pack => {
-            return Number(pack.sale_total_mills || 0) > 0;
+            return Number(dispatchPriceMills.get(Number(pack.id)) || 0) > 0;
         });
     }
 
@@ -1318,7 +1473,7 @@
         const complete = itemIsComplete(item);
         const next = !complete && index === (currentDispatchPack()?.items || []).findIndex(row => !itemIsComplete(row));
         const verified = dispatchPreferences.dispatch_require_scan
-            ? Number(item.verified_qty || 0)
+            ? Number(dispatchVerifiedQty.get(Number(item.id)) || 0)
             : (complete ? Number(item.qty || 0) : 0);
 
         return `
@@ -1355,6 +1510,7 @@
             dispatchManualPacked.add(id);
         }
 
+        writeDispatchState();
         renderDispatchPackingMode();
     };
 
@@ -1402,7 +1558,7 @@
             return;
         }
 
-        const price = formatMills(pack.sale_total_mills || 0);
+        const price = formatMills(dispatchPriceMills.get(Number(pack.id)) || 0);
         const preview = pack.preview_url
             ? courierPreviewMedia(
                 InventoryAPI.API_BASE + pack.preview_url,
@@ -1618,7 +1774,7 @@
 
         const item = (pack.items || []).find(row => {
             return normaliseDispatchBarcode(row.matched_barcode) === barcode &&
-                Number(row.verified_qty || 0) < Number(row.qty || 0);
+                Number(dispatchVerifiedQty.get(Number(row.id)) || 0) < Number(row.qty || 0);
         });
 
         if(!item){
@@ -1635,79 +1791,55 @@
             return;
         }
 
-        try{
-            const data = await InventoryAPI.request(
-                `/dispatch-workflow/items/${item.id}/scan`,
-                {
-                    method:"POST",
-                    body:JSON.stringify({barcode})
-                }
-            );
+        const nextQty = Math.min(
+            Number(item.qty || 0),
+            Number(dispatchVerifiedQty.get(Number(item.id)) || 0) + 1
+        );
 
-            if(!data.success){
-                throw new Error(data.error || "Wrong item");
-            }
+        dispatchVerifiedQty.set(Number(item.id),nextQty);
+        item.verified_qty = nextQty;
+        writeDispatchState();
 
-            document.body.classList.add("success-flash");
-            setTimeout(() => document.body.classList.remove("success-flash"),500);
+        document.body.classList.add("success-flash");
+        setTimeout(() => document.body.classList.remove("success-flash"),500);
 
-            if(status){
-                status.className = "dispatch-scan-status ok";
-                status.textContent = `${item.description}: ${data.verified_qty}/${data.qty} verified`;
-            }
-
-            await loadQueue();
-            renderDispatchPackingMode();
-
-            const refreshedPack = currentDispatchPack();
-            const packComplete = (refreshedPack?.items || []).every(row => {
-                return Number(row.verified_qty || 0) >= Number(row.qty || 0);
-            });
-
-            if(packComplete){
-                speakDispatch("Pick verified");
-            }
-        }catch(error){
-            document.body.classList.add("error-flash");
-            setTimeout(() => document.body.classList.remove("error-flash"),700);
-
-            if(status){
-                status.className = "dispatch-scan-status error";
-                status.textContent = error.message || "Wrong item";
-            }
-
-            speakDispatch("Wrong item");
-        }finally{
-            setTimeout(function(){
-                document.getElementById("dispatchScannerInput")?.focus();
-            },100);
+        if(status){
+            status.className = "dispatch-scan-status ok";
+            status.textContent = `${item.description}: ${nextQty}/${item.qty} verified`;
         }
+
+        renderDispatchPackingMode();
+
+        const packComplete = (pack.items || []).every(row => {
+            return Number(dispatchVerifiedQty.get(Number(row.id)) || 0) >= Number(row.qty || 0);
+        });
+
+        if(packComplete){
+            speakDispatch("Pick verified");
+        }
+
+        setTimeout(function(){
+            document.getElementById("dispatchScannerInput")?.focus();
+        },100);
     };
 
     async function savePackPrice(packId,value){
-        const data = await InventoryAPI.request(
-            `/dispatch-workflow/packs/${packId}/price`,
-            {
-                method:"POST",
-                body:JSON.stringify({sale_amount:value || "0.000"})
-            }
-        );
-
-        if(!data.success){
-            throw new Error(data.error || "Could not save sale price");
-        }
+        const mills = parseDispatchMills(value || "0.000");
+        dispatchPriceMills.set(Number(packId),mills);
 
         const pack = findPack(packId);
         if(pack){
-            pack.sale_total_mills = data.sale_total_mills;
+            pack.sale_total_mills = mills;
         }
+
+        writeDispatchState();
 
         const completeButton = document.getElementById("dispatchCompleteSalesButton");
         if(completeButton){
             completeButton.disabled = !allScansComplete() || !allPricesReady();
         }
 
-        return data;
+        return {success:true,sale_total_mills:mills};
     }
 
     window.dispatchPriceChanged = function(packId,value){
@@ -1768,25 +1900,63 @@
 
         try{
             await saveCurrentPrice();
+            await ensureExistingWorkflowBackend();
 
-            const packIds = activeSessionPacks().map(pack => Number(pack.id));
-            const data = await InventoryAPI.request(
-                "/dispatch-workflow/session/complete",
-                {
-                    method:"POST",
-                    body:JSON.stringify({pack_ids:packIds})
+            const packs = activeSessionPacks();
+            const completed = [];
+            const failed = [];
+
+            for(const pack of packs){
+                const packId = Number(pack.id);
+
+                try{
+                    const saleMills = Number(dispatchPriceMills.get(packId) || 0);
+                    const data = await InventoryAPI.request(
+                        `/shipping-labels/${packId}/packed`,
+                        {
+                            method:"POST",
+                            body:JSON.stringify({
+                                complete_sale:true,
+                                sale_amount:formatMills(saleMills),
+                                verified_items:(pack.items || []).map(item => ({
+                                    item_id:Number(item.id),
+                                    verified_qty:Number(dispatchVerifiedQty.get(Number(item.id)) || 0)
+                                })),
+                                items:(pack.items || []).map(item => ({
+                                    item_id:Number(item.id),
+                                    barcode:item.matched_barcode || dispatchBestLocation(item).barcode || "",
+                                    location:item.picked_location || dispatchBestLocation(item).location || ""
+                                }))
+                            })
+                        }
+                    );
+
+                    if(!data || !data.success){
+                        throw new Error(data?.error || "Could not complete this sale");
+                    }
+
+                    completed.push({
+                        pack_id:packId,
+                        label_order:pack.label_order,
+                        sale_amount:data.sale_amount || formatMills(saleMills)
+                    });
+                    clearDispatchPackState(packId);
+                }catch(error){
+                    failed.push({
+                        pack_id:packId,
+                        label_order:pack.label_order,
+                        error:error.message || "Could not complete this sale"
+                    });
                 }
-            );
+            }
 
-            dispatchCompletionResults = data;
+            dispatchCompletionResults = {completed,failed};
             await loadQueue();
-
-            const failed = Array.isArray(data.failed) ? data.failed : [];
-            const completed = Array.isArray(data.completed) ? data.completed : [];
 
             if(failed.length){
                 dispatchSessionPackIds = failed.map(item => Number(item.pack_id));
                 dispatchCurrentPackIndex = 0;
+                writeDispatchState();
                 renderDispatchPackingMode();
                 speakDispatch(`${completed.length} completed. ${failed.length} need attention.`);
                 return;
@@ -2026,16 +2196,15 @@
         const button = document.getElementById("dispatchLetsPackBtn");
         if(!button) return;
 
-        const packing = (queueCache || []).filter(pack => {
-            return pack.status === "packing" && pack.sale_status !== "completed";
-        });
+        const resumable = dispatchSessionPackIds
+            .map(findPack)
+            .filter(pack => pack && String(pack.status || "") !== "packed");
 
-        if(packing.length){
-            button.textContent = `Resume Packing (${packing.length})`;
+        if(resumable.length){
+            button.textContent = `Resume Packing (${resumable.length})`;
             button.onclick = async function(){
                 await loadDispatchPreferences();
-                dispatchSessionPackIds = packing.map(pack => Number(pack.id));
-                dispatchCurrentPackIndex = 0;
+                dispatchCurrentPackIndex = Math.max(0,Math.min(dispatchCurrentPackIndex,resumable.length - 1));
                 enterDispatchPackingMode();
             };
         }else{
@@ -2047,6 +2216,7 @@
     }
 
     function initialiseDispatchWorkflow(){
+        readDispatchState();
         injectDispatchWorkflowStyles();
         injectWorkflowControls();
         loadDispatchPreferences();
@@ -2077,6 +2247,8 @@
             const originalLoadQueue = loadQueue;
             loadQueue = async function(){
                 const result = await originalLoadQueue();
+                hydrateDispatchQueueState();
+                renderQueue();
                 refreshLetsPackButton();
 
                 if(dispatchPackingActive){
