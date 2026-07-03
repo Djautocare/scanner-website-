@@ -423,6 +423,20 @@
             actions.appendChild(button);
         }
 
+        if(actions && !document.getElementById("dispatchClearAllBtn")){
+            const button = document.createElement("button");
+            button.id = "dispatchClearAllBtn";
+            button.type = "button";
+            button.className = "danger";
+            button.textContent = "Clear All";
+            button.disabled = true;
+            button.title = "Remove every unfinished job from this workspace's packing queue";
+            button.onclick = function(){
+                window.dispatchClearAllPackingQueue();
+            };
+            actions.appendChild(button);
+        }
+
         if(!document.getElementById("dispatchWorkflowResult")){
             const result = document.createElement("div");
             result.id = "dispatchWorkflowResult";
@@ -438,6 +452,109 @@
             queuePanel.insertAdjacentElement("afterend", panel);
         }
     }
+
+    function clearableDispatchPacks(){
+        return (queueCache || []).filter(function(pack){
+            return (
+                String(pack.status || "") !== "packed" &&
+                String(pack.sale_status || "") !== "completed"
+            );
+        });
+    }
+
+    function refreshClearAllButton(){
+        const button = document.getElementById("dispatchClearAllBtn");
+
+        if(!button){
+            return;
+        }
+
+        const count = clearableDispatchPacks().length;
+
+        button.disabled = count === 0;
+        button.textContent = count
+            ? `Clear All (${count})`
+            : "Clear All";
+    }
+
+    window.dispatchClearAllPackingQueue = async function(){
+        const clearable = clearableDispatchPacks();
+
+        if(!clearable.length){
+            alert("There are no unfinished packing jobs to clear.");
+            refreshClearAllButton();
+            return;
+        }
+
+        const confirmed = confirm(
+            `Clear all ${clearable.length} unfinished packing job${clearable.length === 1 ? "" : "s"}?\n\n` +
+            "This removes the shipping labels and matched items from the packing queue. " +
+            "It will not remove stock and it will not delete completed sales."
+        );
+
+        if(!confirmed){
+            return;
+        }
+
+        showLoading("Clearing packing queue...");
+
+        try{
+            const data = await InventoryAPI.request(
+                "/dispatch-workflow/queue",
+                {
+                    method:"DELETE"
+                }
+            );
+
+            if(!data || !data.success){
+                throw new Error(
+                    data?.error ||
+                    "Could not clear the packing queue"
+                );
+            }
+
+            stopDispatchVoice();
+
+            dispatchSessionPackIds = [];
+            dispatchCurrentPackIndex = 0;
+            dispatchPackingActive = false;
+            dispatchManualPacked.clear();
+            dispatchCompletionResults = null;
+
+            document.body.classList.remove(
+                "dispatch-packing-active"
+            );
+
+            if(typeof loadQueue === "function"){
+                await loadQueue();
+            }
+
+            const resultBox =
+                document.getElementById(
+                    "dispatchWorkflowResult"
+                );
+
+            if(resultBox){
+                resultBox.innerHTML = `
+                    <div class="dispatch-complete">
+                        Cleared ${Number(data.deleted_count || 0)}
+                        unfinished packing job${Number(data.deleted_count || 0) === 1 ? "" : "s"}.
+                        Stock and completed sales were not changed.
+                    </div>
+                `;
+            }
+
+            refreshLetsPackButton();
+            refreshClearAllButton();
+        }catch(error){
+            alert(
+                error.message ||
+                "Could not clear the packing queue"
+            );
+        }finally{
+            hideLoading();
+        }
+    };
 
     function findPack(packId){
         return (queueCache || []).find(pack => Number(pack.id) === Number(packId)) || null;
@@ -1742,6 +1859,8 @@
     };
 
     function refreshLetsPackButton(){
+        refreshClearAllButton();
+
         const button = document.getElementById("dispatchLetsPackBtn");
         if(!button) return;
 
