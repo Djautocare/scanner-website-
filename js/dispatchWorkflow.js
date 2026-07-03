@@ -754,16 +754,187 @@
         `;
     }
 
+    function normaliseSuggestionText(value){
+        return String(value || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g," ")
+            .trim()
+            .replace(/\s+/g," ");
+    }
+
+    function dispatchProductMatchPercent(product,query){
+        const search = normaliseSuggestionText(query);
+        const description = normaliseSuggestionText(product.description);
+        const rawBarcode = String(product.barcode || "").trim();
+        const wantedBarcode = normaliseDispatchBarcode(query);
+        const actualBarcode = normaliseDispatchBarcode(rawBarcode);
+
+        if(wantedBarcode && actualBarcode === wantedBarcode){
+            return 100;
+        }
+
+        if(search && description === search){
+            return 100;
+        }
+
+        if(search && description.startsWith(search)){
+            return 96;
+        }
+
+        if(search && description.includes(search)){
+            return 92;
+        }
+
+        if(
+            wantedBarcode &&
+            actualBarcode &&
+            actualBarcode.includes(wantedBarcode)
+        ){
+            return 90;
+        }
+
+        const searchTokens = search
+            .split(" ")
+            .filter(Boolean);
+
+        const descriptionTokens = new Set(
+            description
+                .split(" ")
+                .filter(Boolean)
+        );
+
+        if(!searchTokens.length){
+            return 0;
+        }
+
+        let matchedTokens = 0;
+
+        searchTokens.forEach(function(token){
+            if(
+                descriptionTokens.has(token) ||
+                Array.from(descriptionTokens).some(
+                    descriptionToken =>
+                        descriptionToken.startsWith(token) ||
+                        token.startsWith(descriptionToken)
+                )
+            ){
+                matchedTokens++;
+            }
+        });
+
+        const ratio =
+            matchedTokens /
+            searchTokens.length;
+
+        return Math.max(
+            0,
+            Math.min(
+                89,
+                Math.round(ratio * 84)
+            )
+        );
+    }
+
     async function fetchSuggestions(query){
+        /*
+            Use the same established product-suggestion endpoint as add.html.
+
+            The Add Stock page searches:
+                /products?search=...
+
+            Dispatch filters those results down to products that currently
+            have active stock, then ranks the closest descriptions locally.
+            This removes the separate GET /dispatch-workflow/suggestions
+            dependency.
+        */
         const data = await InventoryAPI.request(
-            "/dispatch-workflow/suggestions?query=" + encodeURIComponent(query)
+            "/products?search=" +
+            encodeURIComponent(query) +
+            "&_t=" +
+            Date.now()
         );
 
         if(!data || !data.success){
-            throw new Error(data?.error || "Could not search active stock");
+            throw new Error(
+                data?.error ||
+                "Could not search existing products"
+            );
         }
 
-        return Array.isArray(data.suggestions) ? data.suggestions : [];
+        const products = Array.isArray(data.products)
+            ? data.products
+            : (
+                Array.isArray(data.results)
+                    ? data.results
+                    : []
+            );
+
+        return products
+            .map(function(product){
+                const totalQty = Number(
+                    product.total_qty ??
+                    product.current_qty ??
+                    product.currentQty ??
+                    product.stock_qty ??
+                    product.stockQty ??
+                    product.quantity ??
+                    product.qty ??
+                    0
+                );
+
+                return {
+                    product_id:
+                        product.id ||
+                        product.product_id ||
+                        "",
+
+                    inventory_id:
+                        product.inventory_id ||
+                        "",
+
+                    barcode:
+                        product.barcode ||
+                        "",
+
+                    description:
+                        product.description ||
+                        product.barcode ||
+                        "Unnamed product",
+
+                    total_qty:
+                        totalQty,
+
+                    locations:[],
+
+                    match_percent:
+                        dispatchProductMatchPercent(
+                            product,
+                            query
+                        )
+                };
+            })
+            .filter(function(product){
+                return (
+                    product.product_id &&
+                    product.inventory_id &&
+                    product.total_qty > 0
+                );
+            })
+            .sort(function(left,right){
+                const scoreDifference =
+                    Number(right.match_percent || 0) -
+                    Number(left.match_percent || 0);
+
+                if(scoreDifference !== 0){
+                    return scoreDifference;
+                }
+
+                return (
+                    Number(right.total_qty || 0) -
+                    Number(left.total_qty || 0)
+                );
+            })
+            .slice(0,12);
     }
 
     function renderSuggestionList(kind,id,suggestions){
@@ -796,8 +967,7 @@
                     <strong>${escapeDispatchHtml(item.description)}</strong>
                     <span>
                         ${escapeDispatchHtml(item.barcode)}
-                        · Qty ${escapeDispatchHtml(item.total_qty)}
-                        · ${escapeDispatchHtml(firstLocation.location || item.inventory_name || "Inventory")}
+                        · Current Qty ${escapeDispatchHtml(item.total_qty)}
                         · ${escapeDispatchHtml(item.match_percent || 0)}% match
                     </span>
                 </button>
@@ -842,10 +1012,6 @@
             return;
         }
 
-        const firstLocation = Array.isArray(suggestion.locations)
-            ? suggestion.locations[0] || {}
-            : {};
-
         document.getElementById(`dispatch-suggestions-${kind}-${id}`)?.classList.remove("open");
 
         if(kind === "add"){
@@ -859,7 +1025,11 @@
             }
 
             if(selected){
-                selected.innerHTML = `Selected: <strong>${escapeDispatchHtml(suggestion.description)}</strong> · ${escapeDispatchHtml(suggestion.barcode)} · ${escapeDispatchHtml(firstLocation.location || "No location")}`;
+                selected.innerHTML =
+                    `Selected: <strong>${escapeDispatchHtml(suggestion.description)}</strong>` +
+                    ` · ${escapeDispatchHtml(suggestion.barcode)}` +
+                    ` · Current Qty ${escapeDispatchHtml(suggestion.total_qty)}` +
+                    ` · Best stock location will be selected automatically`;
             }
 
             return;
@@ -876,8 +1046,6 @@
                     body:JSON.stringify({
                         product_id:suggestion.product_id,
                         inventory_id:suggestion.inventory_id,
-                        box_id:firstLocation.box_id || "",
-                        location:firstLocation.location || "",
                         qty
                     })
                 }
@@ -941,10 +1109,6 @@
             return;
         }
 
-        const firstLocation = Array.isArray(match.locations)
-            ? match.locations.find(location => Number(location.qty || 0) >= qty) || match.locations[0] || {}
-            : {};
-
         showLoading("Adding item to packing job...");
 
         try{
@@ -955,8 +1119,6 @@
                     body:JSON.stringify({
                         product_id:match.product_id,
                         inventory_id:match.inventory_id,
-                        box_id:firstLocation.box_id || "",
-                        location:firstLocation.location || "",
                         qty
                     })
                 }
