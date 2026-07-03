@@ -463,7 +463,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <div class="warehouse-price-card">
     <div class="input-label">Sale Amount</div>
-    <input type="number" id="saleAmount" placeholder="Sale amount £" step="0.01" min="0" oninput="renderBundleList()">
+    <input type="number" id="saleAmount" placeholder="Sale amount £" step="0.001" min="0" oninput="renderBundleList()">
     <div id="splitPreview" class="split-preview"></div>
     <div class="warehouse-status warehouse-only" id="warehouseStatus">Listening is on. Say a price, then say confirm sale.</div>
 </div>
@@ -563,7 +563,39 @@ function normaliseBarcode(value){
 
 function formatMoney(amount){
     const number = Number(amount || 0);
-    return number.toFixed(2);
+    return number.toFixed(3);
+}
+
+function poundsToMills(value){
+    const raw = String(value ?? "0")
+        .replace(/£/g, "")
+        .replace(/,/g, "")
+        .trim();
+
+    if(!/^\d+(?:\.\d{1,3})?$/.test(raw)){
+        return null;
+    }
+
+    const parts = raw.split(".");
+    const whole = Number(parts[0] || 0);
+    const decimals = String(parts[1] || "").padEnd(3, "0");
+    return whole * 1000 + Number(decimals);
+}
+
+function millsToPounds(mills){
+    return (Number(mills || 0) / 1000).toFixed(3);
+}
+
+function allocateBundleAmounts(totalMills, count){
+    const safeCount = Math.max(1, Number(count || 1));
+    const base = Math.floor(totalMills / safeCount);
+    let remainder = totalMills % safeCount;
+
+    return Array.from({length:safeCount}, function(){
+        const amount = base + (remainder > 0 ? 1 : 0);
+        if(remainder > 0) remainder--;
+        return amount;
+    });
 }
 
 
@@ -760,12 +792,24 @@ function renderBundleList(){
     const total = Number(document.getElementById("saleAmount").value || 0);
 
     if(total > 0){
-        const each = total / bundleBarcodes.length;
-        splitPreview.innerHTML =
-        "Bundle split: £" + formatMoney(total) +
-        " ÷ " + bundleBarcodes.length +
-        " item" + (bundleBarcodes.length === 1 ? "" : "s") +
-        " = £" + formatMoney(each) + " each.";
+        const totalMills = poundsToMills(
+            document.getElementById("saleAmount").value
+        );
+
+        if(totalMills !== null){
+            const allocations = allocateBundleAmounts(
+                totalMills,
+                bundleBarcodes.length
+            );
+
+            splitPreview.innerHTML =
+            "Exact bundle split: £" + millsToPounds(totalMills) +
+            " across " + bundleBarcodes.length +
+            " item" + (bundleBarcodes.length === 1 ? "" : "s") +
+            ". Line values: " +
+            allocations.map(value => "£" + millsToPounds(value)).join(", ") +
+            ".";
+        }
     }else{
         splitPreview.innerHTML =
         "Enter the total bundle price and it will split equally across the items.";
@@ -930,17 +974,25 @@ function removeBundleStock(){
         return;
     }
 
-    const totalSaleAmount = Number(document.getElementById("saleAmount").value || 0);
+    const totalSaleMills = poundsToMills(
+        document.getElementById("saleAmount").value
+    );
 
-    if(totalSaleAmount <= 0){
-        alert("Enter the total bundle sale amount");
+    if(totalSaleMills === null || totalSaleMills <= 0){
+        alert("Enter the total bundle sale amount using up to three decimal places");
         return;
     }
 
-    pendingBundleEachAmount = Number((totalSaleAmount / bundleBarcodes.length).toFixed(2));
-    pendingBundleQueue = bundleBarcodes.map(barcode => ({
+    const allocatedMills = allocateBundleAmounts(
+        totalSaleMills,
+        bundleBarcodes.length
+    );
+
+    pendingBundleEachAmount = 0;
+    pendingBundleQueue = bundleBarcodes.map((barcode,index) => ({
         barcode:normaliseBarcode(barcode),
-        location:""
+        location:"",
+        saleAmount:millsToPounds(allocatedMills[index])
     }));
     completedBundleRemovals = [];
     document.getElementById("locationChoices").innerHTML = "";
@@ -953,7 +1005,12 @@ function processNextBundleItem(){
         hideLoading();
 
         const totalRemoved = completedBundleRemovals.length;
-        const each = pendingBundleEachAmount;
+        const totalAllocated = completedBundleRemovals.reduce(
+            function(sum,item){
+                return sum + Number(item.saleAmountMills || 0);
+            },
+            0
+        );
 
         flashSuccess();
         speakText("Sale complete");
@@ -962,7 +1019,8 @@ function processNextBundleItem(){
         document.getElementById("result").innerText =
         "Bundle removed. " + totalRemoved +
         " item" + (totalRemoved === 1 ? "" : "s") +
-        " sold at £" + formatMoney(each) + " each.";
+        " recorded for £" + millsToPounds(totalAllocated) +
+        " in total using exact 0.001 allocation.";
 
         bundleBarcodes = [];
         pendingBundleItem = null;
@@ -990,7 +1048,7 @@ function processNextBundleItem(){
             barcode:pendingBundleItem.barcode,
             qty:1,
             location:pendingBundleItem.location || "",
-            saleAmount:Number(formatMoney(pendingBundleEachAmount)),
+            saleAmount:pendingBundleItem.saleAmount || "0.000",
             oneSalesRow:true
         })
     })
@@ -1007,7 +1065,10 @@ function processNextBundleItem(){
             completedBundleRemovals.push({
                 barcode:pendingBundleItem.barcode,
                 location:data.location,
-                remainingQty:data.remainingQty
+                remainingQty:data.remainingQty,
+                saleAmountMills:poundsToMills(
+                    pendingBundleItem.saleAmount || "0.000"
+                ) || 0
             });
 
             document.getElementById("result").innerText =
@@ -1434,7 +1495,7 @@ window.addEventListener("load", function(){
 });
 </script>
 
-<script src="js/removePreferences.js?v=3"></script>
+<script src="js/removePreferences.js?v=4"></script>
 
 
 <script src="js/appShell.js?v=1"></script>
