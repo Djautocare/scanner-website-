@@ -2738,7 +2738,7 @@ document.getElementById("searchBtn").addEventListener("click", async () => {
     showLoading("Searching item locations...");
 
     try{
-        const res = await apiFetch("/shipping-labels/search-locations", { method:"POST" });
+        const res = await apiFetch("/dispatch-workflow/match-all", { method:"POST" });
         const data = await res.json();
         if(!data.success) throw new Error(data.error || "Search failed");
         await loadQueue();
@@ -3297,6 +3297,8 @@ setTimeout(function(){
 }, 800);
 </script>
 
+
+<script src="js/dispatchWorkflow.js?v=1"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
