@@ -755,8 +755,18 @@ const InventoryOSAppShell = (function(){
 
         const titleParts =
             findTitleAndSubtitle(
-                panel
+                page
             );
+
+        const originalTitleParent =
+            titleParts.title
+                ? titleParts.title.parentElement
+                : null;
+
+        const originalSubtitleParent =
+            titleParts.subtitle
+                ? titleParts.subtitle.parentElement
+                : null;
 
         const mount =
             document.createElement(
@@ -806,6 +816,28 @@ const InventoryOSAppShell = (function(){
                 titleParts.subtitle
             );
         }
+
+        [
+            originalTitleParent,
+            originalSubtitleParent
+        ]
+            .filter(
+                (parent,index,array) =>
+                    parent &&
+                    array.indexOf(parent) === index
+            )
+            .forEach(
+                function(parent){
+                    if(
+                        parent !== page &&
+                        parent !== panel &&
+                        parent.children.length === 0 &&
+                        !parent.textContent.trim()
+                    ){
+                        parent.remove();
+                    }
+                }
+            );
 
         document
             .getElementById(
