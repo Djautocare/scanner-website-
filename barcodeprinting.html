@@ -11,7 +11,6 @@
 <title>Barcode Printing</title>
 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
 
 <style>
 html{touch-action:manipulation;}
@@ -411,6 +410,8 @@ button{
 </style>
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/inventoryTopbar.css">
+
+<link rel="stylesheet" href="css/appShell.css?v=3">
 </head>
 
 <body>
@@ -422,8 +423,6 @@ button{
 
 <h1>Barcode Printing</h1>
 <p class="subtitle" id="barcodePrintingSubtitle">Print product labels, box labels, barcode ranges and saved print jobs</p>
-<div id="barcodeQzStatus" class="empty-state" style="margin:0 0 14px;">Uses the 2×1 printer selected in Printer Setup.</div>
-<a class="link-card" href="printer-setup.html" style="margin:0 0 18px;">Open Printer Setup</a>
 
 <div class="tab-grid">
     <button class="tab-button active" onclick="showSection('productSection', this)">Product Labels</button>
@@ -523,7 +522,6 @@ button{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/qzClient.js?v=2"></script>
 <script src="js/inventoryTopbar.js?v=4"></script>
 <script src="js/workspace.js?v=4"></script>
 <script>
@@ -735,191 +733,15 @@ function renderBarcodes(barcodes){
     loadedLabels = barcodes;
 }
 
-function setBarcodeQzStatus(message){
-    const box =
-        document.getElementById(
-            "barcodeQzStatus"
-        );
-
-    if(box){
-        box.textContent = message;
-    }
-}
-
-function buildQzBarcodeLabelHtml(barcode){
-    const safeBarcode =
-        String(barcode || "")
-            .replace(/&/g,"&amp;")
-            .replace(/</g,"&lt;")
-            .replace(/>/g,"&gt;")
-            .replace(/"/g,"&quot;")
-            .replace(/'/g,"&#039;");
-
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
-<style>
-@page{size:2in 1in;margin:0}
-html,body{
-    width:2in;
-    height:1in;
-    margin:0;
-    padding:0;
-    background:white;
-    overflow:hidden
-}
-*{box-sizing:border-box}
-.label{
-    width:2in;
-    height:1in;
-    padding:.06in .07in;
-    text-align:center;
-    font-family:Arial,sans-serif;
-    color:black
-}
-#qzBarcode{
-    display:block;
-    width:1.86in;
-    height:.67in;
-    margin:0 auto
-}
-.number{
-    font-size:10px;
-    line-height:1;
-    font-weight:bold;
-    margin-top:.01in
-}
-</style>
-</head>
-<body>
-<div class="label">
-<svg id="qzBarcode"></svg>
-<div class="number">${safeBarcode}</div>
-</div>
-<script>
-window.onload=function(){
-    JsBarcode(
-        "#qzBarcode",
-        "${safeBarcode}",
-        {
-            format:"CODE128",
-            displayValue:false,
-            width:1.55,
-            height:48,
-            margin:0
-        }
-    );
-};
-<\/script>
-</body>
-</html>`;
-}
-
-async function printBarcodeListQz(barcodes){
-    const printer =
-        await InventoryOSQZ
-            .requirePrinter("product");
-
-    setBarcodeQzStatus(
-        "Sending " +
-        barcodes.length +
-        " label" +
-        (
-            barcodes.length === 1
-                ? ""
-                : "s"
-        ) +
-        " to " +
-        printer +
-        "..."
-    );
-
-    for(
-        let index = 0;
-        index < barcodes.length;
-        index++
-    ){
-        const config =
-            qz.configs.create(
-                printer,
-                {
-                    size:{
-                        width:2,
-                        height:1
-                    },
-                    units:"in",
-                    margins:0,
-                    copies:1,
-                    scaleContent:false,
-                    jobName:
-                        "InventoryOS Barcode " +
-                        (index + 1) +
-                        " of " +
-                        barcodes.length
-                }
-            );
-
-        await qz.print(
-            config,
-            [{
-                type:"pixel",
-                format:"html",
-                flavor:"plain",
-                data:
-                    buildQzBarcodeLabelHtml(
-                        barcodes[index]
-                    )
-            }]
-        );
-    }
-
-    setBarcodeQzStatus(
-        "Sent " +
-        barcodes.length +
-        " label" +
-        (
-            barcodes.length === 1
-                ? ""
-                : "s"
-        ) +
-        " to " +
-        printer +
-        "."
-    );
-}
-
-async function printLoadedLabels(){
-    if(
-        !loadedLabels ||
-        loadedLabels.length === 0
-    ){
-        alert(
-            "Generate or load labels first"
-        );
-
+function printLoadedLabels(){
+    if(!loadedLabels || loadedLabels.length === 0){
+        alert("Generate or load labels first");
         return;
     }
 
-    try{
-        await printBarcodeListQz(
-            loadedLabels
-        );
-    }catch(error){
-        console.error(error);
-
-        setBarcodeQzStatus(
-            error.message ||
-            String(error)
-        );
-
-        alert(
-            error.message ||
-            "Could not print labels"
-        );
-    }
+    setTimeout(function(){
+        window.print();
+    },200);
 }
 
 function clearLoadedLabels(){
@@ -930,33 +752,17 @@ function clearLoadedLabels(){
     document.getElementById("jobPreview").innerHTML = "";
 }
 
-async function printSingleBarcode(barcode){
+function printSingleBarcode(barcode){
     if(!barcode){
         alert("Missing barcode");
         return;
     }
 
-    renderBarcodes([
-        barcode
-    ]);
+    renderBarcodes([barcode]);
 
-    try{
-        await printBarcodeListQz([
-            barcode
-        ]);
-    }catch(error){
-        console.error(error);
-
-        setBarcodeQzStatus(
-            error.message ||
-            String(error)
-        );
-
-        alert(
-            error.message ||
-            "Could not print label"
-        );
-    }
+    setTimeout(function(){
+        window.print();
+    },200);
 }
 
 /* PRODUCT LIVE SEARCH */
@@ -1355,5 +1161,7 @@ if(document.readyState === "loading"){
 }
 </script>
 
+
+<script src="js/appShell.js?v=3"></script>
 </body>
 </html>
