@@ -110,6 +110,12 @@ const InventoryOSAppShell = (function(){
                     href:"dispatch-centre.html",
                     icon:"▣",
                     label:"Dispatch Centre"
+                },
+                {
+                    key:"corrections",
+                    href:"corrections.html",
+                    icon:"✎",
+                    label:"Corrections"
                 }
             ]
         },
