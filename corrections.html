@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Corrections</title>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    font-family:Arial,sans-serif;
+    margin:0;
+    padding:18px;
+    color:white;
+    background:#0d0d0d;
+}
+
+.page{max-width:1120px;margin:0 auto;}
+.panel{padding:0;}
+
+h1{margin:0 0 6px;font-size:34px;}
+.subtitle{color:#aaa;margin:0 0 22px;}
+
+.correction-toolbar{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:12px;
+    align-items:center;
+    margin-bottom:16px;
+}
+
+.filter-grid{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.filter-button,
+.refresh-button,
+.save-button,
+.cancel-button{
+    width:auto;
+    margin:0;
+    padding:11px 14px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.1);
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.filter-button,
+.cancel-button{
+    background:#242128;
+}
+
+.filter-button.active,
+.refresh-button,
+.save-button{
+    background:linear-gradient(135deg,var(--accent),rgba(var(--accent-rgb),.62));
+    border-color:rgba(var(--accent-rgb),.42);
+}
+
+.activity-list{
+    display:grid;
+    gap:12px;
+}
+
+.activity-card{
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    padding:17px;
+    background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.012));
+}
+
+.activity-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:14px;
+}
+
+.activity-title{
+    font-size:17px;
+    font-weight:bold;
+}
+
+.activity-meta{
+    color:#aaa;
+    font-size:12px;
+    line-height:1.45;
+    margin-top:5px;
+}
+
+.action-badge,
+.corrected-badge{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:5px 9px;
+    font-size:11px;
+    font-weight:bold;
+}
+
+.action-badge{
+    color:var(--accent);
+    border:1px solid rgba(var(--accent-rgb),.28);
+    background:rgba(var(--accent-rgb),.1);
+}
+
+.corrected-badge{
+    color:#8dffb0;
+    border:1px solid rgba(40,167,69,.28);
+    background:rgba(40,167,69,.1);
+    margin-left:6px;
+}
+
+.activity-values{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:9px;
+    margin-top:14px;
+}
+
+.value-box{
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:12px;
+    padding:10px;
+    background:#100e13;
+}
+
+.value-label{
+    color:#888;
+    font-size:10px;
+    font-weight:bold;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
+
+.value-text{
+    margin-top:4px;
+    font-weight:bold;
+    word-break:break-word;
+}
+
+.correct-button{
+    width:100%;
+    margin:13px 0 0;
+    padding:11px;
+    border-radius:12px;
+    border:1px solid rgba(var(--accent-rgb),.35);
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    background:rgba(var(--accent-rgb),.1);
+}
+
+.editor{
+    display:none;
+    margin-top:13px;
+    padding-top:13px;
+    border-top:1px solid rgba(255,255,255,.07);
+}
+
+.editor.open{display:block;}
+
+.editor-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;
+}
+
+.editor label{
+    color:#bbb;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.editor input,
+.editor select{
+    width:100%;
+    padding:12px;
+    margin-top:6px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:11px;
+    background:#151219;
+    color:white;
+    font-size:15px;
+}
+
+.editor-actions{
+    display:flex;
+    gap:9px;
+    margin-top:12px;
+}
+
+.empty-state{
+    padding:24px;
+    text-align:center;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    color:#aaa;
+    background:#100e13;
+}
+
+.result{
+    margin-bottom:14px;
+    border-radius:12px;
+    padding:11px;
+    display:none;
+}
+
+.result.success{
+    display:block;
+    color:#8dffb0;
+    border:1px solid rgba(40,167,69,.25);
+    background:rgba(40,167,69,.09);
+}
+
+.result.error{
+    display:block;
+    color:#ff9b9b;
+    border:1px solid rgba(220,53,69,.25);
+    background:rgba(220,53,69,.09);
+}
+
+@media(max-width:720px){
+    .correction-toolbar{grid-template-columns:1fr;}
+    .refresh-button{width:100%;}
+    .activity-head{display:block;}
+    .action-badge{margin-top:10px;}
+    .editor-actions{display:grid;}
+    .save-button,.cancel-button{width:100%;}
+}
+</style>
+
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
+<link rel="stylesheet" href="css/appShell.css?v=4">
+</head>
+
+<body>
+<div class="page">
+<div class="panel">
+
+<div id="inventory-topbar"></div>
+
+<h1>Corrections</h1>
+<p class="subtitle">Review the latest 30 stock and sales entries, then safely correct quantities, locations or sale prices.</p>
+
+<div id="result" class="result"></div>
+
+<div class="correction-toolbar">
+    <div class="filter-grid">
+        <button class="filter-button active" data-filter="ALL" onclick="setFilter('ALL',this)">All</button>
+        <button class="filter-button" data-filter="ADD" onclick="setFilter('ADD',this)">Added</button>
+        <button class="filter-button" data-filter="REMOVE" onclick="setFilter('REMOVE',this)">Removed</button>
+        <button class="filter-button" data-filter="MOVE" onclick="setFilter('MOVE',this)">Moved</button>
+        <button class="filter-button" data-filter="SALE" onclick="setFilter('SALE',this)">Sales</button>
+        <button class="filter-button" data-filter="RETURN" onclick="setFilter('RETURN',this)">Returns</button>
+    </div>
+
+    <button class="refresh-button" onclick="loadCorrections()">Refresh</button>
+</div>
+
+<div id="activityList" class="activity-list">
+    <div class="empty-state">Loading recent activity...</div>
+</div>
+
+</div>
+</div>
+
+<script src="js/theme.js"></script>
+<script src="js/api.js"></script>
+<script src="js/inventoryTopbar.js?v=5"></script>
+<script src="js/workspace.js?v=4"></script>
+<script src="js/appShell.js?v=4"></script>
+
+<script>
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
+let correctionEntries = [];
+let correctionLocations = [];
+let currentFilter = "ALL";
+
+function safe(value){
+    return String(value ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+}
+
+function money(value){
+    return Number(value || 0).toFixed(3);
+}
+
+function formatTime(value){
+    const date = new Date(value);
+
+    if(Number.isNaN(date.getTime())){
+        return "";
+    }
+
+    return date.toLocaleString("en-GB",{
+        day:"2-digit",
+        month:"short",
+        year:"numeric",
+        hour:"2-digit",
+        minute:"2-digit"
+    });
+}
+
+function showResult(message,state){
+    const box = document.getElementById("result");
+    box.textContent = message || "";
+    box.className = "result " + (state || "");
+}
+
+function setFilter(filter,button){
+    currentFilter = filter;
+
+    document.querySelectorAll(".filter-button")
+        .forEach(item=>item.classList.remove("active"));
+
+    button.classList.add("active");
+    renderCorrections();
+}
+
+function locationsForInventory(inventoryId){
+    return correctionLocations.filter(
+        location =>
+            String(location.inventory_id) ===
+            String(inventoryId)
+    );
+}
+
+function locationOptions(inventoryId,selected){
+    const options = locationsForInventory(inventoryId);
+
+    return options.map(location=>{
+        const isSelected =
+            String(location.box_name) ===
+            String(selected || "");
+
+        return `
+            <option
+                value="${safe(location.box_name)}"
+                ${isSelected ? "selected" : ""}
+            >
+                ${safe(location.box_name)}
+            </option>
+        `;
+    }).join("");
+}
+
+function valueBox(label,value){
+    if(value === null || value === undefined || value === ""){
+        return "";
+    }
+
+    return `
+        <div class="value-box">
+            <div class="value-label">${safe(label)}</div>
+            <div class="value-text">${safe(value)}</div>
+        </div>
+    `;
+}
+
+function canCorrect(entry){
+    return (
+        entry.source_type === "sale" ||
+        ["ADD","REMOVE","MOVE","RETURN"].includes(
+            String(entry.action || "").toUpperCase()
+        )
+    );
+}
+
+function renderEditor(entry){
+    const action = String(entry.action || "").toUpperCase();
+    const id = safe(entry.source_id);
+    const inventoryId = safe(entry.inventory_id);
+
+    if(entry.source_type === "sale"){
+        return `
+            <div class="editor" id="editor-${entry.source_type}-${id}">
+                <div class="editor-grid">
+                    <label>
+                        Correct sale price
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            id="price-${id}"
+                            value="${safe(entry.sale_amount || "0.000")}"
+                        >
+                    </label>
+
+                    <label>
+                        Reason
+                        <input
+                            type="text"
+                            id="reason-${entry.source_type}-${id}"
+                            placeholder="Optional correction note"
+                        >
+                    </label>
+                </div>
+
+                <div class="editor-actions">
+                    <button class="save-button" onclick="saveSaleCorrection('${id}')">
+                        Save Correction
+                    </button>
+                    <button class="cancel-button" onclick="toggleEditor('${entry.source_type}','${id}')">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    const fromField = ["REMOVE","MOVE"].includes(action)
+        ? `
+            <label>
+                From location
+                <select id="from-${id}">
+                    ${locationOptions(inventoryId,entry.from_location)}
+                </select>
+            </label>
+        `
+        : "";
+
+    const toField = ["ADD","RETURN","MOVE"].includes(action)
+        ? `
+            <label>
+                To location
+                <select id="to-${id}">
+                    ${locationOptions(inventoryId,entry.to_location)}
+                </select>
+            </label>
+        `
+        : "";
+
+    return `
+        <div class="editor" id="editor-${entry.source_type}-${id}">
+            <div class="editor-grid">
+                <label>
+                    Correct quantity
+                    <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        id="qty-${id}"
+                        value="${Number(entry.qty || 1)}"
+                    >
+                </label>
+
+                ${fromField}
+                ${toField}
+
+                <label>
+                    Reason
+                    <input
+                        type="text"
+                        id="reason-${entry.source_type}-${id}"
+                        placeholder="Optional correction note"
+                    >
+                </label>
+            </div>
+
+            <div class="editor-actions">
+                <button class="save-button" onclick="saveMovementCorrection('${id}')">
+                    Save Correction
+                </button>
+                <button class="cancel-button" onclick="toggleEditor('${entry.source_type}','${id}')">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function renderCorrections(){
+    const target = document.getElementById("activityList");
+
+    const entries = correctionEntries.filter(entry=>{
+        if(currentFilter === "ALL"){
+            return true;
+        }
+
+        return String(entry.action || "").toUpperCase() === currentFilter;
+    });
+
+    if(!entries.length){
+        target.innerHTML = `
+            <div class="empty-state">
+                No matching activity found in the latest 30 entries.
+            </div>
+        `;
+        return;
+    }
+
+    target.innerHTML = entries.map(entry=>{
+        const action = String(entry.action || "").toUpperCase();
+        const title =
+            entry.description ||
+            entry.barcode ||
+            "Unknown item";
+
+        const corrected = entry.has_corrections
+            ? `<span class="corrected-badge">Corrected ${Number(entry.correction_count || 1)}×</span>`
+            : "";
+
+        return `
+            <div class="activity-card">
+                <div class="activity-head">
+                    <div>
+                        <div class="activity-title">${safe(title)}</div>
+                        <div class="activity-meta">
+                            ${safe(formatTime(entry.event_time))}
+                            · ${safe(entry.inventory_name || "Inventory")}
+                            · ${safe(entry.entered_by || "User")}
+                            ${entry.barcode ? `· ${safe(entry.barcode)}` : ""}
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="action-badge">${safe(action)}</span>
+                        ${corrected}
+                    </div>
+                </div>
+
+                <div class="activity-values">
+                    ${valueBox("Quantity",entry.qty)}
+                    ${valueBox("From",entry.from_location)}
+                    ${valueBox("To",entry.to_location)}
+                    ${
+                        entry.sale_amount !== null
+                            ? valueBox("Sale price","£" + money(entry.sale_amount))
+                            : ""
+                    }
+                    ${valueBox("Note",entry.note)}
+                </div>
+
+                ${
+                    canCorrect(entry)
+                        ? `
+                            <button
+                                class="correct-button"
+                                onclick="toggleEditor('${safe(entry.source_type)}','${safe(entry.source_id)}')"
+                            >
+                                Correct Entry
+                            </button>
+
+                            ${renderEditor(entry)}
+                        `
+                        : `
+                            <div class="activity-meta" style="margin-top:12px;">
+                                This entry is shown for reference and cannot change stock directly.
+                            </div>
+                        `
+                }
+            </div>
+        `;
+    }).join("");
+}
+
+function toggleEditor(type,id){
+    document
+        .getElementById(`editor-${type}-${id}`)
+        ?.classList
+        .toggle("open");
+}
+
+async function loadCorrections(){
+    showResult("","");
+
+    document.getElementById("activityList").innerHTML =
+        `<div class="empty-state">Loading recent activity...</div>`;
+
+    try{
+        const [activityData,locationData] = await Promise.all([
+            InventoryAPI.request("/corrections/recent?_t=" + Date.now()),
+            InventoryAPI.request("/corrections/locations?_t=" + Date.now())
+        ]);
+
+        if(!activityData.success){
+            throw new Error(activityData.error || "Could not load activity");
+        }
+
+        if(!locationData.success){
+            throw new Error(locationData.error || "Could not load locations");
+        }
+
+        correctionEntries = activityData.entries || [];
+        correctionLocations = locationData.locations || [];
+        renderCorrections();
+    }catch(error){
+        document.getElementById("activityList").innerHTML =
+            `<div class="empty-state">${safe(error.message || "Could not load corrections")}</div>`;
+    }
+}
+
+async function saveSaleCorrection(id){
+    const price = document.getElementById("price-" + id).value;
+    const reason = document.getElementById("reason-sale-" + id).value;
+
+    try{
+        const data = await InventoryAPI.request(
+            "/corrections/sale/" + encodeURIComponent(id),
+            {
+                method:"POST",
+                body:JSON.stringify({
+                    sale_amount:price,
+                    reason
+                })
+            }
+        );
+
+        if(!data.success){
+            throw new Error(data.error || "Could not save correction");
+        }
+
+        showResult(data.message || "Correction saved","success");
+        await loadCorrections();
+    }catch(error){
+        showResult(error.message || "Could not save correction","error");
+    }
+}
+
+async function saveMovementCorrection(id){
+    const entry = correctionEntries.find(
+        item =>
+            item.source_type === "movement" &&
+            String(item.source_id) === String(id)
+    );
+
+    if(!entry){
+        return;
+    }
+
+    const payload = {
+        qty:document.getElementById("qty-" + id).value,
+        reason:document.getElementById("reason-movement-" + id).value
+    };
+
+    const from = document.getElementById("from-" + id);
+    const to = document.getElementById("to-" + id);
+
+    if(from){
+        payload.from_location = from.value;
+    }
+
+    if(to){
+        payload.to_location = to.value;
+    }
+
+    try{
+        const data = await InventoryAPI.request(
+            "/corrections/movement/" + encodeURIComponent(id),
+            {
+                method:"POST",
+                body:JSON.stringify(payload)
+            }
+        );
+
+        if(!data.success){
+            throw new Error(data.error || "Could not save correction");
+        }
+
+        showResult(data.message || "Correction saved","success");
+        await loadCorrections();
+    }catch(error){
+        showResult(error.message || "Could not save correction","error");
+    }
+}
+
+window.addEventListener(
+    "inventory-selection-changed",
+    loadCorrections
+);
+
+loadCorrections();
+</script>
+</body>
+</html>
