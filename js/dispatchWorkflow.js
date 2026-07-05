@@ -1,4 +1,68 @@
 (function(){
+
+    const DISPATCH_PRINTED_PACKS_KEY =
+        "inventoryos_dispatch_printed_pack_ids_v1";
+
+    function getAlreadyPrintedDispatchPackIds(){
+        try{
+            const parsed = JSON.parse(
+                localStorage.getItem(
+                    DISPATCH_PRINTED_PACKS_KEY
+                ) || "{}"
+            );
+
+            const now = Date.now();
+            const maxAge =
+                14 * 24 * 60 * 60 * 1000;
+
+            return Object.fromEntries(
+                Object.entries(
+                    parsed &&
+                    typeof parsed === "object"
+                        ? parsed
+                        : {}
+                ).filter(([,printedAt]) => {
+                    return (
+                        Number(printedAt || 0) > 0 &&
+                        now - Number(printedAt) <= maxAge
+                    );
+                })
+            );
+        }catch(error){
+            return {};
+        }
+    }
+
+    function rememberPrintedDispatchPackIds(packIds){
+        const printed =
+            getAlreadyPrintedDispatchPackIds();
+
+        const printedAt =
+            Date.now();
+
+        (Array.isArray(packIds) ? packIds : [])
+            .map(value => Number(value || 0))
+            .filter(Boolean)
+            .forEach(packId => {
+                printed[String(packId)] =
+                    printedAt;
+            });
+
+        localStorage.setItem(
+            DISPATCH_PRINTED_PACKS_KEY,
+            JSON.stringify(printed)
+        );
+    }
+
+    function wasDispatchPackAlreadyPrinted(packId){
+        const printed =
+            getAlreadyPrintedDispatchPackIds();
+
+        return Boolean(
+            printed[String(Number(packId || 0))]
+        );
+    }
+
     const DEFAULT_PREFERENCES = {
         track_sales_data:true,
         dispatch_require_scan:false,
@@ -1386,19 +1450,38 @@
             writeDispatchState();
 
             if(dispatchPreferences.dispatch_auto_print_on_start){
-                document.getElementById("loadingText").innerText = "Printing 4×6 shipping labels...";
-
-                try{
-                    await printPackingLabels(dispatchSessionPackIds);
-                }catch(printError){
-                    const continuePacking = confirm(
-                        "The packing jobs are ready, but label printing failed.\n\n" +
-                        (printError.message || "Unknown print error") +
-                        "\n\nContinue to the packing screen anyway?"
+                const unprintedPackIds =
+                    dispatchSessionPackIds.filter(
+                        packId =>
+                            !wasDispatchPackAlreadyPrinted(
+                                packId
+                            )
                     );
 
-                    if(!continuePacking){
-                        throw printError;
+                if(unprintedPackIds.length){
+                    document.getElementById("loadingText").innerText =
+                        unprintedPackIds.length === dispatchSessionPackIds.length
+                            ? "Printing 4×6 shipping labels..."
+                            : "Printing only labels that have not already printed...";
+
+                    try{
+                        await printPackingLabels(
+                            unprintedPackIds
+                        );
+
+                        rememberPrintedDispatchPackIds(
+                            unprintedPackIds
+                        );
+                    }catch(printError){
+                        const continuePacking = confirm(
+                            "The packing jobs are ready, but label printing failed.\n\n" +
+                            (printError.message || "Unknown print error") +
+                            "\n\nContinue to the packing screen anyway?"
+                        );
+
+                        if(!continuePacking){
+                            throw printError;
+                        }
                     }
                 }
             }
