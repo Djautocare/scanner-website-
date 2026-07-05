@@ -41,6 +41,9 @@ const InventoryOSAppShell = (function(){
         },
         "settings.html":{
             key:"settings"
+        },
+        "corrections.html":{
+            key:"corrections"
         }
     };
 
@@ -206,7 +209,10 @@ const InventoryOSAppShell = (function(){
             "stale":"stale",
             "stale-stock":"stale",
 
-            "settings":"settings"
+            "settings":"settings",
+
+            "corrections":"corrections",
+            "correction":"corrections"
         };
 
         if(routeAliases[route]){
