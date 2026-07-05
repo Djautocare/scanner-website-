@@ -1291,3 +1291,34 @@ body[data-ios-page="expenses"] .info-card{
         padding:15px !important;
     }
 }
+
+/* ============================================================
+   CORRECTIONS PAGE
+   ============================================================ */
+
+body[data-ios-page="corrections"] .ios-shell-frame{
+    max-width:1250px;
+}
+
+body[data-ios-page="corrections"] .activity-card{
+    transition:
+        border-color 150ms ease,
+        transform 150ms ease;
+}
+
+body[data-ios-page="corrections"] .activity-card:hover{
+    border-color:rgba(var(--accent-rgb),0.22);
+}
+
+body[data-ios-page="corrections"] .filter-button.active,
+body[data-ios-page="corrections"] .refresh-button,
+body[data-ios-page="corrections"] .save-button{
+    color:#fff !important;
+    border-color:rgba(var(--accent-rgb),0.42) !important;
+    background:
+        linear-gradient(
+            135deg,
+            var(--accent),
+            rgba(var(--accent-rgb),0.63)
+        ) !important;
+}
