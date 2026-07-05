@@ -2066,6 +2066,71 @@ function base64ToBlob(base64, mimeType){
 }
 
 
+
+const DISPATCH_PRINTED_PACKS_KEY =
+    "inventoryos_dispatch_printed_pack_ids_v1";
+
+function getAlreadyPrintedDispatchPackIds(){
+    try{
+        const parsed = JSON.parse(
+            localStorage.getItem(
+                DISPATCH_PRINTED_PACKS_KEY
+            ) || "{}"
+        );
+
+        const now = Date.now();
+        const maxAge =
+            14 * 24 * 60 * 60 * 1000;
+
+        return Object.fromEntries(
+            Object.entries(
+                parsed &&
+                typeof parsed === "object"
+                    ? parsed
+                    : {}
+            ).filter(([,printedAt]) => {
+                return (
+                    Number(printedAt || 0) > 0 &&
+                    now - Number(printedAt) <= maxAge
+                );
+            })
+        );
+    }catch(error){
+        return {};
+    }
+}
+
+function rememberPrintedDispatchPackIds(packIds){
+    const printed =
+        getAlreadyPrintedDispatchPackIds();
+
+    const printedAt =
+        Date.now();
+
+    (Array.isArray(packIds) ? packIds : [])
+        .map(value => Number(value || 0))
+        .filter(Boolean)
+        .forEach(packId => {
+            printed[String(packId)] =
+                printedAt;
+        });
+
+    localStorage.setItem(
+        DISPATCH_PRINTED_PACKS_KEY,
+        JSON.stringify(printed)
+    );
+}
+
+function wasDispatchPackAlreadyPrinted(packId){
+    const printed =
+        getAlreadyPrintedDispatchPackIds();
+
+    return Boolean(
+        printed[String(Number(packId || 0))]
+    );
+}
+
+
 async function autoPrintNewlyCreatedPacks(packs){
     const packIds = (Array.isArray(packs) ? packs : [])
         .map(pack => Number(pack.id || 0))
@@ -2107,6 +2172,10 @@ async function autoPrintNewlyCreatedPacks(packs){
 
     await printDispatchImagesWithQz(
         printLabels
+    );
+
+    rememberPrintedDispatchPackIds(
+        packIds
     );
 
     return printLabels.length;
@@ -2738,7 +2807,7 @@ document.getElementById("searchBtn").addEventListener("click", async () => {
     showLoading("Searching item locations...");
 
     try{
-        const res = await apiFetch("/dispatch-workflow/match-all", { method:"POST" });
+        const res = await apiFetch("/shipping-labels/search-locations", { method:"POST" });
         const data = await res.json();
         if(!data.success) throw new Error(data.error || "Search failed");
         await loadQueue();
@@ -2850,6 +2919,10 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", async
             "Sending 4×6 label images directly to your selected 4×6 printer...";
 
         await printDispatchImagesWithQz(printLabels);
+
+        rememberPrintedDispatchPackIds(
+            labels.map(label => label.packId)
+        );
     }catch(err){
         console.error(err);
 
@@ -3297,8 +3370,6 @@ setTimeout(function(){
 }, 800);
 </script>
 
-
-<script src="js/dispatchWorkflow.js?v=1"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
