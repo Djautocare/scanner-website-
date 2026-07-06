@@ -87,7 +87,22 @@
     let dispatchPriceMills = new Map();
     let dispatchVerifiedQty = new Map();
 
-    function escapeDispatchHtml(value){
+    
+function resolveInventoryApiUrl(value){
+    const url = String(value || "").trim();
+
+    if(!url){
+        return "";
+    }
+
+    if(/^https?:\/\//i.test(url)){
+        return url;
+    }
+
+    return InventoryAPI.API_BASE + (url.startsWith("/") ? url : "/" + url);
+}
+
+function escapeDispatchHtml(value){
         return String(value || "")
             .replace(/&/g,"&amp;")
             .replace(/</g,"&lt;")
@@ -893,7 +908,7 @@
 
         const courierPreview = pack.preview_url
             ? `<div class="courier-preview">${courierPreviewMedia(
-                InventoryAPI.API_BASE + pack.preview_url,
+                resolveInventoryApiUrl(pack.preview_url),
                 pack.preview_type,
                 "Courier label preview"
             )}</div>`
@@ -1644,7 +1659,7 @@
         const price = formatMills(dispatchPriceMills.get(Number(pack.id)) || 0);
         const preview = pack.preview_url
             ? courierPreviewMedia(
-                InventoryAPI.API_BASE + pack.preview_url,
+                resolveInventoryApiUrl(pack.preview_url),
                 pack.preview_type,
                 `Shipping label ${pack.label_order}`
             )
