@@ -240,11 +240,11 @@ button{
 
     <div class="input-label">Password</div>
     <div class="input-wrap">
-        <input type="password" id="registerPassword" placeholder="Minimum 8 characters" autocomplete="new-password" oninput="updateStrength()">
+        <input type="password" id="registerPassword" placeholder="10+ chars, uppercase, lowercase and number" autocomplete="new-password" oninput="updateStrength()">
         <button class="eye-btn" type="button" onclick="togglePassword('registerPassword', this)">Show</button>
     </div>
 
-    <div class="strength" id="strengthText">Use at least 8 characters.</div>
+    <div class="strength" id="strengthText">Use 10+ characters with uppercase, lowercase and a number.</div>
     <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
 
     <button class="primary-button" onclick="register()" type="button">Create Account</button>
@@ -330,7 +330,7 @@ function updateStrength(){
     const text = document.getElementById("strengthText");
 
     let score = 0;
-    if(password.length >= 8) score++;
+    if(password.length >= 10) score++;
     if(/[A-Z]/.test(password)) score++;
     if(/[0-9]/.test(password)) score++;
     if(/[^A-Za-z0-9]/.test(password)) score++;
