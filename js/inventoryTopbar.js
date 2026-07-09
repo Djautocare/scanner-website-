@@ -345,6 +345,60 @@ const InventoryTopbar = (function(){
         );
     }
 
+    async function loadBillingStatus(){
+        try{
+            const data = await InventoryAPI.request(
+                "/billing/status"
+            );
+
+            if(data && data.success){
+                return data.billing || null;
+            }
+        }catch(error){
+            console.warn(
+                "Could not load billing status:",
+                error
+            );
+        }
+
+        return null;
+    }
+
+    function planKeyClass(value){
+        return String(value || "unknown")
+            .toLowerCase()
+            .replace(/[^a-z0-9_-]/g,"-");
+    }
+
+    function planPillText(billing){
+        if(!billing){
+            return "Plan";
+        }
+
+        if(!billing.plan_selected){
+            return "Plan Required";
+        }
+
+        const planName =
+            billing.plan_name ||
+            billing.plan_key ||
+            "Plan";
+
+        return String(planName).replace(/\s+plan$/i,"") + " Plan";
+    }
+
+    function planPillTitle(billing){
+        if(!billing){
+            return "Open billing and plan settings";
+        }
+
+        if(!billing.plan_selected){
+            return "Choose an InventoryOS plan";
+        }
+
+        return "Current plan: " + planPillText(billing) + ". Click to change plan.";
+    }
+
     async function createWorkspace(){
         const name = prompt(
             "New workspace name, e.g. My Warehouse, Family Stock, Trade Outlet"
@@ -482,6 +536,7 @@ const InventoryTopbar = (function(){
 
         let workspace = null;
         let inventories = [];
+        let billingStatus = null;
 
         try{
             [
@@ -529,6 +584,9 @@ const InventoryTopbar = (function(){
         }catch(error){
             console.error(error);
         }
+
+        billingStatus =
+            await loadBillingStatus();
 
         const selectedWorkspace =
             state.groups.find(
@@ -661,6 +719,18 @@ const InventoryTopbar = (function(){
                     </div>
 
                     <button
+                        class="inventory-plan-pill inventory-plan-${escapeHtml(planKeyClass(billingStatus?.plan_key))}${billingStatus && !billingStatus.plan_selected ? " inventory-plan-required" : ""}"
+                        type="button"
+                        id="inventoryPlanButton"
+                        title="${escapeHtml(planPillTitle(billingStatus))}"
+                    >
+                        <span class="plan-dot">●</span>
+                        <span id="inventoryPlanLabel">
+                            ${escapeHtml(planPillText(billingStatus))}
+                        </span>
+                    </button>
+
+                    <button
                         class="topbar-settings"
                         type="button"
                         onclick="window.location.href='settings.html'"
@@ -714,6 +784,11 @@ const InventoryTopbar = (function(){
         const inventoryCreateBtn =
             document.getElementById(
                 "inventoryCreateBtn"
+            );
+
+        const planButton =
+            document.getElementById(
+                "inventoryPlanButton"
             );
 
         function closeMenus(except){
@@ -1070,6 +1145,16 @@ const InventoryTopbar = (function(){
                     );
                 }
             );
+
+        if(planButton){
+            planButton.addEventListener(
+                "click",
+                function(){
+                    window.location.href =
+                        "billing.html";
+                }
+            );
+        }
 
         document.addEventListener(
             "click",
