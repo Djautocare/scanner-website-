@@ -752,21 +752,13 @@ async function runImport(){
     setResult("Importing...");
 
     try{
-        const response = await fetch(
-            InventoryAPI.API_BASE +
+        const data = await InventoryAPI.request(
             "/import/google-sheets",
             {
                 method:"POST",
-                headers:{
-                    "Authorization":
-                        "Bearer " +
-                        InventoryAPI.getToken()
-                },
                 body:formData
             }
         );
-
-        const data = await response.json();
 
         hideLoading();
 
