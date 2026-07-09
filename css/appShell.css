@@ -383,12 +383,26 @@ body.inventoryos-shell-active a{
 }
 
 .ios-shell-topbar-host .inventory-switcher-btn,
-.ios-shell-topbar-host .topbar-settings{
+.ios-shell-topbar-host .topbar-settings,
+.ios-shell-topbar-host .inventory-plan-pill{
     min-height:42px;
     padding:0 12px;
     border-color:rgba(255,255,255,0.08);
     background:rgba(255,255,255,0.035);
     font-size:11px;
+}
+
+.ios-shell-topbar-host .inventory-plan-pill{
+    flex:0 0 auto;
+    max-width:150px;
+    border-color:rgba(var(--accent-rgb),0.24);
+    background:rgba(var(--accent-rgb),0.09);
+}
+
+.ios-shell-topbar-host .inventory-plan-pill span:not(.plan-dot){
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
 }
 
 .ios-shell-topbar-host .inventory-switcher-menu{
@@ -844,13 +858,14 @@ body.inventoryos-shell-active.error-flash::after{
 
     .ios-shell-topbar-host .inventory-topbar-right{
         display:grid;
-        grid-template-columns:1fr 1fr 42px;
+        grid-template-columns:1fr 1fr 1fr 42px;
         width:100%;
     }
 
     .ios-shell-topbar-host .inventory-switcher-btn,
-    .ios-shell-topbar-host .topbar-settings{
-        width:100%;
+    .ios-shell-topbar-host .topbar-settings,
+    .ios-shell-topbar-host .inventory-plan-pill{
+        width:100% !important;
         max-width:none;
         justify-content:center;
     }
@@ -1012,6 +1027,13 @@ body.inventoryos-shell-active.error-flash::after{
 
     .ios-shell-topbar-host .inventory-switcher-btn .chev{
         margin-left:auto;
+    }
+
+    .ios-shell-topbar-host .inventory-plan-pill{
+        flex:0 0 120px;
+        width:120px !important;
+        min-width:108px;
+        justify-content:center;
     }
 
     .ios-shell-topbar-host .topbar-settings{
