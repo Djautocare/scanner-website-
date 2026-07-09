@@ -231,6 +231,20 @@ function escapeDispatchHtml(value){
         }) || locations.find(location => Number(location.qty || 0) >= required) || locations[0] || {};
     }
 
+    function dispatchItemBarcode(item){
+        const best = dispatchBestLocation(item);
+        const direct = normaliseDispatchBarcode(item?.matched_barcode);
+        const bestBarcode = normaliseDispatchBarcode(best?.barcode);
+        const locationBarcode = normaliseDispatchBarcode(
+            dispatchItemLocations(item).find(location => {
+                return String(location.location || "") === String(item?.picked_location || "") &&
+                    normaliseDispatchBarcode(location.barcode);
+            })?.barcode
+        );
+
+        return direct || bestBarcode || locationBarcode || "";
+    }
+
     function hydrateDispatchQueueState(){
         const validPackIds = new Set((queueCache || []).map(pack => Number(pack.id)));
         dispatchSessionPackIds = dispatchSessionPackIds.filter(id => validPackIds.has(Number(id)));
@@ -241,7 +255,7 @@ function escapeDispatchHtml(value){
 
             (pack.items || []).forEach(item => {
                 const best = dispatchBestLocation(item);
-                item.matched_barcode = best.barcode || item.matched_barcode || "";
+                item.matched_barcode = dispatchItemBarcode(item) || "";
                 item.matched_inventory_id = best.inventory_id || item.matched_inventory_id || "";
                 item.matched_product_id = best.product_id || item.matched_product_id || "";
                 item.matched_box_id = best.box_id || item.matched_box_id || "";
@@ -272,7 +286,7 @@ function escapeDispatchHtml(value){
             (pack.items || []).forEach(item => {
                 const locations = dispatchItemLocations(item);
                 const available = locations.reduce((sum,location) => sum + Number(location.qty || 0),0);
-                const barcode = dispatchBestLocation(item).barcode || item.matched_barcode || "";
+                const barcode = dispatchItemBarcode(item);
 
                 if(!barcode || !locations.length){
                     errors.push(`Label ${pack.label_order || pack.id}: ${item.description} has no active-stock match.`);
@@ -816,7 +830,7 @@ function escapeDispatchHtml(value){
     }
 
     function selectedMatchHtml(item){
-        if(!item.matched_barcode){
+        if(!dispatchItemBarcode(item)){
             return `
                 <div class="dispatch-match-box">
                     <div class="dispatch-match-title">No active-stock match selected</div>
@@ -838,7 +852,7 @@ function escapeDispatchHtml(value){
                     ${escapeDispatchHtml(item.description)}
                 </div>
                 <div class="dispatch-match-meta">
-                    ${escapeDispatchHtml(item.matched_barcode)}
+                    ${escapeDispatchHtml(dispatchItemBarcode(item))}
                     · ${escapeDispatchHtml(item.picked_location || matchedLocation.location || "No location")}
                     · ${escapeDispatchHtml(matchedLocation.qty || 0)} currently available
                 </div>
@@ -1588,7 +1602,7 @@ function escapeDispatchHtml(value){
                     <div class="dispatch-item-name">${escapeDispatchHtml(item.description)}</div>
                     <div class="dispatch-item-location">
                         ${escapeDispatchHtml(item.picked_location || "Location not selected")}
-                        · ${escapeDispatchHtml(item.matched_barcode || "No barcode")}
+                        · ${escapeDispatchHtml(dispatchItemBarcode(item) || "No barcode")}
                     </div>
                 </div>
 
@@ -1871,7 +1885,7 @@ function escapeDispatchHtml(value){
         }
 
         const item = (pack.items || []).find(row => {
-            return normaliseDispatchBarcode(row.matched_barcode) === barcode &&
+            return dispatchItemBarcode(row) === barcode &&
                 Number(dispatchVerifiedQty.get(Number(row.id)) || 0) < Number(row.qty || 0);
         });
 
@@ -2022,7 +2036,7 @@ function escapeDispatchHtml(value){
                                 })),
                                 items:(pack.items || []).map(item => ({
                                     item_id:Number(item.id),
-                                    barcode:item.matched_barcode || dispatchBestLocation(item).barcode || "",
+                                    barcode:dispatchItemBarcode(item),
                                     location:item.picked_location || dispatchBestLocation(item).location || ""
                                 }))
                             })
