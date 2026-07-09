@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Billing - InventoryOS</title>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    margin:0;
+    min-height:100vh;
+    font-family:Arial,sans-serif;
+    color:white;
+    background:
+        radial-gradient(circle at top left, rgba(142,68,255,0.18), transparent 35%),
+        radial-gradient(circle at top right, rgba(32,224,208,0.10), transparent 35%),
+        #080909;
+    padding:18px;
+}
+
+.page{max-width:1180px;margin:0 auto;}
+
+.header{
+    background:linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025));
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:22px;
+    padding:24px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    margin-bottom:18px;
+}
+
+.top-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+}
+
+.logo{font-size:28px;font-weight:900;letter-spacing:-0.5px;}
+.logo span{color:var(--accent,#b56cff);}
+
+h1{font-size:38px;margin:18px 0 8px 0;}
+.subtitle{color:#aeb2bd;margin:0;line-height:1.5;max-width:760px;}
+
+.status-card{
+    background:linear-gradient(145deg,#181a20,#111216);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:18px;
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:16px;
+    align-items:center;
+}
+
+.status-title{font-size:20px;font-weight:bold;margin-bottom:6px;}
+.status-text{color:#aeb2bd;line-height:1.45;}
+
+.badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border-radius:999px;
+    padding:8px 12px;
+    font-weight:bold;
+    background:rgba(181,108,255,0.16);
+    border:1px solid rgba(181,108,255,0.35);
+    color:#dcc7ff;
+    white-space:nowrap;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+}
+
+.plan{
+    position:relative;
+    background:linear-gradient(145deg,#15151b,#0f0f14);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:22px;
+    padding:22px;
+    min-height:520px;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 18px 50px rgba(0,0,0,0.24);
+}
+
+.plan.popular{
+    border-color:rgba(var(--accent-rgb,181,108,255),0.75);
+    background:
+        radial-gradient(circle at top right, rgba(var(--accent-rgb,181,108,255),0.20), transparent 40%),
+        linear-gradient(145deg,#17131f,#0f0f14);
+}
+
+.popular-tag{
+    position:absolute;
+    top:0;
+    left:50%;
+    transform:translate(-50%,-1px);
+    background:var(--accent,#8e44ff);
+    padding:10px 18px;
+    border-radius:0 0 10px 10px;
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:0.5px;
+}
+
+.plan h2{font-size:24px;margin:16px 0 10px 0;}
+.plan-desc{color:#aeb2bd;line-height:1.5;min-height:66px;font-size:14px;}
+.price{font-size:42px;font-weight:900;margin:28px 0 4px;letter-spacing:-1px;}
+.price span{font-size:14px;color:#aeb2bd;font-weight:normal;letter-spacing:0;}
+.rule{height:1px;background:rgba(255,255,255,0.08);margin:24px 0;}
+
+.features{display:flex;flex-direction:column;gap:13px;margin-bottom:22px;}
+.feature{display:flex;gap:10px;align-items:flex-start;color:#e7e2ff;font-size:14px;line-height:1.35;}
+.tick{color:var(--accent,#b56cff);font-weight:bold;}
+
+button,.link-btn{
+    width:100%;
+    border:0;
+    border-radius:14px;
+    padding:14px;
+    font-size:16px;
+    font-weight:900;
+    cursor:pointer;
+    text-decoration:none;
+    text-align:center;
+    display:block;
+    margin-top:auto;
+}
+
+.primary{
+    background:linear-gradient(135deg,var(--accent,#8e44ff),rgba(var(--accent-rgb,142,68,255),0.75));
+    color:white;
+    box-shadow:0 12px 35px rgba(var(--accent-rgb,142,68,255),0.24);
+}
+
+.secondary{
+    background:rgba(255,255,255,0.045);
+    color:white;
+    border:1px solid rgba(255,255,255,0.10);
+}
+
+button:disabled{opacity:0.55;cursor:not-allowed;}
+
+.message{
+    margin-top:18px;
+    background:#111216;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:14px;
+    color:#d7d7d7;
+    min-height:48px;
+    line-height:1.45;
+}
+
+.actions{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+}
+
+.small-action{
+    width:auto;
+    margin:0;
+    padding:11px 14px;
+    font-size:14px;
+}
+
+.footer-links{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:18px;
+}
+
+@media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:650px){
+    body{padding:14px;}
+    h1{font-size:32px;}
+    .grid{grid-template-columns:1fr;}
+    .status-card{grid-template-columns:1fr;}
+    .footer-links{grid-template-columns:1fr;}
+    .plan{min-height:auto;}
+}
+</style>
+
+<link rel="stylesheet" href="css/theme.css">
+</head>
+
+<body>
+<div class="page">
+    <div class="header">
+        <div class="top-row">
+            <div class="logo">Inventory<span>OS</span></div>
+            <div class="actions">
+                <button class="secondary small-action" onclick="openPortal()">Manage billing</button>
+                <button class="secondary small-action" onclick="window.location.href='index.html'">Dashboard</button>
+            </div>
+        </div>
+
+        <h1>Billing & Plans</h1>
+        <p class="subtitle">
+            Choose the plan for the current workspace. Owners and admins can subscribe, downgrade to Free, or open the Stripe customer portal.
+        </p>
+    </div>
+
+    <div class="status-card">
+        <div>
+            <div class="status-title" id="statusTitle">Loading billing status...</div>
+            <div class="status-text" id="statusText">Please wait while InventoryOS checks your workspace plan.</div>
+        </div>
+        <div class="badge" id="statusBadge">Checking...</div>
+    </div>
+
+    <div class="grid" id="plansGrid"></div>
+
+    <div id="message" class="message">Ready.</div>
+
+    <div class="footer-links">
+        <a class="link-btn secondary" href="index.html">← Back to Dashboard</a>
+        <a class="link-btn secondary" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
+    </div>
+</div>
+
+<script src="js/theme.js"></script>
+<script src="js/api.js"></script>
+<script>
+if(!InventoryAPI.requireLogin()){
+    throw new Error("Login required");
+}
+
+let currentStatus = null;
+
+function money(value){
+    return Number(value || 0).toFixed(2).replace(".00","");
+}
+
+function setMessage(text){
+    document.getElementById("message").innerText = text || "";
+}
+
+function planDescription(key){
+    if(key === "free") return "For trying InventoryOS or managing a very small stockholding.";
+    if(key === "starter") return "For casual sellers ready to move beyond spreadsheets.";
+    if(key === "pro") return "For serious resellers managing more stock, labels and buying batches.";
+    if(key === "business") return "For teams running inventory together across several workspaces.";
+    return "InventoryOS plan.";
+}
+
+function buttonLabel(plan){
+    if(currentStatus && currentStatus.billing && currentStatus.billing.plan_key === plan.key){
+        return "Current Plan";
+    }
+
+    if(plan.key === "free") return "Start Free";
+    return "Choose " + plan.name;
+}
+
+function renderStatus(data){
+    currentStatus = data;
+
+    const billing = data.billing || {};
+    const title = document.getElementById("statusTitle");
+    const text = document.getElementById("statusText");
+    const badge = document.getElementById("statusBadge");
+
+    title.innerText = (billing.plan_name || "Plan") + " workspace";
+    badge.innerText = (billing.billing_status || "unknown").toUpperCase();
+
+    let line = "Current workspace: " + ((data.workspace && data.workspace.name) || "Workspace") + ".";
+
+    if(billing.trial_ends_at && billing.billing_status === "trialing"){
+        line += " Trial ends: " + new Date(billing.trial_ends_at).toLocaleString() + ".";
+    }
+
+    if(billing.subscription_current_period_end){
+        line += " Current period ends: " + new Date(billing.subscription_current_period_end).toLocaleString() + ".";
+    }
+
+    if(billing.subscription_cancel_at_period_end){
+        line += " This subscription is set to cancel at the end of the current period.";
+    }
+
+    text.innerText = line;
+}
+
+function renderPlans(plans){
+    const grid = document.getElementById("plansGrid");
+    grid.innerHTML = "";
+
+    plans.forEach(plan=>{
+        const card = document.createElement("div");
+        card.className = "plan" + (plan.key === "pro" ? " popular" : "");
+
+        const features = (plan.features || []).map(feature=>
+            `<div class="feature"><span class="tick">✓</span><span>${feature}</span></div>`
+        ).join("");
+
+        card.innerHTML = `
+            ${plan.key === "pro" ? '<div class="popular-tag">MOST POPULAR</div>' : ''}
+            <h2>${plan.name}</h2>
+            <div class="plan-desc">${planDescription(plan.key)}</div>
+            <div class="price">£${money(plan.monthly_price)} <span>/month</span></div>
+            <div class="rule"></div>
+            <div class="features">${features}</div>
+            <button class="${plan.key === "pro" ? "primary" : "secondary"}" data-plan="${plan.key}">
+                ${buttonLabel(plan)}
+            </button>
+        `;
+
+        const button = card.querySelector("button");
+
+        if(currentStatus && currentStatus.billing && currentStatus.billing.plan_key === plan.key){
+            button.disabled = true;
+        }
+
+        button.addEventListener("click",()=>choosePlan(plan.key));
+        grid.appendChild(card);
+    });
+}
+
+async function loadBilling(){
+    setMessage("Loading billing status...");
+
+    try{
+        const data = await InventoryAPI.request("/billing/status");
+
+        if(!data.success){
+            setMessage(data.error || "Could not load billing status.");
+            return;
+        }
+
+        renderStatus(data);
+        renderPlans(data.plans || []);
+        setMessage("Ready.");
+
+    }catch(error){
+        console.error(error);
+        setMessage("Could not load billing status: " + error.message);
+    }
+}
+
+async function choosePlan(plan){
+    if(!plan) return;
+
+    if(plan === "free"){
+        if(!confirm("Switch this workspace to the Free plan? Paid features may be locked.")){
+            return;
+        }
+    }
+
+    setMessage("Starting " + plan + " plan...");
+
+    try{
+        const data = await InventoryAPI.request("/billing/create-checkout-session",{
+            method:"POST",
+            body:JSON.stringify({plan})
+        });
+
+        if(!data.success){
+            setMessage(data.error || "Could not start checkout.");
+            return;
+        }
+
+        if(data.free_selected){
+            setMessage("Free plan selected.");
+            await loadBilling();
+            return;
+        }
+
+        if(data.url){
+            window.location.href = data.url;
+            return;
+        }
+
+        setMessage("No checkout URL was returned.");
+
+    }catch(error){
+        console.error(error);
+        setMessage("Checkout error: " + error.message);
+    }
+}
+
+async function openPortal(){
+    setMessage("Opening billing portal...");
+
+    try{
+        const data = await InventoryAPI.request("/billing/create-portal-session",{
+            method:"POST",
+            body:JSON.stringify({})
+        });
+
+        if(!data.success){
+            setMessage(data.error || "Could not open billing portal.");
+            return;
+        }
+
+        window.location.href = data.url;
+
+    }catch(error){
+        console.error(error);
+        setMessage("Portal error: " + error.message);
+    }
+}
+
+loadBilling();
+</script>
+</body>
+</html>
