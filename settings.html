@@ -323,7 +323,7 @@ button{
 <link rel="stylesheet" href="css/theme.css">
 <link rel="stylesheet" href="css/inventoryTopbar.css">
 
-<link rel="stylesheet" href="css/appShell.css?v=3">
+<link rel="stylesheet" href="css/appShell.css?v=4">
 </head>
 
 <body>
@@ -340,7 +340,7 @@ button{
         </div>
 
         <div class="profile-card">
-            <div class="profile-icon">👤</div>
+            <div class="profile-icon" id="profileIcon">OS</div>
             <div>
                 <div class="profile-name" id="profileName">Loading...</div>
                 <div class="profile-email" id="profileEmail">Loading...</div>
@@ -529,7 +529,7 @@ button{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/inventoryTopbar.js?v=5"></script>
+<script src="js/inventoryTopbar.js?v=6"></script>
 
 <script>
 if(!InventoryAPI.requireLogin()){
@@ -578,20 +578,95 @@ function setPasswordResult(text, type){
     el.innerText = text || "";
 }
 
+function safeText(value){
+    return String(
+        value === undefined ||
+        value === null
+            ? ""
+            : value
+    );
+}
+
+function userDisplayName(user){
+    return (
+        user?.name ||
+        user?.full_name ||
+        user?.display_name ||
+        user?.email ||
+        "InventoryOS User"
+    );
+}
+
+function userInitials(value){
+    const clean = safeText(value).trim();
+
+    if(!clean){
+        return "OS";
+    }
+
+    const parts = clean
+        .split(/\s+/)
+        .filter(Boolean);
+
+    if(parts.length >= 2){
+        return (
+            parts[0][0] +
+            parts[parts.length - 1][0]
+        ).toUpperCase();
+    }
+
+    return clean.slice(0,2).toUpperCase();
+}
+
+function applyProfile(user){
+    const safeUser = user || {};
+    const name = userDisplayName(safeUser);
+
+    document.getElementById("profileName").innerText =
+        name;
+
+    document.getElementById("profileEmail").innerText =
+        safeUser.email || "Signed in";
+
+    const icon = document.getElementById("profileIcon");
+
+    if(icon){
+        icon.innerText = userInitials(name);
+    }
+}
+
 async function loadProfile(){
     try{
         const user = InventoryAPI.getUser ? InventoryAPI.getUser() : null;
 
         if(user){
-            document.getElementById("profileName").innerText = user.name || "User";
-            document.getElementById("profileEmail").innerText = user.email || "";
+            applyProfile(user);
         }
 
         const data = await InventoryAPI.me();
 
         if(data.success && data.user){
-            document.getElementById("profileName").innerText = data.user.name || "User";
-            document.getElementById("profileEmail").innerText = data.user.email || "";
+            if(
+                typeof InventoryAPI.saveSession === "function" &&
+                typeof InventoryAPI.getToken === "function"
+            ){
+                const mergedUser = {
+                    ...(InventoryAPI.getUser ? InventoryAPI.getUser() || {} : {}),
+                    ...data.user
+                };
+
+                InventoryAPI.saveSession(
+                    InventoryAPI.getToken(),
+                    mergedUser
+                );
+            }
+
+            applyProfile(
+                {
+                    ...(InventoryAPI.getUser ? InventoryAPI.getUser() || {} : {}),
+                    ...data.user
+                }
+            );
         }
     }catch(error){
         console.error(error);
@@ -773,6 +848,6 @@ showAdminCard();
 <script src="js/removePreferences.js?v=4"></script>
 
 
-<script src="js/appShell.js?v=3"></script>
+<script src="js/appShell.js?v=4"></script>
 </body>
 </html>
