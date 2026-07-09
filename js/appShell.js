@@ -301,6 +301,97 @@ const InventoryOSAppShell = (function(){
             .toUpperCase();
     }
 
+    function applyUserToShell(user){
+        const safeUser = user || {};
+        const name = userName(safeUser);
+        const avatar = initials(name);
+        const email = safeUser.email || "Signed in";
+
+        const sidebarAvatar =
+            document.getElementById(
+                "iosShellSidebarAvatar"
+            );
+
+        const sidebarName =
+            document.getElementById(
+                "iosShellUserName"
+            );
+
+        const sidebarEmail =
+            document.getElementById(
+                "iosShellUserEmail"
+            );
+
+        const headerAvatar =
+            document.getElementById(
+                "iosShellHeaderAvatar"
+            );
+
+        if(sidebarAvatar){
+            sidebarAvatar.textContent = avatar;
+        }
+
+        if(headerAvatar){
+            headerAvatar.textContent = avatar;
+        }
+
+        if(sidebarName){
+            sidebarName.textContent = name;
+        }
+
+        if(sidebarEmail){
+            sidebarEmail.textContent = email;
+        }
+    }
+
+    async function refreshUserProfile(){
+        try{
+            const localUser = getUser();
+
+            if(localUser && Object.keys(localUser).length){
+                applyUserToShell(localUser);
+            }
+
+            if(
+                !window.InventoryAPI ||
+                typeof InventoryAPI.me !== "function"
+            ){
+                return;
+            }
+
+            const data = await InventoryAPI.me();
+
+            if(data && data.success && data.user){
+                if(
+                    typeof InventoryAPI.saveSession === "function" &&
+                    typeof InventoryAPI.getToken === "function"
+                ){
+                    const mergedUser = {
+                        ...(InventoryAPI.getUser ? InventoryAPI.getUser() || {} : {}),
+                        ...data.user
+                    };
+
+                    InventoryAPI.saveSession(
+                        InventoryAPI.getToken(),
+                        mergedUser
+                    );
+                }
+
+                applyUserToShell(
+                    {
+                        ...(InventoryAPI.getUser ? InventoryAPI.getUser() || {} : {}),
+                        ...data.user
+                    }
+                );
+            }
+        }catch(error){
+            console.warn(
+                "Could not refresh InventoryOS user profile:",
+                error
+            );
+        }
+    }
+
     function buildNavigation(activeKey){
         return NAV_GROUPS
             .map(group => {
@@ -489,16 +580,16 @@ const InventoryOSAppShell = (function(){
 
                     <div class="ios-shell-sidebar-footer">
                         <div class="ios-shell-user">
-                            <div class="ios-shell-avatar">
+                            <div class="ios-shell-avatar" id="iosShellSidebarAvatar">
                                 ${escapeHtml(avatar)}
                             </div>
 
                             <div class="ios-shell-user-copy">
-                                <strong>
+                                <strong id="iosShellUserName">
                                     ${escapeHtml(name)}
                                 </strong>
 
-                                <span>
+                                <span id="iosShellUserEmail">
                                     ${escapeHtml(user.email || "Signed in")}
                                 </span>
                             </div>
@@ -540,7 +631,7 @@ const InventoryOSAppShell = (function(){
                                     id="iosShellTopbarHost"
                                 ></div>
 
-                                <div class="ios-shell-header-avatar">
+                                <div class="ios-shell-header-avatar" id="iosShellHeaderAvatar">
                                     ${escapeHtml(avatar)}
                                 </div>
                             </div>
@@ -859,6 +950,7 @@ const InventoryOSAppShell = (function(){
 
         ensureTopbar();
         bindShellEvents();
+        refreshUserProfile();
 
         if(
             window.InventoryWorkspace &&
