@@ -150,6 +150,12 @@ button,.link-btn{
 
 button:disabled{opacity:0.55;cursor:not-allowed;}
 
+.link-btn.disabled{
+    opacity:0.45;
+    cursor:not-allowed;
+    pointer-events:none;
+}
+
 .message{
     margin-top:18px;
     background:#111216;
@@ -202,13 +208,13 @@ button:disabled{opacity:0.55;cursor:not-allowed;}
             <div class="logo">Inventory<span>OS</span></div>
             <div class="actions">
                 <button class="secondary small-action" onclick="openPortal()">Manage billing</button>
-                <button class="secondary small-action" onclick="window.location.href='index.html'">Dashboard</button>
+                <button class="secondary small-action" id="dashboardTopButton" onclick="goDashboard()" disabled>Dashboard</button>
             </div>
         </div>
 
         <h1>Billing & Plans</h1>
         <p class="subtitle">
-            Choose the plan for the current workspace. Owners and admins can subscribe, downgrade to Free, or open the Stripe customer portal.
+            Choose a plan for the current workspace. New accounts must select a plan before the dashboard and inventory tools unlock.
         </p>
     </div>
 
@@ -225,7 +231,7 @@ button:disabled{opacity:0.55;cursor:not-allowed;}
     <div id="message" class="message">Ready.</div>
 
     <div class="footer-links">
-        <a class="link-btn secondary" href="index.html">← Back to Dashboard</a>
+        <a class="link-btn secondary disabled" href="#" id="dashboardFooterButton" onclick="goDashboard(); return false;">← Back to Dashboard</a>
         <a class="link-btn secondary" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
     </div>
 </div>
@@ -247,6 +253,38 @@ function setMessage(text){
     document.getElementById("message").innerText = text || "";
 }
 
+function canAccessDashboard(){
+    return Boolean(
+        currentStatus &&
+        currentStatus.billing &&
+        currentStatus.billing.plan_selected &&
+        currentStatus.billing.access_allowed
+    );
+}
+
+function updateDashboardButtons(){
+    const allowed = canAccessDashboard();
+    const topButton = document.getElementById("dashboardTopButton");
+    const footerButton = document.getElementById("dashboardFooterButton");
+
+    if(topButton){
+        topButton.disabled = !allowed;
+    }
+
+    if(footerButton){
+        footerButton.classList.toggle("disabled", !allowed);
+    }
+}
+
+function goDashboard(){
+    if(!canAccessDashboard()){
+        setMessage("Choose a plan first. Once a plan is selected, your dashboard will unlock.");
+        return;
+    }
+
+    window.location.href = "index.html";
+}
+
 function planDescription(key){
     if(key === "free") return "For trying InventoryOS or managing a very small stockholding.";
     if(key === "starter") return "For casual sellers ready to move beyond spreadsheets.";
@@ -256,7 +294,12 @@ function planDescription(key){
 }
 
 function buttonLabel(plan){
-    if(currentStatus && currentStatus.billing && currentStatus.billing.plan_key === plan.key){
+    if(
+        currentStatus &&
+        currentStatus.billing &&
+        currentStatus.billing.plan_selected &&
+        currentStatus.billing.plan_key === plan.key
+    ){
         return "Current Plan";
     }
 
@@ -289,7 +332,17 @@ function renderStatus(data){
         line += " This subscription is set to cancel at the end of the current period.";
     }
 
+    if(!billing.plan_selected){
+        title.innerText = "Choose your InventoryOS plan";
+        badge.innerText = "PLAN REQUIRED";
+        line = "Select Free, Starter, Pro or Business to unlock your dashboard.";
+    }else if(!billing.access_allowed){
+        badge.innerText = (billing.billing_status || "locked").toUpperCase();
+        line += " Choose or update a plan to continue using InventoryOS.";
+    }
+
     text.innerText = line;
+    updateDashboardButtons();
 }
 
 function renderPlans(plans){
@@ -318,7 +371,12 @@ function renderPlans(plans){
 
         const button = card.querySelector("button");
 
-        if(currentStatus && currentStatus.billing && currentStatus.billing.plan_key === plan.key){
+        if(
+            currentStatus &&
+            currentStatus.billing &&
+            currentStatus.billing.plan_selected &&
+            currentStatus.billing.plan_key === plan.key
+        ){
             button.disabled = true;
         }
 
@@ -340,7 +398,14 @@ async function loadBilling(){
 
         renderStatus(data);
         renderPlans(data.plans || []);
-        setMessage("Ready.");
+
+        if(data.billing && !data.billing.plan_selected){
+            setMessage("Choose a plan to unlock your InventoryOS dashboard.");
+        }else if(data.billing && !data.billing.access_allowed){
+            setMessage("Your current billing status is locked. Choose or update a plan to continue.");
+        }else{
+            setMessage("Plan active. You can open the dashboard.");
+        }
 
     }catch(error){
         console.error(error);
@@ -371,7 +436,7 @@ async function choosePlan(plan){
         }
 
         if(data.free_selected){
-            setMessage("Free plan selected.");
+            setMessage("Free plan selected. Unlocking dashboard...");
             await loadBilling();
             return;
         }
