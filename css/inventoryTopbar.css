@@ -51,7 +51,8 @@
 }
 
 .inventory-switcher-btn,
-.topbar-settings{
+.topbar-settings,
+.inventory-plan-pill{
     width:auto;
     margin:0;
     background:#2a2a2a;
@@ -64,6 +65,36 @@
     gap:8px;
     cursor:pointer;
     font-weight:bold;
+}
+
+.inventory-plan-pill{
+    text-decoration:none;
+    white-space:nowrap;
+    border-color:rgba(var(--accent-rgb,181,108,255),0.28);
+    background:rgba(var(--accent-rgb,181,108,255),0.10);
+    color:#fff;
+    box-shadow:inset 0 0 18px rgba(var(--accent-rgb,181,108,255),0.035);
+}
+
+.inventory-plan-pill:hover{
+    border-color:rgba(var(--accent-rgb,181,108,255),0.48);
+    background:rgba(var(--accent-rgb,181,108,255),0.16);
+}
+
+.inventory-plan-pill .plan-dot{
+    color:var(--accent,#b56cff);
+    font-size:10px;
+    line-height:1;
+    filter:drop-shadow(0 0 6px rgba(var(--accent-rgb,181,108,255),0.45));
+}
+
+.inventory-plan-required{
+    border-color:rgba(255,184,77,0.40);
+    background:rgba(255,184,77,0.10);
+}
+
+.inventory-plan-required .plan-dot{
+    color:#ffb84d;
 }
 
 .topbar-settings{
@@ -169,7 +200,8 @@
     }
 
     .inventory-switcher-btn,
-    .topbar-settings{
+    .topbar-settings,
+    .inventory-plan-pill{
         width:100%;
         justify-content:center;
     }
