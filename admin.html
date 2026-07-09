@@ -108,7 +108,7 @@ textarea{
 table{
     width:100%;
     border-collapse:collapse;
-    min-width:880px;
+    min-width:1060px;
 }
 
 th,td{
@@ -303,7 +303,7 @@ tr{background:#17171f;}
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Plan Override</th><th>Status</th><th>Last Activity</th><th>Created</th>
+                        <th>Name</th><th>Email</th><th>Current Plan</th><th>Plan Override</th><th>Verified</th><th>Admin</th><th>Status</th><th>Last Activity</th><th>Created</th>
                     </tr>
                 </thead>
                 <tbody id="latestUsersTable"></tbody>
@@ -321,7 +321,7 @@ tr{background:#17171f;}
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th><th>Email</th><th>Verified</th><th>Admin</th><th>Plan Override</th><th>Status</th><th>Last Seen</th><th>Actions</th>
+                        <th>Name</th><th>Email</th><th>Current Plan</th><th>Plan Override</th><th>Verified</th><th>Admin</th><th>Status</th><th>Last Seen</th><th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="usersTable"></tbody>
@@ -444,7 +444,7 @@ tr{background:#17171f;}
         return value ? `<span class="badge admin">Admin</span>` : "-";
     }
 
-    function planOverrideLabel(plan){
+    function planLabel(plan){
         const key = String(plan || "").trim().toLowerCase();
 
         if(key === "free") return "Free";
@@ -452,7 +452,62 @@ tr{background:#17171f;}
         if(key === "pro") return "Pro";
         if(key === "business") return "Business";
 
-        return "No override";
+        return "No plan";
+    }
+
+    function planOverrideLabel(plan){
+        const key = String(plan || "").trim().toLowerCase();
+
+        if(!key) return "No override";
+        return planLabel(key);
+    }
+
+    function safePlanClass(plan){
+        const key = String(plan || "").trim().toLowerCase();
+
+        if(key === "free" || key === "starter" || key === "pro" || key === "business"){
+            return key;
+        }
+
+        return "none";
+    }
+
+    function currentPlanBadge(user){
+        const status = String(user?.effective_plan_status || "").trim().toLowerCase();
+        const key = String(user?.effective_plan_key || user?.current_plan_key || "").trim().toLowerCase();
+
+        if(status === "no_workspace"){
+            return `<span class="badge plan-none">No workspace</span>`;
+        }
+
+        if(status === "no_plan_selected"){
+            return `<span class="badge warn">Plan required</span>`;
+        }
+
+        if(!key){
+            return `<span class="badge plan-none">No plan</span>`;
+        }
+
+        const suffix = status === "admin_plan_override"
+            ? " · free"
+            : "";
+
+        return `<span class="badge plan-${escapeHtml(safePlanClass(key))}">${escapeHtml(planLabel(key) + suffix)}</span>`;
+    }
+
+    function workspacePlanBadge(user){
+        const status = String(user?.current_billing_status || "").trim().toLowerCase();
+        const key = String(user?.current_plan_key || "").trim().toLowerCase();
+
+        if(status === "none" && !user?.current_workspace_id){
+            return `<span class="badge plan-none">No workspace</span>`;
+        }
+
+        if(user?.current_plan_selected === false || status === "no_plan_selected"){
+            return `<span class="badge warn">Plan required</span>`;
+        }
+
+        return `<span class="badge plan-${escapeHtml(safePlanClass(key))}">${escapeHtml(planLabel(key))}</span>`;
     }
 
     function planOverrideBadge(user){
@@ -564,7 +619,7 @@ tr{background:#17171f;}
 
     function renderLatestUsers(users){
         if(!users.length){
-            els.latestUsersTable.innerHTML = `<tr><td colspan="8">No users found.</td></tr>`;
+            els.latestUsersTable.innerHTML = `<tr><td colspan="9">No users found.</td></tr>`;
             return;
         }
 
@@ -572,9 +627,10 @@ tr{background:#17171f;}
             <tr>
                 <td>${escapeHtml(user.name || "-")}</td>
                 <td>${escapeHtml(user.email || "-")}</td>
+                <td>${currentPlanBadge(user)}</td>
+                <td>${planOverrideBadge(user)}</td>
                 <td>${verifiedBadge(user.email_verified)}</td>
                 <td>${adminBadge(user.is_admin)}</td>
-                <td>${planOverrideBadge(user)}</td>
                 <td>${statusBadge(user)}</td>
                 <td>${activeNowBadge(user)}</td>
                 <td>${fmtDate(user.created_at)}</td>
@@ -603,7 +659,7 @@ tr{background:#17171f;}
 
     function renderUsers(users){
         if(!users.length){
-            els.usersTable.innerHTML = `<tr><td colspan="8">No users found.</td></tr>`;
+            els.usersTable.innerHTML = `<tr><td colspan="9">No users found.</td></tr>`;
             return;
         }
 
@@ -615,9 +671,10 @@ tr{background:#17171f;}
             tr.innerHTML = `
                 <td>${escapeHtml(user.name || "-")}</td>
                 <td>${escapeHtml(user.email || "-")}</td>
+                <td>${currentPlanBadge(user)}</td>
+                <td>${planOverrideBadge(user)}</td>
                 <td>${verifiedBadge(user.email_verified)}</td>
                 <td>${adminBadge(user.is_admin)}</td>
-                <td>${planOverrideBadge(user)}</td>
                 <td>${statusBadge(user)}</td>
                 <td>${activeNowBadge(user)}</td>
                 <td><div class="actions"></div></td>
@@ -668,8 +725,11 @@ tr{background:#17171f;}
             <div class="detail-row"><strong>Email</strong><span>${escapeHtml(user.email || "-")}</span></div>
             <div class="detail-row"><strong>Verified</strong><span>${user.email_verified ? "Yes" : "No"}</span></div>
             <div class="detail-row"><strong>Admin</strong><span>${user.is_admin ? "Yes" : "No"}</span></div>
+            <div class="detail-row"><strong>Current Plan</strong><span>${currentPlanBadge(user)}</span></div>
+            <div class="detail-row"><strong>Stripe / Workspace Plan</strong><span>${workspacePlanBadge(user)}</span></div>
             <div class="detail-row"><strong>Plan Override</strong><span>${planOverrideBadge(user)}</span></div>
             <div class="detail-row"><strong>Override Reason</strong><span>${escapeHtml(user.admin_plan_override_reason || "-")}</span></div>
+            <div class="detail-row"><strong>Billing Status</strong><span>${escapeHtml(user.effective_plan_status || user.current_billing_status || "-")}</span></div>
             <div class="detail-row"><strong>Status</strong><span>${user.is_suspended ? "Suspended" : (user.is_online ? "🟢 Online now" : "⚪ Offline")}</span></div>
             <div class="detail-row"><strong>Last Activity</strong><span>${lastSeenText(user)}</span></div>
             <div class="detail-row"><strong>Member Since</strong><span>${fmtDate(user.created_at)}</span></div>
@@ -677,7 +737,7 @@ tr{background:#17171f;}
             <div class="billing-box">
                 <h3 style="margin-top:0;">Billing Override</h3>
                 <div class="helper-text">
-                    Give this account paid features for free. Stripe subscriptions are not changed.
+                    Give this account paid features for free. Stripe subscriptions are not changed. The current plan row above shows the effective access this user has.
                 </div>
 
                 <label for="planOverrideSelect">Free access plan</label>
