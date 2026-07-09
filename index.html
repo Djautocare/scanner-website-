@@ -406,12 +406,25 @@ a{
 }
 
 .dashboard-toolbar .inventory-switcher-btn,
-.dashboard-toolbar .topbar-settings{
+.dashboard-toolbar .topbar-settings,
+.dashboard-toolbar .inventory-plan-pill{
     min-height:42px;
     padding:0 12px;
     border-color:rgba(255,255,255,0.08);
     background:rgba(255,255,255,0.035);
     font-size:11px;
+}
+
+.dashboard-toolbar .inventory-plan-pill{
+    max-width:150px;
+    border-color:rgba(var(--accent-rgb),0.24);
+    background:rgba(var(--accent-rgb),0.09);
+}
+
+.dashboard-toolbar .inventory-plan-pill span:not(.plan-dot){
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
 }
 
 .dashboard-toolbar .inventory-switcher-menu{
@@ -1045,13 +1058,14 @@ a{
 
     .dashboard-toolbar .inventory-topbar-right{
         display:grid;
-        grid-template-columns:1fr 1fr 42px;
+        grid-template-columns:1fr 1fr 1fr 42px;
         width:100%;
     }
 
     .dashboard-toolbar .inventory-switcher-btn,
-    .dashboard-toolbar .topbar-settings{
-        width:100%;
+    .dashboard-toolbar .topbar-settings,
+    .dashboard-toolbar .inventory-plan-pill{
+        width:100% !important;
         max-width:none;
         justify-content:center;
     }
@@ -1659,7 +1673,7 @@ a{
 <script src="js/api.js"></script>
 <script src="js/theme.js"></script>
 <script src="js/workspace.js"></script>
-<script src="js/inventoryTopbar.js?v=2"></script>
+<script src="js/inventoryTopbar.js?v=6"></script>
 
 <script>
 /*
@@ -1799,18 +1813,18 @@ const DashboardPage = (function(){
         return "Good evening";
     }
 
-    function setUserDetails(){
-        const user = getUser();
-        const name = userName(user);
+    function applyUserDetails(user){
+        const safeUser = user || {};
+        const name = userName(safeUser);
         const avatar = initials(name);
 
         byId("dashboardGreeting")
             .textContent =
             greeting() +
             (
-                user.name
+                safeUser.name
                     ? ", " +
-                      safeText(user.name)
+                      safeText(safeUser.name)
                           .split(/\s+/)[0]
                     : ""
             );
@@ -1821,7 +1835,7 @@ const DashboardPage = (function(){
 
         byId("sidebarUserEmail")
             .textContent =
-            user.email ||
+            safeUser.email ||
             "Signed in";
 
         byId("sidebarAvatar")
@@ -1831,6 +1845,47 @@ const DashboardPage = (function(){
         byId("dashboardAvatar")
             .textContent =
             avatar;
+    }
+
+    function setUserDetails(){
+        applyUserDetails(
+            getUser()
+        );
+    }
+
+    async function refreshUserDetails(){
+        try{
+            const data = await InventoryAPI.me();
+
+            if(data.success && data.user){
+                if(
+                    typeof InventoryAPI.saveSession === "function" &&
+                    typeof InventoryAPI.getToken === "function"
+                ){
+                    const mergedUser = {
+                        ...(InventoryAPI.getUser ? InventoryAPI.getUser() || {} : {}),
+                        ...data.user
+                    };
+
+                    InventoryAPI.saveSession(
+                        InventoryAPI.getToken(),
+                        mergedUser
+                    );
+                }
+
+                applyUserDetails(
+                    {
+                        ...(InventoryAPI.getUser ? InventoryAPI.getUser() || {} : {}),
+                        ...data.user
+                    }
+                );
+            }
+        }catch(error){
+            console.warn(
+                "Could not refresh dashboard user details",
+                error
+            );
+        }
     }
 
     function setStatus(message, type){
@@ -2782,6 +2837,7 @@ const DashboardPage = (function(){
         }
 
         setUserDetails();
+        await refreshUserDetails();
         bindEvents();
 
         try{
