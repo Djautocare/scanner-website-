@@ -350,6 +350,27 @@ function updateStrength(){
     }
 }
 
+async function redirectAfterLogin(){
+    try{
+        const data = await InventoryAPI.request("/billing/status");
+
+        if(data && data.success && data.billing){
+            const billing = data.billing;
+
+            if(!billing.plan_selected || !billing.access_allowed){
+                window.location.href = "billing.html";
+                return;
+            }
+        }
+
+        window.location.href = "index.html";
+
+    }catch(error){
+        console.error(error);
+        window.location.href = "billing.html";
+    }
+}
+
 async function login(){
     try{
         setStatus("Logging in...");
@@ -372,10 +393,10 @@ async function login(){
         }
 
         InventoryAPI.saveSession(data.token, data.user);
-        setStatus("Login successful. Redirecting...", "success");
+        setStatus("Login successful. Checking plan...", "success");
 
         setTimeout(function(){
-            window.location.href = "index.html";
+            redirectAfterLogin();
         }, 600);
 
     }catch(error){
@@ -450,7 +471,7 @@ document.addEventListener("keydown", function(e){
 });
 
 if(InventoryAPI.isLoggedIn()){
-    window.location.href = "index.html";
+    redirectAfterLogin();
 }
 </script>
 
