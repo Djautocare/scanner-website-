@@ -12,6 +12,9 @@ const InventoryOSAppShell = (function(){
         "remove.html":{
             key:"remove"
         },
+        "discard.html":{
+            key:"discard"
+        },
         "refund.html":{
             key:"refund"
         },
@@ -68,6 +71,12 @@ const InventoryOSAppShell = (function(){
                     href:"remove.html",
                     icon:"−",
                     label:"Remove stock"
+                },
+                {
+                    key:"discard",
+                    href:"discard.html",
+                    icon:"×",
+                    label:"Discard stock"
                 },
                 {
                     key:"refund",
@@ -185,6 +194,10 @@ const InventoryOSAppShell = (function(){
 
             "remove":"remove",
             "remove-stock":"remove",
+
+            "discard":"discard",
+            "discard-stock":"discard",
+            "broken-stock":"discard",
 
             "refund":"refund",
             "refunds":"refund",
