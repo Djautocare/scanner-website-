@@ -196,6 +196,38 @@ button{
     word-break:break-word;
 }
 
+.bundle-item-main{
+    flex:1;
+    min-width:0;
+}
+
+.bundle-item-controls{
+    width:170px;
+    flex:0 0 170px;
+}
+
+.bundle-item-controls label{
+    display:block;
+    color:#aaa;
+    font-size:12px;
+    font-weight:bold;
+    margin:0 0 4px 2px;
+}
+
+.bundle-item-controls select{
+    margin:0 0 8px 0;
+    padding:10px;
+    font-size:14px;
+}
+
+.bundle-item-meta{
+    color:#aaa;
+    font-size:13px;
+    font-weight:normal;
+    line-height:1.45;
+    margin-top:4px;
+}
+
 .small-remove{
     width:auto;
     min-width:90px;
@@ -379,6 +411,20 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
     .button-grid{
         grid-template-columns:1fr;
     }
+
+    .bundle-item{
+        align-items:stretch;
+        flex-direction:column;
+    }
+
+    .bundle-item-controls{
+        width:100%;
+        flex-basis:auto;
+    }
+
+    .small-remove{
+        width:100%;
+    }
 }
 </style>
 <link rel="stylesheet" href="css/theme.css">
@@ -453,30 +499,11 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <div id="bundleBox" class="bundle-card" style="display:none;"></div>
 
-<div class="warehouse-hidden">
-<div class="input-label">Quantity</div>
-<input type="number" id="qty" placeholder="Quantity" value="1" min="1">
-<div class="helper-text">
-    For bundles, each barcode in the list removes quantity 1. For a normal single item, use the quantity box as usual.
-</div>
-</div>
-
 <div class="warehouse-price-card">
     <div class="input-label">Sale Amount</div>
     <input type="number" id="saleAmount" placeholder="Sale amount £" step="0.001" min="0" oninput="renderBundleList()">
     <div id="splitPreview" class="split-preview"></div>
     <div class="warehouse-status warehouse-only" id="warehouseStatus">Listening is on. Say a price, then say confirm sale.</div>
-</div>
-
-<div class="toggle-box warehouse-hidden">
-    <label>
-        <input type="checkbox" id="oneSalesRow">
-        Single-item quantity bundle: only add one row to sales tracker
-    </label>
-    <div class="helper-text">
-        This only affects normal single-item removals with qty above 1.<br>
-        Bundle list removals always send each barcode as an individual sale row with the total split equally.
-    </div>
 </div>
 
 <button class="remove-button warehouse-hidden" onclick="removeButtonPressed()">Remove Stock</button>
@@ -522,6 +549,8 @@ let pendingBundleEachAmount = 0;
 let completedBundleRemovals = [];
 let selectedSuggestedItem = null;
 let bundleItemDetails = [];
+let bundleItemQuantities = [];
+let bundleItemLocations = [];
 
 
 function focusBarcodeInput(){
@@ -625,6 +654,50 @@ function locationSummary(item){
     return locations
         .map(loc => `${loc.location || "Unknown location"} — Qty ${loc.qty}`)
         .join(" | ");
+}
+
+function selectedLocationForItem(index){
+    const details = bundleItemDetails[index];
+    const locations = activeLocations(details);
+    const selected = bundleItemLocations[index];
+
+    if(selected && locations.some(loc => String(loc.location) === String(selected))){
+        return selected;
+    }
+
+    return locations.length ? String(locations[0].location || "") : "";
+}
+
+function availableQtyForItem(index){
+    const details = bundleItemDetails[index];
+    const locations = activeLocations(details);
+    const selectedLocation = selectedLocationForItem(index);
+
+    if(selectedLocation){
+        const match = locations.find(loc => String(loc.location) === String(selectedLocation));
+        return Math.max(1, Number(match && match.qty || 1));
+    }
+
+    return Math.max(1, Number(details && (details.totalQty || details.total_qty) || 1));
+}
+
+function totalBundleUnits(){
+    return bundleItemQuantities.reduce((sum, qty) => sum + Math.max(1, Number(qty || 1)), 0);
+}
+
+function resolveItemDetails(barcode){
+    return InventoryAPI.request("/search?query=" + encodeURIComponent(barcode))
+        .then(data => {
+            if(!data.success || !Array.isArray(data.results)){
+                return null;
+            }
+
+            return data.results.find(item =>
+                normaliseBarcode(item.barcode || item.itemId || "") === normaliseBarcode(barcode) &&
+                Number(item.totalQty || item.total_qty || 0) > 0
+            ) || null;
+        })
+        .catch(() => null);
 }
 
 function looksLikeBarcodeInput(value){
@@ -742,7 +815,7 @@ function selectSuggestedItem(index){
     updateSuggestToggleText();
 }
 
-function addBundleBarcodeFromInput(){
+async function addBundleBarcodeFromInput(){
     const barcode = normaliseBarcode(document.getElementById("barcode").value);
 
     if(!barcode){
@@ -750,10 +823,19 @@ function addBundleBarcodeFromInput(){
         return;
     }
 
-    const details = selectedSuggestedItem &&
+    let details = selectedSuggestedItem &&
         normaliseBarcode(selectedSuggestedItem.barcode || selectedSuggestedItem.itemId || "") === barcode
             ? selectedSuggestedItem
             : null;
+
+    if(!details){
+        details = await resolveItemDetails(barcode);
+    }
+
+    if(!details){
+        alert("This item is not currently in stock in the selected inventory");
+        return;
+    }
 
     addBundleBarcode(barcode, false, details);
 }
@@ -762,21 +844,41 @@ function addBundleBarcode(barcode, fromScanner = false, itemDetails = null){
     clearReactiveBackground();
     barcode = normaliseBarcode(barcode);
 
-    if(!barcode){
+    if(!barcode || !itemDetails){
         return;
     }
 
-    bundleBarcodes.push(barcode);
-    bundleItemDetails.push(itemDetails || null);
-    selectedSuggestedItem = null;
+    const locations = activeLocations(itemDetails);
+    const defaultLocation = locations.length ? String(locations[0].location || "") : "";
+    const existingIndex = bundleBarcodes.findIndex((existingBarcode, index) =>
+        normaliseBarcode(existingBarcode) === barcode &&
+        selectedLocationForItem(index) === defaultLocation
+    );
 
-    if(fromScanner){
-        document.getElementById("barcode").value = "";
+    if(existingIndex >= 0){
+        const available = availableQtyForItem(existingIndex);
+        const currentQty = Math.max(1, Number(bundleItemQuantities[existingIndex] || 1));
+
+        if(currentQty < available){
+            bundleItemQuantities[existingIndex] = currentQty + 1;
+            document.getElementById("result").innerText =
+                (itemDetails.description || barcode) + " quantity increased to " + bundleItemQuantities[existingIndex] + ".";
+        }else{
+            document.getElementById("result").innerText =
+                (itemDetails.description || barcode) + " is already set to all " + available + " available at " + defaultLocation + ".";
+        }
     }else{
-        document.getElementById("barcode").value = "";
-        document.getElementById("result").innerText = barcode + " added to bundle list. Ready for next scan.";
+        bundleBarcodes.push(barcode);
+        bundleItemDetails.push(itemDetails);
+        bundleItemQuantities.push(1);
+        bundleItemLocations.push(defaultLocation);
+
+        document.getElementById("result").innerText =
+            (itemDetails.description || barcode) + " added to bundle list. Ready for next scan.";
     }
 
+    selectedSuggestedItem = null;
+    document.getElementById("barcode").value = "";
     document.getElementById("locationChoices").innerHTML = "";
     renderBundleList();
     focusBarcodeInput();
@@ -785,12 +887,35 @@ function addBundleBarcode(barcode, fromScanner = false, itemDetails = null){
 function removeBundleBarcode(index){
     bundleBarcodes.splice(index, 1);
     bundleItemDetails.splice(index, 1);
+    bundleItemQuantities.splice(index, 1);
+    bundleItemLocations.splice(index, 1);
+    renderBundleList();
+}
+
+function changeBundleLocation(index, location){
+    bundleItemLocations[index] = location;
+    const available = availableQtyForItem(index);
+    bundleItemQuantities[index] = Math.min(
+        Math.max(1, Number(bundleItemQuantities[index] || 1)),
+        available
+    );
+    renderBundleList();
+}
+
+function changeBundleQuantity(index, quantity){
+    const available = availableQtyForItem(index);
+    bundleItemQuantities[index] = Math.min(
+        Math.max(1, Number(quantity || 1)),
+        available
+    );
     renderBundleList();
 }
 
 function clearBundleList(){
     bundleBarcodes = [];
     bundleItemDetails = [];
+    bundleItemQuantities = [];
+    bundleItemLocations = [];
     selectedSuggestedItem = null;
     pendingBundleQueue = [];
     pendingBundleItem = null;
@@ -812,57 +937,77 @@ function renderBundleList(){
     }
 
     bundleBox.style.display = "block";
+    const unitCount = totalBundleUnits();
 
     let html = `
         <div class="bundle-title">
             <span>Bundle List</span>
-            <span class="bundle-pill">${bundleBarcodes.length} item${bundleBarcodes.length === 1 ? "" : "s"}</span>
+            <span class="bundle-pill">${unitCount} unit${unitCount === 1 ? "" : "s"}</span>
         </div>
     `;
 
     bundleBarcodes.forEach((barcode, index) => {
         const details = bundleItemDetails[index];
         const itemName = details && details.description ? details.description : barcode;
-        const itemLocation = details ? locationSummary(details) : "Location will be confirmed when removed";
+        const locations = activeLocations(details);
+        const selectedLocation = selectedLocationForItem(index);
+        bundleItemLocations[index] = selectedLocation;
+        const available = availableQtyForItem(index);
+        const selectedQty = Math.min(
+            Math.max(1, Number(bundleItemQuantities[index] || 1)),
+            available
+        );
+        bundleItemQuantities[index] = selectedQty;
+
+        const locationControl = locations.length > 1
+            ? `
+                <label>Location</label>
+                <select onchange="changeBundleLocation(${index}, this.value)">
+                    ${locations.map(loc => `
+                        <option value="${escapeHtml(loc.location || "")}" ${String(loc.location) === String(selectedLocation) ? "selected" : ""}>
+                            ${escapeHtml(loc.location || "Unknown")} — ${Number(loc.qty || 0)} available
+                        </option>
+                    `).join("")}
+                </select>
+            `
+            : `
+                <div class="bundle-item-meta">${escapeHtml(selectedLocation || "Location unavailable")} • ${available} available</div>
+            `;
+
+        const qtyOptions = Array.from({length:available}, (_, optionIndex) => optionIndex + 1)
+            .map(qty => `<option value="${qty}" ${qty === selectedQty ? "selected" : ""}>${qty}</option>`)
+            .join("");
 
         html += `
             <div class="bundle-item">
-                <span>
-                    ${escapeHtml(itemName)}
-                    <br>
-                    <small style="color:#aaa;font-weight:normal;">${escapeHtml(itemLocation)}</small>
-                </span>
-                <button class="small-remove" onclick="removeBundleBarcode(${index})">Remove</button>
+                <div class="bundle-item-main">
+                    <strong>${escapeHtml(itemName)}</strong>
+                    ${locationControl}
+                </div>
+                <div class="bundle-item-controls">
+                    <label>Removing</label>
+                    <select onchange="changeBundleQuantity(${index}, this.value)">
+                        ${qtyOptions}
+                    </select>
+                    <button class="small-remove" onclick="removeBundleBarcode(${index})">Remove</button>
+                </div>
             </div>
         `;
     });
 
     bundleBox.innerHTML = html;
 
-    const total = Number(document.getElementById("saleAmount").value || 0);
+    const totalMills = poundsToMills(document.getElementById("saleAmount").value);
 
-    if(total > 0){
-        const totalMills = poundsToMills(
-            document.getElementById("saleAmount").value
-        );
-
-        if(totalMills !== null){
-            const allocations = allocateBundleAmounts(
-                totalMills,
-                bundleBarcodes.length
-            );
-
-            splitPreview.innerHTML =
+    if(totalMills !== null && totalMills > 0){
+        const allocations = allocateBundleAmounts(totalMills, unitCount);
+        splitPreview.innerHTML =
             "Exact bundle split: £" + millsToPounds(totalMills) +
-            " across " + bundleBarcodes.length +
-            " item" + (bundleBarcodes.length === 1 ? "" : "s") +
-            ". Line values: " +
-            allocations.map(value => "£" + millsToPounds(value)).join(", ") +
-            ".";
-        }
+            " across " + unitCount +
+            " unit" + (unitCount === 1 ? "" : "s") + ".";
     }else{
         splitPreview.innerHTML =
-        "Enter the total bundle price and it will split equally across the items.";
+            "Enter the total bundle price and it will split equally across all units being removed.";
     }
 }
 
@@ -911,17 +1056,13 @@ function removeStock(locationOverride = ""){
 
     const barcode = normaliseBarcode(document.getElementById("barcode").value);
 
-    const qty =
-    document.getElementById("qty")
-    .value || 1;
+    const qty = 1;
 
     const saleAmount =
     document.getElementById("saleAmount")
     .value;
 
-    const oneSalesRow =
-    document.getElementById("oneSalesRow")
-    .checked;
+    const oneSalesRow = true;
 
     if(!barcode){
         alert("Enter a barcode or choose a suggested item");
@@ -982,9 +1123,7 @@ function removeStock(locationOverride = ""){
             data.remainingQty;
 
             document.getElementById("barcode").value = "";
-            document.getElementById("qty").value = "1";
             document.getElementById("saleAmount").value = "";
-            document.getElementById("oneSalesRow").checked = false;
 
             document.getElementById("locationChoices").innerHTML = "";
             renderBundleList();
@@ -1033,18 +1172,28 @@ function removeBundleStock(){
         return;
     }
 
-    const allocatedMills = allocateBundleAmounts(
+    const unitAllocations = allocateBundleAmounts(
         totalSaleMills,
-        bundleBarcodes.length
+        totalBundleUnits()
     );
 
+    let allocationOffset = 0;
     pendingBundleEachAmount = 0;
-    pendingBundleQueue = bundleBarcodes.map((barcode,index) => ({
-        barcode:normaliseBarcode(barcode),
-        details:bundleItemDetails[index] || null,
-        location:"",
-        saleAmount:millsToPounds(allocatedMills[index])
-    }));
+    pendingBundleQueue = bundleBarcodes.map((barcode,index) => {
+        const qty = Math.max(1, Number(bundleItemQuantities[index] || 1));
+        const lineMills = unitAllocations
+            .slice(allocationOffset, allocationOffset + qty)
+            .reduce((sum, value) => sum + value, 0);
+        allocationOffset += qty;
+
+        return {
+            barcode:normaliseBarcode(barcode),
+            details:bundleItemDetails[index] || null,
+            qty:qty,
+            location:selectedLocationForItem(index),
+            saleAmount:millsToPounds(lineMills)
+        };
+    });
     completedBundleRemovals = [];
     document.getElementById("locationChoices").innerHTML = "";
 
@@ -1055,7 +1204,10 @@ function processNextBundleItem(){
     if(pendingBundleQueue.length === 0){
         hideLoading();
 
-        const totalRemoved = completedBundleRemovals.length;
+        const totalRemoved = completedBundleRemovals.reduce(
+            (sum, item) => sum + Number(item.qty || 0),
+            0
+        );
         const totalAllocated = completedBundleRemovals.reduce(
             function(sum,item){
                 return sum + Number(item.saleAmountMills || 0);
@@ -1075,15 +1227,15 @@ function processNextBundleItem(){
 
         bundleBarcodes = [];
         bundleItemDetails = [];
+        bundleItemQuantities = [];
+        bundleItemLocations = [];
         selectedSuggestedItem = null;
         pendingBundleItem = null;
         pendingBundleEachAmount = 0;
         pendingBundleQueue = [];
 
         document.getElementById("barcode").value = "";
-        document.getElementById("qty").value = "1";
         document.getElementById("saleAmount").value = "";
-        document.getElementById("oneSalesRow").checked = false;
         document.getElementById("locationChoices").innerHTML = "";
 
         renderBundleList();
@@ -1099,7 +1251,7 @@ function processNextBundleItem(){
         method:"POST",
         body:JSON.stringify({
             barcode:pendingBundleItem.barcode,
-            qty:1,
+            qty:pendingBundleItem.qty || 1,
             location:pendingBundleItem.location || "",
             saleAmount:pendingBundleItem.saleAmount || "0.000",
             oneSalesRow:true
@@ -1117,6 +1269,8 @@ function processNextBundleItem(){
         if(data.success){
             completedBundleRemovals.push({
                 barcode:pendingBundleItem.barcode,
+                description:data.description || (pendingBundleItem.details && pendingBundleItem.details.description) || pendingBundleItem.barcode,
+                qty:Number(data.removedQty || pendingBundleItem.qty || 1),
                 location:data.location,
                 remainingQty:data.remainingQty,
                 saleAmountMills:poundsToMills(
@@ -1125,7 +1279,8 @@ function processNextBundleItem(){
             });
 
             document.getElementById("result").innerText =
-            "Removed " + pendingBundleItem.barcode +
+            "Removed " + Number(data.removedQty || pendingBundleItem.qty || 1) +
+            " × " + (data.description || (pendingBundleItem.details && pendingBundleItem.details.description) || pendingBundleItem.barcode) +
             ". Continuing bundle...";
 
             focusBarcodeInput();
@@ -1185,6 +1340,14 @@ function showBundleLocationChoices(locations){
 function continueBundleWithLocation(location){
     if(!pendingBundleItem){
         alert("No pending bundle item");
+        return;
+    }
+
+    const availableLocation = activeLocations(pendingBundleItem.details)
+        .find(loc => String(loc.location) === String(location));
+
+    if(availableLocation && Number(pendingBundleItem.qty || 1) > Number(availableLocation.qty || 0)){
+        alert("Only " + availableLocation.qty + " available at " + location + ". Change the quantity in the bundle first.");
         return;
     }
 
@@ -1249,7 +1412,7 @@ function keepBarcodeFocused(){
     const active = document.activeElement;
     const activeId = active ? active.id : "";
 
-    if(activeId !== "saleAmount" && activeId !== "qty"){
+    if(activeId !== "saleAmount" && !String(active && active.tagName || "").toLowerCase().includes("select")){
         barcodeInput.focus();
     }
 }
