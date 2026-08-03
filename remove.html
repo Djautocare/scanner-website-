@@ -520,6 +520,8 @@ let pendingBundleQueue = [];
 let pendingBundleItem = null;
 let pendingBundleEachAmount = 0;
 let completedBundleRemovals = [];
+let selectedSuggestedItem = null;
+let bundleItemDetails = [];
 
 
 function focusBarcodeInput(){
@@ -608,6 +610,23 @@ function escapeHtml(value){
         .replace(/'/g,"&#039;");
 }
 
+function activeLocations(item){
+    return (item && Array.isArray(item.locations) ? item.locations : [])
+        .filter(loc => Number(loc.qty || 0) > 0);
+}
+
+function locationSummary(item){
+    const locations = activeLocations(item);
+
+    if(locations.length === 0){
+        return "Location unavailable";
+    }
+
+    return locations
+        .map(loc => `${loc.location || "Unknown location"} — Qty ${loc.qty}`)
+        .join(" | ");
+}
+
 function looksLikeBarcodeInput(value){
     const raw = String(value || "").trim().toUpperCase().replace(/\s+/g, "");
     return /^\d+$/.test(raw) || /^ITEM-?\d+$/.test(raw);
@@ -665,7 +684,16 @@ function searchSuggestedItems(){
                 return;
             }
 
-            suggestedItems = data.results.slice(0, 12);
+            suggestedItems = (data.results || [])
+                .filter(item => Number(item.totalQty || item.total_qty || 0) > 0)
+                .slice(0, 12);
+
+            if(suggestedItems.length === 0){
+                document.getElementById("suggestPanel").innerHTML =
+                    "<div class='helper-text' style='padding:13px;margin:0;'>No matching items currently in stock.</div>";
+                updateSuggestToggleText();
+                return;
+            }
 
             let html = "";
             suggestedItems.forEach((item,index)=>{
@@ -675,7 +703,8 @@ function searchSuggestedItems(){
                 html += `
                     <div class="suggest-item" onclick="selectSuggestedItem(${index})">
                         <div class="suggest-title">${escapeHtml(item.description || "")}</div>
-                        <div class="suggest-meta">${escapeHtml(barcode)} • Current Qty ${qty}</div>
+                        <div class="suggest-meta">${escapeHtml(locationSummary(item))}</div>
+                        <div class="suggest-meta">Available Qty ${qty}</div>
                     </div>
                 `;
             });
@@ -698,6 +727,7 @@ function selectSuggestedItem(index){
     if(!item) return;
 
     const barcode = item.barcode || item.itemId || "";
+    selectedSuggestedItem = item;
     document.getElementById("barcode").value = normaliseBarcode(barcode);
     document.getElementById("suggestPanel").classList.remove("open");
     document.getElementById("suggestPanel").innerHTML =
@@ -706,7 +736,9 @@ function selectSuggestedItem(index){
         "</strong></div>";
 
     document.getElementById("result").innerText =
-        "Selected " + normaliseBarcode(barcode) + ". Press Add to Bundle List or Remove Stock.";
+        "Selected " + (item.description || "Item") +
+        " — " + locationSummary(item) +
+        ". Press Add to Bundle List or Remove Stock.";
     updateSuggestToggleText();
 }
 
@@ -718,10 +750,15 @@ function addBundleBarcodeFromInput(){
         return;
     }
 
-    addBundleBarcode(barcode);
+    const details = selectedSuggestedItem &&
+        normaliseBarcode(selectedSuggestedItem.barcode || selectedSuggestedItem.itemId || "") === barcode
+            ? selectedSuggestedItem
+            : null;
+
+    addBundleBarcode(barcode, false, details);
 }
 
-function addBundleBarcode(barcode, fromScanner = false){
+function addBundleBarcode(barcode, fromScanner = false, itemDetails = null){
     clearReactiveBackground();
     barcode = normaliseBarcode(barcode);
 
@@ -730,6 +767,8 @@ function addBundleBarcode(barcode, fromScanner = false){
     }
 
     bundleBarcodes.push(barcode);
+    bundleItemDetails.push(itemDetails || null);
+    selectedSuggestedItem = null;
 
     if(fromScanner){
         document.getElementById("barcode").value = "";
@@ -745,11 +784,14 @@ function addBundleBarcode(barcode, fromScanner = false){
 
 function removeBundleBarcode(index){
     bundleBarcodes.splice(index, 1);
+    bundleItemDetails.splice(index, 1);
     renderBundleList();
 }
 
 function clearBundleList(){
     bundleBarcodes = [];
+    bundleItemDetails = [];
+    selectedSuggestedItem = null;
     pendingBundleQueue = [];
     pendingBundleItem = null;
     completedBundleRemovals = [];
@@ -779,9 +821,17 @@ function renderBundleList(){
     `;
 
     bundleBarcodes.forEach((barcode, index) => {
+        const details = bundleItemDetails[index];
+        const itemName = details && details.description ? details.description : barcode;
+        const itemLocation = details ? locationSummary(details) : "Location will be confirmed when removed";
+
         html += `
             <div class="bundle-item">
-                <span>${barcode}</span>
+                <span>
+                    ${escapeHtml(itemName)}
+                    <br>
+                    <small style="color:#aaa;font-weight:normal;">${escapeHtml(itemLocation)}</small>
+                </span>
                 <button class="small-remove" onclick="removeBundleBarcode(${index})">Remove</button>
             </div>
         `;
@@ -991,6 +1041,7 @@ function removeBundleStock(){
     pendingBundleEachAmount = 0;
     pendingBundleQueue = bundleBarcodes.map((barcode,index) => ({
         barcode:normaliseBarcode(barcode),
+        details:bundleItemDetails[index] || null,
         location:"",
         saleAmount:millsToPounds(allocatedMills[index])
     }));
@@ -1023,6 +1074,8 @@ function processNextBundleItem(){
         " in total using exact 0.001 allocation.";
 
         bundleBarcodes = [];
+        bundleItemDetails = [];
+        selectedSuggestedItem = null;
         pendingBundleItem = null;
         pendingBundleEachAmount = 0;
         pendingBundleQueue = [];
@@ -1111,7 +1164,7 @@ function processNextBundleItem(){
 function showBundleLocationChoices(locations){
     let html =
     "<div class='location-card'><strong>Select location for " +
-    pendingBundleItem.barcode +
+    escapeHtml((pendingBundleItem.details && pendingBundleItem.details.description) || pendingBundleItem.barcode) +
     ":</strong></div>";
 
     locations.forEach(loc => {
@@ -1456,6 +1509,15 @@ setInterval(keepBarcodeFocused, 1200);
 
 
 document.getElementById("barcode").addEventListener("input", function(){
+    const current = normaliseBarcode(this.value);
+    const selectedBarcode = selectedSuggestedItem
+        ? normaliseBarcode(selectedSuggestedItem.barcode || selectedSuggestedItem.itemId || "")
+        : "";
+
+    if(selectedSuggestedItem && current !== selectedBarcode){
+        selectedSuggestedItem = null;
+    }
+
     searchSuggestedItems();
 });
 
