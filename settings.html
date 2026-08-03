@@ -59,14 +59,102 @@ h1{
 }
 
 .profile-card{
-    min-width:260px;
+    min-width:680px;
     background:linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02));
     border:1px solid rgba(255,255,255,0.08);
     border-radius:18px;
     padding:16px;
+    display:grid;
+    grid-template-columns:minmax(230px,1fr) minmax(300px,1.25fr);
+    gap:22px;
+    align-items:center;
+}
+
+.profile-user{
     display:flex;
     gap:12px;
     align-items:center;
+    min-width:0;
+}
+
+.profile-storage{
+    min-width:0;
+    padding-left:20px;
+    border-left:1px solid rgba(255,255,255,0.10);
+}
+
+.storage-heading,
+.storage-figures,
+.storage-footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+}
+
+.storage-plan{
+    font-weight:bold;
+    font-size:15px;
+}
+
+.storage-percentage{
+    color:#aaa;
+    font-size:13px;
+    white-space:nowrap;
+}
+
+.storage-figures{
+    margin-top:7px;
+    font-size:14px;
+}
+
+.storage-used{
+    font-weight:bold;
+}
+
+.storage-limit{
+    color:#aaa;
+}
+
+.storage-progress{
+    height:11px;
+    margin:9px 0 7px;
+    border-radius:999px;
+    background:rgba(255,255,255,0.09);
+    border:1px solid rgba(255,255,255,0.08);
+    overflow:hidden;
+}
+
+.storage-progress-fill{
+    width:0%;
+    height:100%;
+    border-radius:inherit;
+    background:#20c997;
+    transition:width .35s ease,background .25s ease;
+}
+
+.profile-storage.storage-green .storage-progress-fill{background:#20c997;}
+.profile-storage.storage-amber .storage-progress-fill{background:#ffb84d;}
+.profile-storage.storage-red .storage-progress-fill{background:#ff5c6c;}
+
+.profile-storage.storage-green .storage-status{color:#65d98b;}
+.profile-storage.storage-amber .storage-status{color:#ffb84d;}
+.profile-storage.storage-red .storage-status{color:#ff7777;}
+
+.storage-status{
+    font-size:12px;
+    line-height:1.35;
+}
+
+.storage-refresh{
+    width:auto;
+    margin:0;
+    padding:6px 9px;
+    border-radius:9px;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.10);
+    color:#ddd;
+    font-size:11px;
 }
 
 .profile-icon{
@@ -307,7 +395,17 @@ button{
 
 @media(max-width:850px){
     .settings-header{grid-template-columns:1fr;}
-    .profile-card{min-width:0;}
+    .profile-card{
+        min-width:0;
+        width:100%;
+        grid-template-columns:1fr;
+    }
+    .profile-storage{
+        padding-left:0;
+        padding-top:16px;
+        border-left:0;
+        border-top:1px solid rgba(255,255,255,0.10);
+    }
     .settings-grid{grid-template-columns:1fr;}
     .theme-swatch-grid{grid-template-columns:repeat(2,1fr);}
     .info-grid{grid-template-columns:1fr;}
@@ -340,10 +438,33 @@ button{
         </div>
 
         <div class="profile-card">
-            <div class="profile-icon" id="profileIcon">OS</div>
-            <div>
-                <div class="profile-name" id="profileName">Loading...</div>
-                <div class="profile-email" id="profileEmail">Loading...</div>
+            <div class="profile-user">
+                <div class="profile-icon" id="profileIcon">OS</div>
+                <div>
+                    <div class="profile-name" id="profileName">Loading...</div>
+                    <div class="profile-email" id="profileEmail">Loading...</div>
+                </div>
+            </div>
+
+            <div class="profile-storage storage-green" id="profileStorage">
+                <div class="storage-heading">
+                    <div class="storage-plan" id="storagePlan">Loading plan...</div>
+                    <div class="storage-percentage" id="storagePercentage">0% used</div>
+                </div>
+
+                <div class="storage-figures">
+                    <span class="storage-used" id="storageUsedText">Loading storage...</span>
+                    <span class="storage-limit" id="storageLimitText"></span>
+                </div>
+
+                <div class="storage-progress" role="progressbar" aria-label="Workspace storage used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="storageProgress">
+                    <div class="storage-progress-fill" id="storageProgressFill"></div>
+                </div>
+
+                <div class="storage-footer">
+                    <span class="storage-status" id="storageStatus">Checking your workspace storage...</span>
+                    <button class="storage-refresh" type="button" onclick="loadStorageStatus()">Refresh</button>
+                </div>
             </div>
         </div>
     </div>
@@ -477,23 +598,6 @@ button{
     <div id="result" class="result">No import run yet.</div>
 </div>
 
-<div class="card">
-    <div class="card-title"><span class="card-icon">📷</span>Storage</div>
-    <div class="helper">
-        Receipt images and PDFs are stored on the server. Detailed storage totals can be added later.
-    </div>
-
-    <div class="info-grid">
-        <div class="info-card">
-            <div class="info-title">Receipt Images</div>
-            <div class="info-value">Enabled</div>
-        </div>
-        <div class="info-card">
-            <div class="info-title">Upload Types</div>
-            <div class="info-value">JPG, PNG, WEBP, PDF</div>
-        </div>
-    </div>
-</div>
 
 <div class="card">
     <div class="card-title"><span class="card-icon">ℹ️</span>About InventoryOS</div>
@@ -673,6 +777,104 @@ async function loadProfile(){
     }
 }
 
+function formatStorageBytes(bytes){
+    const value = Math.max(0, Number(bytes || 0));
+    const mb = 1024 * 1024;
+    const gb = 1024 * mb;
+
+    if(value >= gb){
+        return (value / gb).toFixed(value >= 10 * gb ? 0 : 1) + " GB";
+    }
+
+    if(value >= mb){
+        return (value / mb).toFixed(value >= 10 * mb ? 0 : 1) + " MB";
+    }
+
+    if(value >= 1024){
+        return (value / 1024).toFixed(1) + " KB";
+    }
+
+    return value + " bytes";
+}
+
+async function loadStorageStatus(){
+    const panel = document.getElementById("profileStorage");
+    const statusText = document.getElementById("storageStatus");
+
+    try{
+        if(statusText){
+            statusText.innerText = "Checking your workspace storage...";
+        }
+
+        const data = await InventoryAPI.request(
+            "/billing/storage-status?_t=" + Date.now()
+        );
+
+        if(!data.success || !data.storage){
+            throw new Error(data.error || "Could not load storage usage");
+        }
+
+        const storage = data.storage;
+        const percentage = Math.max(
+            0,
+            Math.min(100, Number(storage.percentage || 0))
+        );
+
+        document.getElementById("storagePlan").innerText =
+            (storage.plan_name || "Free") + " Plan";
+
+        document.getElementById("storagePercentage").innerText =
+            percentage.toFixed(percentage >= 10 ? 0 : 1) + "% used";
+
+        document.getElementById("storageUsedText").innerText =
+            formatStorageBytes(storage.used_bytes) + " used";
+
+        document.getElementById("storageLimitText").innerText =
+            formatStorageBytes(storage.limit_bytes) + " included";
+
+        const fill = document.getElementById("storageProgressFill");
+        if(fill){
+            fill.style.width = percentage + "%";
+        }
+
+        const progress = document.getElementById("storageProgress");
+        if(progress){
+            progress.setAttribute("aria-valuenow", String(Math.round(percentage)));
+        }
+
+        if(panel){
+            panel.classList.remove(
+                "storage-green",
+                "storage-amber",
+                "storage-red"
+            );
+
+            panel.classList.add(
+                percentage >= 90
+                    ? "storage-red"
+                    : percentage >= 70
+                        ? "storage-amber"
+                        : "storage-green"
+            );
+        }
+
+        if(statusText){
+            statusText.innerText = storage.message ||
+                (percentage >= 90
+                    ? "Storage almost full — upgrade or remove files"
+                    : percentage >= 70
+                        ? "You’re approaching your storage limit"
+                        : "Plenty of storage available");
+        }
+    }catch(error){
+        console.error("Storage status error:", error);
+
+        if(statusText){
+            statusText.innerText = "Storage usage could not be loaded.";
+        }
+    }
+}
+
 async function changePassword(){
     const currentPassword = document.getElementById("currentPassword").value;
     const newPassword = document.getElementById("newPassword").value;
@@ -834,6 +1036,7 @@ async function showAdminCard(){
 }
 
 loadProfile();
+loadStorageStatus();
 showAdminCard();
 </script>
 
