@@ -237,6 +237,15 @@ h1{margin:0 0 6px;font-size:34px;}
     .editor-actions{display:grid;}
     .save-button,.cancel-button{width:100%;}
 }
+
+.change-product-card{margin:0 0 18px;padding:18px;border:1px solid rgba(var(--accent-rgb),.25);border-radius:18px;background:linear-gradient(145deg,rgba(var(--accent-rgb),.10),rgba(255,255,255,.018));}
+.change-product-card h2{margin:0 0 6px;}
+.change-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;}
+.change-product-card input,.change-product-card select{width:100%;padding:12px;margin-top:6px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:#151219;color:white;}
+.product-results{display:grid;gap:7px;margin-top:8px;max-height:230px;overflow:auto;}
+.product-choice{padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:#100e13;cursor:pointer;}
+.product-choice.selected{border-color:rgba(var(--accent-rgb),.65);background:rgba(var(--accent-rgb),.12);}
+@media(max-width:720px){.change-grid{grid-template-columns:1fr;}}
 </style>
 
 <link rel="stylesheet" href="css/theme.css">
@@ -252,6 +261,33 @@ h1{margin:0 0 6px;font-size:34px;}
 
 <h1>Corrections</h1>
 <p class="subtitle">Review the latest 30 stock and sales entries, then safely correct quantities, locations or sale prices.</p>
+
+
+<div class="change-product-card">
+    <h2>Change Item</h2>
+    <p class="subtitle" style="text-align:left;margin-bottom:0;">Move some or all stock from an incorrectly assigned product to the correct product while keeping the same location.</p>
+    <div class="change-grid">
+        <div>
+            <label>Current item and location</label>
+            <input id="currentProductSearch" placeholder="Search current item or barcode">
+            <div id="currentProductResults" class="product-results"></div>
+        </div>
+        <div>
+            <label>Change to</label>
+            <input id="replacementProductSearch" placeholder="Search replacement item or barcode">
+            <div id="replacementProductResults" class="product-results"></div>
+        </div>
+    </div>
+    <div class="change-grid">
+        <label>Quantity
+            <input type="number" id="changeProductQty" min="1" step="1" value="1">
+        </label>
+        <label>Reason
+            <input id="changeProductReason" placeholder="Optional correction note">
+        </label>
+    </div>
+    <button class="save-button" style="width:100%;margin-top:12px;" onclick="submitProductChange()">Change Item</button>
+</div>
 
 <div id="result" class="result"></div>
 
@@ -681,6 +717,101 @@ async function saveMovementCorrection(id){
         showResult(error.message || "Could not save correction","error");
     }
 }
+
+
+let selectedCurrentProduct = null;
+let selectedReplacementProduct = null;
+let currentSearchTimer = null;
+let replacementSearchTimer = null;
+
+function renderProductChoices(targetId, products, type){
+    const target = document.getElementById(targetId);
+    if(!products.length){
+        target.innerHTML = `<div class="activity-meta">No matching products found.</div>`;
+        return;
+    }
+
+    target.innerHTML = products.map((product,index)=>`
+        <div class="product-choice" onclick="selectProductChoice('${type}',${index})">
+            <strong>${safe(product.description || product.barcode)}</strong><br>
+            <span class="activity-meta">${safe(product.barcode || "")} ${product.box_name ? `· ${safe(product.box_name)} · Qty ${Number(product.qty||0)}` : ""}</span>
+        </div>
+    `).join("");
+
+    if(type === "current") window.currentProductChoices = products;
+    else window.replacementProductChoices = products;
+}
+
+function selectProductChoice(type,index){
+    if(type === "current"){
+        selectedCurrentProduct = (window.currentProductChoices || [])[index] || null;
+        document.getElementById("currentProductSearch").value = selectedCurrentProduct ? `${selectedCurrentProduct.description} — ${selectedCurrentProduct.box_name}` : "";
+        document.getElementById("changeProductQty").value = selectedCurrentProduct ? Math.min(1,Number(selectedCurrentProduct.qty||1)) : 1;
+        document.getElementById("currentProductResults").innerHTML = selectedCurrentProduct ? `<div class="product-choice selected">Selected: ${safe(selectedCurrentProduct.description)} · ${safe(selectedCurrentProduct.box_name)} · Qty ${Number(selectedCurrentProduct.qty||0)}</div>` : "";
+    }else{
+        selectedReplacementProduct = (window.replacementProductChoices || [])[index] || null;
+        document.getElementById("replacementProductSearch").value = selectedReplacementProduct ? selectedReplacementProduct.description : "";
+        document.getElementById("replacementProductResults").innerHTML = selectedReplacementProduct ? `<div class="product-choice selected">Selected: ${safe(selectedReplacementProduct.description)} · ${safe(selectedReplacementProduct.barcode||"")}</div>` : "";
+    }
+}
+
+async function searchCorrectionProducts(type){
+    const inputId = type === "current" ? "currentProductSearch" : "replacementProductSearch";
+    const targetId = type === "current" ? "currentProductResults" : "replacementProductResults";
+    const query = document.getElementById(inputId).value.trim();
+    if(query.length < 2){ document.getElementById(targetId).innerHTML=""; return; }
+
+    const endpoint = type === "current" ? "/corrections/products" : "/corrections/replacement-products";
+    try{
+        const data = await InventoryAPI.request(endpoint + "?query=" + encodeURIComponent(query));
+        if(!data.success) throw new Error(data.error || "Search failed");
+        renderProductChoices(targetId,data.products || [],type);
+    }catch(error){
+        document.getElementById(targetId).innerHTML = `<div class="activity-meta">${safe(error.message)}</div>`;
+    }
+}
+
+async function submitProductChange(){
+    if(!selectedCurrentProduct || !selectedReplacementProduct){
+        showResult("Choose both the current item/location and the replacement item","error");
+        return;
+    }
+    const qty = Number(document.getElementById("changeProductQty").value || 0);
+    if(!Number.isInteger(qty) || qty < 1 || qty > Number(selectedCurrentProduct.qty||0)){
+        showResult(`Quantity must be between 1 and ${Number(selectedCurrentProduct.qty||0)}`,"error");
+        return;
+    }
+
+    try{
+        const data = await InventoryAPI.request("/corrections/change-product",{
+            method:"POST",
+            body:JSON.stringify({
+                source_inventory_row_id:selectedCurrentProduct.inventory_row_id,
+                target_product_id:selectedReplacementProduct.product_id,
+                qty,
+                reason:document.getElementById("changeProductReason").value
+            })
+        });
+        if(!data.success) throw new Error(data.error || "Could not change item");
+        showResult(data.message || "Item changed","success");
+        selectedCurrentProduct=null;
+        selectedReplacementProduct=null;
+        ["currentProductSearch","replacementProductSearch","changeProductReason"].forEach(id=>document.getElementById(id).value="");
+        ["currentProductResults","replacementProductResults"].forEach(id=>document.getElementById(id).innerHTML="");
+        document.getElementById("changeProductQty").value="1";
+        await loadCorrections();
+    }catch(error){
+        showResult(error.message || "Could not change item","error");
+    }
+}
+
+document.getElementById("currentProductSearch").addEventListener("input",()=>{
+    clearTimeout(currentSearchTimer); currentSearchTimer=setTimeout(()=>searchCorrectionProducts("current"),250);
+});
+document.getElementById("replacementProductSearch").addEventListener("input",()=>{
+    clearTimeout(replacementSearchTimer); replacementSearchTimer=setTimeout(()=>searchCorrectionProducts("replacement"),250);
+});
+
 
 window.addEventListener(
     "inventory-selection-changed",
