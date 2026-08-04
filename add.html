@@ -347,8 +347,8 @@ details[open] summary:after{content:"▲";}
 
 <div class="checkbox-card">
     <label>
-        <input type="checkbox" id="printLabels" checked>
-        Auto print 2×1 label
+        <input type="checkbox" id="printLabels" autocomplete="off">
+        Auto print 2×1 barcode label
     </label>
     <div class="small-note" style="margin:8px 0 0 25px;">For Windows only.</div>
 </div>
@@ -362,8 +362,8 @@ details[open] summary:after{content:"▲";}
 
         <div class="checkbox-card">
             <label>
-                <input type="checkbox" id="addToPrintJob">
-                Add labels to print job
+                <input type="checkbox" id="addToPrintJob" autocomplete="off">
+                Create barcode labels for these items
             </label>
         </div>
 
@@ -435,6 +435,83 @@ let liveSearchTimer = null;
 let boxSearchTimer = null;
 let allBoxes = [];
 let selectedExistingBarcode = "";
+
+const ADD_PRINT_PREFERENCE_KEYS = Object.freeze({
+    autoPrint: "inventoryos_add_auto_print_labels",
+    printQueue: "inventoryos_add_create_barcode_labels"
+});
+
+function currentPreferenceOwner(){
+    try{
+        const user = InventoryAPI.getUser ? InventoryAPI.getUser() : null;
+        return String(user?.id || user?.email || "default").trim().toLowerCase();
+    }catch(error){
+        return "default";
+    }
+}
+
+function preferenceKey(name){
+    return name + ":" + currentPreferenceOwner();
+}
+
+function readBooleanPreference(name, fallback = false){
+    try{
+        const saved = localStorage.getItem(preferenceKey(name));
+
+        if(saved === null){
+            return fallback;
+        }
+
+        return saved === "true";
+    }catch(error){
+        return fallback;
+    }
+}
+
+function saveBooleanPreference(name, value){
+    try{
+        localStorage.setItem(
+            preferenceKey(name),
+            value ? "true" : "false"
+        );
+    }catch(error){
+        console.warn("Could not save Add Stock print preference", error);
+    }
+}
+
+function initialisePrintPreferences(){
+    const printLabels = document.getElementById("printLabels");
+    const addToPrintJob = document.getElementById("addToPrintJob");
+
+    /*
+        Safe first-use behaviour: both options start OFF when this account
+        has never selected a preference. Browser form restoration is
+        overridden deliberately so a fresh login cannot inherit a ticked box.
+    */
+    printLabels.checked = readBooleanPreference(
+        ADD_PRINT_PREFERENCE_KEYS.autoPrint,
+        false
+    );
+
+    addToPrintJob.checked = readBooleanPreference(
+        ADD_PRINT_PREFERENCE_KEYS.printQueue,
+        false
+    );
+
+    printLabels.addEventListener("change", function(){
+        saveBooleanPreference(
+            ADD_PRINT_PREFERENCE_KEYS.autoPrint,
+            printLabels.checked
+        );
+    });
+
+    addToPrintJob.addEventListener("change", function(){
+        saveBooleanPreference(
+            ADD_PRINT_PREFERENCE_KEYS.printQueue,
+            addToPrintJob.checked
+        );
+    });
+}
 
 function showLoading(){document.getElementById("loadingOverlay").style.display = "flex";}
 function hideLoading(){document.getElementById("loadingOverlay").style.display = "none";}
@@ -984,6 +1061,7 @@ document.getElementById("newPrintJobName").addEventListener("keydown",function(e
 });
 
 InventoryAPI.requireLogin();
+initialisePrintPreferences();
 
 window.addEventListener("inventory-selection-changed", function(){
     clearMatchResults();
