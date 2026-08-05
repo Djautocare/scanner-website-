@@ -804,24 +804,51 @@ const InventoryOSRemovePreferences = (function(){
                     }
 
                     if(
-                        !Array.isArray(bundleBarcodes) ||
-                        bundleBarcodes.length === 0
+                        !Array.isArray(bundleItems) ||
+                        bundleItems.length === 0
                     ){
                         alert(
-                            "Add at least one barcode to the bundle list"
+                            "Add at least one item to the bundle list"
                         );
 
                         return;
                     }
 
-                    pendingBundleEachAmount = 0;
-
                     pendingBundleQueue =
-                        bundleBarcodes.map(
-                            barcode=>({
+                        bundleItems.map(
+                            item=>({
                                 barcode:
-                                    normaliseBarcode(barcode),
-                                location:""
+                                    normaliseBarcode(
+                                        item.barcode
+                                    ),
+
+                                description:
+                                    String(
+                                        item.description ||
+                                        item.barcode ||
+                                        "Item"
+                                    ),
+
+                                location:
+                                    String(
+                                        item.location ||
+                                        ""
+                                    ),
+
+                                qty:
+                                    Math.max(
+                                        1,
+                                        Number.parseInt(
+                                            String(
+                                                item.qty ||
+                                                1
+                                            ),
+                                            10
+                                        )
+                                    ),
+
+                                saleAmount:
+                                    "0.000"
                             })
                         );
 
