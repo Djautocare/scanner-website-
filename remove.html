@@ -911,6 +911,26 @@ function changeBundleQuantity(index, quantity){
     renderBundleList();
 }
 
+
+function syncBundleControlsFromDom(){
+    bundleBarcodes.forEach(function(_barcode, index){
+        const locationSelect = document.getElementById("bundleLocationSelect-" + index);
+        const quantitySelect = document.getElementById("bundleQuantitySelect-" + index);
+
+        if(locationSelect){
+            bundleItemLocations[index] = String(locationSelect.value || "");
+        }
+
+        if(quantitySelect){
+            const available = availableQtyForItem(index);
+            bundleItemQuantities[index] = Math.min(
+                Math.max(1, Number(quantitySelect.value || 1)),
+                available
+            );
+        }
+    });
+}
+
 function clearBundleList(){
     bundleBarcodes = [];
     bundleItemDetails = [];
@@ -962,7 +982,7 @@ function renderBundleList(){
         const locationControl = locations.length > 1
             ? `
                 <label>Location</label>
-                <select onchange="changeBundleLocation(${index}, this.value)">
+                <select id="bundleLocationSelect-${index}" onchange="changeBundleLocation(${index}, this.value)">
                     ${locations.map(loc => `
                         <option value="${escapeHtml(loc.location || "")}" ${String(loc.location) === String(selectedLocation) ? "selected" : ""}>
                             ${escapeHtml(loc.location || "Unknown")} — ${Number(loc.qty || 0)} available
@@ -986,7 +1006,7 @@ function renderBundleList(){
                 </div>
                 <div class="bundle-item-controls">
                     <label>Removing</label>
-                    <select onchange="changeBundleQuantity(${index}, this.value)">
+                    <select id="bundleQuantitySelect-${index}" onchange="changeBundleQuantity(${index}, this.value)">
                         ${qtyOptions}
                     </select>
                     <button class="small-remove" onclick="removeBundleBarcode(${index})">Remove</button>
@@ -1153,6 +1173,8 @@ function removeStock(locationOverride = ""){
 }
 
 function removeBundleStock(){
+    syncBundleControlsFromDom();
+
     if(!hasSelectedInventoryForRemove()){
         showNoInventorySelected();
         return;
@@ -1180,7 +1202,14 @@ function removeBundleStock(){
     let allocationOffset = 0;
     pendingBundleEachAmount = 0;
     pendingBundleQueue = bundleBarcodes.map((barcode,index) => {
-        const qty = Math.max(1, Number(bundleItemQuantities[index] || 1));
+        const available = availableQtyForItem(index);
+        const qty = Math.min(
+            Math.max(1, Math.trunc(Number(bundleItemQuantities[index] || 1))),
+            available
+        );
+
+        bundleItemQuantities[index] = qty;
+
         const lineMills = unitAllocations
             .slice(allocationOffset, allocationOffset + qty)
             .reduce((sum, value) => sum + value, 0);
@@ -1245,13 +1274,25 @@ function processNextBundleItem(){
 
     pendingBundleItem = pendingBundleQueue.shift();
 
+    const requestQty = Math.max(
+        1,
+        Math.trunc(Number(pendingBundleItem.qty || 1))
+    );
+
+    pendingBundleItem.qty = requestQty;
+
+    document.getElementById("result").innerText =
+        "Removing " + requestQty + " × " +
+        ((pendingBundleItem.details && pendingBundleItem.details.description) || pendingBundleItem.barcode) +
+        "...";
+
     showLoading();
 
     InventoryAPI.request("/stock/remove", {
         method:"POST",
         body:JSON.stringify({
             barcode:pendingBundleItem.barcode,
-            qty:pendingBundleItem.qty || 1,
+            qty:requestQty,
             location:pendingBundleItem.location || "",
             saleAmount:pendingBundleItem.saleAmount || "0.000",
             oneSalesRow:true
@@ -1267,6 +1308,24 @@ function processNextBundleItem(){
         }
 
         if(data.success){
+            const confirmedRemovedQty = Number(data.removedQty || 0);
+
+            if(confirmedRemovedQty !== Number(pendingBundleItem.qty || 1)){
+                pendingBundleQueue = [];
+                const expectedQty = Number(pendingBundleItem.qty || 1);
+                pendingBundleItem = null;
+
+                flashError();
+                speakText("Remove quantity mismatch");
+                setWarehouseStatus("Remove stopped because the confirmed quantity did not match.");
+
+                document.getElementById("result").innerText =
+                    "Remove stopped: InventoryOS requested " + expectedQty +
+                    " but the backend confirmed " + confirmedRemovedQty +
+                    ". Refresh the page and try again.";
+                return;
+            }
+
             completedBundleRemovals.push({
                 barcode:pendingBundleItem.barcode,
                 description:data.description || (pendingBundleItem.details && pendingBundleItem.details.description) || pendingBundleItem.barcode,
