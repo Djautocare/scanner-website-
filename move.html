@@ -90,31 +90,11 @@ let selectedStock=new Map(),loadedLocationContents=new Map(),openLocations=new S
 
 const $=id=>document.getElementById(id);
 function showLoading(){$("loadingOverlay").style.display="flex"}function hideLoading(){$("loadingOverlay").style.display="none"}
-function setResult(v){$("result").innerHTML=v}
-function setProgress(v){$("progressBox").style.display="block";$("progressBox").innerHTML=v}
-function clearProgress(){$("progressBox").style.display="none";$("progressBox").innerHTML=""}
-function clearMoveFlash(){
-    document.body.classList.remove("success-flash","error-flash");
-}
-function flashMoveSuccess(){
-    clearMoveFlash();
-    document.body.classList.add("success-flash");
-    setTimeout(function(){
-        document.body.classList.remove("success-flash");
-    },4000);
-}
-function flashMoveError(){
-    clearMoveFlash();
-    document.body.classList.add("error-flash");
-    setTimeout(function(){
-        document.body.classList.remove("error-flash");
-    },4000);
-}
-function failMove(message){
-    flashMoveError();
-    alert(message);
-    return false;
-}
+function setResult(v){$("result").innerHTML=v}function setProgress(v){$("progressBox").style.display="block";$("progressBox").innerHTML=v}function clearProgress(){$("progressBox").style.display="none";$("progressBox").innerHTML=""}
+function clearMoveFlash(){document.body.classList.remove("success-flash","error-flash")}
+function flashMoveSuccess(){clearMoveFlash();document.body.classList.add("success-flash");setTimeout(()=>document.body.classList.remove("success-flash"),4000)}
+function flashMoveError(){clearMoveFlash();document.body.classList.add("error-flash");setTimeout(()=>document.body.classList.remove("error-flash"),4000)}
+function failMove(message){flashMoveError();alert(message);return false}
 function esc(v){return String(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
 function escJs(v){return String(v||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\r/g,"\\r").replace(/\n/g,"\\n")}
 function safeId(v){return String(v||"").replace(/[^a-z0-9_-]/gi,"_")}
@@ -131,30 +111,19 @@ async function loadLocations(preserveResult=false){
     showLoading();
     try{
         const d=await InventoryAPI.request("/boxes/overview?_t="+Date.now());
-
-        if(!d.success){
-            throw new Error(d.error||"Could not load locations");
-        }
-
-        allLocations=(d.boxes||[])
-            .map(x=>({
-                name:x.box||x.box_name||"",
-                qty:Number(x.qty??x.totalQty??x.total_qty??0),
-                unique:Number(x.uniqueItems??x.unique_items??x.differentItems??0)
-            }))
-            .filter(x=>x.name)
-            .sort((a,b)=>naturalCompare(a.name,b.name));
-
+        if(!d.success)throw new Error(d.error||"Could not load locations");
+        allLocations=(d.boxes||[]).map(x=>({
+            name:x.box||x.box_name||"",
+            qty:Number(x.qty??x.totalQty??x.total_qty??0),
+            unique:Number(x.uniqueItems??x.unique_items??x.differentItems??0)
+        })).filter(x=>x.name).sort((a,b)=>naturalCompare(a.name,b.name));
         loadedLocationContents.clear();
         openLocations.clear();
         selectedStock.clear();
         refreshSelects();
         renderSelectiveLocations();
         updateSelectedSummary();
-
-        if(!preserveResult){
-            setResult("Ready to move stock.");
-        }
+        if(!preserveResult)setResult("Ready to move stock.");
     }catch(e){
         console.error(e);
         flashMoveError();
@@ -168,125 +137,16 @@ function addBulkBarcodeFromInput(){const i=$("bulkBarcodeInput"),b=normaliseBarc
 function clearBulkList(){bulkBarcodes=[];renderBulkList();setResult("Bulk move list cleared.")}
 function removeBulkBarcode(i){bulkBarcodes.splice(i,1);renderBulkList()}
 function renderBulkList(){$("bulkList").innerHTML=bulkBarcodes.length?bulkBarcodes.map((b,i)=>'<div class="bundle-row"><strong>'+esc(b)+'</strong><button onclick="removeBulkBarcode('+i+')">Remove</button></div>').join(""):'<div class="empty-state">No barcodes added yet.</div>'}
-async function moveBulkStock(){
-    const from=$("bulkFromLocation").value;
-    const to=$("bulkToLocation").value;
+async function moveBulkStock(){const from=$("bulkFromLocation").value,to=$("bulkToLocation").value;if(!bulkBarcodes.length)return failMove("Add at least one barcode");if(!from||!to)return failMove("Choose a source and destination");if(from===to)return failMove("Source and destination are the same");const counts={};bulkBarcodes.forEach(b=>counts[b]=(counts[b]||0)+1);showLoading();try{const d=await InventoryAPI.request("/move/bundle",{method:"POST",body:JSON.stringify({items:Object.keys(counts).map(barcode=>({barcode,qty:counts[barcode]})),fromLocation:from,toLocation:to})});if(!d.success)throw new Error(d.error||"Bulk move failed");bulkBarcodes=[];renderBulkList();setResult("Bulk move complete. Moved "+Number(d.totalMoved||0)+" item"+(Number(d.totalMoved||0)===1?"":"s")+".");flashMoveSuccess();await loadLocations(true)}catch(e){console.error(e);flashMoveError();setResult(esc(e.message||"Bulk move failed"))}finally{hideLoading()}}
+async function moveAllStock(){const from=$("allFromLocation").value,to=$("allToLocation").value;if(!from||!to)return failMove("Choose a source and destination");if(from===to)return failMove("Source and destination are the same");if(!confirm("Move every item from "+from+" to "+to+"?"))return;showLoading();try{const d=await InventoryAPI.request("/move/box",{method:"POST",body:JSON.stringify({fromLocation:from,toLocation:to})});if(!d.success)throw new Error(d.error||"Move all failed");setResult("Move complete. Moved "+Number(d.totalMoved||0)+" item"+(Number(d.totalMoved||0)===1?"":"s")+" across "+Number(d.movedLines||0)+" product lines.");flashMoveSuccess();await loadLocations(true)}catch(e){console.error(e);flashMoveError();setResult(esc(e.message||"Move all failed"))}finally{hideLoading()}}
 
-    if(!bulkBarcodes.length) return failMove("Add at least one barcode");
-    if(!from||!to) return failMove("Choose a source and destination");
-    if(from===to) return failMove("Source and destination are the same");
-
-    const counts={};
-    bulkBarcodes.forEach(b=>counts[b]=(counts[b]||0)+1);
-
-    showLoading();
-
-    try{
-        const d=await InventoryAPI.request("/move/bundle",{
-            method:"POST",
-            body:JSON.stringify({
-                items:Object.keys(counts).map(barcode=>({
-                    barcode,
-                    qty:counts[barcode]
-                })),
-                fromLocation:from,
-                toLocation:to
-            })
-        });
-
-        if(!d.success){
-            throw new Error(d.error||"Bulk move failed");
-        }
-
-        const moved=Number(d.totalMoved||0);
-
-        bulkBarcodes=[];
-        renderBulkList();
-        await loadLocations(true);
-
-        setResult(
-            "Bulk move complete. Moved "+moved+
-            " item"+(moved===1?"":"s")+"."
-        );
-        flashMoveSuccess();
-
-    }catch(e){
-        console.error(e);
-        flashMoveError();
-        setResult(esc(e.message||"Bulk move failed"));
-    }finally{
-        hideLoading();
-    }
-}
-
-async function moveAllStockasync function moveAllStock(){
-    const from=$("allFromLocation").value;
-    const to=$("allToLocation").value;
-
-    if(!from||!to) return failMove("Choose a source and destination");
-    if(from===to) return failMove("Source and destination are the same");
-    if(!confirm("Move every item from "+from+" to "+to+"?")) return;
-
-    showLoading();
-
-    try{
-        const d=await InventoryAPI.request("/move/box",{
-            method:"POST",
-            body:JSON.stringify({
-                fromLocation:from,
-                toLocation:to
-            })
-        });
-
-        if(!d.success){
-            throw new Error(d.error||"Move all failed");
-        }
-
-        const moved=Number(d.totalMoved||0);
-        const lines=Number(d.movedLines||0);
-
-        await loadLocations(true);
-
-        setResult(
-            "Move complete. Moved "+moved+
-            " item"+(moved===1?"":"s")+
-            " across "+lines+" product line"+
-            (lines===1?"":"s")+"."
-        );
-        flashMoveSuccess();
-
-    }catch(e){
-        console.error(e);
-        flashMoveError();
-        setResult(esc(e.message||"Move all failed"));
-    }finally{
-        hideLoading();
-    }
-}
-
-function sortedSelectivefunction sortedSelective(){const mode=$("selectiveSort").value,a=[...allLocations];if(mode==="alpha")return a.sort((x,y)=>String(x.name).localeCompare(String(y.name),undefined,{sensitivity:"base"}));if(mode==="stockHigh")return a.sort((x,y)=>y.qty-x.qty||naturalCompare(x.name,y.name));if(mode==="stockLow")return a.sort((x,y)=>x.qty-y.qty||naturalCompare(x.name,y.name));return a.sort((x,y)=>naturalCompare(x.name,y.name))}
+function sortedSelective(){const mode=$("selectiveSort").value,a=[...allLocations];if(mode==="alpha")return a.sort((x,y)=>String(x.name).localeCompare(String(y.name),undefined,{sensitivity:"base"}));if(mode==="stockHigh")return a.sort((x,y)=>y.qty-x.qty||naturalCompare(x.name,y.name));if(mode==="stockLow")return a.sort((x,y)=>x.qty-y.qty||naturalCompare(x.name,y.name));return a.sort((x,y)=>naturalCompare(x.name,y.name))}
 function renderSelectiveLocations(){
-    const c=$("selectiveLocations");
-    const list=sortedSelective();
-
-    if(!list.length){
-        c.innerHTML='<div class="empty-state">No locations found.</div>';
-        return;
-    }
-
+    const c=$("selectiveLocations"),list=sortedSelective();
+    if(!list.length){c.innerHTML='<div class="empty-state">No locations found.</div>';return}
     c.innerHTML=list.map(l=>{
-        const open=openLocations.has(l.name);
-        const items=loadedLocationContents.get(l.name);
-
-        return '<div class="location-group">'+
-            '<button class="location-toggle '+(open?"open":"")+'" onclick="toggleSelectiveLocation(\''+escJs(l.name)+'\')">'+
-                '<span>'+esc(l.name)+'</span>'+
-                '<span>'+Number(l.unique||0)+' unique • '+Number(l.qty||0)+' total '+(open?"▲":"▼")+'</span>'+
-            '</button>'+
-            '<div class="location-contents '+(open?"open":"")+'" id="locationContents-'+safeId(l.name)+'">'+
-                (items?renderContents(l.name,items):'<div class="empty-state">Open to load stock.</div>')+
-            '</div>'+
-        '</div>';
+        const open=openLocations.has(l.name),items=loadedLocationContents.get(l.name);
+        return '<div class="location-group"><button class="location-toggle '+(open?"open":"")+'" onclick="toggleSelectiveLocation(\''+escJs(l.name)+'\')"><span>'+esc(l.name)+'</span><span>'+Number(l.unique||0)+' unique • '+Number(l.qty||0)+' total '+(open?"▲":"▼")+'</span></button><div class="location-contents '+(open?"open":"")+'" id="locationContents-'+safeId(l.name)+'">'+(items?renderContents(l.name,items):'<div class="empty-state">Open to load stock.</div>')+"</div></div>";
     }).join("");
 }
 async function toggleSelectiveLocation(location){if(openLocations.has(location)){openLocations.delete(location);renderSelectiveLocations();return}openLocations.add(location);renderSelectiveLocations();if(loadedLocationContents.has(location))return;const target=$("locationContents-"+safeId(location));target.innerHTML='<div class="empty-state">Loading stock...</div>';try{const d=await InventoryAPI.request("/boxes/"+encodeURIComponent(location)+"/contents?_t="+Date.now());if(!d.success)throw new Error(d.error||"Could not load stock");loadedLocationContents.set(location,d.results||[]);renderSelectiveLocations()}catch(e){target.innerHTML='<div class="empty-state">'+esc(e.message||"Could not load stock")+"</div>"}}
@@ -296,160 +156,15 @@ function toggleStockSelection(location,barcode,available,description,event){even
 function updateSelectedQuantity(location,barcode,available,value){const k=key(location,barcode),item=selectedStock.get(k);if(!item)return;item.qty=Math.max(1,Math.min(Number(available),Number(value||1)));selectedStock.set(k,item);updateSelectedSummary()}
 function updateSelectedSummary(){const items=[...selectedStock.values()],qty=items.reduce((s,x)=>s+Number(x.qty||0),0);$("selectedMoveSummary").innerHTML="<strong>"+items.length+"</strong> stock line"+(items.length===1?"":"s")+" selected • <strong>"+qty+"</strong> total item"+(qty===1?"":"s")+"."}
 function clearSelectedStock(){selectedStock.clear();renderSelectiveLocations();updateSelectedSummary()}
-async function moveSelectedStock(){
-    const to=$("selectiveToLocation").value;
-    const items=[...selectedStock.values()];
+async function moveSelectedStock(){const to=$("selectiveToLocation").value,items=[...selectedStock.values()];if(!items.length)return failMove("Highlight at least one stock item");if(!to)return failMove("Choose a destination");const movable=items.filter(x=>x.location!==to),skipped=items.length-movable.length;if(!movable.length)return failMove("All selected stock is already in that destination");showLoading();clearProgress();let moved=0,failed=[];for(let i=0;i<movable.length;i++){const x=movable[i];setProgress("Moving "+(i+1)+" of "+movable.length+"<br>"+esc(x.description)+"<br>"+esc(x.location)+" → "+esc(to));try{const d=await InventoryAPI.request("/move/item",{method:"POST",body:JSON.stringify({barcode:x.barcode,fromLocation:x.location,toLocation:to,qty:Number(x.qty)})});d.success?moved+=Number(d.qty||x.qty):failed.push(x.barcode+" — "+(d.error||"Move failed"))}catch(e){failed.push(x.barcode+" — request error")}}hideLoading();clearProgress();setResult("Selective move finished. Moved "+moved+" item"+(moved===1?"":"s")+"."+(skipped?" Skipped "+skipped+" already in the destination.":"")+(failed.length?"<br><br>Failed:<br>"+failed.map(esc).join("<br>"):""));selectedStock.clear();failed.length?flashMoveError():flashMoveSuccess();await loadLocations(true)}
 
-    if(!items.length) return failMove("Highlight at least one stock item");
-    if(!to) return failMove("Choose a destination");
-
-    const movable=items.filter(x=>x.location!==to);
-    const skipped=items.length-movable.length;
-
-    if(!movable.length){
-        return failMove("All selected stock is already in that destination");
-    }
-
-    showLoading();
-    clearProgress();
-
-    let moved=0;
-    const failed=[];
-
-    for(let i=0;i<movable.length;i++){
-        const x=movable[i];
-
-        setProgress(
-            "Moving "+(i+1)+" of "+movable.length+
-            "<br>"+esc(x.description)+
-            "<br>"+esc(x.location)+" → "+esc(to)
-        );
-
-        try{
-            const d=await InventoryAPI.request("/move/item",{
-                method:"POST",
-                body:JSON.stringify({
-                    barcode:x.barcode,
-                    fromLocation:x.location,
-                    toLocation:to,
-                    qty:Number(x.qty)
-                })
-            });
-
-            if(d.success){
-                moved+=Number(d.qty||x.qty);
-            }else{
-                failed.push(
-                    x.barcode+" — "+(d.error||"Move failed")
-                );
-            }
-        }catch(e){
-            failed.push(
-                x.barcode+" — "+(e.message||"request error")
-            );
-        }
-    }
-
-    clearProgress();
-
-    const message=
-        "Selective move finished. Moved "+moved+
-        " item"+(moved===1?"":"s")+"."+
-        (skipped
-            ?" Skipped "+skipped+" already in the destination."
-            :"")+
-        (failed.length
-            ?"<br><br>Failed:<br>"+failed.map(esc).join("<br>")
-            :"");
-
-    selectedStock.clear();
-    await loadLocations(true);
-    setResult(message);
-
-    if(failed.length){
-        flashMoveError();
-    }else{
-        flashMoveSuccess();
-    }
-
-    hideLoading();
-}
-
-function searchSingleItemsfunction searchSingleItems(){const q=$("singleSearchInput").value.trim(),box=$("singleSearchResults");clearTimeout(singleSearchTimer);selectedSingleItem=null;$("selectedSingleProduct").style.display="none";$("singleFromLocation").innerHTML='<option value="">Select a product first</option>';refreshSingleDestination();if(q.length<2){box.innerHTML='<div class="empty-state">Type at least 2 characters to find an item.</div>';return}box.innerHTML='<div class="empty-state">Searching...</div>';singleSearchTimer=setTimeout(async()=>{try{const d=await InventoryAPI.request("/search?query="+encodeURIComponent(q)+"&_t="+Date.now());if(!d.success||!d.results?.length){singleSearchResults=[];box.innerHTML='<div class="empty-state">No matching in-stock products found.</div>';return}singleSearchResults=d.results.slice(0,12);box.innerHTML=singleSearchResults.map((x,i)=>{const locs=Array.isArray(x.locations)?x.locations.filter(l=>Number(l.qty)>0):[];return'<div class="search-item" onclick="selectSingleSearchResult('+i+')"><div class="search-title">'+esc(x.description||x.barcode)+'</div><div class="search-meta">'+esc(x.barcode)+" • Total Qty "+Number(x.totalQty||x.total_qty||0)+" • "+locs.length+" location"+(locs.length===1?"":"s")+"</div></div>"}).join("")}catch(e){box.innerHTML='<div class="empty-state">Error searching products.</div>'}},300)}
+function searchSingleItems(){const q=$("singleSearchInput").value.trim(),box=$("singleSearchResults");clearTimeout(singleSearchTimer);selectedSingleItem=null;$("selectedSingleProduct").style.display="none";$("singleFromLocation").innerHTML='<option value="">Select a product first</option>';refreshSingleDestination();if(q.length<2){box.innerHTML='<div class="empty-state">Type at least 2 characters to find an item.</div>';return}box.innerHTML='<div class="empty-state">Searching...</div>';singleSearchTimer=setTimeout(async()=>{try{const d=await InventoryAPI.request("/search?query="+encodeURIComponent(q)+"&_t="+Date.now());if(!d.success||!d.results?.length){singleSearchResults=[];box.innerHTML='<div class="empty-state">No matching in-stock products found.</div>';return}singleSearchResults=d.results.slice(0,12);box.innerHTML=singleSearchResults.map((x,i)=>{const locs=Array.isArray(x.locations)?x.locations.filter(l=>Number(l.qty)>0):[];return'<div class="search-item" onclick="selectSingleSearchResult('+i+')"><div class="search-title">'+esc(x.description||x.barcode)+'</div><div class="search-meta">'+esc(x.barcode)+" • Total Qty "+Number(x.totalQty||x.total_qty||0)+" • "+locs.length+" location"+(locs.length===1?"":"s")+"</div></div>"}).join("")}catch(e){box.innerHTML='<div class="empty-state">Error searching products.</div>'}},300)}
 function selectSingleSearchResult(i){const x=singleSearchResults[i];if(!x)return;selectedSingleItem=x;const locs=(Array.isArray(x.locations)?x.locations:[]).filter(l=>Number(l.qty)>0).sort((a,b)=>naturalCompare(a.location,b.location));$("selectedSingleProduct").style.display="block";$("selectedSingleProduct").innerHTML="<strong>"+esc(x.description||x.barcode)+'</strong><div class="search-meta" style="margin-top:6px">'+esc(x.barcode)+" • Total Qty "+Number(x.totalQty||x.total_qty||0)+"</div>";const from=$("singleFromLocation");from.innerHTML='<option value="">Select source location</option>';locs.forEach(l=>{const o=document.createElement("option");o.value=l.location;o.textContent=l.location+" — Qty "+Number(l.qty);o.dataset.qty=Number(l.qty);from.appendChild(o)});$("singleSearchResults").innerHTML="";$("singleSearchInput").value=x.description||x.barcode;refreshSingleDestination()}
 function singleFromChanged(){const s=$("singleFromLocation"),o=s.options[s.selectedIndex],max=Number(o?.dataset?.qty||1),q=$("singleQty");q.max=String(max);q.value=String(Math.min(Math.max(1,Number(q.value||1)),max));refreshSingleDestination()}
 function refreshSingleDestination(){const from=$("singleFromLocation")?.value||"";fillSelect($("singleToLocation"),"Select destination location",from?[from]:[])}
-async function moveSingleItem(){
-    if(!selectedSingleItem){
-        return failMove("Choose a product from the suggestions first");
-    }
+async function moveSingleItem(){if(!selectedSingleItem)return failMove("Choose a product from the suggestions first");const from=$("singleFromLocation").value,to=$("singleToLocation").value,qty=Number($("singleQty").value||1),option=$("singleFromLocation").options[$("singleFromLocation").selectedIndex],available=Number(option?.dataset?.qty||0);if(!from||!to)return failMove("Choose the source and destination");if(qty<1||qty>available)return failMove("Quantity must be between 1 and "+available);showLoading();try{const d=await InventoryAPI.request("/move/item",{method:"POST",body:JSON.stringify({barcode:selectedSingleItem.barcode,fromLocation:from,toLocation:to,qty})});if(!d.success)throw new Error(d.error||"Move failed");setResult("Moved "+Number(d.qty||qty)+" of "+esc(selectedSingleItem.description||selectedSingleItem.barcode)+" from "+esc(from)+" to "+esc(to)+".");flashMoveSuccess();selectedSingleItem=null;singleSearchResults=[];$("singleSearchInput").value="";$("singleSearchResults").innerHTML='<div class="empty-state">Type at least 2 characters to find an item.</div>';$("selectedSingleProduct").style.display="none";$("singleFromLocation").innerHTML='<option value="">Select a product first</option>';$("singleQty").value="1";await loadLocations(true)}catch(e){console.error(e);flashMoveError();setResult(esc(e.message||"Move failed"))}finally{hideLoading()}}
 
-    const from=$("singleFromLocation").value;
-    const to=$("singleToLocation").value;
-    const qty=Number($("singleQty").value||1);
-    const option=$("singleFromLocation").options[
-        $("singleFromLocation").selectedIndex
-    ];
-    const available=Number(option?.dataset?.qty||0);
-
-    if(!from||!to){
-        return failMove("Choose the source and destination");
-    }
-
-    if(qty<1||qty>available){
-        return failMove("Quantity must be between 1 and "+available);
-    }
-
-    showLoading();
-
-    try{
-        const d=await InventoryAPI.request("/move/item",{
-            method:"POST",
-            body:JSON.stringify({
-                barcode:selectedSingleItem.barcode,
-                fromLocation:from,
-                toLocation:to,
-                qty
-            })
-        });
-
-        if(!d.success){
-            throw new Error(d.error||"Move failed");
-        }
-
-        const description=
-            selectedSingleItem.description||
-            selectedSingleItem.barcode;
-
-        selectedSingleItem=null;
-        singleSearchResults=[];
-        $("singleSearchInput").value="";
-        $("singleSearchResults").innerHTML=
-            '<div class="empty-state">Type at least 2 characters to find an item.</div>';
-        $("selectedSingleProduct").style.display="none";
-        $("singleFromLocation").innerHTML=
-            '<option value="">Select a product first</option>';
-        $("singleQty").value="1";
-
-        await loadLocations(true);
-
-        setResult(
-            "Moved "+Number(d.qty||qty)+" of "+
-            esc(description)+" from "+
-            esc(from)+" to "+esc(to)+"."
-        );
-        flashMoveSuccess();
-
-    }catch(e){
-        console.error(e);
-        flashMoveError();
-        setResult(esc(e.message||"Move failed"));
-    }finally{
-        hideLoading();
-    }
-}
-
-$("bulkBarcodeInput")$("bulkBarcodeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addBulkBarcodeFromInput()}});
+$("bulkBarcodeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addBulkBarcodeFromInput()}});
 $("singleSearchInput").addEventListener("input",searchSingleItems);
 window.addEventListener("inventory-selection-changed",async()=>{bulkBarcodes=[];selectedStock.clear();loadedLocationContents.clear();openLocations.clear();selectedSingleItem=null;singleSearchResults=[];renderBulkList();clearProgress();applyWording();await loadLocations();setResult("Inventory changed. Ready to move stock.")});
 async function init(){try{await InventoryWorkspace.init()}catch(e){console.error(e)}applyWording();renderBulkList();restoreActiveTab();await loadLocations()}
@@ -459,3 +174,4 @@ document.readyState==="loading"?document.addEventListener("DOMContentLoaded",ini
 <script src="js/appShell.js?v=1"></script>
 </body>
 </html>
+
