@@ -263,10 +263,17 @@ const InventoryOSAppShell = (function(){
                 typeof InventoryAPI.getUser ===
                     "function"
             ){
-                return (
-                    InventoryAPI.getUser() ||
-                    {}
-                );
+                const user =
+                    InventoryAPI.getUser();
+
+                if(
+                    user &&
+                    typeof user === "object"
+                ){
+                    return {
+                        ...user
+                    };
+                }
             }
         }catch(error){
             console.warn(
@@ -276,6 +283,80 @@ const InventoryOSAppShell = (function(){
         }
 
         return {};
+    }
+
+    function mergeUserProfile(
+        existingUser,
+        incomingUser
+    ){
+        const existing =
+            existingUser &&
+            typeof existingUser === "object"
+                ? existingUser
+                : {};
+
+        const incoming =
+            incomingUser &&
+            typeof incomingUser === "object"
+                ? incomingUser
+                : {};
+
+        const merged = {
+            ...existing,
+            ...incoming
+        };
+
+        const incomingName =
+            String(
+                incoming.name ||
+                incoming.full_name ||
+                incoming.display_name ||
+                ""
+            ).trim();
+
+        const existingName =
+            String(
+                existing.name ||
+                existing.full_name ||
+                existing.display_name ||
+                ""
+            ).trim();
+
+        if(!incomingName && existingName){
+            if(existing.name){
+                merged.name =
+                    existing.name;
+            }
+
+            if(existing.full_name){
+                merged.full_name =
+                    existing.full_name;
+            }
+
+            if(existing.display_name){
+                merged.display_name =
+                    existing.display_name;
+            }
+        }
+
+        const incomingEmail =
+            String(
+                incoming.email ||
+                ""
+            ).trim();
+
+        const existingEmail =
+            String(
+                existing.email ||
+                ""
+            ).trim();
+
+        if(!incomingEmail && existingEmail){
+            merged.email =
+                existing.email;
+        }
+
+        return merged;
     }
 
     function userName(user){
@@ -359,10 +440,16 @@ const InventoryOSAppShell = (function(){
 
     async function refreshUserProfile(){
         try{
-            const localUser = getUser();
+            const localUser =
+                getUser();
 
-            if(localUser && Object.keys(localUser).length){
-                applyUserToShell(localUser);
+            if(
+                localUser &&
+                Object.keys(localUser).length
+            ){
+                applyUserToShell(
+                    localUser
+                );
             }
 
             if(
@@ -372,31 +459,45 @@ const InventoryOSAppShell = (function(){
                 return;
             }
 
-            const data = await InventoryAPI.me();
+            const data =
+                await InventoryAPI.me();
 
-            if(data && data.success && data.user){
-                if(
-                    typeof InventoryAPI.saveSession === "function" &&
-                    typeof InventoryAPI.getToken === "function"
-                ){
-                    const mergedUser = {
-                        ...(InventoryAPI.getUser ? InventoryAPI.getUser() || {} : {}),
-                        ...data.user
-                    };
+            if(
+                !data ||
+                !data.success ||
+                !data.user
+            ){
+                return;
+            }
 
+            const latestStoredUser =
+                getUser();
+
+            const mergedUser =
+                mergeUserProfile(
+                    latestStoredUser,
+                    data.user
+                );
+
+            if(
+                typeof InventoryAPI.saveSession === "function" &&
+                typeof InventoryAPI.getToken === "function"
+            ){
+                const token =
+                    InventoryAPI.getToken();
+
+                if(token){
                     InventoryAPI.saveSession(
-                        InventoryAPI.getToken(),
+                        token,
                         mergedUser
                     );
                 }
-
-                applyUserToShell(
-                    {
-                        ...(InventoryAPI.getUser ? InventoryAPI.getUser() || {} : {}),
-                        ...data.user
-                    }
-                );
             }
+
+            applyUserToShell(
+                mergedUser
+            );
+
         }catch(error){
             console.warn(
                 "Could not refresh InventoryOS user profile:",
@@ -774,6 +875,25 @@ const InventoryOSAppShell = (function(){
                     900
                 ){
                     closeMenu();
+                }
+            }
+        );
+
+        window.addEventListener(
+            "inventoryos-session-updated",
+            function(){
+                const latestUser =
+                    getUser();
+
+                if(
+                    latestUser &&
+                    Object.keys(
+                        latestUser
+                    ).length
+                ){
+                    applyUserToShell(
+                        latestUser
+                    );
                 }
             }
         );
