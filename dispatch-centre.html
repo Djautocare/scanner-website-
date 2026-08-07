@@ -1,4 +1,4 @@
-</html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -822,6 +822,15 @@ let preparedMobilePrintFile = null;
 let preparedMobilePrintSignature = "";
 let preparedMobilePrintUrl = "";
 
+/*
+    One shipping-label print operation at a time.
+
+    This protects the Dispatch Centre from two independent actions
+    (for example auto-print and a manual reprint click) submitting
+    labels to QZ at the same moment.
+*/
+let dispatchPrintInFlight = false;
+
 function setDispatchQzStatus(message, state){
     const element = document.getElementById("dispatchQzStatus");
     if(!element) return;
@@ -950,6 +959,43 @@ function printSingleDispatchLabelImage(
 }
 
 function printDispatchImagesWithQz(printLabels){
+    if(dispatchPrintInFlight){
+        return Promise.reject(
+            new Error(
+                "Another shipping-label print is already in progress. Wait for it to finish, then try again."
+            )
+        );
+    }
+
+    const labels =
+        Array.isArray(printLabels)
+            ? printLabels.filter(label => {
+                return String(
+                    label && label.image_base64
+                        ? label.image_base64
+                        : ""
+                ).trim();
+            })
+            : [];
+
+    if(!labels.length){
+        return Promise.reject(
+            new Error(
+                "No printable shipping-label image data was supplied."
+            )
+        );
+    }
+
+    if(labels.length !== printLabels.length){
+        return Promise.reject(
+            new Error(
+                "One or more shipping labels had no image data, so nothing was sent to the printer."
+            )
+        );
+    }
+
+    dispatchPrintInFlight = true;
+
     let foundPrinter = "";
 
     return connectDispatchQz()
@@ -975,7 +1021,7 @@ function printDispatchImagesWithQz(printLabels){
             let chain =
                 Promise.resolve();
 
-            printLabels.forEach(
+            labels.forEach(
                 function(label,index){
                     chain = chain.then(
                         function(){
@@ -983,7 +1029,7 @@ function printDispatchImagesWithQz(printLabels){
                                 foundPrinter,
                                 label,
                                 index,
-                                printLabels.length
+                                labels.length
                             );
                         }
                     );
@@ -995,10 +1041,10 @@ function printDispatchImagesWithQz(printLabels){
         .then(function(){
             setDispatchQzStatus(
                 "Sent " +
-                printLabels.length +
+                labels.length +
                 " cropped label" +
                 (
-                    printLabels.length === 1
+                    labels.length === 1
                         ? ""
                         : "s"
                 ) +
@@ -1007,6 +1053,9 @@ function printDispatchImagesWithQz(printLabels){
                 ".",
                 "ok"
             );
+        })
+        .finally(function(){
+            dispatchPrintInFlight = false;
         });
 }
 
@@ -1295,6 +1344,7 @@ let gmailScanContext = {
 let gmailContinuousTimer = null;
 let gmailContinuousRunning = false;
 let gmailConnected = false;
+const gmailImportsInProgress = new Set();
 
 const gmailConnectBtn =
     document.getElementById("gmailConnectBtn");
@@ -2370,7 +2420,20 @@ async function autoPrintNewlyCreatedPacks(packs){
 
 async function importGmailLabels(labels, options = {}){
     const selected = Array.isArray(labels)
-        ? labels.filter(Boolean)
+        ? labels
+            .filter(Boolean)
+            .filter(label => {
+                const key = String(
+                    label.id ||
+                    (
+                        String(label.message_id || "") +
+                        ":" +
+                        String(label.attachment_id || "")
+                    )
+                );
+
+                return key && !gmailImportsInProgress.has(key);
+            })
         : [];
 
     if(!selected.length){
@@ -2380,6 +2443,21 @@ async function importGmailLabels(labels, options = {}){
 
         return false;
     }
+
+    const importKeys = selected.map(label => {
+        return String(
+            label.id ||
+            (
+                String(label.message_id || "") +
+                ":" +
+                String(label.attachment_id || "")
+            )
+        );
+    });
+
+    importKeys.forEach(key => {
+        gmailImportsInProgress.add(key);
+    });
 
     showLoading(
         options.automatic
@@ -2651,6 +2729,10 @@ async function importGmailLabels(labels, options = {}){
 
         return false;
     }finally{
+        importKeys.forEach(key => {
+            gmailImportsInProgress.delete(key);
+        });
+
         hideLoading();
     }
 }
@@ -3109,6 +3191,13 @@ document.getElementById("mobileShareLabelsBtn").addEventListener(
     shareLabelsForMobile
 );
 
+/*
+    MANUAL REPRINT:
+    This button intentionally ignores the automatic "already printed" memory.
+    If a printer jams, a label is damaged, or another copy is needed,
+    pressing Print Shipping Labels always prepares and sends the currently
+    queued courier labels again.
+*/
 document.getElementById("printPreviewLabelsBtn").addEventListener("click", async () => {
     const labels = getQueuedCourierLabels();
 
@@ -3613,7 +3702,7 @@ setTimeout(function(){
 </script>
 
 
-<script src="js/dispatchWorkflow.js?v=3"></script>
+<script src="js/dispatchWorkflow.js?v=4"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
