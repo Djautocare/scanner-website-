@@ -808,7 +808,7 @@ button:disabled{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/qzClient.js?v=7"></script>
+<script src="js/qzClient.js?v=8"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
 <script src="js/workspace.js"></script>
 
@@ -1157,6 +1157,162 @@ async function fetchMobilePrintPdf(pdfUrl){
 
     return blob;
 }
+
+function blobToBase64Payload(blob){
+    return blob.arrayBuffer()
+        .then(function(arrayBuffer){
+            const bytes =
+                new Uint8Array(
+                    arrayBuffer
+                );
+
+            const chunkSize =
+                0x8000;
+
+            let binary = "";
+
+            for(
+                let offset = 0;
+                offset < bytes.length;
+                offset += chunkSize
+            ){
+                const chunk =
+                    bytes.subarray(
+                        offset,
+                        Math.min(
+                            offset + chunkSize,
+                            bytes.length
+                        )
+                    );
+
+                binary +=
+                    String.fromCharCode.apply(
+                        null,
+                        chunk
+                    );
+            }
+
+            return btoa(binary);
+        });
+}
+
+async function printDispatchPdfWithQz(
+    pdfBlob,
+    labelCount
+){
+    if(dispatchPrintInFlight){
+        throw new Error(
+            "Another shipping-label print is already in progress. Wait for it to finish, then try again."
+        );
+    }
+
+    if(
+        !pdfBlob ||
+        !Number(pdfBlob.size || 0)
+    ){
+        throw new Error(
+            "The shipping-label PDF was empty."
+        );
+    }
+
+    dispatchPrintInFlight = true;
+
+    try{
+        await connectDispatchQz();
+
+        setDispatchQzStatus(
+            "Finding your selected 4×6 printer...",
+            "busy"
+        );
+
+        const printer =
+            await InventoryOSQZ.requirePrinter(
+                "shipping"
+            );
+
+        const base64 =
+            await blobToBase64Payload(
+                pdfBlob
+            );
+
+        if(!base64){
+            throw new Error(
+                "Could not convert the shipping-label PDF into printable data."
+            );
+        }
+
+        /*
+            Manual reprints use the combined 4×6 PDF directly.
+
+            This deliberately avoids the PNG/image print path. Each page of
+            the PDF is already a 4×6 shipping label, so QZ/Windows receives
+            the same document-style print job that is used for mobile PDF
+            printing rather than one raster-image job per label.
+        */
+        const config =
+            qz.configs.create(
+                printer,
+                {
+                    size:{
+                        width:4,
+                        height:6
+                    },
+                    units:"in",
+                    margins:0,
+                    orientation:"portrait",
+                    copies:1,
+                    scaleContent:true,
+                    jobName:
+                        "InventoryOS Manual Shipping Label Reprint"
+                }
+            );
+
+        const data = [{
+            type:"pixel",
+            format:"pdf",
+            flavor:"base64",
+            data:base64
+        }];
+
+        setDispatchQzStatus(
+            "Sending " +
+            Number(labelCount || 0) +
+            " 4×6 PDF label" +
+            (
+                Number(labelCount || 0) === 1
+                    ? ""
+                    : "s"
+            ) +
+            " to " +
+            printer +
+            "...",
+            "busy"
+        );
+
+        await qz.print(
+            config,
+            data
+        );
+
+        setDispatchQzStatus(
+            "Sent " +
+            Number(labelCount || 0) +
+            " shipping label" +
+            (
+                Number(labelCount || 0) === 1
+                    ? ""
+                    : "s"
+            ) +
+            " as a fresh 4×6 PDF job to " +
+            printer +
+            ".",
+            "ok"
+        );
+    }finally{
+        dispatchPrintInFlight = false;
+    }
+}
+
 
 async function prepareMobilePrintFile(labels){
     const signature = getMobilePrintSignature(labels);
@@ -3216,22 +3372,31 @@ document.getElementById("mobileShareLabelsBtn").addEventListener(
 );
 
 /*
-    MANUAL REPRINT BYPASS
-    ---------------------
-    This button does NOT use the active queue pack IDs, pending-print list,
-    Gmail import history, or the "already printed" memory.
+    MANUAL PRINT / REPRINT
+    ----------------------
+    This button intentionally bypasses all automatic-print memory.
 
-    Every click asks the backend for the most recently CREATED shipping-label
-    pack and renders that stored label again from disk. This means a printer
-    jam or intentional second copy can always be reprinted.
+    It prints EVERY cropped courier label currently visible in the active
+    packing queue. It does not care whether those labels have printed before.
+
+    The backend combines those exact pack IDs into a fresh multi-page 4×6 PDF,
+    and QZ prints the PDF directly. This also avoids the raster PNG path that
+    was producing blank physical labels.
 */
-document.getElementById("printPreviewLabelsBtn").addEventListener(
+document.getElementById(
+    "printPreviewLabelsBtn"
+).addEventListener(
     "click",
     async function(){
-        const button =
-            document.getElementById(
-                "printPreviewLabelsBtn"
+        const labels =
+            getQueuedCourierLabels();
+
+        if(!labels.length){
+            alert(
+                "There are no cropped courier labels ready to print."
             );
+            return;
+        }
 
         if(dispatchPrintInFlight){
             alert(
@@ -3240,86 +3405,109 @@ document.getElementById("printPreviewLabelsBtn").addEventListener(
             return;
         }
 
+        const button =
+            document.getElementById(
+                "printPreviewLabelsBtn"
+            );
+
         button.disabled = true;
         button.textContent =
-            "Preparing Latest Label...";
+            "Preparing 4×6 PDF...";
 
         showLoading(
-            "Loading the most recently created shipping label..."
+            "Building a fresh 4×6 PDF from the current shipping labels..."
         );
 
         try{
+            /*
+                IMPORTANT:
+                Use the CURRENT visible queue IDs, not the most-recent single
+                pack ID. If four labels are visible, four pack IDs are sent.
+            */
+            const packIds =
+                labels
+                    .map(label =>
+                        Number(
+                            label.packId || 0
+                        )
+                    )
+                    .filter(Boolean);
+
             const data =
                 await InventoryAPI.request(
-                    "/shipping-labels/print-latest-image",
+                    "/shipping-labels/print-pdf",
                     {
                         method:"POST",
-                        body:JSON.stringify({})
+                        body:JSON.stringify({
+                            pack_ids:packIds
+                        })
                     }
                 );
 
             if(
                 !data.success ||
-                !Array.isArray(data.labels) ||
-                !data.labels.length
+                !data.print_url
             ){
                 throw new Error(
                     data.error ||
-                    "The backend returned no shipping label to reprint."
+                    "Could not create the shipping-label PDF."
                 );
             }
 
-            const printLabels =
-                data.labels;
-
-            const proof =
-                describePrintDiagnostics(
-                    printLabels[0]
+            const returnedCount =
+                Number(
+                    data.label_count || 0
                 );
 
-            if(!proof){
+            if(
+                returnedCount !==
+                packIds.length
+            ){
                 throw new Error(
-                    "The backend did not return print diagnostics, so InventoryOS refused to send the label to QZ."
+                    "InventoryOS expected " +
+                    packIds.length +
+                    " shipping label" +
+                    (
+                        packIds.length === 1
+                            ? ""
+                            : "s"
+                    ) +
+                    " but the backend prepared " +
+                    returnedCount +
+                    ". Printing was stopped."
                 );
             }
-
-            setDispatchQzStatus(
-                "Backend verified non-blank image: " +
-                proof +
-                ". Sending to QZ...",
-                "busy"
-            );
 
             document.getElementById(
                 "loadingText"
             ).innerText =
-                "Backend verified the label contains printable content. Sending it to your selected 4×6 printer...";
+                "Downloading the fresh 4×6 PDF for QZ...";
+
+            const pdfUrl =
+                resolveInventoryApiUrl(
+                    data.print_url
+                );
+
+            const pdfBlob =
+                await fetchMobilePrintPdf(
+                    pdfUrl
+                );
+
+            document.getElementById(
+                "loadingText"
+            ).innerText =
+                "Sending all current 4×6 labels to the printer...";
 
             /*
-                Deliberate bypass:
-                - DO NOT add it to pending-print history here.
-                - DO NOT call rememberPrintedDispatchPackIds().
-                - DO NOT check wasDispatchPackAlreadyPrinted().
-                - DO NOT touch Gmail import history.
-
-                The user's explicit button click means PRINT IT AGAIN.
+                Deliberate manual bypass:
+                - no already-printed check
+                - no rememberPrintedDispatchPackIds()
+                - no pending-history requirement
+                - no Gmail import-history changes
             */
-            await printDispatchImagesWithQz(
-                printLabels
-            );
-
-            setDispatchQzStatus(
-                "Reprinted latest shipping label" +
-                (
-                    data.label_order
-                        ? " — Label " +
-                          data.label_order
-                        : ""
-                ) +
-                ". Backend image check: " +
-                proof +
-                ".",
-                "ok"
+            await printDispatchPdfWithQz(
+                pdfBlob,
+                returnedCount
             );
         }catch(err){
             console.error(err);
@@ -3333,18 +3521,19 @@ document.getElementById("printPreviewLabelsBtn").addEventListener(
                     );
 
             setDispatchQzStatus(
-                "Manual reprint failed: " +
+                "Manual PDF print failed: " +
                 detail,
                 "error"
             );
 
             alert(
-                "Could not reprint the latest shipping label.\n\n" +
+                "Could not print the shipping labels.\n\n" +
                 detail +
                 "\n\nMake sure QZ Tray is open and the printer is connected."
             );
         }finally{
             hideLoading();
+
             button.disabled = false;
             button.textContent =
                 "Print Shipping Labels";
@@ -3777,7 +3966,7 @@ setTimeout(function(){
 </script>
 
 
-<script src="js/dispatchWorkflow.js?v=6"></script>
+<script src="js/dispatchWorkflow.js?v=7"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
