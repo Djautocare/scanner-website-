@@ -808,7 +808,7 @@ button:disabled{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/qzClient.js?v=4"></script>
+<script src="js/qzClient.js?v=5"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
 <script src="js/workspace.js"></script>
 
@@ -870,78 +870,31 @@ function connectDispatchQz(){
             );
 
             refreshPendingDispatchPrintStatus();
-
-            if(printer){
-                setTimeout(
-                    retryPendingDispatchPrints,
-                    250
-                );
-            }
         });
 }
 
-function buildShippingLabelHtml(label){
-    const imageBase64 = String(label.image_base64 || "");
-
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-@page{
-    size:4in 6in;
-    margin:0;
-}
-
-html,body{
-    width:4in;
-    height:6in;
-    margin:0;
-    padding:0;
-    background:white;
-    overflow:hidden;
-}
-
-*{
-    box-sizing:border-box;
-}
-
-.label-page{
-    width:4in;
-    height:6in;
-    margin:0;
-    padding:0;
-    background:white;
-    overflow:hidden;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
-
-.label-page img{
-    width:4in;
-    height:6in;
-    object-fit:contain;
-    display:block;
-    image-rendering:crisp-edges;
-}
-</style>
-</head>
-<body>
-    <div class="label-page">
-        <img src="data:image/png;base64,${imageBase64}" width="2400" height="3600">
-    </div>
-</body>
-</html>`;
-}
-
-function printSingleDispatchLabelHtml(
+function printSingleDispatchLabelImage(
     printer,
     label,
     index,
     total
 ){
+    const imageBase64 =
+        String(
+            label &&
+            label.image_base64
+                ? label.image_base64
+                : ""
+        ).trim();
+
+    if(!imageBase64){
+        throw new Error(
+            "Shipping label " +
+            (index + 1) +
+            " has no printable image data."
+        );
+    }
+
     const config = qz.configs.create(
         printer,
         {
@@ -953,7 +906,7 @@ function printSingleDispatchLabelHtml(
             margins:0,
             orientation:"portrait",
             copies:1,
-            scaleContent:false,
+            scaleContent:true,
             colorType:"grayscale",
             density:"best",
             interpolation:"nearest-neighbor",
@@ -965,13 +918,18 @@ function printSingleDispatchLabelHtml(
         }
     );
 
+    /*
+        Send exactly one backend-rendered PNG to QZ for each 4x6 label.
+
+        The previous HTML wrapper could produce blank pages on some thermal
+        printer/driver combinations. Direct base64 image printing avoids the
+        extra HTML/PDF rendering stage.
+    */
     const data = [{
         type:"pixel",
-        format:"html",
-        flavor:"plain",
-        data:buildShippingLabelHtml(
-            label
-        )
+        format:"image",
+        flavor:"base64",
+        data:imageBase64
     }];
 
     setDispatchQzStatus(
@@ -1021,7 +979,7 @@ function printDispatchImagesWithQz(printLabels){
                 function(label,index){
                     chain = chain.then(
                         function(){
-                            return printSingleDispatchLabelHtml(
+                            return printSingleDispatchLabelImage(
                                 foundPrinter,
                                 label,
                                 index,
@@ -2085,6 +2043,14 @@ const DISPATCH_PENDING_PRINTS_KEY =
     "inventoryos_dispatch_pending_print_pack_ids_v1";
 
 let dispatchPendingRetryRunning = false;
+
+/*
+    IMPORTANT:
+    Pending jobs are NOT automatically retried from connectDispatchQz().
+    A normal print operation calls connectDispatchQz() itself, so retrying
+    from inside the connection-success callback causes the same label to be
+    submitted twice. Pending jobs remain visible and can be cleared safely.
+*/
 
 function getPendingDispatchPrintPackIds(){
     try{
@@ -3647,7 +3613,3626 @@ setTimeout(function(){
 </script>
 
 
-<script src="js/dispatchWorkflow.js?v=2"></script>
+<script src="js/dispatchWorkflow.js?v=3"></script>
+
+<script src="js/appShell.js?v=3"></script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black"> 
+<meta name="theme-color" content="#0d0d0d">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<title>Dispatch Centre</title>
+
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
+
+<style>
+html{touch-action:manipulation;}
+*{box-sizing:border-box;}
+
+body{
+    font-family:Arial,sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(142,68,255,0.16), transparent 34%),
+        radial-gradient(circle at top right, rgba(111,66,193,0.14), transparent 36%),
+        #0d0d0d;
+    color:white;
+    padding:18px;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.page{max-width:1040px;margin:0 auto;}
+
+.panel{
+    background:linear-gradient(180deg,#1d1d1d,#151515);
+    border:1px solid rgba(142,68,255,0.30);
+    padding:18px;
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    margin-bottom:16px;
+}
+
+h1{text-align:center;font-size:34px;margin:10px 0 6px 0;}
+.subtitle{text-align:center;color:#aaa;margin:0 0 20px 0;font-size:14px;line-height:1.4;}
+
+
+.email-import-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin-top:12px;}
+.email-status-card{background:linear-gradient(145deg,#242424,#191919);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px;}
+
+.gmail-scan-controls{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+    margin-top:12px;
+}
+
+.gmail-control-card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:14px;
+}
+
+.gmail-control-row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-top:10px;
+}
+
+.gmail-control-row select{
+    flex:1 1 170px;
+    min-width:0;
+}
+
+.gmail-control-row button{
+    flex:1 1 170px;
+}
+
+.gmail-toggle-row{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-top:10px;
+}
+
+.gmail-toggle-row input{
+    width:auto;
+    margin:3px 0 0 0;
+}
+
+@media(max-width:700px){
+    .gmail-scan-controls{
+        grid-template-columns:1fr;
+    }
+}
+
+.email-results{display:grid;gap:10px;margin-top:12px;}
+.email-result{background:#1d1d1d;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:11px;}
+.email-result label{display:flex;gap:10px;align-items:flex-start;}
+.email-result input{width:auto;margin-top:3px;}
+.email-result-title{font-weight:bold;line-height:1.25;}
+.email-result-meta{color:#aaa;font-size:12px;line-height:1.35;margin-top:4px;}
+.email-pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:bold;margin:4px 5px 0 0;background:rgba(142,68,255,0.18);border:1px solid rgba(142,68,255,0.35);color:#d9c8ff;}
+@media(max-width:700px){.email-import-grid{grid-template-columns:1fr;}}
+
+.dropzone{
+    border:2px dashed rgba(142,68,255,0.45);
+    background:rgba(142,68,255,0.10);
+    border-radius:18px;
+    padding:28px 18px;
+    text-align:center;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.dropzone.dragover{
+    border-color:#b56cff;
+    background:rgba(142,68,255,0.20);
+}
+
+.dropzone strong{
+    display:block;
+    font-size:20px;
+    margin-bottom:8px;
+}
+
+input,button,select{
+    padding:13px;
+    margin:5px 0 11px 0;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+}
+
+input,select{
+    background:#2a2a2a;
+    color:white;
+    outline:none;
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+button{
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    background:linear-gradient(135deg,#8e44ff,#6f2fd9);
+    border:1px solid rgba(142,68,255,0.45);
+}
+
+button.secondary{
+    background:linear-gradient(135deg,#333,#222);
+    border:1px solid rgba(255,255,255,0.12);
+}
+
+button.success{
+    background:linear-gradient(135deg,#28a745,#1f8b3a);
+    border:1px solid rgba(40,167,69,0.45);
+}
+
+button.danger{
+    background:linear-gradient(135deg,#dc3545,#9c1f2b);
+    border:1px solid rgba(220,53,69,0.45);
+}
+
+button:disabled{
+    opacity:0.45;
+    cursor:not-allowed;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:14px;
+}
+
+.hidden{display:none!important;}
+
+.muted{color:#aaa;font-size:14px;}
+.small{font-size:12px;line-height:1.35;}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:1fr 100px auto;
+    gap:10px;
+    margin-top:12px;
+}
+
+.view-tabs{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:14px;
+}
+
+.view-tabs button{margin:0;}
+
+.view-tabs button.active{
+    background:linear-gradient(135deg,#28a745,#1f8b3a);
+    border-color:rgba(40,167,69,0.45);
+}
+
+.card{
+    background:linear-gradient(145deg,#242424,#191919);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px;
+    padding:14px;
+    margin-top:12px;
+}
+
+.card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+}
+
+.card-title{
+    font-size:17px;
+    font-weight:bold;
+}
+
+.label-number{
+    background:rgba(142,68,255,0.20);
+    border:1px solid rgba(142,68,255,0.35);
+    color:#d9c8ff;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:13px;
+    font-weight:bold;
+    white-space:nowrap;
+}
+
+.status{
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:bold;
+    background:#333;
+    text-transform:capitalize;
+}
+
+.status.ready{background:rgba(46,204,113,.18);color:#7dffa8;}
+.status.needs_review{background:rgba(241,196,15,.18);color:#ffe27a;}
+.status.missing{background:rgba(255,77,77,.18);color:#ff8a8a;}
+.status.packed{background:rgba(142,68,255,.22);color:#d7bdff;}
+
+.item-row{
+    background:#1d1d1d;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:10px;
+    margin-top:8px;
+}
+
+.inline-edit{
+    display:grid;
+    grid-template-columns:1fr 75px auto auto;
+    gap:8px;
+    margin-top:10px;
+}
+
+.location{
+    margin-top:8px;
+    color:#d9c8ff;
+    font-size:14px;
+    line-height:1.35;
+}
+
+.ok{color:#8dffb0;}
+.error{color:#ff9b9b;}
+.warn{color:#ffe27a;}
+
+.pick-row{
+    display:grid;
+    grid-template-columns:90px 1fr 1fr 80px;
+    gap:10px;
+    align-items:center;
+    padding:11px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+}
+
+.pick-row:last-child{border-bottom:none;}
+
+.pick-head{
+    color:#aaa;
+    font-size:12px;
+    font-weight:bold;
+    text-transform:uppercase;
+}
+
+.preview-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:12px;
+    margin-top:14px;
+}
+
+.preview-card{
+    background:#191919;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:10px;
+}
+
+.preview-card img{
+    width:100%;
+    max-height:260px;
+    object-fit:contain;
+    background:white;
+    border-radius:10px;
+    display:block;
+}
+
+.preview-title{
+    font-size:12px;
+    color:#ddd;
+    margin-top:8px;
+    word-break:break-word;
+}
+
+.preview-meta{
+    font-size:11px;
+    color:#aaa;
+    margin-top:4px;
+    line-height:1.35;
+}
+
+.print-preview-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+    gap:12px;
+    margin-top:14px;
+}
+
+.print-label-card{
+    background:#191919;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:12px;
+}
+
+.print-label-preview{
+    background:white;
+    color:black;
+    width:100%;
+    aspect-ratio:4/6;
+    border-radius:10px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    overflow:hidden;
+}
+
+.print-label-top{
+    font-size:14px;
+    font-weight:bold;
+    line-height:1.2;
+}
+
+.print-label-middle{
+    border:2px solid black;
+    padding:10px;
+    text-align:center;
+    font-weight:bold;
+    font-size:18px;
+    margin:12px 0;
+}
+
+.print-label-bottom{
+    font-size:13px;
+    line-height:1.3;
+}
+
+.print-label-meta{
+    margin-top:8px;
+    color:#aaa;
+    font-size:12px;
+    line-height:1.35;
+}
+
+.checkbox-card{
+    background:#2a2a2a;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:11px;
+    margin:12px 0;
+    text-align:left;
+}
+
+.checkbox-card label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:bold;
+    font-size:14px;
+}
+
+.checkbox-card input{width:auto;margin:0;}
+
+#loadingOverlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+    justify-content:center;
+    align-items:center;
+}
+
+.loaderBox{text-align:center;color:white;font-weight:bold;}
+.spinner{
+    width:55px;
+    height:55px;
+    border:6px solid #333;
+    border-top:6px solid #8e44ff;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:0 auto 15px auto;
+}
+
+@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+
+.links-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:14px;
+}
+
+.link-card{
+    display:block;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(135deg,rgba(142,68,255,0.22),rgba(142,68,255,0.06));
+    border:1px solid rgba(142,68,255,0.35);
+    padding:14px;
+    border-radius:14px;
+    font-weight:bold;
+    text-align:center;
+}
+
+
+.qz-print-status{
+    min-height:18px;
+    color:#aaa;
+    font-size:12px;
+    line-height:1.4;
+    margin:8px 0 0 0;
+}
+
+.qz-print-status.ok{color:#8dffb0;}
+.qz-print-status.error{color:#ff9b9b;}
+.qz-print-status.busy{color:#ffe27a;}
+
+.courier-preview{
+    max-width:110px;
+    background:white;
+    border-radius:8px;
+    padding:4px;
+}
+
+.courier-preview img{
+    width:100%;
+    display:block;
+    border-radius:5px;
+}
+
+
+.actual-shipping-preview{
+    background:white;
+    width:100%;
+    aspect-ratio:4/6;
+    border-radius:10px;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.actual-shipping-preview img,
+.actual-shipping-preview iframe{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+    border:0;
+    background:white;
+}
+
+.preview-card iframe{
+    width:100%;
+    height:260px;
+    display:block;
+    border:0;
+    background:white;
+    border-radius:10px;
+}
+
+.courier-preview iframe{
+    width:100%;
+    height:155px;
+    display:block;
+    border:0;
+    background:white;
+    border-radius:5px;
+}
+
+.brand-badge{
+    display:inline-block;
+    margin-top:6px;
+    padding:4px 8px;
+    border-radius:999px;
+    background:rgba(40,167,69,0.16);
+    border:1px solid rgba(40,167,69,0.35);
+    color:#8dffb0;
+    font-size:11px;
+    font-weight:bold;
+}
+
+@media(max-width:700px){
+    body{padding:12px;}
+    h1{font-size:30px;}
+    .panel{padding:14px;}
+    .form-grid,.inline-edit,.links-grid{grid-template-columns:1fr;}
+    .view-tabs{grid-template-columns:1fr;}
+    button{width:100%;}
+    .actions{display:grid;}
+    .pick-row{grid-template-columns:1fr;}
+    .pick-head{display:none;}
+}
+</style>
+<link rel="stylesheet" href="css/theme.css">
+
+<link rel="stylesheet" href="css/inventoryTopbar.css">
+
+<link rel="stylesheet" href="css/appShell.css?v=3">
+</head>
+
+<body>
+<div class="page">
+
+    <div class="panel">
+        <h2 style="margin-top:0;">Email Label Import</h2>
+
+        <div class="muted small">
+            Normal scanning now uses the email received date and your last successful scan time.
+        </div>
+
+        <div class="email-import-grid">
+            <div class="email-status-card">
+                <div id="gmailStatus" class="muted">
+                    Checking Gmail connection...
+                </div>
+
+                <div class="actions">
+                    <button id="gmailConnectBtn" type="button">
+                        Connect Gmail
+                    </button>
+
+                    <button
+                        id="gmailScanBtn"
+                        class="success"
+                        type="button"
+                        disabled
+                    >
+                        Scan New Emails
+                    </button>
+
+                    <button
+                        id="gmailDisconnectBtn"
+                        class="danger"
+                        type="button"
+                        disabled
+                    >
+                        Disconnect
+                    </button>
+                </div>
+            </div>
+
+            <div class="email-status-card">
+                <strong>Date/time cursor</strong>
+
+                <div
+                    id="gmailCursorStatus"
+                    class="muted small"
+                    style="margin-top:8px;"
+                >
+                    Loading last successful scan time...
+                </div>
+
+                <div
+                    class="muted small"
+                    style="margin-top:8px;"
+                >
+                    New-email scans only check shipping-label emails received after this saved time.
+                </div>
+            </div>
+        </div>
+
+        <div class="gmail-scan-controls">
+            <div class="gmail-control-card">
+                <strong>Continuous scan</strong>
+
+                <label class="gmail-toggle-row">
+                    <input
+                        id="gmailContinuousToggle"
+                        type="checkbox"
+                    >
+
+                    <span>
+                        Automatically scan and import new labels while this Dispatch Centre page is open
+                    </span>
+                </label>
+
+                <div class="gmail-control-row">
+                    <select id="gmailScanInterval">
+                        <option value="1">Every 1 minute</option>
+                        <option value="5" selected>Every 5 minutes</option>
+                        <option value="10">Every 10 minutes</option>
+                        <option value="15">Every 15 minutes</option>
+                        <option value="30">Every 30 minutes</option>
+                        <option value="60">Every 60 minutes</option>
+                    </select>
+                </div>
+
+                <label class="gmail-toggle-row">
+                    <input
+                        id="gmailAutoPrintToggle"
+                        type="checkbox"
+                    >
+
+                    <span>
+                        Auto-print newly imported labels to your selected 4×6 printer
+                        <span class="muted small">
+                            (desktop QZ Tray only)
+                        </span>
+                    </span>
+                </label>
+
+                <div
+                    id="gmailContinuousStatus"
+                    class="muted small"
+                    style="margin-top:8px;"
+                >
+                    Continuous scan is off.
+                </div>
+            </div>
+
+            <div class="gmail-control-card">
+                <strong>Rescan older emails</strong>
+
+                <div
+                    class="muted small"
+                    style="margin-top:8px;"
+                >
+                    This checks an older period without changing the normal last-scan time.
+                </div>
+
+                <div class="gmail-control-row">
+                    <select id="gmailRescanWindow">
+                        <option value="1">Past 1 hour</option>
+                        <option value="6">Past 6 hours</option>
+                        <option value="24" selected>Past 24 hours</option>
+                        <option value="48">Past 2 days</option>
+                        <option value="168">Past 7 days</option>
+                        <option value="720">Past 30 days</option>
+                    </select>
+
+                    <button
+                        id="gmailRescanBtn"
+                        class="secondary"
+                        type="button"
+                        disabled
+                    >
+                        Rescan
+                    </button>
+                </div>
+
+                <button
+                    id="gmailStartFreshBtn"
+                    class="secondary"
+                    type="button"
+                    disabled
+                >
+                    Start Fresh From Now
+                </button>
+            </div>
+        </div>
+
+        <div
+            id="gmailScanStatus"
+            class="small muted"
+            style="margin-top:10px;"
+        ></div>
+
+        <div id="gmailResults" class="email-results"></div>
+
+        <div
+            class="actions"
+            id="gmailImportActions"
+            style="display:none;"
+        >
+            <button
+                id="gmailImportSelectedBtn"
+                class="success"
+                type="button"
+            >
+                Import Selected To Packing Queue
+            </button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h1>Dispatch Centre</h1>
+        <p class="subtitle">Upload labels, backend-crop to 4×6, build a packing queue, then pack by location or by printed label order.</p>
+
+        <div id="dropzone" class="dropzone">
+            <strong>Drop shipping labels here</strong>
+            <span class="muted">PDF, PNG, JPG or JPEG. This will backend auto-crop before upload and will not remove stock.</span>
+            <input id="fileInput" class="hidden" type="file" multiple accept=".pdf,.png,.jpg,.jpeg">
+        </div>
+
+        <div class="checkbox-card">
+            <label>
+                <input type="checkbox" id="autoCropToggle" checked>
+                Backend auto-crop labels to 4×6 before adding to queue
+            </label>
+            <div class="small muted" style="margin-top:8px;">Better for InPost/Vinted style A4 labels because the backend detects the cut-line and label block.</div>
+        </div>
+
+        <div class="actions">
+            <button id="browseBtn">Browse Files</button>
+            <button id="processBtn" class="secondary" disabled>Backend Crop Preview</button>
+            <button id="uploadBtn" class="success" disabled>Upload To Packing Queue</button>
+        </div>
+
+        <div id="selectedFiles" class="muted small"></div>
+        <div id="cropStatus" class="small muted"></div>
+        <div id="previewGrid" class="preview-grid"></div>
+    </div>
+
+    <div class="panel">
+        <h2 style="margin-top:0;">Manual Packing Item</h2>
+        <div class="muted small">Use this when a label only gives a tracking number or when the item name cannot be detected yet.</div>
+
+        <div class="form-grid">
+            <input id="manualDescription" type="text" placeholder="Item description e.g. Blue hoodie">
+            <input id="manualQty" type="number" min="1" value="1">
+            <button id="manualAddBtn">Add</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2 style="margin:0;">Packing Queue</h2>
+        <div class="muted small">Search locations first. Nothing is removed from stock from this page.</div>
+
+        <div class="actions">
+            <button id="refreshBtn" class="secondary">Refresh Queue</button>
+            <button id="searchBtn">Search Locations</button>
+            <button id="printBtn" class="secondary">Print Pick List</button>
+        </div>
+
+        <div class="view-tabs">
+            <button id="locationViewBtn" class="active" type="button">Location Order</button>
+            <button id="labelViewBtn" type="button">Label Print Order</button>
+        </div>
+
+        <div id="queue" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="panel">
+        <h2 style="margin:0;">Cropped Shipping Label Preview (4×6)</h2>
+        <div class="muted small">These are the actual cropped courier labels that will print, shown in Label Print Order.</div>
+
+        <div class="actions">
+            <button id="refreshPrintPreviewBtn" class="secondary" type="button">Refresh Preview</button>
+            <button id="printPreviewLabelsBtn" type="button">Print Shipping Labels</button>
+            <button id="clearPendingPrintsBtn" class="danger" type="button">Clear Pending Prints</button>
+            <button id="mobileShareLabelsBtn" class="secondary" type="button">📱 Share / Mobile Print</button>
+        </div>
+
+        <div id="mobileShareStatus" class="qz-print-status">
+            On mobile, share the combined 4×6 PDF to your Jadens printing app.
+        </div>
+
+        <div style="margin-top:10px;"><a class="link-card" href="printer-setup.html">Open Printer Setup</a></div>
+<div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send each 600-DPI 4×6 shipping label directly to your selected 4×6 printer using Chrome/PDFium-rendered images.</div>
+<div id="dispatchPendingPrintStatus" class="qz-print-status">No InventoryOS print retries are waiting.</div>
+        <div id="printPreviewGrid" class="print-preview-grid"></div>
+    </div>
+
+    <div class="links-grid">
+        <a class="link-card" href="index.html">← Back to Dashboard</a>
+        <a class="link-card" href="search.html">Open Stock Search</a>
+    </div>
+</div>
+
+<div id="loadingOverlay">
+    <div class="loaderBox">
+        <div class="spinner"></div>
+        <p id="loadingText">Working...</p>
+    </div>
+</div>
+
+<script src="js/theme.js"></script>
+<script src="js/api.js"></script>
+<script src="js/qzClient.js?v=5"></script>
+<script src="js/inventoryTopbar.js?v=2"></script>
+<script src="js/workspace.js"></script>
+
+<script>
+let selectedFiles = [];
+let croppedLabels = [];
+let queueCache = [];
+let currentView = "location";
+
+let preparedMobilePrintFile = null;
+let preparedMobilePrintSignature = "";
+let preparedMobilePrintUrl = "";
+
+function setDispatchQzStatus(message, state){
+    const element = document.getElementById("dispatchQzStatus");
+    if(!element) return;
+
+    element.textContent = message || "";
+    element.classList.remove("ok", "error", "busy");
+
+    if(state){
+        element.classList.add(state);
+    }
+}
+
+function connectDispatchQz(){
+    if(!window.qz){
+        setDispatchQzStatus(
+            "QZ Tray library did not load.",
+            "error"
+        );
+
+        return Promise.reject(
+            new Error(
+                "QZ Tray library did not load."
+            )
+        );
+    }
+
+    setDispatchQzStatus(
+        "Connecting to QZ Tray...",
+        "busy"
+    );
+
+    return InventoryOSQZ.connect()
+        .then(function(){
+            const printer =
+                InventoryOSQZ
+                    .getShippingPrinterName();
+
+            setDispatchQzStatus(
+                printer
+                    ? "Connected. 4×6 printer: " +
+                      printer
+                    : "Connected. Select a 4×6 printer in Printer Setup.",
+                printer
+                    ? "ok"
+                    : "warn"
+            );
+
+            refreshPendingDispatchPrintStatus();
+        });
+}
+
+function printSingleDispatchLabelImage(
+    printer,
+    label,
+    index,
+    total
+){
+    const imageBase64 =
+        String(
+            label &&
+            label.image_base64
+                ? label.image_base64
+                : ""
+        ).trim();
+
+    if(!imageBase64){
+        throw new Error(
+            "Shipping label " +
+            (index + 1) +
+            " has no printable image data."
+        );
+    }
+
+    const config = qz.configs.create(
+        printer,
+        {
+            size:{
+                width:4,
+                height:6
+            },
+            units:"in",
+            margins:0,
+            orientation:"portrait",
+            copies:1,
+            scaleContent:true,
+            colorType:"grayscale",
+            density:"best",
+            interpolation:"nearest-neighbor",
+            jobName:
+                "InventoryOS Dispatch Label " +
+                (index + 1) +
+                " of " +
+                total
+        }
+    );
+
+    /*
+        Send exactly one backend-rendered PNG to QZ for each 4x6 label.
+
+        The previous HTML wrapper could produce blank pages on some thermal
+        printer/driver combinations. Direct base64 image printing avoids the
+        extra HTML/PDF rendering stage.
+    */
+    const data = [{
+        type:"pixel",
+        format:"image",
+        flavor:"base64",
+        data:imageBase64
+    }];
+
+    setDispatchQzStatus(
+        "Sending label " +
+        (index + 1) +
+        " of " +
+        total +
+        " to " +
+        printer +
+        "...",
+        "busy"
+    );
+
+    return qz.print(
+        config,
+        data
+    );
+}
+
+function printDispatchImagesWithQz(printLabels){
+    let foundPrinter = "";
+
+    return connectDispatchQz()
+        .then(function(){
+            setDispatchQzStatus(
+                "Finding your selected 4×6 printer...",
+                "busy"
+            );
+
+            return InventoryOSQZ
+                .requirePrinter(
+                    "shipping"
+                );
+        })
+        .then(function(printer){
+            foundPrinter = printer;
+
+            /*
+                Print each 4×6 shipping label as its own trusted QZ job.
+                The selected printer comes from Printer Setup on this
+                computer rather than a hardcoded printer name.
+            */
+            let chain =
+                Promise.resolve();
+
+            printLabels.forEach(
+                function(label,index){
+                    chain = chain.then(
+                        function(){
+                            return printSingleDispatchLabelImage(
+                                foundPrinter,
+                                label,
+                                index,
+                                printLabels.length
+                            );
+                        }
+                    );
+                }
+            );
+
+            return chain;
+        })
+        .then(function(){
+            setDispatchQzStatus(
+                "Sent " +
+                printLabels.length +
+                " cropped label" +
+                (
+                    printLabels.length === 1
+                        ? ""
+                        : "s"
+                ) +
+                " directly to " +
+                foundPrinter +
+                ".",
+                "ok"
+            );
+        });
+}
+
+
+function setMobileShareStatus(message, state){
+    const element = document.getElementById("mobileShareStatus");
+
+    if(!element){
+        return;
+    }
+
+    element.textContent = message || "";
+    element.classList.remove("ok", "error", "busy", "warn");
+
+    if(state){
+        element.classList.add(state);
+    }
+}
+
+function getMobilePrintSignature(labels){
+    return labels
+        .map(label => {
+            return `${label.packId}:${label.labelOrder}`;
+        })
+        .join("|");
+}
+
+function clearPreparedMobilePrint(){
+    preparedMobilePrintFile = null;
+    preparedMobilePrintSignature = "";
+
+    if(preparedMobilePrintUrl){
+        URL.revokeObjectURL(preparedMobilePrintUrl);
+        preparedMobilePrintUrl = "";
+    }
+}
+
+function formatMobilePrintFilename(){
+    const date = new Date();
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+
+    return `InventoryOS-Shipping-Labels-${yyyy}-${mm}-${dd}-${hh}${min}.pdf`;
+}
+
+async function fetchMobilePrintPdf(pdfUrl){
+    const headers = {};
+    const token = InventoryAPI.getToken();
+
+    if(token){
+        headers.Authorization = "Bearer " + token;
+    }
+
+    const response = await fetch(pdfUrl, {
+        method:"GET",
+        headers,
+        cache:"no-store"
+    });
+
+    if(!response.ok){
+        throw new Error(
+            "Could not download the combined shipping-label PDF. HTTP " +
+            response.status
+        );
+    }
+
+    const blob = await response.blob();
+
+    if(!blob.size){
+        throw new Error("The combined shipping-label PDF was empty.");
+    }
+
+    return blob;
+}
+
+async function prepareMobilePrintFile(labels){
+    const signature = getMobilePrintSignature(labels);
+
+    if(
+        preparedMobilePrintFile &&
+        preparedMobilePrintSignature === signature
+    ){
+        return preparedMobilePrintFile;
+    }
+
+    clearPreparedMobilePrint();
+
+    setMobileShareStatus(
+        "Preparing the combined 4×6 shipping-label PDF...",
+        "busy"
+    );
+
+    const data = await InventoryAPI.request(
+        "/shipping-labels/print-pdf",
+        {
+            method:"POST",
+            body:JSON.stringify({
+                pack_ids:labels.map(label => label.packId)
+            })
+        }
+    );
+
+    if(!data.success || !data.print_url){
+        throw new Error(
+            data.error ||
+            "Could not create the combined shipping-label PDF."
+        );
+    }
+
+    const pdfUrl = resolveInventoryApiUrl(data.print_url);
+    const blob = await fetchMobilePrintPdf(pdfUrl);
+
+    preparedMobilePrintFile = new File(
+        [blob],
+        formatMobilePrintFilename(),
+        {
+            type:"application/pdf",
+            lastModified:Date.now()
+        }
+    );
+
+    preparedMobilePrintSignature = signature;
+
+    setMobileShareStatus(
+        `${Number(data.label_count || labels.length)} label` +
+        `${Number(data.label_count || labels.length) === 1 ? "" : "s"} ready to share.`,
+        "ok"
+    );
+
+    return preparedMobilePrintFile;
+}
+
+function openMobilePrintFallback(file){
+    if(preparedMobilePrintUrl){
+        URL.revokeObjectURL(preparedMobilePrintUrl);
+    }
+
+    preparedMobilePrintUrl = URL.createObjectURL(file);
+
+    const opened = window.open(
+        preparedMobilePrintUrl,
+        "_blank",
+        "noopener,noreferrer"
+    );
+
+    if(!opened){
+        const link = document.createElement("a");
+        link.href = preparedMobilePrintUrl;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+
+    setMobileShareStatus(
+        "The PDF has opened. Use your phone's Share button and choose the Jadens app.",
+        "ok"
+    );
+}
+
+async function shareLabelsForMobile(){
+    const labels = getQueuedCourierLabels();
+
+    if(!labels.length){
+        alert("There are no cropped courier labels ready to share.");
+        return;
+    }
+
+    const button = document.getElementById("mobileShareLabelsBtn");
+    button.disabled = true;
+
+    try{
+        const signature = getMobilePrintSignature(labels);
+        const wasAlreadyPrepared =
+            preparedMobilePrintFile &&
+            preparedMobilePrintSignature === signature;
+
+        button.textContent = wasAlreadyPrepared
+            ? "Opening Share Sheet..."
+            : "Preparing Mobile PDF...";
+
+        const file = await prepareMobilePrintFile(labels);
+
+        const shareData = {
+            title:"InventoryOS Shipping Labels",
+            text:"4×6 shipping labels from InventoryOS",
+            files:[file]
+        };
+
+        const canShareFiles =
+            navigator.share &&
+            (
+                !navigator.canShare ||
+                navigator.canShare(shareData)
+            );
+
+        if(canShareFiles){
+            try{
+                await navigator.share(shareData);
+
+                setMobileShareStatus(
+                    "Shared successfully. Choose your Jadens printing app to print the 4×6 labels.",
+                    "ok"
+                );
+
+                return;
+            }catch(error){
+                if(error && error.name === "AbortError"){
+                    setMobileShareStatus(
+                        "Sharing was cancelled. Tap the button again when ready.",
+                        "warn"
+                    );
+
+                    return;
+                }
+
+                /*
+                    Some mobile browsers require the share call to happen
+                    immediately on a fresh tap. The PDF remains cached, so the
+                    next tap can open the share sheet without downloading it.
+                */
+                if(error && error.name === "NotAllowedError"){
+                    setMobileShareStatus(
+                        "The PDF is ready. Tap Share / Mobile Print once more to open the share sheet.",
+                        "warn"
+                    );
+
+                    return;
+                }
+
+                console.warn(
+                    "File sharing was unavailable; opening PDF fallback:",
+                    error
+                );
+            }
+        }
+
+        openMobilePrintFallback(file);
+    }catch(error){
+        console.error(error);
+
+        setMobileShareStatus(
+            error.message ||
+            "Could not prepare labels for mobile printing.",
+            "error"
+        );
+
+        alert(
+            error.message ||
+            "Could not prepare labels for mobile printing."
+        );
+    }finally{
+        button.disabled = false;
+        button.textContent = "📱 Share / Mobile Print";
+    }
+}
+
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const browseBtn = document.getElementById("browseBtn");
+const processBtn = document.getElementById("processBtn");
+const uploadBtn = document.getElementById("uploadBtn");
+const selectedFilesEl = document.getElementById("selectedFiles");
+const cropStatusEl = document.getElementById("cropStatus");
+const previewGrid = document.getElementById("previewGrid");
+const queueEl = document.getElementById("queue");
+const printPreviewGrid = document.getElementById("printPreviewGrid");
+
+function apiFetch(path, options = {}){
+    return InventoryAPI.request(path, options).then(data => ({
+        json: () => Promise.resolve(data)
+    }));
+}
+
+
+let gmailLabelResults = [];
+
+let gmailScanContext = {
+    mode:"cursor",
+    commitAt:0
+};
+
+let gmailContinuousTimer = null;
+let gmailContinuousRunning = false;
+let gmailConnected = false;
+
+const gmailConnectBtn =
+    document.getElementById("gmailConnectBtn");
+
+const gmailScanBtn =
+    document.getElementById("gmailScanBtn");
+
+const gmailDisconnectBtn =
+    document.getElementById("gmailDisconnectBtn");
+
+const gmailRescanBtn =
+    document.getElementById("gmailRescanBtn");
+
+const gmailStartFreshBtn =
+    document.getElementById("gmailStartFreshBtn");
+
+const gmailContinuousToggle =
+    document.getElementById("gmailContinuousToggle");
+
+const gmailAutoPrintToggle =
+    document.getElementById("gmailAutoPrintToggle");
+
+const gmailScanInterval =
+    document.getElementById("gmailScanInterval");
+
+function setGmailStatus(message, state){
+    const element =
+        document.getElementById("gmailStatus");
+
+    if(!element){
+        return;
+    }
+
+    element.textContent = message || "";
+    element.classList.remove(
+        "ok",
+        "error",
+        "warn"
+    );
+
+    if(state){
+        element.classList.add(state);
+    }
+}
+
+function setGmailScanStatus(message, state){
+    const element =
+        document.getElementById("gmailScanStatus");
+
+    if(!element){
+        return;
+    }
+
+    element.textContent = message || "";
+    element.classList.remove(
+        "ok",
+        "error",
+        "warn"
+    );
+
+    if(state){
+        element.classList.add(state);
+    }
+}
+
+function setGmailContinuousStatus(message, state){
+    const element =
+        document.getElementById(
+            "gmailContinuousStatus"
+        );
+
+    if(!element){
+        return;
+    }
+
+    element.textContent = message || "";
+    element.classList.remove(
+        "ok",
+        "error",
+        "warn"
+    );
+
+    if(state){
+        element.classList.add(state);
+    }
+}
+
+function formatScanDate(timestamp){
+    const value = Number(timestamp || 0);
+
+    if(!value){
+        return "Not set";
+    }
+
+    return new Date(value).toLocaleString(
+        "en-GB",
+        {
+            dateStyle:"medium",
+            timeStyle:"short"
+        }
+    );
+}
+
+function updateGmailCursorDisplay(timestamp){
+    const element =
+        document.getElementById(
+            "gmailCursorStatus"
+        );
+
+    if(!element){
+        return;
+    }
+
+    element.textContent =
+        "Last successful new-email scan: " +
+        formatScanDate(timestamp);
+}
+
+function renderGmailResults(labels){
+    const container =
+        document.getElementById("gmailResults");
+
+    const actions =
+        document.getElementById(
+            "gmailImportActions"
+        );
+
+    if(!labels || !labels.length){
+        container.innerHTML = "";
+        actions.style.display = "none";
+        return;
+    }
+
+    actions.style.display = "flex";
+
+    container.innerHTML = labels
+        .map((label, index) => {
+            const received = label.internal_date
+                ? formatScanDate(label.internal_date)
+                : (label.date || "");
+
+            return `
+                <div class="email-result">
+                    <label>
+                        <input
+                            type="checkbox"
+                            class="gmail-label-check"
+                            data-index="${index}"
+                            checked
+                        >
+
+                        <div>
+                            <div class="email-result-title">
+                                ${escapeHtml(
+                                    label.item_name ||
+                                    "Review item name"
+                                )}
+                            </div>
+
+                            <div>
+                                <span class="email-pill">
+                                    ${escapeHtml(
+                                        label.marketplace ||
+                                        "Email"
+                                    )}
+                                </span>
+
+                                ${
+                                    label.courier
+                                        ? `<span class="email-pill">${escapeHtml(label.courier)}</span>`
+                                        : ""
+                                }
+                            </div>
+
+                            <div class="email-result-meta">
+                                ${escapeHtml(label.subject || "")}
+                                <br>
+                                Received: ${escapeHtml(received)}
+                                <br>
+                                Attachment: ${escapeHtml(
+                                    label.filename ||
+                                    "label.pdf"
+                                )}
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            `;
+        })
+        .join("");
+}
+
+function stopGmailContinuousTimer(){
+    if(gmailContinuousTimer){
+        clearInterval(gmailContinuousTimer);
+        gmailContinuousTimer = null;
+    }
+}
+
+function scheduleGmailContinuousTimer(){
+    stopGmailContinuousTimer();
+
+    if(
+        !gmailConnected ||
+        !gmailContinuousToggle.checked
+    ){
+        setGmailContinuousStatus(
+            "Continuous scan is off.",
+            "warn"
+        );
+
+        return;
+    }
+
+    const minutes = Number(
+        gmailScanInterval.value || 5
+    );
+
+    setGmailContinuousStatus(
+        `Continuous scanning is on. ` +
+        `InventoryOS will scan every ${minutes} minute` +
+        `${minutes === 1 ? "" : "s"} while this page is open.` +
+        (
+            gmailAutoPrintToggle.checked
+                ? " New labels will auto-print through QZ Tray."
+                : ""
+        ),
+        "ok"
+    );
+
+    gmailContinuousTimer = setInterval(
+        runContinuousGmailScan,
+        minutes * 60 * 1000
+    );
+}
+
+async function loadGmailScanSettings(){
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/scan-settings"
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Could not load Gmail scan settings."
+            );
+        }
+
+        gmailContinuousToggle.checked =
+            Boolean(data.continuous_enabled);
+
+        gmailScanInterval.value = String(
+            Number(
+                data.scan_interval_minutes ||
+                5
+            )
+        );
+
+        gmailAutoPrintToggle.checked =
+            Boolean(data.auto_print_enabled);
+
+        updateGmailCursorDisplay(
+            data.last_successful_scan_at
+        );
+
+        scheduleGmailContinuousTimer();
+    }catch(error){
+        console.error(error);
+
+        setGmailContinuousStatus(
+            error.message ||
+            "Could not load continuous scan settings.",
+            "error"
+        );
+    }
+}
+
+async function saveGmailScanSettings(){
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/scan-settings",
+            {
+                method:"POST",
+                body:JSON.stringify({
+                    continuous_enabled:
+                        gmailContinuousToggle.checked,
+                    scan_interval_minutes:
+                        Number(
+                            gmailScanInterval.value ||
+                            5
+                        ),
+                    auto_print_enabled:
+                        gmailAutoPrintToggle.checked
+                })
+            }
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Could not save Gmail scan settings."
+            );
+        }
+
+        updateGmailCursorDisplay(
+            data.last_successful_scan_at
+        );
+
+        scheduleGmailContinuousTimer();
+    }catch(error){
+        console.error(error);
+
+        setGmailContinuousStatus(
+            error.message ||
+            "Could not save continuous scan settings.",
+            "error"
+        );
+    }
+}
+
+async function loadGmailStatus(){
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/status"
+        );
+
+        gmailConnected = Boolean(
+            data.connected
+        );
+
+        if(data.connected){
+            setGmailStatus(
+                "Gmail connected: " +
+                (
+                    data.email ||
+                    "Connected account"
+                ),
+                "ok"
+            );
+
+            gmailConnectBtn.textContent =
+                "Reconnect Gmail";
+
+            gmailConnectBtn.disabled = false;
+            gmailScanBtn.disabled = false;
+            gmailDisconnectBtn.disabled = false;
+            gmailRescanBtn.disabled = false;
+            gmailStartFreshBtn.disabled = false;
+
+            updateGmailCursorDisplay(
+                data.last_successful_scan_at
+            );
+        }else{
+            setGmailStatus(
+                "Gmail is not connected yet.",
+                "warn"
+            );
+
+            gmailConnectBtn.textContent =
+                "Connect Gmail";
+
+            gmailConnectBtn.disabled = false;
+            gmailScanBtn.disabled = true;
+            gmailDisconnectBtn.disabled = true;
+            gmailRescanBtn.disabled = true;
+            gmailStartFreshBtn.disabled = true;
+        }
+
+        scheduleGmailContinuousTimer();
+    }catch(error){
+        console.error(error);
+
+        setGmailStatus(
+            "Could not check Gmail connection.",
+            "error"
+        );
+    }
+}
+
+async function connectGmail(){
+    try{
+        setGmailStatus(
+            "Opening Google connection page...",
+            "warn"
+        );
+
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/connect"
+        );
+
+        if(!data.success || !data.url){
+            throw new Error(
+                data.error ||
+                "Could not start Gmail connection."
+            );
+        }
+
+        window.location.href = data.url;
+    }catch(error){
+        console.error(error);
+
+        setGmailStatus(
+            error.message ||
+            "Could not connect Gmail.",
+            "error"
+        );
+    }
+}
+
+async function disconnectGmail(){
+    if(
+        !confirm(
+            "Disconnect Gmail from InventoryOS?"
+        )
+    ){
+        return;
+    }
+
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/disconnect",
+            {
+                method:"POST"
+            }
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Could not disconnect Gmail."
+            );
+        }
+
+        gmailConnected = false;
+        gmailLabelResults = [];
+        renderGmailResults([]);
+        setGmailScanStatus("");
+        stopGmailContinuousTimer();
+
+        await loadGmailStatus();
+    }catch(error){
+        console.error(error);
+
+        setGmailStatus(
+            error.message ||
+            "Could not disconnect Gmail.",
+            "error"
+        );
+    }
+}
+
+async function commitGmailScanCursor(cursorAt){
+    const data = await InventoryAPI.request(
+        "/email-labels/gmail/commit-scan",
+        {
+            method:"POST",
+            body:JSON.stringify({
+                cursor_at:Number(cursorAt || 0)
+            })
+        }
+    );
+
+    if(!data.success){
+        throw new Error(
+            data.error ||
+            "Could not save the last Gmail scan time."
+        );
+    }
+
+    updateGmailCursorDisplay(
+        data.last_successful_scan_at
+    );
+
+    return data.last_successful_scan_at;
+}
+
+async function scanGmail(options = {}){
+    const mode =
+        options.mode === "rescan"
+            ? "rescan"
+            : "cursor";
+
+    const automatic =
+        Boolean(options.automatic);
+
+    const hours = Number(
+        options.hours || 24
+    );
+
+    if(!automatic){
+        showLoading(
+            mode === "rescan"
+                ? "Rescanning older Gmail labels..."
+                : "Scanning Gmail for new labels..."
+        );
+    }
+
+    setGmailScanStatus(
+        mode === "rescan"
+            ? `Rescanning the previous ${hours} hour${hours === 1 ? "" : "s"}...`
+            : "Scanning for shipping-label emails received after the last successful scan...",
+        "warn"
+    );
+
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/scan",
+            {
+                method:"POST",
+                body:JSON.stringify({
+                    mode,
+                    hours,
+                    max_messages:100
+                })
+            }
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Gmail scan failed."
+            );
+        }
+
+        gmailScanContext = {
+            mode:data.mode || mode,
+            commitAt:Number(
+                data.commit_at || 0
+            )
+        };
+
+        gmailLabelResults =
+            data.labels || [];
+
+        renderGmailResults(
+            gmailLabelResults
+        );
+
+        if(!gmailLabelResults.length){
+            if(
+                mode === "cursor" &&
+                gmailScanContext.commitAt
+            ){
+                await commitGmailScanCursor(
+                    gmailScanContext.commitAt
+                );
+            }
+
+            setGmailScanStatus(
+                mode === "rescan"
+                    ? "No shipping-label PDFs were found in that rescan period."
+                    : "No new shipping-label PDFs were found. The scan time has been updated.",
+                "ok"
+            );
+
+            return {
+                success:true,
+                count:0
+            };
+        }
+
+        setGmailScanStatus(
+            `Found ${gmailLabelResults.length} shipping-label attachment` +
+            `${gmailLabelResults.length === 1 ? "" : "s"}. ` +
+            (
+                automatic
+                    ? "Importing them automatically..."
+                    : "Tick the ones to import."
+            ),
+            "ok"
+        );
+
+        if(automatic){
+            const labelsForImport = [
+                ...gmailLabelResults
+            ];
+
+            const imported =
+                await importGmailLabels(
+                    labelsForImport,
+                    {
+                        automatic:true
+                    }
+                );
+
+            return {
+                success:imported,
+                count:labelsForImport.length
+            };
+        }
+
+        return {
+            success:true,
+            count:gmailLabelResults.length
+        };
+    }catch(error){
+        console.error(error);
+
+        setGmailScanStatus(
+            error.message ||
+            "Could not scan Gmail.",
+            "error"
+        );
+
+        return {
+            success:false,
+            count:0
+        };
+    }finally{
+        if(!automatic){
+            hideLoading();
+        }
+    }
+}
+
+async function runContinuousGmailScan(){
+    if(
+        gmailContinuousRunning ||
+        !gmailConnected ||
+        !gmailContinuousToggle.checked ||
+        document.hidden
+    ){
+        return;
+    }
+
+    gmailContinuousRunning = true;
+
+    setGmailContinuousStatus(
+        "Continuous scan is checking Gmail now...",
+        "warn"
+    );
+
+    try{
+        const result = await scanGmail({
+            mode:"cursor",
+            automatic:true
+        });
+
+        const minutes = Number(
+            gmailScanInterval.value || 5
+        );
+
+        if(result.success){
+            setGmailContinuousStatus(
+                `Last automatic scan completed at ` +
+                `${new Date().toLocaleTimeString("en-GB", {
+                    hour:"2-digit",
+                    minute:"2-digit"
+                })}. Next check in ${minutes} minute` +
+                `${minutes === 1 ? "" : "s"}.`,
+                "ok"
+            );
+        }else{
+            setGmailContinuousStatus(
+                "The last automatic Gmail scan failed. InventoryOS will try again at the next interval.",
+                "error"
+            );
+        }
+    }finally{
+        gmailContinuousRunning = false;
+    }
+}
+
+async function startFreshFromNow(){
+    const confirmed = confirm(
+        "Start normal Gmail scanning from right now?\n\n" +
+        "Emails received before this moment will only appear when you use the Rescan dropdown."
+    );
+
+    if(!confirmed){
+        return;
+    }
+
+    showLoading(
+        "Starting Gmail scan from now..."
+    );
+
+    try{
+        const data = await InventoryAPI.request(
+            "/email-labels/gmail/start-fresh",
+            {
+                method:"POST"
+            }
+        );
+
+        if(!data.success){
+            throw new Error(
+                data.error ||
+                "Could not start fresh from now."
+            );
+        }
+
+        gmailLabelResults = [];
+        renderGmailResults([]);
+
+        updateGmailCursorDisplay(
+            data.last_successful_scan_at
+        );
+
+        setGmailScanStatus(
+            "Normal scanning will now only look at emails received after this moment.",
+            "ok"
+        );
+    }catch(error){
+        console.error(error);
+
+        setGmailScanStatus(
+            error.message ||
+            "Could not start fresh from now.",
+            "error"
+        );
+    }finally{
+        hideLoading();
+    }
+}
+
+function base64ToBlob(base64, mimeType){
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+
+    for(let index = 0;
+        index < binary.length;
+        index++
+    ){
+        bytes[index] =
+            binary.charCodeAt(index);
+    }
+
+    return new Blob(
+        [bytes],
+        {
+            type:
+                mimeType ||
+                "application/pdf"
+        }
+    );
+}
+
+
+
+const DISPATCH_PRINTED_PACKS_KEY =
+    "inventoryos_dispatch_printed_pack_ids_v1";
+
+const DISPATCH_PENDING_PRINTS_KEY =
+    "inventoryos_dispatch_pending_print_pack_ids_v1";
+
+let dispatchPendingRetryRunning = false;
+
+/*
+    IMPORTANT:
+    Pending jobs are NOT automatically retried from connectDispatchQz().
+    A normal print operation calls connectDispatchQz() itself, so retrying
+    from inside the connection-success callback causes the same label to be
+    submitted twice. Pending jobs remain visible and can be cleared safely.
+*/
+
+function getPendingDispatchPrintPackIds(){
+    try{
+        const parsed = JSON.parse(
+            localStorage.getItem(
+                DISPATCH_PENDING_PRINTS_KEY
+            ) || "[]"
+        );
+
+        return Array.isArray(parsed)
+            ? Array.from(
+                new Set(
+                    parsed
+                        .map(value => Number(value || 0))
+                        .filter(Boolean)
+                )
+            )
+            : [];
+    }catch(error){
+        return [];
+    }
+}
+
+function savePendingDispatchPrintPackIds(packIds){
+    const clean = Array.from(
+        new Set(
+            (Array.isArray(packIds) ? packIds : [])
+                .map(value => Number(value || 0))
+                .filter(Boolean)
+        )
+    );
+
+    localStorage.setItem(
+        DISPATCH_PENDING_PRINTS_KEY,
+        JSON.stringify(clean)
+    );
+
+    refreshPendingDispatchPrintStatus();
+
+    return clean;
+}
+
+function addPendingDispatchPrintPackIds(packIds){
+    return savePendingDispatchPrintPackIds([
+        ...getPendingDispatchPrintPackIds(),
+        ...(Array.isArray(packIds) ? packIds : [])
+    ]);
+}
+
+function removePendingDispatchPrintPackIds(packIds){
+    const remove = new Set(
+        (Array.isArray(packIds) ? packIds : [])
+            .map(value => Number(value || 0))
+            .filter(Boolean)
+    );
+
+    return savePendingDispatchPrintPackIds(
+        getPendingDispatchPrintPackIds()
+            .filter(packId => !remove.has(packId))
+    );
+}
+
+function refreshPendingDispatchPrintStatus(){
+    const status =
+        document.getElementById(
+            "dispatchPendingPrintStatus"
+        );
+
+    const button =
+        document.getElementById(
+            "clearPendingPrintsBtn"
+        );
+
+    const count =
+        getPendingDispatchPrintPackIds()
+            .length;
+
+    if(status){
+        status.textContent = count
+            ? `${count} InventoryOS print retr${count === 1 ? "y is" : "ies are"} waiting.`
+            : "No InventoryOS print retries are waiting.";
+
+        status.classList.remove(
+            "ok",
+            "error",
+            "busy",
+            "warn"
+        );
+
+        status.classList.add(
+            count ? "warn" : "ok"
+        );
+    }
+
+    if(button){
+        button.disabled =
+            count === 0;
+
+        button.textContent = count
+            ? `Clear Pending Prints (${count})`
+            : "Clear Pending Prints";
+    }
+}
+
+function clearPendingDispatchPrints(){
+    const count =
+        getPendingDispatchPrintPackIds()
+            .length;
+
+    if(!count){
+        refreshPendingDispatchPrintStatus();
+        return;
+    }
+
+    const confirmed = confirm(
+        `Clear ${count} pending InventoryOS print retr${count === 1 ? "y" : "ies"}?\n\n` +
+        "This does not delete the shipping labels or packing jobs. " +
+        "Jobs already handed to the Windows printer spooler must be cleared from Windows separately."
+    );
+
+    if(!confirmed){
+        return;
+    }
+
+    savePendingDispatchPrintPackIds([]);
+
+    setDispatchQzStatus(
+        "Pending InventoryOS print retries cleared.",
+        "ok"
+    );
+}
+
+async function retryPendingDispatchPrints(){
+    if(dispatchPendingRetryRunning){
+        return;
+    }
+
+    const pending =
+        getPendingDispatchPrintPackIds();
+
+    if(!pending.length){
+        refreshPendingDispatchPrintStatus();
+        return;
+    }
+
+    dispatchPendingRetryRunning = true;
+
+    try{
+        const data =
+            await InventoryAPI.request(
+                "/shipping-labels/print-images",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        pack_ids:pending
+                    })
+                }
+            );
+
+        if(
+            !data.success ||
+            !Array.isArray(data.labels) ||
+            !data.labels.length
+        ){
+            throw new Error(
+                data.error ||
+                "Could not prepare pending shipping labels."
+            );
+        }
+
+        await printDispatchImagesWithQz(
+            data.labels
+        );
+
+        rememberPrintedDispatchPackIds(
+            pending
+        );
+
+        removePendingDispatchPrintPackIds(
+            pending
+        );
+
+        setDispatchQzStatus(
+            `Printed ${data.labels.length} pending label${data.labels.length === 1 ? "" : "s"}.`,
+            "ok"
+        );
+    }catch(error){
+        console.warn(
+            "Pending dispatch print retry is still waiting:",
+            error
+        );
+
+        refreshPendingDispatchPrintStatus();
+    }finally{
+        dispatchPendingRetryRunning = false;
+    }
+}
+
+window.InventoryOSDispatchPrintQueue = {
+    get:getPendingDispatchPrintPackIds,
+    add:addPendingDispatchPrintPackIds,
+    remove:removePendingDispatchPrintPackIds,
+    clear:clearPendingDispatchPrints,
+    retry:retryPendingDispatchPrints,
+    refresh:refreshPendingDispatchPrintStatus
+};
+
+function getAlreadyPrintedDispatchPackIds(){
+    try{
+        const parsed = JSON.parse(
+            localStorage.getItem(
+                DISPATCH_PRINTED_PACKS_KEY
+            ) || "{}"
+        );
+
+        const now = Date.now();
+        const maxAge =
+            14 * 24 * 60 * 60 * 1000;
+
+        return Object.fromEntries(
+            Object.entries(
+                parsed &&
+                typeof parsed === "object"
+                    ? parsed
+                    : {}
+            ).filter(([,printedAt]) => {
+                return (
+                    Number(printedAt || 0) > 0 &&
+                    now - Number(printedAt) <= maxAge
+                );
+            })
+        );
+    }catch(error){
+        return {};
+    }
+}
+
+function rememberPrintedDispatchPackIds(packIds){
+    const printed =
+        getAlreadyPrintedDispatchPackIds();
+
+    const printedAt =
+        Date.now();
+
+    (Array.isArray(packIds) ? packIds : [])
+        .map(value => Number(value || 0))
+        .filter(Boolean)
+        .forEach(packId => {
+            printed[String(packId)] =
+                printedAt;
+        });
+
+    localStorage.setItem(
+        DISPATCH_PRINTED_PACKS_KEY,
+        JSON.stringify(printed)
+    );
+}
+
+
+async function autoPrintNewlyCreatedPacks(packs){
+    const packIds = (Array.isArray(packs) ? packs : [])
+        .map(pack => Number(pack.id || 0))
+        .filter(Boolean);
+
+    if(!packIds.length){
+        throw new Error(
+            "The new packing-queue entries did not return printable pack IDs."
+        );
+    }
+
+    const data = await InventoryAPI.request(
+        "/shipping-labels/print-images",
+        {
+            method:"POST",
+            body:JSON.stringify({
+                pack_ids:packIds
+            })
+        }
+    );
+
+    if(!data.success){
+        throw new Error(
+            data.error ||
+            "Could not render the newly imported shipping labels."
+        );
+    }
+
+    const printLabels =
+        Array.isArray(data.labels)
+            ? data.labels
+            : [];
+
+    if(!printLabels.length){
+        throw new Error(
+            "The backend returned no printable shipping labels."
+        );
+    }
+
+    addPendingDispatchPrintPackIds(
+        packIds
+    );
+
+    await printDispatchImagesWithQz(
+        printLabels
+    );
+
+    rememberPrintedDispatchPackIds(
+        packIds
+    );
+
+    removePendingDispatchPrintPackIds(
+        packIds
+    );
+
+    return printLabels.length;
+}
+
+async function importGmailLabels(labels, options = {}){
+    const selected = Array.isArray(labels)
+        ? labels.filter(Boolean)
+        : [];
+
+    if(!selected.length){
+        alert(
+            "Tick at least one Gmail label to import."
+        );
+
+        return false;
+    }
+
+    showLoading(
+        options.automatic
+            ? "Importing new Gmail labels..."
+            : "Downloading Gmail labels..."
+    );
+
+    try{
+        const form = new FormData();
+
+        for(let index = 0;
+            index < selected.length;
+            index++
+        ){
+            const label = selected[index];
+
+            document.getElementById(
+                "loadingText"
+            ).innerText =
+                `Downloading Gmail label ` +
+                `${index + 1} of ${selected.length}...`;
+
+            const attachment =
+                await InventoryAPI.request(
+                    "/email-labels/gmail/attachment",
+                    {
+                        method:"POST",
+                        body:JSON.stringify({
+                            message_id:
+                                label.message_id,
+                            attachment_id:
+                                label.attachment_id,
+                            filename:
+                                label.filename || ""
+                        })
+                    }
+                );
+
+            if(!attachment.success){
+                throw new Error(
+                    attachment.error ||
+                    "Could not download Gmail attachment."
+                );
+            }
+
+            const blob = base64ToBlob(
+                attachment.base64,
+                attachment.mime_type ||
+                "application/pdf"
+            );
+
+            const safeName = String(
+                label.import_filename ||
+                label.filename ||
+                "gmail-label.pdf"
+            )
+                .replace(
+                    /[<>:"/\\|?*]+/g,
+                    " "
+                )
+                .replace(/\s+/g, "_");
+
+            const file = new File(
+                [blob],
+                safeName.endsWith(".pdf")
+                    ? safeName
+                    : safeName + ".pdf",
+                {
+                    type:"application/pdf"
+                }
+            );
+
+            form.append(
+                "labels",
+                file
+            );
+        }
+
+        document.getElementById(
+            "loadingText"
+        ).innerText =
+            "Auto-cropping Gmail labels...";
+
+        const cropData =
+            await InventoryAPI.request(
+                "/shipping-labels/autocrop",
+                {
+                    method:"POST",
+                    body:form
+                }
+            );
+
+        if(!cropData.success){
+            throw new Error(
+                cropData.error ||
+                "Could not auto-crop Gmail labels."
+            );
+        }
+
+        const cropped =
+            cropData.labels || [];
+
+        if(!cropped.length){
+            throw new Error(
+                "No Gmail labels were cropped."
+            );
+        }
+
+        document.getElementById(
+            "loadingText"
+        ).innerText =
+            "Adding Gmail labels to packing queue...";
+
+        const queueData =
+            await InventoryAPI.request(
+                "/shipping-labels/create-from-crops",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        labels:cropped
+                    })
+                }
+            );
+
+        if(!queueData.success){
+            throw new Error(
+                queueData.error ||
+                "Could not add Gmail labels to the packing queue."
+            );
+        }
+
+        const importHistoryData =
+            await InventoryAPI.request(
+                "/email-labels/gmail/mark-imported",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        labels:selected.map(label => ({
+                            message_id:label.message_id,
+                            attachment_id:label.attachment_id,
+                            filename:label.filename || "",
+                            import_filename:label.import_filename || ""
+                        }))
+                    })
+                }
+            );
+
+        if(!importHistoryData.success){
+            throw new Error(
+                importHistoryData.error ||
+                "The labels were queued, but InventoryOS could not save their Gmail import history."
+            );
+        }
+
+        let autoPrintMessage = "";
+
+        if(
+            options.automatic &&
+            gmailAutoPrintToggle.checked
+        ){
+            document.getElementById(
+                "loadingText"
+            ).innerText =
+                "Auto-printing the new shipping labels...";
+
+            try{
+                const printedCount =
+                    await autoPrintNewlyCreatedPacks(
+                        queueData.packs || []
+                    );
+
+                autoPrintMessage =
+                    ` Auto-printed ${printedCount} label` +
+                    `${printedCount === 1 ? "" : "s"} to your selected 4×6 printer.`;
+            }catch(printError){
+                console.error(
+                    "Automatic shipping-label print failed:",
+                    printError
+                );
+
+                autoPrintMessage =
+                    " The labels were imported, but automatic printing failed.";
+
+                setDispatchQzStatus(
+                    "Automatic print failed: " +
+                    (
+                        printError.message ||
+                        "Unknown QZ print error"
+                    ),
+                    "error"
+                );
+            }
+        }
+
+        const selectedIds = new Set(
+            selected.map(label => label.id)
+        );
+
+        const importedEveryCurrentResult =
+            gmailLabelResults.length > 0 &&
+            gmailLabelResults.every(label => {
+                return selectedIds.has(label.id);
+            });
+
+        if(
+            gmailScanContext.mode === "cursor" &&
+            gmailScanContext.commitAt &&
+            importedEveryCurrentResult
+        ){
+            await commitGmailScanCursor(
+                gmailScanContext.commitAt
+            );
+        }
+
+        gmailLabelResults =
+            gmailLabelResults.filter(label => {
+                return !selectedIds.has(label.id);
+            });
+
+        renderGmailResults(
+            gmailLabelResults
+        );
+
+        let message =
+            `Imported ${cropped.length} Gmail label` +
+            `${cropped.length === 1 ? "" : "s"} ` +
+            "to the packing queue.";
+
+        if(
+            gmailScanContext.mode === "cursor" &&
+            !importedEveryCurrentResult
+        ){
+            message +=
+                " The scan time was not advanced because some new results were left unimported.";
+        }else if(
+            gmailScanContext.mode === "rescan"
+        ){
+            message +=
+                " Rescans do not change the normal last-scan time.";
+        }
+
+        message += autoPrintMessage;
+
+        setGmailScanStatus(
+            message,
+            autoPrintMessage.includes("failed")
+                ? "warn"
+                : "ok"
+        );
+
+        await loadQueue();
+
+        return true;
+    }catch(error){
+        console.error(error);
+
+        setGmailScanStatus(
+            error.message ||
+            "Could not import Gmail labels.",
+            "error"
+        );
+
+        if(!options.automatic){
+            alert(
+                error.message ||
+                "Could not import Gmail labels."
+            );
+        }
+
+        return false;
+    }finally{
+        hideLoading();
+    }
+}
+
+async function importSelectedGmailLabels(){
+    const selected = Array.from(
+        document.querySelectorAll(
+            ".gmail-label-check:checked"
+        )
+    )
+        .map(input => {
+            return gmailLabelResults[
+                Number(input.dataset.index)
+            ];
+        })
+        .filter(Boolean);
+
+    return importGmailLabels(
+        selected,
+        {
+            automatic:false
+        }
+    );
+}
+
+function handleGmailRedirectNotice(){
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    if(params.get("gmail") === "connected"){
+        setGmailScanStatus(
+            "Gmail connected successfully. New-email scanning uses the saved date/time cursor.",
+            "ok"
+        );
+
+        window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+        );
+    }
+
+    if(params.get("gmail") === "error"){
+        setGmailScanStatus(
+            "Gmail connection failed: " +
+            (
+                params.get("reason") ||
+                "Unknown error"
+            ),
+            "error"
+        );
+
+        window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+        );
+    }
+}
+
+function showLoading(text){
+    document.getElementById("loadingText").innerText = text || "Working...";
+    document.getElementById("loadingOverlay").style.display = "flex";
+}
+function hideLoading(){document.getElementById("loadingOverlay").style.display = "none";}
+
+function escapeHtml(value){
+    return String(value || "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+
+function resolveInventoryApiUrl(value){
+    const url = String(value || "").trim();
+
+    if(!url){
+        return "";
+    }
+
+    if(/^https?:\/\//i.test(url)){
+        return url;
+    }
+
+    return InventoryAPI.API_BASE + (url.startsWith("/") ? url : "/" + url);
+}
+
+function statusLabel(status){
+    return String(status || "needs_review").replaceAll("_"," ");
+}
+
+function getLocationSortValue(location){
+    const str = String(location || "ZZZ");
+    const match = str.match(/(\d+)/);
+    if(match) return Number(match[1]);
+    return 999999;
+}
+
+function setFiles(files){
+    selectedFiles = Array.from(files || []);
+    croppedLabels = [];
+    previewGrid.innerHTML = "";
+    uploadBtn.disabled = true;
+    processBtn.disabled = selectedFiles.length === 0;
+
+    if(!selectedFiles.length){
+        selectedFilesEl.textContent = "";
+        cropStatusEl.textContent = "";
+        return;
+    }
+
+    selectedFilesEl.textContent = selectedFiles.map(f => f.name).join(", ");
+    cropStatusEl.textContent = "Ready for backend crop preview.";
+}
+
+browseBtn.addEventListener("click", () => fileInput.click());
+dropzone.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", e => setFiles(e.target.files));
+
+dropzone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+});
+
+dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("dragover");
+});
+
+dropzone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    setFiles(e.dataTransfer.files);
+});
+
+processBtn.addEventListener("click", processSelectedFiles);
+document.getElementById("gmailConnectBtn").addEventListener(
+    "click",
+    connectGmail
+);
+
+document.getElementById("gmailScanBtn").addEventListener(
+    "click",
+    function(){
+        scanGmail({
+            mode:"cursor",
+            automatic:false
+        });
+    }
+);
+
+document.getElementById("gmailDisconnectBtn").addEventListener(
+    "click",
+    disconnectGmail
+);
+
+document.getElementById("gmailImportSelectedBtn").addEventListener(
+    "click",
+    importSelectedGmailLabels
+);
+
+document.getElementById("clearPendingPrintsBtn").addEventListener(
+    "click",
+    clearPendingDispatchPrints
+);
+
+document.getElementById("gmailRescanBtn").addEventListener(
+    "click",
+    function(){
+        scanGmail({
+            mode:"rescan",
+            hours:Number(
+                document.getElementById(
+                    "gmailRescanWindow"
+                ).value || 24
+            ),
+            automatic:false
+        });
+    }
+);
+
+document.getElementById("gmailStartFreshBtn").addEventListener(
+    "click",
+    startFreshFromNow
+);
+
+document.getElementById("gmailContinuousToggle").addEventListener(
+    "change",
+    saveGmailScanSettings
+);
+
+document.getElementById("gmailScanInterval").addEventListener(
+    "change",
+    saveGmailScanSettings
+);
+
+document.getElementById("gmailAutoPrintToggle").addEventListener(
+    "change",
+    saveGmailScanSettings
+);
+
+document.addEventListener(
+    "visibilitychange",
+    function(){
+        if(
+            !document.hidden &&
+            gmailContinuousToggle.checked
+        ){
+            runContinuousGmailScan();
+        }
+    }
+);
+
+async function processSelectedFiles(){
+    if(!selectedFiles.length) return;
+
+    croppedLabels = [];
+    previewGrid.innerHTML = "";
+    uploadBtn.disabled = true;
+
+    const autoCrop = document.getElementById("autoCropToggle").checked;
+
+    if(!autoCrop){
+        cropStatusEl.textContent = "Auto-crop is off. Uploading original files to queue.";
+        uploadBtn.disabled = false;
+        return;
+    }
+
+    const form = new FormData();
+    selectedFiles.forEach(file => form.append("labels", file));
+
+    showLoading("Backend cropping labels...");
+
+    try{
+        const data = await InventoryAPI.request("/shipping-labels/autocrop", {
+            method:"POST",
+            body:form
+        });
+
+        if(!data.success) throw new Error(data.error || "Auto-crop failed");
+
+        croppedLabels = data.labels || [];
+
+        previewGrid.innerHTML = "";
+        croppedLabels.forEach((label, index) => {
+            addPreviewCard(label, index + 1);
+        });
+
+        cropStatusEl.textContent = `${croppedLabels.length} cropped label(s) ready. Check previews, then upload to packing queue.`;
+        uploadBtn.disabled = croppedLabels.length === 0;
+    }catch(err){
+        console.error(err);
+        alert(err.message || "Could not backend crop labels.");
+        cropStatusEl.textContent = "Backend crop failed. Try turning auto-crop off or check the backend terminal.";
+    }finally{
+        hideLoading();
+    }
+}
+
+
+function courierPreviewMedia(url, previewType, altText, cssClass){
+    const safeUrl = escapeHtml(url);
+    const safeAlt = escapeHtml(altText || "Courier label preview");
+    const className = cssClass ? ` class="${escapeHtml(cssClass)}"` : "";
+
+    if(previewType === "pdf" || /\.pdf(\?|$)/i.test(url)){
+        return `
+            <iframe
+                ${className}
+                src="${safeUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit"
+                title="${safeAlt}"
+            ></iframe>
+        `;
+    }
+
+    return `<img${className} src="${safeUrl}" alt="${safeAlt}">`;
+}
+
+function addPreviewCard(label, index){
+    const div = document.createElement("div");
+    div.className = "preview-card";
+    div.innerHTML = `
+        ${courierPreviewMedia(resolveInventoryApiUrl(label.preview_url), label.preview_type, `Label preview ${index}`)}
+        <div class="preview-title">Label ${index}: ${escapeHtml(label.original_name)}</div>
+        <div class="preview-meta">
+            <span class="brand-badge">${escapeHtml(label.brand_label || "Unknown courier")}</span><br>
+            ${escapeHtml(label.method || "Backend crop")}<br>
+            ${escapeHtml(label.orientation || "")}<br>
+            Confidence: ${escapeHtml(label.confidence || "Medium")}
+        </div>
+    `;
+    previewGrid.appendChild(div);
+}
+
+uploadBtn.addEventListener("click", async () => {
+    const autoCrop = document.getElementById("autoCropToggle").checked;
+
+    showLoading("Uploading to packing queue...");
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = "Uploading...";
+
+    try{
+        let data;
+
+        if(autoCrop){
+            if(!croppedLabels.length){
+                await processSelectedFiles();
+            }
+
+            if(!croppedLabels.length){
+                throw new Error("No cropped labels ready.");
+            }
+
+            data = await InventoryAPI.request("/shipping-labels/create-from-crops", {
+                method:"POST",
+                body:JSON.stringify({ labels: croppedLabels })
+            });
+        }else{
+            const form = new FormData();
+            selectedFiles.forEach(file => form.append("labels", file));
+
+            data = await InventoryAPI.request("/shipping-labels/upload", {
+                method:"POST",
+                body:form
+            });
+        }
+
+        if(!data.success) throw new Error(data.error || "Upload failed");
+
+        selectedFiles = [];
+        croppedLabels = [];
+        fileInput.value = "";
+        selectedFilesEl.textContent = "Uploaded. Review the packing queue below.";
+        cropStatusEl.textContent = "";
+        previewGrid.innerHTML = "";
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Upload failed");
+    }finally{
+        hideLoading();
+        uploadBtn.textContent = "Upload To Packing Queue";
+        uploadBtn.disabled = true;
+        processBtn.disabled = selectedFiles.length === 0;
+    }
+});
+
+document.getElementById("manualAddBtn").addEventListener("click", async () => {
+    const description = document.getElementById("manualDescription").value.trim();
+    const qty = Number(document.getElementById("manualQty").value || 1);
+
+    if(!description){
+        alert("Enter an item description first.");
+        return;
+    }
+
+    showLoading("Adding manual item...");
+
+    try{
+        const res = await apiFetch("/shipping-labels/manual-item", {
+            method:"POST",
+            body:JSON.stringify({description, qty})
+        });
+
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not add item");
+
+        document.getElementById("manualDescription").value = "";
+        document.getElementById("manualQty").value = 1;
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not add item");
+    }finally{
+        hideLoading();
+    }
+});
+
+document.getElementById("refreshBtn").addEventListener("click", loadQueue);
+
+document.getElementById("searchBtn").addEventListener("click", async () => {
+    showLoading("Searching item locations...");
+
+    try{
+        const res = await apiFetch("/dispatch-workflow/match-all", { method:"POST" });
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Search failed");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Search failed");
+    }finally{
+        hideLoading();
+    }
+});
+
+document.getElementById("locationViewBtn").addEventListener("click", () => {
+    currentView = "location";
+    document.getElementById("locationViewBtn").classList.add("active");
+    document.getElementById("labelViewBtn").classList.remove("active");
+    renderQueue();
+});
+
+document.getElementById("labelViewBtn").addEventListener("click", () => {
+    currentView = "label";
+    document.getElementById("labelViewBtn").classList.add("active");
+    document.getElementById("locationViewBtn").classList.remove("active");
+    renderQueue();
+});
+
+document.getElementById("printBtn").addEventListener("click", () => {
+    const rows = buildPickRows();
+
+    const sorted = currentView === "location"
+        ? rows.sort((a,b) => {
+            const locDiff = getLocationSortValue(a.location) - getLocationSortValue(b.location);
+            if(locDiff !== 0) return locDiff;
+            return String(a.location || "").localeCompare(String(b.location || ""));
+        })
+        : rows.sort((a,b) => a.labelOrder - b.labelOrder);
+
+    const html = sorted.map(row => `
+        <div style="border-bottom:1px solid #ddd;padding:8px 0;">
+            <strong>Label ${escapeHtml(row.labelOrder)}</strong><br>
+            Item: ${escapeHtml(row.description)}<br>
+            Qty: ${escapeHtml(row.qty)}<br>
+            Location: ${escapeHtml(row.location || "Not found")}
+        </div>
+    `).join("");
+
+    const win = window.open("", "_blank");
+    win.document.write(`
+        <html>
+        <head>
+            <title>InventoryOS Pick List</title>
+            <style>
+                body{font-family:Arial;padding:20px;}
+                h1{margin-top:0;}
+            </style>
+        </head>
+        <body>
+            <h1>${currentView === "location" ? "Pick List - Location Order" : "Pick List - Label Print Order"}</h1>
+            ${html || "<p>No items to print.</p>"}
+            <script>window.print();<\/script>
+        </body>
+        </html>
+    `);
+    win.document.close();
+});
+
+document.getElementById("refreshPrintPreviewBtn").addEventListener("click", renderPrintPreviewLabels);
+
+document.getElementById("mobileShareLabelsBtn").addEventListener(
+    "click",
+    shareLabelsForMobile
+);
+
+document.getElementById("printPreviewLabelsBtn").addEventListener("click", async () => {
+    const labels = getQueuedCourierLabels();
+
+    if(!labels.length){
+        alert("There are no cropped courier labels ready to print.");
+        return;
+    }
+
+    const button = document.getElementById("printPreviewLabelsBtn");
+    button.disabled = true;
+    button.textContent = "Preparing 4×6 Labels...";
+
+    showLoading("Rendering crisp 4×6 shipping-label images...");
+
+    try{
+        const data = await InventoryAPI.request("/shipping-labels/print-images", {
+            method:"POST",
+            body:JSON.stringify({
+                pack_ids:labels.map(label => label.packId)
+            })
+        });
+
+        if(!data.success){
+            throw new Error(
+                data.error || "Could not render shipping labels for printing."
+            );
+        }
+
+        const printLabels = Array.isArray(data.labels)
+            ? data.labels
+            : [];
+
+        if(!printLabels.length){
+            throw new Error("The backend returned no printable labels.");
+        }
+
+        document.getElementById("loadingText").innerText =
+            "Sending 4×6 label images directly to your selected 4×6 printer...";
+
+        const manualPrintPackIds =
+            labels.map(label => label.packId);
+
+        addPendingDispatchPrintPackIds(
+            manualPrintPackIds
+        );
+
+        await printDispatchImagesWithQz(printLabels);
+
+        rememberPrintedDispatchPackIds(
+            manualPrintPackIds
+        );
+
+        removePendingDispatchPrintPackIds(
+            manualPrintPackIds
+        );
+    }catch(err){
+        console.error(err);
+
+        const detail = err && err.message
+            ? err.message
+            : String(err || "Unknown QZ print error");
+
+        setDispatchQzStatus(
+            "Direct print failed: " + detail,
+            "error"
+        );
+
+        alert(
+            "Could not print directly to your selected 4×6 printer.\n\n" +
+            detail +
+            "\n\nMake sure QZ Tray is open and the printer is connected."
+        );
+    }finally{
+        hideLoading();
+        button.disabled = false;
+        button.textContent = "Print Shipping Labels";
+    }
+});
+
+function buildPickRows(){
+    const rows = [];
+
+    queueCache.forEach(pack => {
+        if(pack.status === "packed") return;
+
+        (pack.items || []).forEach(item => {
+            const locations = Array.isArray(item.locations) ? item.locations : [];
+            const firstLocation = item.picked_location || (locations[0] ? locations[0].location : "");
+
+            rows.push({
+                packId: pack.id,
+                itemId: item.id,
+                labelOrder: Number(pack.label_order || 0),
+                sourceName: pack.source_name || "Manual pack",
+                description: item.description,
+                qty: item.qty,
+                status: item.status,
+                location: firstLocation,
+                locations: locations,
+                courierPreview: pack.preview_url || ""
+            });
+        });
+    });
+
+    return rows;
+}
+
+function getRowsForCurrentView(){
+    const rows = buildPickRows();
+
+    if(currentView === "location"){
+        return rows.sort((a,b) => {
+            const locDiff = getLocationSortValue(a.location) - getLocationSortValue(b.location);
+            if(locDiff !== 0) return locDiff;
+            const nameDiff = String(a.location || "").localeCompare(String(b.location || ""));
+            if(nameDiff !== 0) return nameDiff;
+            return a.labelOrder - b.labelOrder;
+        });
+    }
+
+    return rows.sort((a,b) => a.labelOrder - b.labelOrder);
+}
+
+function getQueuedCourierLabels(){
+    return [...queueCache]
+        .filter(pack => {
+            return (
+                pack.status !== "packed" &&
+                pack.preview_url &&
+                /\.(pdf|png|jpe?g|webp)(\?|$)/i.test(pack.preview_url)
+            );
+        })
+        .sort((a,b) => {
+            return Number(a.label_order || 0) - Number(b.label_order || 0);
+        })
+        .map(pack => ({
+            packId:pack.id,
+            labelOrder:Number(pack.label_order || 0),
+            sourceName:pack.source_name || "Shipping label",
+            previewType:pack.preview_type || (/\.pdf(\?|$)/i.test(pack.preview_url) ? "pdf" : "image"),
+            imageUrl:resolveInventoryApiUrl(pack.preview_url)
+        }));
+}
+
+function renderPrintPreviewLabels(){
+    if(!printPreviewGrid){
+        return;
+    }
+
+    const labels = getQueuedCourierLabels();
+
+    if(!labels.length){
+        printPreviewGrid.innerHTML =
+            `<div class="muted">No cropped courier labels are queued yet.</div>`;
+        return;
+    }
+
+    printPreviewGrid.innerHTML = labels.map(label => `
+        <div class="print-label-card">
+            <div class="actual-shipping-preview">
+                ${courierPreviewMedia(
+                    label.imageUrl,
+                    label.previewType,
+                    `Cropped shipping label ${label.labelOrder}`
+                )}
+            </div>
+
+            <div class="print-label-meta">
+                <strong>Label ${escapeHtml(label.labelOrder)}</strong><br>
+                ${escapeHtml(label.sourceName)}<br>
+                Prints as 4×6
+            </div>
+        </div>
+    `).join("");
+}
+
+function renderQueue(){
+    const rows = buildPickRows();
+
+    if(!rows.length){
+        queueEl.innerHTML = `<div class="muted">No packing items yet.</div>`;
+        renderPrintPreviewLabels();
+        return;
+    }
+
+    if(currentView === "location"){
+        renderLocationView(rows);
+    }else{
+        renderLabelView(rows);
+    }
+
+    renderPrintPreviewLabels();
+}
+
+function renderLocationView(rows){
+    const sorted = rows.sort((a,b) => {
+        const locDiff = getLocationSortValue(a.location) - getLocationSortValue(b.location);
+        if(locDiff !== 0) return locDiff;
+        const nameDiff = String(a.location || "").localeCompare(String(b.location || ""));
+        if(nameDiff !== 0) return nameDiff;
+        return a.labelOrder - b.labelOrder;
+    });
+
+    let html = `
+        <div class="card">
+            <div class="pick-row pick-head">
+                <div>Label</div>
+                <div>Item</div>
+                <div>Location</div>
+                <div>Qty</div>
+            </div>
+    `;
+
+    sorted.forEach(row => {
+        html += `
+            <div class="pick-row">
+                <div><span class="label-number">Label ${escapeHtml(row.labelOrder)}</span></div>
+                <div>
+                    <strong>${escapeHtml(row.description)}</strong>
+                    <div class="muted small">${escapeHtml(row.sourceName)}</div>
+                </div>
+                <div class="${row.location ? "ok" : "error"}">${escapeHtml(row.location || "Not found")}</div>
+                <div>${escapeHtml(row.qty)}</div>
+            </div>
+        `;
+    });
+
+    html += `</div><div style="margin-top:12px;">${renderPackCards()}</div>`;
+    queueEl.innerHTML = html;
+}
+
+function renderLabelView(rows){
+    const sortedPacks = [...queueCache].sort((a,b) => Number(a.label_order || 0) - Number(b.label_order || 0));
+    queueEl.innerHTML = sortedPacks.map(pack => renderPackCard(pack)).join("");
+}
+
+function renderPackCards(){
+    return [...queueCache]
+        .sort((a,b) => Number(a.label_order || 0) - Number(b.label_order || 0))
+        .map(pack => renderPackCard(pack))
+        .join("");
+}
+
+function renderPackCard(pack){
+    const packItems = pack.items || [];
+
+    const itemHtml = packItems.map(item => {
+        const locations = Array.isArray(item.locations) ? item.locations : [];
+        const closest = locations[0] || null;
+
+        const closestMatchHtml = closest
+            ? `
+                <div class="muted small" style="margin-top:8px;">
+                    Closest match:
+                    <strong>${escapeHtml(
+                        closest.description ||
+                        item.description
+                    )}</strong>
+                    —
+                    <strong>${escapeHtml(
+                        closest.location ||
+                        "Location not found"
+                    )}</strong>
+                    ${
+                        closest.match_percent
+                            ? ` (${escapeHtml(closest.match_percent)}% match)`
+                            : ""
+                    }
+                </div>
+            `
+            : "";
+
+        const locationHtml = locations.length
+            ? locations.map(loc => `
+                <div class="location ok">
+                    ${escapeHtml(loc.location || "Unknown location")}
+                    — Qty ${escapeHtml(loc.qty)}
+                    ${loc.barcode ? ` — ${escapeHtml(loc.barcode)}` : ""}
+                </div>
+            `).join("")
+            : `<div class="location ${item.status === "missing" ? "error" : ""}">${item.status === "missing" ? "No close active-stock match found" : "Locations not searched yet"}</div>`;
+
+        return `
+            <div class="item-row">
+                <div class="card-head">
+                    <div style="width:100%;">
+                        <strong>${escapeHtml(item.description)}</strong>
+                        <div class="muted small">Qty needed: ${escapeHtml(item.qty)}</div>
+                        ${closestMatchHtml}
+                        ${locationHtml}
+
+                        <div class="inline-edit">
+                            <input id="desc-${Number(item.id)}" type="text" value="${escapeHtml(item.description)}">
+                            <input id="qty-${Number(item.id)}" type="number" min="1" value="${escapeHtml(item.qty)}">
+                            <button onclick="updateItem(${Number(item.id)})">Update</button>
+                            <button class="danger" onclick="deleteItem(${Number(item.id)})">Delete</button>
+                        </div>
+                    </div>
+                    <span class="status ${escapeHtml(item.status || "needs_review")}">${escapeHtml(statusLabel(item.status))}</span>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    const courierPreview = pack.preview_url
+        ? `<div class="courier-preview">${
+            courierPreviewMedia(
+                resolveInventoryApiUrl(pack.preview_url),
+                pack.preview_type,
+                "Courier label preview"
+            )
+        }</div>`
+        : "";
+
+    return `
+        <div class="card">
+            <div class="card-head">
+                <div>
+                    <div class="card-title">${escapeHtml(pack.source_name || "Manual pack")}</div>
+                    <div class="muted small">Printed/uploaded as Label ${escapeHtml(pack.label_order || "")}</div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    ${courierPreview}
+                    <div>
+                        <div class="label-number">Label ${escapeHtml(pack.label_order || "")}</div>
+                        <div style="margin-top:8px;text-align:right;">
+                            <span class="status ${escapeHtml(pack.status || "needs_review")}">${escapeHtml(statusLabel(pack.status))}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            ${itemHtml}
+
+            <div class="form-grid">
+                <input id="add-desc-${Number(pack.id)}" type="text" placeholder="Add another item to this label/pack">
+                <input id="add-qty-${Number(pack.id)}" type="number" min="1" value="1">
+                <button onclick="addItemToPack(${Number(pack.id)})">Add</button>
+            </div>
+
+            <div class="actions">
+                <button class="success" onclick="markPacked(${Number(pack.id)})">Mark Packed</button>
+                <button class="danger" onclick="removePack(${Number(pack.id)})">Remove From Queue</button>
+            </div>
+        </div>
+    `;
+}
+
+async function loadQueue(){
+    try{
+        const res = await apiFetch("/shipping-labels/queue");
+        const data = await res.json();
+
+        if(!data.success) throw new Error(data.error || "Could not load packing queue");
+
+        const previousSignature = getMobilePrintSignature(
+            getQueuedCourierLabels()
+        );
+
+        queueCache = data.packs || [];
+
+        const nextSignature = getMobilePrintSignature(
+            getQueuedCourierLabels()
+        );
+
+        if(previousSignature !== nextSignature){
+            clearPreparedMobilePrint();
+        }
+
+        renderQueue();
+    }catch(err){
+        queueEl.innerHTML = `<div class="error">${escapeHtml(err.message || "Could not load packing queue.")}</div>`;
+    }
+}
+
+async function updateItem(id){
+    const description = document.getElementById(`desc-${id}`).value.trim();
+    const qty = Number(document.getElementById(`qty-${id}`).value || 1);
+
+    if(!description){
+        alert("Enter an item description first.");
+        return;
+    }
+
+    showLoading("Updating item...");
+
+    try{
+        const res = await apiFetch(`/shipping-labels/item/${id}/update`, {
+            method:"POST",
+            body:JSON.stringify({description, qty})
+        });
+
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not update item");
+
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not update item");
+    }finally{
+        hideLoading();
+    }
+}
+
+async function deleteItem(id){
+    if(!confirm("Remove this item from the packing queue? Stock will not be changed.")) return;
+
+    showLoading("Removing item...");
+
+    try{
+        const res = await apiFetch(`/shipping-labels/item/${id}`, { method:"DELETE" });
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not delete item");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not delete item");
+    }finally{
+        hideLoading();
+    }
+}
+
+async function addItemToPack(packId){
+    const description = document.getElementById(`add-desc-${packId}`).value.trim();
+    const qty = Number(document.getElementById(`add-qty-${packId}`).value || 1);
+
+    if(!description){
+        alert("Enter an item description first.");
+        return;
+    }
+
+    showLoading("Adding item...");
+
+    try{
+        const res = await apiFetch(`/shipping-labels/${packId}/add-item`, {
+            method:"POST",
+            body:JSON.stringify({description, qty})
+        });
+
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not add item");
+
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not add item");
+    }finally{
+        hideLoading();
+    }
+}
+
+async function markPacked(id){
+    showLoading("Marking packed...");
+
+    try{
+        const res = await apiFetch(`/shipping-labels/${id}/packed`, {method:"POST"});
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not mark packed");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not mark packed");
+    }finally{
+        hideLoading();
+    }
+}
+
+async function removePack(id){
+    if(!confirm("Remove this pack from the queue? Stock will not be changed.")) return;
+
+    showLoading("Removing pack...");
+
+    try{
+        const res = await apiFetch(`/shipping-labels/${id}`, {method:"DELETE"});
+        const data = await res.json();
+        if(!data.success) throw new Error(data.error || "Could not remove pack");
+        await loadQueue();
+    }catch(err){
+        alert(err.message || "Could not remove pack");
+    }finally{
+        hideLoading();
+    }
+}
+
+InventoryAPI.requireLogin();
+
+window.addEventListener("inventory-selection-changed", function(){
+    loadQueue();
+});
+
+handleGmailRedirectNotice();
+loadGmailStatus();
+loadGmailScanSettings();
+loadQueue();
+refreshPendingDispatchPrintStatus();
+
+setTimeout(function(){
+    connectDispatchQz().catch(function(error){
+        console.warn("QZ Tray connection not ready:", error);
+        setDispatchQzStatus(
+            "QZ Tray is not connected yet. Open QZ Tray before printing.",
+            "error"
+        );
+    });
+}, 800);
+</script>
+
+
+<script src="js/dispatchWorkflow.js?v=3"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
