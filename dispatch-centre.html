@@ -808,7 +808,7 @@ button:disabled{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/qzClient.js?v=8"></script>
+<script src="js/qzClient.js?v=9"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
 <script src="js/workspace.js"></script>
 
@@ -906,12 +906,7 @@ function connectDispatchQz(){
         });
 }
 
-function printSingleDispatchLabelImage(
-    printer,
-    label,
-    index,
-    total
-){
+function buildShippingLabelHtml(label){
     const imageBase64 =
         String(
             label &&
@@ -922,47 +917,111 @@ function printSingleDispatchLabelImage(
 
     if(!imageBase64){
         throw new Error(
-            "Shipping label " +
-            (index + 1) +
-            " has no printable image data."
+            "Shipping label has no printable image data."
         );
     }
 
-    const config = qz.configs.create(
-        printer,
-        {
-            size:{
-                width:4,
-                height:6
-            },
-            units:"in",
-            margins:0,
-            orientation:"portrait",
-            copies:1,
-            scaleContent:true,
-            colorType:"grayscale",
-            density:"best",
-            interpolation:"nearest-neighbor",
-            jobName:
-                "InventoryOS Dispatch Label " +
-                (index + 1) +
-                " of " +
-                total
-        }
-    );
-
     /*
-        Send exactly one backend-rendered PNG to QZ for each 4x6 label.
-
-        The previous HTML wrapper could produce blank pages on some thermal
-        printer/driver combinations. Direct base64 image printing avoids the
-        extra HTML/PDF rendering stage.
+        This is the original working Dispatch Centre print method:
+        QZ renders one self-contained 4×6 HTML page containing the backend
+        rendered shipping-label PNG.
     */
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@page{
+    size:4in 6in;
+    margin:0;
+}
+
+html,body{
+    width:4in;
+    height:6in;
+    margin:0;
+    padding:0;
+    background:white;
+    overflow:hidden;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+.label-page{
+    width:4in;
+    height:6in;
+    margin:0;
+    padding:0;
+    background:white;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.label-page img{
+    width:4in;
+    height:6in;
+    object-fit:contain;
+    display:block;
+    image-rendering:crisp-edges;
+}
+</style>
+</head>
+<body>
+    <div class="label-page">
+        <img
+            src="data:image/png;base64,${imageBase64}"
+            width="2400"
+            height="3600"
+        >
+    </div>
+</body>
+</html>`;
+}
+
+function printSingleDispatchLabelHtml(
+    printer,
+    label,
+    index,
+    total
+){
+    const config =
+        qz.configs.create(
+            printer,
+            {
+                size:{
+                    width:4,
+                    height:6
+                },
+                units:"in",
+                margins:0,
+                orientation:"portrait",
+                copies:1,
+                scaleContent:false,
+                colorType:"grayscale",
+                density:"best",
+                interpolation:
+                    "nearest-neighbor",
+                jobName:
+                    "InventoryOS Dispatch Label " +
+                    (index + 1) +
+                    " of " +
+                    total
+            }
+        );
+
     const data = [{
         type:"pixel",
-        format:"image",
-        flavor:"base64",
-        data:imageBase64
+        format:"html",
+        flavor:"plain",
+        data:
+            buildShippingLabelHtml(
+                label
+            )
     }];
 
     setDispatchQzStatus(
@@ -1049,7 +1108,7 @@ function printDispatchImagesWithQz(printLabels){
                 function(label,index){
                     chain = chain.then(
                         function(){
-                            return printSingleDispatchLabelImage(
+                            return printSingleDispatchLabelHtml(
                                 foundPrinter,
                                 label,
                                 index,
@@ -1157,162 +1216,6 @@ async function fetchMobilePrintPdf(pdfUrl){
 
     return blob;
 }
-
-function blobToBase64Payload(blob){
-    return blob.arrayBuffer()
-        .then(function(arrayBuffer){
-            const bytes =
-                new Uint8Array(
-                    arrayBuffer
-                );
-
-            const chunkSize =
-                0x8000;
-
-            let binary = "";
-
-            for(
-                let offset = 0;
-                offset < bytes.length;
-                offset += chunkSize
-            ){
-                const chunk =
-                    bytes.subarray(
-                        offset,
-                        Math.min(
-                            offset + chunkSize,
-                            bytes.length
-                        )
-                    );
-
-                binary +=
-                    String.fromCharCode.apply(
-                        null,
-                        chunk
-                    );
-            }
-
-            return btoa(binary);
-        });
-}
-
-async function printDispatchPdfWithQz(
-    pdfBlob,
-    labelCount
-){
-    if(dispatchPrintInFlight){
-        throw new Error(
-            "Another shipping-label print is already in progress. Wait for it to finish, then try again."
-        );
-    }
-
-    if(
-        !pdfBlob ||
-        !Number(pdfBlob.size || 0)
-    ){
-        throw new Error(
-            "The shipping-label PDF was empty."
-        );
-    }
-
-    dispatchPrintInFlight = true;
-
-    try{
-        await connectDispatchQz();
-
-        setDispatchQzStatus(
-            "Finding your selected 4×6 printer...",
-            "busy"
-        );
-
-        const printer =
-            await InventoryOSQZ.requirePrinter(
-                "shipping"
-            );
-
-        const base64 =
-            await blobToBase64Payload(
-                pdfBlob
-            );
-
-        if(!base64){
-            throw new Error(
-                "Could not convert the shipping-label PDF into printable data."
-            );
-        }
-
-        /*
-            Manual reprints use the combined 4×6 PDF directly.
-
-            This deliberately avoids the PNG/image print path. Each page of
-            the PDF is already a 4×6 shipping label, so QZ/Windows receives
-            the same document-style print job that is used for mobile PDF
-            printing rather than one raster-image job per label.
-        */
-        const config =
-            qz.configs.create(
-                printer,
-                {
-                    size:{
-                        width:4,
-                        height:6
-                    },
-                    units:"in",
-                    margins:0,
-                    orientation:"portrait",
-                    copies:1,
-                    scaleContent:true,
-                    jobName:
-                        "InventoryOS Manual Shipping Label Reprint"
-                }
-            );
-
-        const data = [{
-            type:"pixel",
-            format:"pdf",
-            flavor:"base64",
-            data:base64
-        }];
-
-        setDispatchQzStatus(
-            "Sending " +
-            Number(labelCount || 0) +
-            " 4×6 PDF label" +
-            (
-                Number(labelCount || 0) === 1
-                    ? ""
-                    : "s"
-            ) +
-            " to " +
-            printer +
-            "...",
-            "busy"
-        );
-
-        await qz.print(
-            config,
-            data
-        );
-
-        setDispatchQzStatus(
-            "Sent " +
-            Number(labelCount || 0) +
-            " shipping label" +
-            (
-                Number(labelCount || 0) === 1
-                    ? ""
-                    : "s"
-            ) +
-            " as a fresh 4×6 PDF job to " +
-            printer +
-            ".",
-            "ok"
-        );
-    }finally{
-        dispatchPrintInFlight = false;
-    }
-}
-
 
 async function prepareMobilePrintFile(labels){
     const signature = getMobilePrintSignature(labels);
@@ -3374,14 +3277,18 @@ document.getElementById("mobileShareLabelsBtn").addEventListener(
 /*
     MANUAL PRINT / REPRINT
     ----------------------
-    This button intentionally bypasses all automatic-print memory.
+    Print EVERY currently visible shipping label.
 
-    It prints EVERY cropped courier label currently visible in the active
-    packing queue. It does not care whether those labels have printed before.
+    This deliberately:
+    - ignores the "already printed" memory;
+    - does not touch Gmail import history;
+    - does not use the pending retry queue;
+    - does not use the latest-pack LIMIT 1 bypass;
+    - does not use the combined-PDF print path.
 
-    The backend combines those exact pack IDs into a fresh multi-page 4×6 PDF,
-    and QZ prints the PDF directly. This also avoids the raster PNG path that
-    was producing blank physical labels.
+    It restores the original working Dispatch Centre method:
+    backend renders each selected pack to PNG, then QZ prints each label
+    sequentially as its own self-contained 4×6 HTML job.
 */
 document.getElementById(
     "printPreviewLabelsBtn"
@@ -3405,6 +3312,15 @@ document.getElementById(
             return;
         }
 
+        const packIds =
+            labels
+                .map(label =>
+                    Number(
+                        label.packId || 0
+                    )
+                )
+                .filter(Boolean);
+
         const button =
             document.getElementById(
                 "printPreviewLabelsBtn"
@@ -3412,30 +3328,24 @@ document.getElementById(
 
         button.disabled = true;
         button.textContent =
-            "Preparing 4×6 PDF...";
+            "Preparing " +
+            packIds.length +
+            " Label" +
+            (
+                packIds.length === 1
+                    ? ""
+                    : "s"
+            ) +
+            "...";
 
         showLoading(
-            "Building a fresh 4×6 PDF from the current shipping labels..."
+            "Rendering all current shipping labels..."
         );
 
         try{
-            /*
-                IMPORTANT:
-                Use the CURRENT visible queue IDs, not the most-recent single
-                pack ID. If four labels are visible, four pack IDs are sent.
-            */
-            const packIds =
-                labels
-                    .map(label =>
-                        Number(
-                            label.packId || 0
-                        )
-                    )
-                    .filter(Boolean);
-
             const data =
                 await InventoryAPI.request(
-                    "/shipping-labels/print-pdf",
+                    "/shipping-labels/print-images",
                     {
                         method:"POST",
                         body:JSON.stringify({
@@ -3444,23 +3354,20 @@ document.getElementById(
                     }
                 );
 
-            if(
-                !data.success ||
-                !data.print_url
-            ){
+            if(!data.success){
                 throw new Error(
                     data.error ||
-                    "Could not create the shipping-label PDF."
+                    "Could not render shipping labels."
                 );
             }
 
-            const returnedCount =
-                Number(
-                    data.label_count || 0
-                );
+            const printLabels =
+                Array.isArray(data.labels)
+                    ? data.labels
+                    : [];
 
             if(
-                returnedCount !==
+                printLabels.length !==
                 packIds.length
             ){
                 throw new Error(
@@ -3472,42 +3379,45 @@ document.getElementById(
                             ? ""
                             : "s"
                     ) +
-                    " but the backend prepared " +
-                    returnedCount +
-                    ". Printing was stopped."
+                    " but the backend returned " +
+                    printLabels.length +
+                    ". Nothing was sent to the printer."
                 );
             }
 
             document.getElementById(
                 "loadingText"
             ).innerText =
-                "Downloading the fresh 4×6 PDF for QZ...";
-
-            const pdfUrl =
-                resolveInventoryApiUrl(
-                    data.print_url
-                );
-
-            const pdfBlob =
-                await fetchMobilePrintPdf(
-                    pdfUrl
-                );
-
-            document.getElementById(
-                "loadingText"
-            ).innerText =
-                "Sending all current 4×6 labels to the printer...";
+                "Sending " +
+                printLabels.length +
+                " shipping label" +
+                (
+                    printLabels.length === 1
+                        ? ""
+                        : "s"
+                ) +
+                " to QZ Tray one at a time...";
 
             /*
-                Deliberate manual bypass:
-                - no already-printed check
-                - no rememberPrintedDispatchPackIds()
-                - no pending-history requirement
-                - no Gmail import-history changes
+                Explicit manual reprint:
+                there is intentionally NO call to
+                rememberPrintedDispatchPackIds().
             */
-            await printDispatchPdfWithQz(
-                pdfBlob,
-                returnedCount
+            await printDispatchImagesWithQz(
+                printLabels
+            );
+
+            setDispatchQzStatus(
+                "Printed " +
+                printLabels.length +
+                " shipping label" +
+                (
+                    printLabels.length === 1
+                        ? ""
+                        : "s"
+                ) +
+                " using the original HTML print method.",
+                "ok"
             );
         }catch(err){
             console.error(err);
@@ -3521,7 +3431,7 @@ document.getElementById(
                     );
 
             setDispatchQzStatus(
-                "Manual PDF print failed: " +
+                "Manual reprint failed: " +
                 detail,
                 "error"
             );
@@ -3966,7 +3876,7 @@ setTimeout(function(){
 </script>
 
 
-<script src="js/dispatchWorkflow.js?v=7"></script>
+<script src="js/dispatchWorkflow.js?v=8"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
