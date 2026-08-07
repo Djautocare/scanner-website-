@@ -1556,7 +1556,18 @@ function escapeDispatchHtml(value){
             throw new Error("No printable shipping labels were returned");
         }
 
-        await printDispatchImagesWithQz(labels);
+        if(
+            !window.InventoryOSDispatchPrinter ||
+            typeof window.InventoryOSDispatchPrinter.printLabels !== "function"
+        ){
+            throw new Error(
+                "The shared Dispatch shipping-label printer is not available. Refresh the Dispatch Centre and try again."
+            );
+        }
+
+        await window.InventoryOSDispatchPrinter.printLabels(
+            labels
+        );
     }
 
     window.startDispatchPacking = async function(requestedPackIds){
