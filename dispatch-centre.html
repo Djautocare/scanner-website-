@@ -1143,6 +1143,22 @@ function printDispatchImagesWithQz(printLabels){
 }
 
 
+
+/*
+    ONE SHARED SHIPPING-LABEL PRINTER
+    ---------------------------------
+    Both manual printing and every automatic Dispatch print path should call
+    this API. The implementation is the proven HTML-per-label QZ method above.
+*/
+window.InventoryOSDispatchPrinter = {
+    printLabels:function(labels){
+        return printDispatchImagesWithQz(
+            labels
+        );
+    }
+};
+
+
 function setMobileShareStatus(message, state){
     const element = document.getElementById("mobileShareStatus");
 
@@ -1428,6 +1444,23 @@ let gmailContinuousTimer = null;
 let gmailContinuousRunning = false;
 let gmailConnected = false;
 const gmailImportsInProgress = new Set();
+
+/*
+    Freshly created/cropped shipping-label files are given a short settle
+    period before automatic printing. Manual reprints happen later and were
+    already reliable; this closes that timing difference while keeping the
+    exact same HTML/QZ print method.
+*/
+const DISPATCH_FRESH_LABEL_PRINT_SETTLE_MS = 1800;
+
+function waitForFreshShippingLabelFiles(){
+    return new Promise(function(resolve){
+        setTimeout(
+            resolve,
+            DISPATCH_FRESH_LABEL_PRINT_SETTLE_MS
+        );
+    });
+}
 
 const gmailConnectBtn =
     document.getElementById("gmailConnectBtn");
@@ -2354,7 +2387,7 @@ async function retryPendingDispatchPrints(){
             );
         }
 
-        await printDispatchImagesWithQz(
+        await window.InventoryOSDispatchPrinter.printLabels(
             data.labels
         );
 
@@ -2454,6 +2487,13 @@ async function autoPrintNewlyCreatedPacks(packs){
         );
     }
 
+    /*
+        Automatic imports used to print immediately after create-from-crops.
+        Give the new stored files a moment to settle, then render them exactly
+        the same way as a successful manual reprint.
+    */
+    await waitForFreshShippingLabelFiles();
+
     const data = await InventoryAPI.request(
         "/shipping-labels/print-images",
         {
@@ -2486,7 +2526,7 @@ async function autoPrintNewlyCreatedPacks(packs){
         packIds
     );
 
-    await printDispatchImagesWithQz(
+    await window.InventoryOSDispatchPrinter.printLabels(
         printLabels
     );
 
@@ -3403,7 +3443,7 @@ document.getElementById(
                 there is intentionally NO call to
                 rememberPrintedDispatchPackIds().
             */
-            await printDispatchImagesWithQz(
+            await window.InventoryOSDispatchPrinter.printLabels(
                 printLabels
             );
 
@@ -3876,7 +3916,7 @@ setTimeout(function(){
 </script>
 
 
-<script src="js/dispatchWorkflow.js?v=8"></script>
+<script src="js/dispatchWorkflow.js?v=9"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
