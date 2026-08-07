@@ -779,6 +779,7 @@ button:disabled{
         <div class="actions">
             <button id="refreshPrintPreviewBtn" class="secondary" type="button">Refresh Preview</button>
             <button id="printPreviewLabelsBtn" type="button">Print Shipping Labels</button>
+            <button id="clearPendingPrintsBtn" class="danger" type="button">Clear Pending Prints</button>
             <button id="mobileShareLabelsBtn" class="secondary" type="button">📱 Share / Mobile Print</button>
         </div>
 
@@ -788,6 +789,7 @@ button:disabled{
 
         <div style="margin-top:10px;"><a class="link-card" href="printer-setup.html">Open Printer Setup</a></div>
 <div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send each 600-DPI 4×6 shipping label directly to your selected 4×6 printer using Chrome/PDFium-rendered images.</div>
+<div id="dispatchPendingPrintStatus" class="qz-print-status">No InventoryOS print retries are waiting.</div>
         <div id="printPreviewGrid" class="print-preview-grid"></div>
     </div>
 
@@ -866,6 +868,15 @@ function connectDispatchQz(){
                     ? "ok"
                     : "warn"
             );
+
+            refreshPendingDispatchPrintStatus();
+
+            if(printer){
+                setTimeout(
+                    retryPendingDispatchPrints,
+                    250
+                );
+            }
         });
 }
 
@@ -2070,6 +2081,217 @@ function base64ToBlob(base64, mimeType){
 const DISPATCH_PRINTED_PACKS_KEY =
     "inventoryos_dispatch_printed_pack_ids_v1";
 
+const DISPATCH_PENDING_PRINTS_KEY =
+    "inventoryos_dispatch_pending_print_pack_ids_v1";
+
+let dispatchPendingRetryRunning = false;
+
+function getPendingDispatchPrintPackIds(){
+    try{
+        const parsed = JSON.parse(
+            localStorage.getItem(
+                DISPATCH_PENDING_PRINTS_KEY
+            ) || "[]"
+        );
+
+        return Array.isArray(parsed)
+            ? Array.from(
+                new Set(
+                    parsed
+                        .map(value => Number(value || 0))
+                        .filter(Boolean)
+                )
+            )
+            : [];
+    }catch(error){
+        return [];
+    }
+}
+
+function savePendingDispatchPrintPackIds(packIds){
+    const clean = Array.from(
+        new Set(
+            (Array.isArray(packIds) ? packIds : [])
+                .map(value => Number(value || 0))
+                .filter(Boolean)
+        )
+    );
+
+    localStorage.setItem(
+        DISPATCH_PENDING_PRINTS_KEY,
+        JSON.stringify(clean)
+    );
+
+    refreshPendingDispatchPrintStatus();
+
+    return clean;
+}
+
+function addPendingDispatchPrintPackIds(packIds){
+    return savePendingDispatchPrintPackIds([
+        ...getPendingDispatchPrintPackIds(),
+        ...(Array.isArray(packIds) ? packIds : [])
+    ]);
+}
+
+function removePendingDispatchPrintPackIds(packIds){
+    const remove = new Set(
+        (Array.isArray(packIds) ? packIds : [])
+            .map(value => Number(value || 0))
+            .filter(Boolean)
+    );
+
+    return savePendingDispatchPrintPackIds(
+        getPendingDispatchPrintPackIds()
+            .filter(packId => !remove.has(packId))
+    );
+}
+
+function refreshPendingDispatchPrintStatus(){
+    const status =
+        document.getElementById(
+            "dispatchPendingPrintStatus"
+        );
+
+    const button =
+        document.getElementById(
+            "clearPendingPrintsBtn"
+        );
+
+    const count =
+        getPendingDispatchPrintPackIds()
+            .length;
+
+    if(status){
+        status.textContent = count
+            ? `${count} InventoryOS print retr${count === 1 ? "y is" : "ies are"} waiting.`
+            : "No InventoryOS print retries are waiting.";
+
+        status.classList.remove(
+            "ok",
+            "error",
+            "busy",
+            "warn"
+        );
+
+        status.classList.add(
+            count ? "warn" : "ok"
+        );
+    }
+
+    if(button){
+        button.disabled =
+            count === 0;
+
+        button.textContent = count
+            ? `Clear Pending Prints (${count})`
+            : "Clear Pending Prints";
+    }
+}
+
+function clearPendingDispatchPrints(){
+    const count =
+        getPendingDispatchPrintPackIds()
+            .length;
+
+    if(!count){
+        refreshPendingDispatchPrintStatus();
+        return;
+    }
+
+    const confirmed = confirm(
+        `Clear ${count} pending InventoryOS print retr${count === 1 ? "y" : "ies"}?\n\n` +
+        "This does not delete the shipping labels or packing jobs. " +
+        "Jobs already handed to the Windows printer spooler must be cleared from Windows separately."
+    );
+
+    if(!confirmed){
+        return;
+    }
+
+    savePendingDispatchPrintPackIds([]);
+
+    setDispatchQzStatus(
+        "Pending InventoryOS print retries cleared.",
+        "ok"
+    );
+}
+
+async function retryPendingDispatchPrints(){
+    if(dispatchPendingRetryRunning){
+        return;
+    }
+
+    const pending =
+        getPendingDispatchPrintPackIds();
+
+    if(!pending.length){
+        refreshPendingDispatchPrintStatus();
+        return;
+    }
+
+    dispatchPendingRetryRunning = true;
+
+    try{
+        const data =
+            await InventoryAPI.request(
+                "/shipping-labels/print-images",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        pack_ids:pending
+                    })
+                }
+            );
+
+        if(
+            !data.success ||
+            !Array.isArray(data.labels) ||
+            !data.labels.length
+        ){
+            throw new Error(
+                data.error ||
+                "Could not prepare pending shipping labels."
+            );
+        }
+
+        await printDispatchImagesWithQz(
+            data.labels
+        );
+
+        rememberPrintedDispatchPackIds(
+            pending
+        );
+
+        removePendingDispatchPrintPackIds(
+            pending
+        );
+
+        setDispatchQzStatus(
+            `Printed ${data.labels.length} pending label${data.labels.length === 1 ? "" : "s"}.`,
+            "ok"
+        );
+    }catch(error){
+        console.warn(
+            "Pending dispatch print retry is still waiting:",
+            error
+        );
+
+        refreshPendingDispatchPrintStatus();
+    }finally{
+        dispatchPendingRetryRunning = false;
+    }
+}
+
+window.InventoryOSDispatchPrintQueue = {
+    get:getPendingDispatchPrintPackIds,
+    add:addPendingDispatchPrintPackIds,
+    remove:removePendingDispatchPrintPackIds,
+    clear:clearPendingDispatchPrints,
+    retry:retryPendingDispatchPrints,
+    refresh:refreshPendingDispatchPrintStatus
+};
+
 function getAlreadyPrintedDispatchPackIds(){
     try{
         const parsed = JSON.parse(
@@ -2161,11 +2383,19 @@ async function autoPrintNewlyCreatedPacks(packs){
         );
     }
 
+    addPendingDispatchPrintPackIds(
+        packIds
+    );
+
     await printDispatchImagesWithQz(
         printLabels
     );
 
     rememberPrintedDispatchPackIds(
+        packIds
+    );
+
+    removePendingDispatchPrintPackIds(
         packIds
     );
 
@@ -2312,6 +2542,29 @@ async function importGmailLabels(labels, options = {}){
             throw new Error(
                 queueData.error ||
                 "Could not add Gmail labels to the packing queue."
+            );
+        }
+
+        const importHistoryData =
+            await InventoryAPI.request(
+                "/email-labels/gmail/mark-imported",
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        labels:selected.map(label => ({
+                            message_id:label.message_id,
+                            attachment_id:label.attachment_id,
+                            filename:label.filename || "",
+                            import_filename:label.import_filename || ""
+                        }))
+                    })
+                }
+            );
+
+        if(!importHistoryData.success){
+            throw new Error(
+                importHistoryData.error ||
+                "The labels were queued, but InventoryOS could not save their Gmail import history."
             );
         }
 
@@ -2595,6 +2848,11 @@ document.getElementById("gmailDisconnectBtn").addEventListener(
 document.getElementById("gmailImportSelectedBtn").addEventListener(
     "click",
     importSelectedGmailLabels
+);
+
+document.getElementById("clearPendingPrintsBtn").addEventListener(
+    "click",
+    clearPendingDispatchPrints
 );
 
 document.getElementById("gmailRescanBtn").addEventListener(
@@ -2924,10 +3182,21 @@ document.getElementById("printPreviewLabelsBtn").addEventListener("click", async
         document.getElementById("loadingText").innerText =
             "Sending 4×6 label images directly to your selected 4×6 printer...";
 
+        const manualPrintPackIds =
+            labels.map(label => label.packId);
+
+        addPendingDispatchPrintPackIds(
+            manualPrintPackIds
+        );
+
         await printDispatchImagesWithQz(printLabels);
 
         rememberPrintedDispatchPackIds(
-            labels.map(label => label.packId)
+            manualPrintPackIds
+        );
+
+        removePendingDispatchPrintPackIds(
+            manualPrintPackIds
         );
     }catch(err){
         console.error(err);
@@ -3364,6 +3633,7 @@ handleGmailRedirectNotice();
 loadGmailStatus();
 loadGmailScanSettings();
 loadQueue();
+refreshPendingDispatchPrintStatus();
 
 setTimeout(function(){
     connectDispatchQz().catch(function(error){
@@ -3377,7 +3647,7 @@ setTimeout(function(){
 </script>
 
 
-<script src="js/dispatchWorkflow.js?v=1"></script>
+<script src="js/dispatchWorkflow.js?v=2"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
