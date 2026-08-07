@@ -630,6 +630,74 @@ function escapeDispatchHtml(value){
                 margin-top:12px;
             }
 
+            .dispatch-queue-card{
+                padding:10px !important;
+                margin-top:9px !important;
+            }
+
+            .dispatch-queue-card > .card-head{
+                align-items:center;
+                gap:8px;
+            }
+
+            .dispatch-queue-card .card-title{
+                font-size:15px;
+                line-height:1.2;
+            }
+
+            .dispatch-queue-card .courier-preview{
+                max-width:76px !important;
+                padding:3px;
+            }
+
+            .dispatch-queue-card .courier-preview iframe{
+                height:104px !important;
+            }
+
+            .dispatch-queue-card .courier-preview img{
+                max-height:104px;
+                object-fit:contain;
+            }
+
+            .dispatch-queue-card .label-number{
+                padding:5px 8px;
+                font-size:11px;
+            }
+
+            .dispatch-queue-card .item-row{
+                padding:8px;
+                margin-top:7px;
+            }
+
+            .dispatch-queue-card .dispatch-match-box{
+                margin-top:6px;
+                padding:7px 9px;
+                border-radius:10px;
+            }
+
+            .dispatch-queue-card .dispatch-match-meta{
+                margin-top:3px;
+                line-height:1.3;
+            }
+
+            .dispatch-queue-card .dispatch-edit-grid,
+            .dispatch-queue-card .dispatch-add-grid{
+                margin-top:7px;
+                gap:6px;
+            }
+
+            .dispatch-queue-card input,
+            .dispatch-queue-card button{
+                padding:9px 10px;
+                margin:3px 0 5px 0;
+                font-size:14px;
+            }
+
+            .dispatch-queue-card .dispatch-workflow-actions{
+                margin-top:8px;
+                gap:8px;
+            }
+
             @media(max-width:850px){
                 .dispatch-packing-layout{
                     grid-template-columns:1fr;
@@ -702,6 +770,50 @@ function escapeDispatchHtml(value){
                 window.dispatchClearAllPackingQueue();
             };
             actions.appendChild(button);
+        }
+
+        if(
+            actions &&
+            !document.getElementById(
+                "dispatchClearPendingPrintsBtn"
+            )
+        ){
+            const button =
+                document.createElement("button");
+
+            button.id =
+                "dispatchClearPendingPrintsBtn";
+
+            button.type =
+                "button";
+
+            button.className =
+                "secondary";
+
+            button.textContent =
+                "Clear Pending Prints";
+
+            button.title =
+                "Clear InventoryOS print retries without deleting packing jobs";
+
+            button.onclick = function(){
+                if(
+                    window.InventoryOSDispatchPrintQueue &&
+                    typeof window.InventoryOSDispatchPrintQueue.clear === "function"
+                ){
+                    window.InventoryOSDispatchPrintQueue.clear();
+
+                    if(
+                        typeof window.InventoryOSDispatchPrintQueue.refresh === "function"
+                    ){
+                        window.InventoryOSDispatchPrintQueue.refresh();
+                    }
+                }
+            };
+
+            actions.appendChild(
+                button
+            );
         }
 
         if(!document.getElementById("dispatchWorkflowResult")){
@@ -933,7 +1045,7 @@ function escapeDispatchHtml(value){
             : "";
 
         return `
-            <div class="card">
+            <div class="card dispatch-queue-card">
                 <div class="card-head">
                     <div>
                         <div class="card-title">${escapeDispatchHtml(pack.source_name || "Manual pack")}</div>
@@ -1494,6 +1606,15 @@ function escapeDispatchHtml(value){
                             : "Printing only labels that have not already printed...";
 
                     try{
+                        if(
+                            window.InventoryOSDispatchPrintQueue &&
+                            typeof window.InventoryOSDispatchPrintQueue.add === "function"
+                        ){
+                            window.InventoryOSDispatchPrintQueue.add(
+                                unprintedPackIds
+                            );
+                        }
+
                         await printPackingLabels(
                             unprintedPackIds
                         );
@@ -1501,6 +1622,15 @@ function escapeDispatchHtml(value){
                         rememberPrintedDispatchPackIds(
                             unprintedPackIds
                         );
+
+                        if(
+                            window.InventoryOSDispatchPrintQueue &&
+                            typeof window.InventoryOSDispatchPrintQueue.remove === "function"
+                        ){
+                            window.InventoryOSDispatchPrintQueue.remove(
+                                unprintedPackIds
+                            );
+                        }
                     }catch(printError){
                         const continuePacking = confirm(
                             "The packing jobs are ready, but label printing failed.\n\n" +
@@ -2332,6 +2462,13 @@ function escapeDispatchHtml(value){
         injectDispatchWorkflowStyles();
         injectWorkflowControls();
         loadDispatchPreferences();
+
+        if(
+            window.InventoryOSDispatchPrintQueue &&
+            typeof window.InventoryOSDispatchPrintQueue.refresh === "function"
+        ){
+            window.InventoryOSDispatchPrintQueue.refresh();
+        }
 
         if(typeof renderPackCard === "function"){
             renderPackCard = dispatchRenderPackCard;
