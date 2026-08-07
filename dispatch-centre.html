@@ -808,7 +808,7 @@ button:disabled{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
-<script src="js/qzClient.js?v=6"></script>
+<script src="js/qzClient.js?v=7"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
 <script src="js/workspace.js"></script>
 
@@ -841,6 +841,30 @@ function setDispatchQzStatus(message, state){
     if(state){
         element.classList.add(state);
     }
+}
+
+function describePrintDiagnostics(label){
+    const diagnostics =
+        label &&
+        label.print_diagnostics
+            ? label.print_diagnostics
+            : null;
+
+    if(!diagnostics){
+        return "";
+    }
+
+    const percent =
+        Number(
+            diagnostics.dark_ratio || 0
+        ) * 100;
+
+    return (
+        `${Number(diagnostics.width || 0)}×` +
+        `${Number(diagnostics.height || 0)} PNG, ` +
+        `${percent.toFixed(2)}% dark pixels, ` +
+        `${Number(diagnostics.bytes || 0).toLocaleString("en-GB")} bytes`
+    );
 }
 
 function connectDispatchQz(){
@@ -3248,10 +3272,28 @@ document.getElementById("printPreviewLabelsBtn").addEventListener(
             const printLabels =
                 data.labels;
 
+            const proof =
+                describePrintDiagnostics(
+                    printLabels[0]
+                );
+
+            if(!proof){
+                throw new Error(
+                    "The backend did not return print diagnostics, so InventoryOS refused to send the label to QZ."
+                );
+            }
+
+            setDispatchQzStatus(
+                "Backend verified non-blank image: " +
+                proof +
+                ". Sending to QZ...",
+                "busy"
+            );
+
             document.getElementById(
                 "loadingText"
             ).innerText =
-                "Sending the latest shipping label directly to your selected 4×6 printer...";
+                "Backend verified the label contains printable content. Sending it to your selected 4×6 printer...";
 
             /*
                 Deliberate bypass:
@@ -3274,6 +3316,8 @@ document.getElementById("printPreviewLabelsBtn").addEventListener(
                           data.label_order
                         : ""
                 ) +
+                ". Backend image check: " +
+                proof +
                 ".",
                 "ok"
             );
@@ -3733,7 +3777,7 @@ setTimeout(function(){
 </script>
 
 
-<script src="js/dispatchWorkflow.js?v=5"></script>
+<script src="js/dispatchWorkflow.js?v=6"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
