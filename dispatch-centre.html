@@ -983,6 +983,84 @@ html,body{
 </html>`;
 }
 
+function printSingleDispatchLabelPdf(
+    printer,
+    label,
+    index,
+    total
+){
+    const pdfBase64 =
+        String(
+            label &&
+            label.pdf_base64
+                ? label.pdf_base64
+                : ""
+        ).trim();
+
+    if(!pdfBase64){
+        throw new Error(
+            "eBay shipping label has no printable PDF data."
+        );
+    }
+
+    const config =
+        qz.configs.create(
+            printer,
+            {
+                size:{
+                    width:4,
+                    height:6
+                },
+                units:"in",
+                margins:0,
+                orientation:"portrait",
+                copies:1,
+                scaleContent:true,
+                colorType:"grayscale",
+                jobName:
+                    "InventoryOS eBay Shipping Label " +
+                    (index + 1) +
+                    " of " +
+                    total
+            }
+        );
+
+    /*
+        eBay-only direct PDF path.
+
+        altFontRendering is specifically useful for Windows low-DPI thermal
+        printers. ignoreTransparency avoids known PDF transparency rendering
+        problems. Neither option touches non-eBay labels.
+    */
+    const data = [{
+        type:"pixel",
+        format:"pdf",
+        flavor:"base64",
+        data:pdfBase64,
+        options:{
+            altFontRendering:true,
+            ignoreTransparency:true
+        }
+    }];
+
+    setDispatchQzStatus(
+        "Sending eBay label " +
+        (index + 1) +
+        " of " +
+        total +
+        " directly as PDF to " +
+        printer +
+        "...",
+        "busy"
+    );
+
+    return qz.print(
+        config,
+        data
+    );
+}
+
+
 function printSingleDispatchLabelHtml(
     printer,
     label,
@@ -1053,18 +1131,33 @@ function printDispatchImagesWithQz(printLabels){
     const labels =
         Array.isArray(printLabels)
             ? printLabels.filter(label => {
-                return String(
-                    label && label.image_base64
-                        ? label.image_base64
-                        : ""
-                ).trim();
+                const imageData =
+                    String(
+                        label &&
+                        label.image_base64
+                            ? label.image_base64
+                            : ""
+                    ).trim();
+
+                const pdfData =
+                    String(
+                        label &&
+                        label.pdf_base64
+                            ? label.pdf_base64
+                            : ""
+                    ).trim();
+
+                return Boolean(
+                    imageData ||
+                    pdfData
+                );
             })
             : [];
 
     if(!labels.length){
         return Promise.reject(
             new Error(
-                "No printable shipping-label image data was supplied."
+                "No printable shipping-label data was supplied."
             )
         );
     }
@@ -1072,7 +1165,7 @@ function printDispatchImagesWithQz(printLabels){
     if(labels.length !== printLabels.length){
         return Promise.reject(
             new Error(
-                "One or more shipping labels had no image data, so nothing was sent to the printer."
+                "One or more shipping labels had no printable image/PDF data, so nothing was sent to the printer."
             )
         );
     }
@@ -1108,6 +1201,27 @@ function printDispatchImagesWithQz(printLabels){
                 function(label,index){
                     chain = chain.then(
                         function(){
+                            if(
+                                String(
+                                    label &&
+                                    label.print_format
+                                        ? label.print_format
+                                        : ""
+                                ).toLowerCase() === "pdf" &&
+                                label.pdf_base64
+                            ){
+                                return printSingleDispatchLabelPdf(
+                                    foundPrinter,
+                                    label,
+                                    index,
+                                    labels.length
+                                );
+                            }
+
+                            /*
+                                Existing known-working path for InPost,
+                                Vinted, Evri images and every non-eBay label.
+                            */
                             return printSingleDispatchLabelHtml(
                                 foundPrinter,
                                 label,
@@ -1125,7 +1239,7 @@ function printDispatchImagesWithQz(printLabels){
             setDispatchQzStatus(
                 "Sent " +
                 labels.length +
-                " cropped label" +
+                " shipping label" +
                 (
                     labels.length === 1
                         ? ""
@@ -3916,7 +4030,7 @@ setTimeout(function(){
 </script>
 
 
-<script src="js/dispatchWorkflow.js?v=9"></script>
+<script src="js/dispatchWorkflow.js?v=10"></script>
 
 <script src="js/appShell.js?v=3"></script>
 </body>
