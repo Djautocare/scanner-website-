@@ -810,7 +810,7 @@ button:disabled{
 <script src="js/api.js"></script>
 <script src="js/qzClient.js?v=9"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
-<script src="js/workspace.js"></script>
+<script src="js/workspace.js?v=5"></script>
 
 <script>
 let selectedFiles = [];
@@ -3397,7 +3397,7 @@ document.getElementById("printBtn").addEventListener("click", () => {
             <strong>Label ${escapeHtml(row.labelOrder)}</strong><br>
             Item: ${escapeHtml(row.description)}<br>
             Qty: ${escapeHtml(row.qty)}<br>
-            Location: ${escapeHtml(row.location || "Not found")}
+            Location: ${InventoryWorkspace.locationNameHtml(row.location || "Not found")}
         </div>
     `).join("");
 
@@ -3747,7 +3747,7 @@ function renderLocationView(rows){
                     <strong>${escapeHtml(row.description)}</strong>
                     <div class="muted small">${escapeHtml(row.sourceName)}</div>
                 </div>
-                <div class="${row.location ? "ok" : "error"}">${escapeHtml(row.location || "Not found")}</div>
+                <div class="${row.location ? "ok" : "error"}">${InventoryWorkspace.locationNameHtml(row.location || "Not found")}</div>
                 <div>${escapeHtml(row.qty)}</div>
             </div>
         `;
@@ -3785,7 +3785,7 @@ function renderPackCard(pack){
                         item.description
                     )}</strong>
                     —
-                    <strong>${escapeHtml(
+                    <strong>${InventoryWorkspace.locationNameHtml(
                         closest.location ||
                         "Location not found"
                     )}</strong>
@@ -3801,7 +3801,7 @@ function renderPackCard(pack){
         const locationHtml = locations.length
             ? locations.map(loc => `
                 <div class="location ok">
-                    ${escapeHtml(loc.location || "Unknown location")}
+                    ${InventoryWorkspace.locationNameHtml(loc.location || "Unknown location")}
                     — Qty ${escapeHtml(loc.qty)}
                     ${loc.barcode ? ` — ${escapeHtml(loc.barcode)}` : ""}
                 </div>
@@ -4030,7 +4030,7 @@ setTimeout(function(){
 </script>
 
 
-<script src="js/dispatchWorkflow.js?v=10"></script>
+<script src="js/dispatchWorkflow.js?v=11"></script>
 
 <script src="js/appShell.js?v=5"></script>
 </body>

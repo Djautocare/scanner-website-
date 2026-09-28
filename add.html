@@ -412,7 +412,7 @@ details[open] summary:after{content:"▲";}
 <script src="js/api.js"></script>
 <script src="js/qzClient.js?v=2"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
-<script src="js/workspace.js"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 const API_BASE = InventoryAPI.API_BASE;
 
@@ -741,7 +741,7 @@ function fillBoxDropdown(boxes){
     allBoxes.forEach(item=>{
         const option = document.createElement("option");
         option.value = item.box;
-        option.textContent = item.box;
+        InventoryWorkspace.setLocationName(option, item.box);
         select.appendChild(option);
     });
 
@@ -750,7 +750,7 @@ function fillBoxDropdown(boxes){
         select.value = savedLocation;
         const n = getBoxNumber(savedLocation);
         if(n !== null) document.getElementById("boxNumberInput").value = n;
-        document.getElementById("boxHint").innerText = "Selected " + savedLocation;
+        document.getElementById("boxHint").innerHTML = "Selected " + InventoryWorkspace.locationNameHtml(savedLocation);
     }
 }
 
@@ -810,9 +810,9 @@ function chooseClosestBox(){
         select.value = best.box;
         localStorage.setItem("lastAddLocation", best.box);
         if(getBoxNumber(best.box) === wanted){
-            hint.innerText = "Selected " + best.box;
+            hint.innerHTML = "Selected " + InventoryWorkspace.locationNameHtml(best.box);
         }else{
-            hint.innerText = "Closest available: " + best.box;
+            hint.innerHTML = "Closest available: " + InventoryWorkspace.locationNameHtml(best.box);
         }
     }
 }

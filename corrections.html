@@ -314,7 +314,7 @@ h1{margin:0 0 6px;font-size:34px;}
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
 <script src="js/inventoryTopbar.js?v=5"></script>
-<script src="js/workspace.js?v=4"></script>
+<script src="js/workspace.js?v=5"></script>
 <script src="js/appShell.js?v=5"></script>
 
 <script>
@@ -390,15 +390,16 @@ function locationOptions(inventoryId,selected){
         return `
             <option
                 value="${safe(location.box_name)}"
+                data-location-name="${safe(location.box_name)}"
                 ${isSelected ? "selected" : ""}
             >
-                ${safe(location.box_name)}
+                ${safe(InventoryWorkspace.formatLocationName(location.box_name))}
             </option>
         `;
     }).join("");
 }
 
-function valueBox(label,value){
+function valueBox(label,value,isLocation = false){
     if(value === null || value === undefined || value === ""){
         return "";
     }
@@ -406,7 +407,7 @@ function valueBox(label,value){
     return `
         <div class="value-box">
             <div class="value-label">${safe(label)}</div>
-            <div class="value-text">${safe(value)}</div>
+            <div class="value-text" data-location-wording-ignore>${isLocation ? InventoryWorkspace.locationNameHtml(value) : safe(value)}</div>
         </div>
     `;
 }
@@ -575,8 +576,8 @@ function renderCorrections(){
 
                 <div class="activity-values">
                     ${valueBox("Quantity",entry.qty)}
-                    ${valueBox("From",entry.from_location)}
-                    ${valueBox("To",entry.to_location)}
+                    ${valueBox("From",entry.from_location,true)}
+                    ${valueBox("To",entry.to_location,true)}
                     ${
                         entry.sale_amount !== null
                             ? valueBox("Sale price","£" + money(entry.sale_amount))
@@ -734,7 +735,7 @@ function renderProductChoices(targetId, products, type){
     target.innerHTML = products.map((product,index)=>`
         <div class="product-choice" onclick="selectProductChoice('${type}',${index})">
             <strong>${safe(product.description || product.barcode)}</strong><br>
-            <span class="activity-meta">${safe(product.barcode || "")} ${product.box_name ? `· ${safe(product.box_name)} · Qty ${Number(product.qty||0)}` : ""}</span>
+            <span class="activity-meta">${safe(product.barcode || "")} ${product.box_name ? `· ${InventoryWorkspace.locationNameHtml(product.box_name)} · Qty ${Number(product.qty||0)}` : ""}</span>
         </div>
     `).join("");
 
@@ -745,9 +746,9 @@ function renderProductChoices(targetId, products, type){
 function selectProductChoice(type,index){
     if(type === "current"){
         selectedCurrentProduct = (window.currentProductChoices || [])[index] || null;
-        document.getElementById("currentProductSearch").value = selectedCurrentProduct ? `${selectedCurrentProduct.description} — ${selectedCurrentProduct.box_name}` : "";
+        document.getElementById("currentProductSearch").value = selectedCurrentProduct ? `${selectedCurrentProduct.description} — ${InventoryWorkspace.formatLocationName(selectedCurrentProduct.box_name)}` : "";
         document.getElementById("changeProductQty").value = selectedCurrentProduct ? Math.min(1,Number(selectedCurrentProduct.qty||1)) : 1;
-        document.getElementById("currentProductResults").innerHTML = selectedCurrentProduct ? `<div class="product-choice selected">Selected: ${safe(selectedCurrentProduct.description)} · ${safe(selectedCurrentProduct.box_name)} · Qty ${Number(selectedCurrentProduct.qty||0)}</div>` : "";
+        document.getElementById("currentProductResults").innerHTML = selectedCurrentProduct ? `<div class="product-choice selected">Selected: ${safe(selectedCurrentProduct.description)} · ${InventoryWorkspace.locationNameHtml(selectedCurrentProduct.box_name)} · Qty ${Number(selectedCurrentProduct.qty||0)}</div>` : "";
     }else{
         selectedReplacementProduct = (window.replacementProductChoices || [])[index] || null;
         document.getElementById("replacementProductSearch").value = selectedReplacementProduct ? selectedReplacementProduct.description : "";

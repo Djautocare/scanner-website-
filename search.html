@@ -527,7 +527,7 @@ button{
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
 <script src="js/inventoryTopbar.js?v=3"></script>
-<script src="js/workspace.js"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -676,7 +676,7 @@ function formatLocations(locations){
     }
 
     return active
-        .map(loc => `${loc.location || "Unknown location"} • Qty ${loc.qty}`)
+        .map(loc => `${InventoryWorkspace.locationNameHtml(loc.location || "Unknown location")} • Qty ${escapeHtml(loc.qty)}`)
         .join(" | ");
 }
 
@@ -700,7 +700,7 @@ function renderLiveResults(items){
                 <br>
                 <small>Total Qty: ${escapeHtml(item.totalQty)}</small>
                 <br>
-                <small>${escapeHtml(formatLocations(item.locations))}</small>
+                <small>${formatLocations(item.locations)}</small>
                 ${alreadySelected ? "<br><small>Already selected</small>" : ""}
             </button>
         `;
@@ -835,7 +835,7 @@ function showItemChoices(items){
                 <br>
                 <small>Total Qty: ${escapeHtml(item.totalQty)}</small>
                 <br>
-                <small>${escapeHtml(formatLocations(item.locations))}</small>
+                <small>${formatLocations(item.locations)}</small>
             </button>
         `;
     });
@@ -855,7 +855,7 @@ function showBundleResults(){
         }
 
         item.locations.forEach(loc => {
-            const boxName = loc.location || "Unknown Box";
+            const boxName = loc.location || "Unknown location";
 
             if(!groupedByBox[boxName]){
                 groupedByBox[boxName] = [];
@@ -894,7 +894,7 @@ function showBundleResults(){
         html += `
             <div class="box-group-card">
                 <div class="box-group-title">
-                    <span>${escapeHtml(boxName)}</span>
+                    <span>${InventoryWorkspace.locationNameHtml(boxName)}</span>
                     <span class="badge">${entries.length} item${entries.length === 1 ? "" : "s"}</span>
                 </div>
         `;
@@ -906,7 +906,7 @@ function showBundleResults(){
                     <br>
                     <small>Qty in this box: ${escapeHtml(entry.qty)}</small>
                     <button class="location-sale-button" onclick="quickSale('${escapeJs(entry.item.barcode)}', '${escapeJs(entry.location)}')">
-                        Quick Sale From ${escapeHtml(entry.location)}
+                        Quick Sale From ${InventoryWorkspace.locationNameHtml(entry.location)}
                     </button>
                 </div>
             `;
@@ -977,12 +977,12 @@ function buildItemCard(item, index, bundleMode = false){
             html += `
                 <div class="location">
                     <div class="location-title">
-                        <span>${escapeHtml(loc.location)}</span>
+                        <span>${InventoryWorkspace.locationNameHtml(loc.location)}</span>
                         <span>Qty ${escapeHtml(loc.qty)}</span>
                     </div>
 
                     <button class="location-sale-button" onclick="quickSale('${escapeJs(item.barcode)}', '${escapeJs(loc.location)}')">
-                        Quick Sale From ${escapeHtml(loc.location)}
+                        Quick Sale From ${InventoryWorkspace.locationNameHtml(loc.location)}
                     </button>
                 </div>
             `;

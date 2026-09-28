@@ -523,7 +523,7 @@ button{
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
 <script src="js/inventoryTopbar.js?v=4"></script>
-<script src="js/workspace.js?v=4"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -700,22 +700,31 @@ function restoreActiveTab(){
     }
 }
 
-function createLabelHtml(barcode, index){
+function escapeHtml(value){
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function createLabelHtml(barcode, index, isLocation = false){
     return `
         <div class="print-label">
             <svg id="barcode_${index}"></svg>
-            <p class="label-text">${barcode}</p>
+            <p class="label-text" data-location-wording-ignore>${isLocation ? InventoryWorkspace.locationNameHtml(barcode) : escapeHtml(barcode)}</p>
         </div>
     `;
 }
 
-function renderBarcodes(barcodes){
+function renderBarcodes(barcodes, isLocation = false){
     const container = document.getElementById("printLabels");
 
     let html = "";
 
     barcodes.forEach((barcode,index)=>{
-        html += createLabelHtml(barcode,index);
+        html += createLabelHtml(barcode,index,isLocation);
     });
 
     container.innerHTML = html;
@@ -752,13 +761,13 @@ function clearLoadedLabels(){
     document.getElementById("jobPreview").innerHTML = "";
 }
 
-function printSingleBarcode(barcode){
+function printSingleBarcode(barcode, isLocation = false){
     if(!barcode){
         alert("Missing barcode");
         return;
     }
 
-    renderBarcodes([barcode]);
+    renderBarcodes([barcode], isLocation);
 
     setTimeout(function(){
         window.print();
@@ -896,7 +905,7 @@ function fillBoxes(boxes){
             item.box_name;
 
         option.value = boxName;
-        option.textContent = boxName;
+        InventoryWorkspace.setLocationName(option, boxName);
         select.appendChild(option);
     });
 
@@ -920,7 +929,7 @@ function printBoxLabel(){
         return;
     }
 
-    printSingleBarcode(box);
+    printSingleBarcode(box, true);
 }
 
 /* RANGE LABELS */
@@ -1147,6 +1156,8 @@ async function initialiseBarcodePrintingPage(){
     loadBoxes();
     loadPrintJobs();
 }
+
+window.addEventListener("inventoryos-location-wording-changed", applyBarcodePrintingLocationWording);
 
 if(document.readyState === "loading"){
     document.addEventListener(
