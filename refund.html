@@ -295,7 +295,7 @@ body.error-flash{background:#4a1010 !important;box-shadow:inset 0 0 120px rgba(2
     <button class="refund-button" onclick="processRefund()">Process Refund</button>
     <button class="clear-button" onclick="clearSelection()">Clear</button>
 
-    <div id="result" class="result">Ready.</div>
+    <div id="result" data-location-wording-ignore class="result">Ready.</div>
 </div>
 
 <div class="links-grid">
@@ -317,7 +317,7 @@ body.error-flash{background:#4a1010 !important;box-shadow:inset 0 0 120px rgba(2
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
 <script src="js/inventoryTopbar.js?v=4"></script>
-<script src="js/workspace.js"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -529,7 +529,7 @@ async function loadLocations(){
             const boxName = item.box || item.box_name;
             const option = document.createElement("option");
             option.value = boxName;
-            option.textContent = boxName;
+            InventoryWorkspace.setLocationName(option, boxName);
             select.appendChild(option);
         });
 
@@ -596,7 +596,7 @@ async function processRefund(){
         output += "Quantity: " + data.qty + "\\n";
 
         if(data.returnedToStock){
-            output += "Returned to: " + data.returnedLocation + "\\n";
+            output += "Returned to: " + InventoryWorkspace.formatLocationName(data.returnedLocation) + "\\n";
         }else{
             output += "Not returned to inventory.\\n";
         }

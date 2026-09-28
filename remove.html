@@ -510,7 +510,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <div id="locationChoices"></div>
 
-<p id="result">Ready to remove stock.</p>
+<p id="result" data-location-wording-ignore>Ready to remove stock.</p>
 
 </div>
 
@@ -533,7 +533,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
 <script src="js/inventoryTopbar.js?v=5"></script>
-<script src="js/workspace.js"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -624,7 +624,7 @@ function locationSummary(item){
     const locations = activeLocations(item);
     if(locations.length === 0) return "Location unavailable";
     return locations.map(function(loc){
-        return (loc.location || "Unknown location") + " — Qty " + loc.qty;
+        return InventoryWorkspace.formatLocationName(loc.location || "Unknown location") + " — Qty " + loc.qty;
     }).join(" | ");
 }
 
@@ -791,7 +791,7 @@ function addBundleItem(details){
         }else{
             document.getElementById("result").innerText =
                 existing.description + " is already set to all " + available +
-                " available at " + existing.location + ".";
+                " available at " + InventoryWorkspace.formatLocationName(existing.location) + ".";
         }
     }else{
         bundleItems.push({
@@ -881,13 +881,13 @@ function renderBundleList(){
                 <label>Location</label>
                 <select onchange="changeBundleLocation(${index}, this.value)">
                     ${item.locations.map(function(loc){
-                        return `<option value="${escapeHtml(loc.location)}" ${loc.location === item.location ? "selected" : ""}>
-                            ${escapeHtml(loc.location)} — ${Number(loc.qty)} available
+                        return `<option data-location-name="${escapeHtml(loc.location)}" data-location-suffix=" — ${Number(loc.qty)} available" value="${escapeHtml(loc.location)}" ${loc.location === item.location ? "selected" : ""}>
+                            ${escapeHtml(InventoryWorkspace.formatLocationName(loc.location))} — ${Number(loc.qty)} available
                         </option>`;
                     }).join("")}
                 </select>
             `
-            : `<div class="bundle-item-meta">${escapeHtml(item.location)} • ${item.available} available</div>`;
+            : `<div class="bundle-item-meta">${InventoryWorkspace.locationNameHtml(item.location)} • ${item.available} available</div>`;
 
         const quantityOptions = Array.from({length:item.available}, function(_,i){ return i + 1; })
             .map(function(qty){
@@ -989,7 +989,7 @@ function removeSingleStock(locationOverride = ""){
                 html += `
                     <button class="location-button"
                         onclick="removeSingleStock('${escapeJs(loc.location)}')" type="button">
-                        ${escapeHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
+                        ${InventoryWorkspace.locationNameHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
                     </button>`;
             });
             document.getElementById("locationChoices").innerHTML = html;
@@ -1008,7 +1008,7 @@ function removeSingleStock(locationOverride = ""){
         speakText("Sale complete");
         document.getElementById("result").innerText =
             "Removed 1 × " + (data.description || barcode) + " at " +
-            data.location + ". Remaining there: " + data.remainingQty;
+            InventoryWorkspace.formatLocationName(data.location) + ". Remaining there: " + data.remainingQty;
 
         document.getElementById("barcode").value = "";
         document.getElementById("saleAmount").value = "";
@@ -1186,7 +1186,7 @@ function showBundleLocationChoices(locations){
             <button class="location-button"
                 onclick="continueBundleWithLocation('${escapeJs(loc.location)}', ${Number(loc.qty || 0)})"
                 type="button">
-                ${escapeHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
+                ${InventoryWorkspace.locationNameHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
             </button>`;
     });
 
@@ -1202,7 +1202,7 @@ function continueBundleWithLocation(location, available){
     }
 
     if(Number(pendingBundleItem.qty) > Number(available)){
-        alert("Only " + available + " available at " + location + ".");
+        alert("Only " + available + " available at " + InventoryWorkspace.formatLocationName(location) + ".");
         return;
     }
 

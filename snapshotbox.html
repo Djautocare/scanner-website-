@@ -388,6 +388,7 @@ Refresh Storage Boxes
 </div>
 
 <script src="js/api.js"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -442,7 +443,7 @@ function updatePreview(){
     document.getElementById("batchCost").value;
 
     document.getElementById("previewBox").innerText =
-    box || "—";
+    InventoryWorkspace.formatLocationName(box || "—");
 
     document.getElementById("previewName").innerText =
     name || "—";
@@ -482,7 +483,7 @@ function loadStorageBoxes(){
 
             const boxName = item.box || item.box_name;
             option.value = boxName;
-            option.textContent = boxName;
+            InventoryWorkspace.setLocationName(option, boxName);
 
             select.appendChild(option);
         });
@@ -517,7 +518,7 @@ function createSnapshotBatch(){
         return;
     }
 
-    if(!confirm("Create a new MB for " + box + " and snapshot the current contents?")){
+    if(!confirm("Create a new MB for " + InventoryWorkspace.formatLocationName(box) + " and snapshot the current contents?")){
         return;
     }
 
@@ -549,7 +550,7 @@ function createSnapshotBatch(){
             Snapshot batch created<br><br>
             ${result.mysteryBoxId} — ${result.name}<br>
             Cost: ${money(result.cost)}<br><br>
-            ${result.box} copied into ${result.mysteryBoxId}<br>
+            ${InventoryWorkspace.locationNameHtml(result.box)} copied into ${result.mysteryBoxId}<br>
             Different items: ${result.differentItems}<br>
             Total quantity: ${result.totalQty}
         </div>

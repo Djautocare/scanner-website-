@@ -167,6 +167,7 @@ button{
 
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -203,7 +204,7 @@ function loadStaleStock(){
             html += `
             <div class="item-card">
                 <div class="item-name">${item.description || item.barcode}</div>
-                <div class="badge location-badge">${item.location}</div>
+                <div class="badge location-badge">${InventoryWorkspace.locationNameHtml(item.location)}</div>
                 <div class="badge qty-badge">Qty ${item.qty}</div>
                 <div class="badge days-badge">${item.daysOld} Days</div>
                 <div class="barcode-box">
@@ -235,7 +236,6 @@ loadStaleStock();
 
 <script src="js/inventoryTopbar.js?v=5"></script>
 
-<script src="js/workspace.js?v=4"></script>
 
 <script src="js/appShell.js?v=5"></script>
 </body>

@@ -21,6 +21,18 @@ const InventoryWorkspace = (function(){
         ".product-name",
         ".item-name",
         ".product-description",
+        ".stock-title",
+        ".search-title",
+        ".bundle-item-title",
+        ".activity-title",
+        ".activity-meta",
+        ".product-choice",
+        ".value-text",
+        "#barcodeText",
+        "[data-location-name]",
+        "[data-location-singular]",
+        "[data-location-plural]",
+        "[data-location-icon]",
         ".choice-button",
         ".live-result-button",
         ".suggest-item",
@@ -65,6 +77,8 @@ const InventoryWorkspace = (function(){
     ].join(",");
 
     let observer = null;
+    const originalText = new WeakMap();
+    const originalAttributes = new WeakMap();
 
     function hasInventoryAPI(){
         return (
@@ -134,6 +148,51 @@ const InventoryWorkspace = (function(){
         );
     }
 
+    // Format a saved name for display only. Never use this as an API value.
+    function formatLocationName(value){
+        const name = String(value ?? "");
+        return /^\d+$/.test(name.trim())
+            ? singular() + " " + name.trim()
+            : name;
+    }
+
+    function escapeLocationHtml(value){
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+    }
+
+    function locationNameHtml(value){
+        return '<span data-location-name="' + escapeLocationHtml(value) + '">' +
+            escapeLocationHtml(formatLocationName(value)) + '</span>';
+    }
+
+    function setLocationName(element, value, prefix = "", suffix = ""){
+        element.dataset.locationName = String(value ?? "");
+        element.dataset.locationPrefix = prefix;
+        element.dataset.locationSuffix = suffix;
+        const text = prefix + formatLocationName(value) + suffix;
+        if(element.textContent !== text){
+            element.textContent = text;
+        }
+    }
+
+    function applyLocationNames(root = document){
+        const elements = root.matches?.("[data-location-name]") ? [root] : [];
+        elements.push(...(root.querySelectorAll?.("[data-location-name]") || []));
+        elements.forEach(element => {
+            const text = (element.dataset.locationPrefix || "") +
+                formatLocationName(element.dataset.locationName) +
+                (element.dataset.locationSuffix || "");
+            if(element.textContent !== text){
+                element.textContent = text;
+            }
+        });
+    }
+
     function matchCase(source, replacement){
         const value = String(source || "");
         const output = String(replacement || "");
@@ -198,6 +257,11 @@ const InventoryWorkspace = (function(){
         return String(value || "").replace(
             /\bboxes\b|\bbox\b/gi,
             function(match, offset, fullText){
+                // Input boxes are controls, not storage locations.
+                if(/\b(barcode|text|tick|check|input)\s*$/i.test(fullText.slice(0, offset))){
+                    return match;
+                }
+
                 if(
                     isRealLocationName(
                         fullText,
@@ -233,7 +297,7 @@ const InventoryWorkspace = (function(){
     function looksLikeLocationUiText(value){
         const text = String(value || "");
 
-        if(!/\bboxes?\b/i.test(text)){
+        if(!/\bbox(?:es)?\b/i.test(text)){
             return false;
         }
 
@@ -242,10 +306,10 @@ const InventoryWorkspace = (function(){
             names or user notes such as "box of screws" being altered.
         */
         const patterns = [
-            /\b(active|empty|largest|smallest)\s+boxes?\b/i,
-            /\bboxes?\s+(locations?|labels?|suggestions?|number|move|contents?|available|created|found|shown)\b/i,
-            /\b(create|created|creating|select|selected|choose|loading|load|print|return|search|sort|move|moving|moved)\b[\s\S]{0,45}\bboxes?\b/i,
-            /\bboxes?\b[\s\S]{0,45}\b(create|created|select|selected|choose|loading|load|print|return|search|sort|move|moving|moved|location|label|number|suggestion|content|available|found)\b/i,
+            /\b(active|empty|largest|smallest)\s+box(?:es)?\b/i,
+            /\bbox(?:es)?\s+(locations?|labels?|suggestions?|number|move|contents?|available|created|found|shown)\b/i,
+            /\b(create|created|creating|select|selected|choose|loading|load|print|return|search|sort|move|moving|moved)\b[\s\S]{0,45}\bbox(?:es)?\b/i,
+            /\bbox(?:es)?\b[\s\S]{0,45}\b(create|created|select|selected|choose|loading|load|print|return|search|sort|move|moving|moved|location|label|number|suggestion|content|available|found)\b/i,
             /\bbulk\s+box\s+move\b/i,
             /\bwhole\s+box\b/i,
             /\bgrouped\s+by\s+box\b/i,
@@ -259,20 +323,20 @@ const InventoryWorkspace = (function(){
             /\bbox\s*\/\s*location\b/i,
             /\bbox\s+number\b/i,
             /\bclosest\s+available\s+box\b/i,
-            /\bno\s+boxes?\b/i,
-            /\bcould\s+not\s+load\s+boxes?\b/i,
-            /\berror\s+(creating|loading|moving)\s+boxes?\b/i,
+            /\bno\s+box(?:es)?\b/i,
+            /\bcould\s+not\s+load\s+box(?:es)?\b/i,
+            /\berror\s+(creating|loading|moving)\s+box(?:es)?\b/i,
             /\bbox\s+move\s+(complete|partly completed)\b/i,
-            /\bmove\s+everything\b[\s\S]{0,80}\bboxes?\b/i,
+            /\bmove\s+everything\b[\s\S]{0,80}\bbox(?:es)?\b/i,
             /\bprint\s+product\s+labels,\s*box\s+labels\b/i,
             /\badd\s+item,\s*choose\s+box\b/i,
-            /\bstorage\s+boxes?\b/i,
+            /\bstorage\s+box(?:es)?\b/i,
             /\bbox\s+locations?\b/i,
             /\bbox\s+labels?\b/i,
             /\bbox\s+suggestions?\b/i,
             /\bbox\s+contents?\b/i,
-            /\bactive\s+boxes?\b/i,
-            /\bempty\s+boxes?\b/i,
+            /\bactive\s+box(?:es)?\b/i,
+            /\bempty\s+box(?:es)?\b/i,
             /\blargest\s+box\b/i,
             /\bsmallest\s+box\b/i,
             /\bcreate\s+next\s+available\s+box\b/i,
@@ -280,22 +344,22 @@ const InventoryWorkspace = (function(){
             /\bsort\s+by\s+box\s+number\b/i,
             /\bsearch\s+box\b/i,
             /\bselect\s+box\b/i,
-            /\bloading\s+boxes?\b/i,
+            /\bloading\s+box(?:es)?\b/i,
             /\bprint\s+box\s+label\b/i,
             /\bmove\s+whole\s+box\b/i,
             /\bbulk\s+box\s+move\b/i,
             /\bmove\s+everything\s+from\b[\s\S]{0,80}\bbox\b/i,
             /\bmove\s+everything\s+to\b[\s\S]{0,80}\bbox\b/i,
-            /\bpick\s+from\s+the\s+boxes?\s+shown\s+below\b/i,
+            /\bpick\s+from\s+the\s+box(?:es)?\s+shown\s+below\b/i,
             /\breturn\s+box\s*\/\s*location\b/i,
             /\bselected\s+box\b/i,
             /\bclosest\s+available\s+box\b/i,
             /\bbox\s+number\b/i,
-            /\bboxes?\s+shown\s+below\b/i,
-            /\bboxes?\s+are\s+currently\b/i,
-            /\bboxes?\s+remaining\b/i,
-            /\bboxes?\s+available\b/i,
-            /\bboxes?\s+found\b/i
+            /\bbox(?:es)?\s+shown\s+below\b/i,
+            /\bbox(?:es)?\s+are\s+currently\b/i,
+            /\bbox(?:es)?\s+remaining\b/i,
+            /\bbox(?:es)?\s+available\b/i,
+            /\bbox(?:es)?\s+found\b/i
         ];
 
         return patterns.some(pattern => pattern.test(text));
@@ -356,9 +420,12 @@ const InventoryWorkspace = (function(){
             return false;
         }
 
-        const text = String(node.nodeValue || "");
+        const previous = originalText.get(node);
+        const text = previous && node.nodeValue === previous.translated
+            ? previous.source
+            : String(node.nodeValue || "");
 
-        if(!/\bboxes?\b/i.test(text)){
+        if(!/\bbox(?:es)?\b/i.test(text)){
             return false;
         }
 
@@ -392,8 +459,12 @@ const InventoryWorkspace = (function(){
         const current =
             String(node.nodeValue || "");
 
-        const translated =
-            replaceLocationWords(current);
+        const previous = originalText.get(node);
+        const source = previous && current === previous.translated
+            ? previous.source
+            : current;
+        const translated = replaceLocationWords(source);
+        originalText.set(node, {source, translated});
 
         if(translated !== current){
             node.nodeValue = translated;
@@ -457,12 +528,20 @@ const InventoryWorkspace = (function(){
                 const current =
                     element.getAttribute(attribute) || "";
 
-                if(!looksLikeLocationUiText(current)){
+                const records = originalAttributes.get(element) || new Map();
+                const previous = records.get(attribute);
+                const source = previous && current === previous.translated
+                    ? previous.source
+                    : current;
+
+                if(!looksLikeLocationUiText(source)){
                     return;
                 }
 
                 const translated =
-                    replaceLocationWords(current);
+                    replaceLocationWords(source);
+                records.set(attribute, {source, translated});
+                originalAttributes.set(element, records);
 
                 if(translated !== current){
                     element.setAttribute(
@@ -478,6 +557,8 @@ const InventoryWorkspace = (function(){
         if(!root){
             return;
         }
+
+        applyLocationNames(root);
 
         /*
             V1.0 only walked headings, buttons and a small selector list.
@@ -641,39 +722,23 @@ const InventoryWorkspace = (function(){
             return;
         }
 
-        const originalAlert =
-            window.alert.bind(window);
-
-        const originalConfirm =
-            window.confirm.bind(window);
-
-        const originalPrompt =
-            window.prompt.bind(window);
+        const originalAlert = window.alert.bind(window);
+        const originalConfirm = window.confirm.bind(window);
+        const originalPrompt = window.prompt.bind(window);
 
         window.alert = function(message){
-            return originalAlert(
-                localiseMessage(message)
-            );
+            return originalAlert(localiseMessage(message));
         };
 
         window.confirm = function(message){
-            return originalConfirm(
-                localiseMessage(message)
-            );
+            return originalConfirm(localiseMessage(message));
         };
 
-        window.prompt = function(
-            message,
-            defaultValue
-        ){
-            return originalPrompt(
-                localiseMessage(message),
-                defaultValue
-            );
+        window.prompt = function(message, defaultValue){
+            return originalPrompt(localiseMessage(message), defaultValue);
         };
 
-        window.__inventoryLocationDialogsPatched =
-            true;
+        window.__inventoryLocationDialogsPatched = true;
     }
 
     async function init(){
@@ -700,6 +765,8 @@ const InventoryWorkspace = (function(){
         applyLabels();
         startObserver();
 
+        window.dispatchEvent(new CustomEvent("inventoryos-location-wording-changed"));
+
         return true;
     }
 
@@ -711,6 +778,9 @@ const InventoryWorkspace = (function(){
         singular,
         plural,
         icon,
+        formatLocationName,
+        locationNameHtml,
+        setLocationName,
         applyLabels,
         translateUi,
         replaceLocationWords,
@@ -724,6 +794,8 @@ window.InventoryWorkspace =
 function initialiseInventoryWorkspace(){
     InventoryWorkspace.init();
 }
+
+window.addEventListener("inventory-selection-changed", initialiseInventoryWorkspace);
 
 if(document.readyState === "loading"){
     document.addEventListener(

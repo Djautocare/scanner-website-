@@ -150,7 +150,7 @@ summary{cursor:pointer;font-weight:bold;font-size:18px;}
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
 <script src="js/inventoryTopbar.js?v=4"></script>
-<script src="js/workspace.js?v=4"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -260,7 +260,7 @@ function applyLocationsPageWording(){
     ).placeholder =
         "Search " +
         words.singularLower +
-        " e.g. 14 or BOX-14";
+        " by name or number, e.g. 14";
 
     document.getElementById(
         "activeLocationsStatLabel"
@@ -368,7 +368,7 @@ function createNextBox(){
         if(data.success){
             alert(
                 "Created " +
-                data.box
+                InventoryWorkspace.formatLocationName(data.box)
             );
 
             loadBoxes();
@@ -438,8 +438,8 @@ function renderBoxes(){
     let empty=allBoxes.filter(b=>Number(b.qty || 0)===0);
 
     if(query){
-        active=active.filter(b=>String(b.box).toUpperCase().includes(query) || String(boxNumber(b.box)).includes(query));
-        empty=empty.filter(b=>String(b.box).toUpperCase().includes(query) || String(boxNumber(b.box)).includes(query));
+        active=active.filter(b=>InventoryWorkspace.formatLocationName(b.box).toUpperCase().includes(query) || String(boxNumber(b.box)).includes(query));
+        empty=empty.filter(b=>InventoryWorkspace.formatLocationName(b.box).toUpperCase().includes(query) || String(boxNumber(b.box)).includes(query));
     }
 
     if(sort==="number"){active.sort((a,b)=>boxNumber(a.box)-boxNumber(b.box));empty.sort((a,b)=>boxNumber(a.box)-boxNumber(b.box));}
@@ -495,7 +495,7 @@ function renderHighlights(active){
         "Largest " +
         safeText(words.singularLower) +
         ": <strong>" +
-        safeText(largest.box) +
+        InventoryWorkspace.locationNameHtml(largest.box) +
         "</strong> (" +
         Number(largest.qty || 0) +
         " items)";
@@ -506,7 +506,7 @@ function renderHighlights(active){
         "Smallest " +
         safeText(words.singularLower) +
         ": <strong>" +
-        safeText(smallest.box) +
+        InventoryWorkspace.locationNameHtml(smallest.box) +
         "</strong> (" +
         Number(smallest.qty || 0) +
         " items)";
@@ -553,7 +553,7 @@ function renderActive(active){
         html += `
             <div class="box-card">
                 <div class="box-title">
-                    <div class="box-name">${box}</div>
+                    <div class="box-name">${InventoryWorkspace.locationNameHtml(item.box)}</div>
                     <div class="badge">${qty} items</div>
                 </div>
 
@@ -613,7 +613,7 @@ function renderEmpty(empty){
         html += `
             <div class="box-card">
                 <div class="box-title">
-                    <div class="box-name">${box}</div>
+                    <div class="box-name">${InventoryWorkspace.locationNameHtml(item.box)}</div>
                     <div class="badge">0 items</div>
                 </div>
 
@@ -643,11 +643,11 @@ function renderSuggestions(active){
         const total=Number(a.qty || 0)+Number(b.qty || 0);
         html+=`
             <div class="suggestion">
-                Maybe combine <strong>${safeText(a.box)}</strong> (${Number(a.qty || 0)} items)
-                with <strong>${safeText(b.box)}</strong> (${Number(b.qty || 0)} items).<br>
+                Maybe combine <strong>${InventoryWorkspace.locationNameHtml(a.box)}</strong> (${Number(a.qty || 0)} items)
+                with <strong>${InventoryWorkspace.locationNameHtml(b.box)}</strong> (${Number(b.qty || 0)} items).<br>
                 Combined total: <strong>${total} items</strong>.
                 <button class="green-button small-button" onclick="mergeBoxes('${safeText(a.box)}','${safeText(b.box)}')">
-                    Move ${safeText(a.box)} into ${safeText(b.box)}
+                    Move ${InventoryWorkspace.locationNameHtml(a.box)} into ${InventoryWorkspace.locationNameHtml(b.box)}
                 </button>
             </div>`;
     }
@@ -728,9 +728,9 @@ function mergeBoxes(fromBox,toBox){
     if(
         !confirm(
             "Move all stock from " +
-            fromBox +
+            InventoryWorkspace.formatLocationName(fromBox) +
             " into " +
-            toBox +
+            InventoryWorkspace.formatLocationName(toBox) +
             "?"
         )
     ){
@@ -757,9 +757,9 @@ function mergeBoxes(fromBox,toBox){
                 "Moved " +
                 data.totalMoved +
                 " items from " +
-                data.fromBox +
+                InventoryWorkspace.formatLocationName(data.fromBox) +
                 " into " +
-                data.toBox
+                InventoryWorkspace.formatLocationName(data.toBox)
             );
 
             loadBoxes();
@@ -788,7 +788,7 @@ function deleteBox(box){
     if(
         !confirm(
             "Delete " +
-            box +
+            InventoryWorkspace.formatLocationName(box) +
             "? This only works if the " +
             words.singularLower +
             " has no stock."
@@ -813,7 +813,7 @@ function deleteBox(box){
             alert(
                 words.singular +
                 " deleted: " +
-                data.box
+                InventoryWorkspace.formatLocationName(data.box)
             );
 
             loadBoxes();
@@ -864,6 +864,11 @@ async function initialiseLocationsPage(){
     applyLocationsPageWording();
     loadBoxes();
 }
+
+window.addEventListener("inventoryos-location-wording-changed", function(){
+    applyLocationsPageWording();
+    renderBoxes();
+});
 
 if(document.readyState === "loading"){
     document.addEventListener(

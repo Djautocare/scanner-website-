@@ -280,6 +280,8 @@ input[type="text"], input[type="number"]{
     </div>
 </div>
 
+<script src="js/api.js"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 const API_BASE = window.API_BASE || "http://localhost:3000";
 
@@ -435,7 +437,7 @@ document.getElementById("printBtn").addEventListener("click", () => {
                 <div style="border-bottom:1px solid #ddd;padding:8px 0;">
                     <strong>${escapeHtml(item.description)}</strong><br>
                     Qty: ${escapeHtml(item.qty)}<br>
-                    Location: ${escapeHtml(formatLocations(item.locations))}
+                    Location: ${formatLocations(item.locations)}
                 </div>
             `);
         });
@@ -464,8 +466,8 @@ document.getElementById("printBtn").addEventListener("click", () => {
 function formatLocations(locations){
     if(!Array.isArray(locations) || !locations.length) return "Not found";
     return locations.map(loc => {
-        const place = [loc.location].filter(Boolean).join(" / ");
-        return `${place || "Unknown location"} - Qty ${loc.qty}`;
+        const place = InventoryWorkspace.locationNameHtml(loc.location || "Unknown location");
+        return `${place || "Unknown location"} - Qty ${escapeHtml(loc.qty)}`;
     }).join("; ");
 }
 
@@ -489,7 +491,7 @@ function renderQueue(items){
             const locationHtml = locations.length
                 ? locations.map(loc => `
                     <div class="location ok">
-                        ${escapeHtml(loc.location || "Unknown location")}
+                        ${InventoryWorkspace.locationNameHtml(loc.location || "Unknown location")}
                         — Qty ${escapeHtml(loc.qty)}
                         ${loc.barcode ? ` — ${escapeHtml(loc.barcode)}` : ""}
                     </div>

@@ -965,7 +965,7 @@ function escapeDispatchHtml(value){
                 </div>
                 <div class="dispatch-match-meta">
                     ${escapeDispatchHtml(dispatchItemBarcode(item))}
-                    · ${escapeDispatchHtml(item.picked_location || matchedLocation.location || "No location")}
+                    · ${InventoryWorkspace.locationNameHtml(item.picked_location || matchedLocation.location || "No location")}
                     · ${escapeDispatchHtml(matchedLocation.qty || 0)} currently available
                 </div>
             </div>
@@ -1742,7 +1742,7 @@ function escapeDispatchHtml(value){
                 <div>
                     <div class="dispatch-item-name">${escapeDispatchHtml(item.description)}</div>
                     <div class="dispatch-item-location">
-                        ${escapeDispatchHtml(item.picked_location || "Location not selected")}
+                        ${InventoryWorkspace.locationNameHtml(item.picked_location || "Location not selected")}
                         · ${escapeDispatchHtml(dispatchItemBarcode(item) || "No barcode")}
                     </div>
                 </div>
@@ -1987,7 +1987,7 @@ function escapeDispatchHtml(value){
 
         if(firstIncomplete){
             speakDispatch(
-                `Label ${pack.label_order}. ${firstIncomplete.description}. Location ${firstIncomplete.picked_location || "not selected"}. Quantity ${firstIncomplete.qty}.`
+                `Label ${pack.label_order}. ${firstIncomplete.description}. Location ${InventoryWorkspace.formatLocationName(firstIncomplete.picked_location || "not selected")}. Quantity ${firstIncomplete.qty}.`
             );
         }
     }
@@ -2326,7 +2326,7 @@ function escapeDispatchHtml(value){
         if(phrase.includes("repeat location")){
             const pack = currentDispatchPack();
             const item = (pack?.items || []).find(row => !itemIsComplete(row)) || (pack?.items || [])[0];
-            speakDispatch(item ? `Location ${item.picked_location || "not selected"}` : "No item selected");
+            speakDispatch(item ? `Location ${InventoryWorkspace.formatLocationName(item.picked_location || "not selected")}` : "No item selected");
             return;
         }
 
@@ -2545,3 +2545,4 @@ function escapeDispatchHtml(value){
         initialiseDispatchWorkflow();
     }
 })();
+

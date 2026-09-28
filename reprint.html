@@ -455,6 +455,7 @@ No range generated yet.
 </div>
 
 <script src="js/api.js"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -504,7 +505,7 @@ function searchProduct(){
                 locationsHtml = "<div class='location-box'><strong>Locations:</strong><br>";
 
                 item.locations.forEach(loc=>{
-                    locationsHtml += `${loc.location} — Qty ${loc.qty}<br>`;
+                    locationsHtml += `${InventoryWorkspace.locationNameHtml(loc.location)} — Qty ${loc.qty}<br>`;
                 });
 
                 locationsHtml += "</div>";
@@ -676,3 +677,4 @@ function copyBarcode(barcode){
 
 </body>
 </html>
+

@@ -245,7 +245,7 @@ Select one box and view everything currently inside it
 <script src="js/theme.js"></script>
 <script src="js/api.js"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
-<script src="js/workspace.js"></script>
+<script src="js/workspace.js?v=5"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -280,14 +280,14 @@ function loadBoxes(){
             const option = document.createElement("option");
             const boxName = item.box || item.box_name;
             option.value = boxName;
-            option.textContent = boxName;
+            InventoryWorkspace.setLocationName(option, boxName);
             select.appendChild(option);
         });
     })
     .catch(error=>{
         hideLoading();
         console.error(error);
-        alert("Could not load boxes");
+        alert(InventoryWorkspace.localiseMessage("Could not load boxes"));
     });
 }
 
@@ -295,7 +295,7 @@ function loadBoxContents(){
     const box = document.getElementById("boxSelect").value;
 
     if(!box){
-        alert("Select a box first");
+        alert(InventoryWorkspace.localiseMessage("Select a box first"));
         return;
     }
 
@@ -318,7 +318,7 @@ function loadBoxContents(){
             <div class="summary-grid">
                 <div class="summary-card">
                     <div class="summary-title">Selected Box</div>
-                    <div class="summary-value">${data.box}</div>
+                    <div class="summary-value">${InventoryWorkspace.locationNameHtml(data.box)}</div>
                 </div>
 
                 <div class="summary-card">
@@ -375,3 +375,4 @@ loadBoxes();
 
 </body>
 </html>
+
