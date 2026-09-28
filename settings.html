@@ -970,14 +970,49 @@ button{
                 <div class="guide-find"><strong>Find it:</strong> Barcode Printing under Operations.</div>
             </article>
 
+
+            <article class="guide-step" id="printJobsGuide">
+                <div class="guide-step-heading"><span class="guide-step-number">2</span><div><h4>Print jobs: saved barcode batches</h4><p>Load a saved set of labels, check the quantities and print the batch in one go.</p></div></div>
+                <div class="guide-visual"><div class="guide-preview-scroll"><div class="guide-screen" role="img" aria-label="Example Print Jobs tab showing a selected job, load and print buttons, and six labels for two different barcodes. Sample data; steps explained below."><div class="gp-sidebar"><div class="gp-brand">▦ InventoryOS</div><div class="gp-nav">Dashboard</div><div class="gp-nav">Add stock</div><div class="gp-nav">Remove stock</div><div class="gp-nav">Discard stock</div><div class="gp-nav">Refunds</div><div class="gp-nav">Search stock</div><div class="gp-nav">Move stock</div><div class="gp-nav">Boxes</div><div class="gp-section">OPERATIONS</div><div class="gp-nav selected">Barcode printing</div><div class="gp-nav">Dispatch Centre</div><div class="gp-nav">Corrections</div><div class="gp-section">REPORTS</div><div class="gp-nav">Sales tracker</div><div class="gp-nav">Expenses</div><div class="gp-nav">Stale stock</div><div class="gp-nav">Settings</div></div><div class="gp-main"><div class="gp-title">Barcode Printing</div>
+<div class="gp-row"><span>Product Labels</span><span>Box Labels</span><span>Bulk Range</span><span class="gp-action"><span class="gp-badge">1</span>Print Jobs</span><span>Quick Print</span></div>
+<div class="gp-panel">
+<div class="gp-label"><span class="gp-badge">2</span>Select Print Job</div>
+<div class="gp-field">PJ-001 - Monday stock (6 labels) ▾</div>
+<span class="gp-action">Load Print Job</span>
+<span class="gp-action"><span class="gp-badge">4</span>Print Loaded Labels</span>
+<span class="gp-action secondary">Clear Loaded Labels</span>
+</div>
+<div class="gp-subtitle"><span class="gp-badge">3</span>Check the loaded job</div>
+<div class="gp-grid"><div class="gp-stat">Print Job<strong>PJ-001</strong></div><div class="gp-stat">Total Labels<strong>6</strong></div><div class="gp-stat">Different Barcodes<strong>2</strong></div></div>
+<div class="gp-panel"><div class="gp-line"><span>ITEM-0033</span><span>ITEM-0033</span><span>ITEM-0033</span></div><div class="gp-line"><span>ITEM-0034</span><span>ITEM-0034</span><span>ITEM-0034</span></div></div></div></div></div>
+                <div class="guide-preview-caption"><div class="guide-preview-toolbar"><span>Illustrated example · sample data</span><button type="button" class="guide-preview-zoom" aria-label="Enlarge Print Jobs preview">Enlarge ↗</button></div><ol><li>Open <strong>Barcode Printing → Print Jobs</strong>. A print job is a saved batch of barcode labels that you can load and print together.</li>
+<li>Choose a saved job by its ID, name and label count, then click <strong>Load Print Job</strong>. Selecting a different job does not load it automatically: click Load Print Job each time.</li>
+<li>Check <strong>Total Labels</strong>, <strong>Different Barcodes</strong> and the barcode list. Repeated barcodes are multiple labels for the same code; this example has six labels for two different codes.</li>
+<li>Click <strong>Print Loaded Labels</strong>. In the browser print dialog, select your label printer and the matching 2×1-inch stock (the page uses 51 × 25 mm). Check the preview, use 100% scale and turn off headers and footers if shown, then print.</li>
+<li><strong>Clear Loaded Labels</strong> clears the current batch and preview; it does not delete the saved job. Loading and printing it again produces another copy of the batch.</li></ol></div></div>
+                <div class="guide-find"><strong>No jobs listed?</strong> There may be no saved jobs, or the list may not have loaded. Reopen Barcode Printing and try again. Add Stock’s “Create New Print Job” and “Create barcode labels for these items” options are currently unavailable; leave that checkbox off when saving stock. Use Product Labels, Bulk Range or Quick Print below for labels in the meantime.</div>
+                <div class="guide-find"><strong>Find it:</strong> Operations → <a href="barcodeprinting.html">Barcode Printing</a> → Print Jobs. For printer setup, open <a href="printer-setup.html">Printer Setup</a>. This batch-print button uses browser printing; it does not use Add Stock’s QZ auto-print option.</div>
+            </article>
             <article class="guide-step">
-                <div class="guide-step-heading"><span class="guide-step-number">2</span><div><h4>Dispatch Centre</h4><p>Bring shipping labels into one queue, work through the packing order and confirm each item before dispatch.</p></div></div>
+                <div class="guide-step-heading"><span class="guide-step-number">3</span><div><h4>Other barcode printing options</h4><p>Choose the tab that matches the labels you need.</p></div></div>
+                <div class="guide-preview-caption">
+                    <p><strong>Product Labels:</strong> type into Live Product Search, find the matching item and select Print Product Label.</p>
+                    <p><strong>Location labels:</strong> open the location-label tab (for example, Box Labels or Shelf Labels), select the saved location and use its print button.</p>
+                    <p><strong>Bulk Range:</strong> enter a prefix, Start Number and End Number, then select Generate Range Labels. For example, ITEM- with 33 to 35 creates ITEM-33, ITEM-34 and ITEM-35. Check the generated labels, then select Print Generated Labels. Both end numbers are included; the limit is 300 labels per range.</p>
+                    <p><strong>Quick Print:</strong> enter an existing barcode and select Print Barcode to print one label.</p>
+                    <p><strong>Before switching between Bulk Range and Print Jobs:</strong> clear the loaded labels, then generate or load the batch you want. These tabs share the currently loaded print batch.</p>
+                    <p><strong>Labels only:</strong> printing or generating barcode labels does not create products or add stock. Record the items through Add Stock separately.</p>
+                </div>
+                <div class="guide-find"><strong>Find it:</strong> Operations → Barcode Printing → the relevant tab.</div>
+            </article>
+            <article class="guide-step">
+                <div class="guide-step-heading"><span class="guide-step-number">4</span><div><h4>Dispatch Centre</h4><p>Bring shipping labels into one queue, work through the packing order and confirm each item before dispatch.</p></div></div>
                 <div class="guide-visual"><div class="guide-preview-scroll"><div class="guide-screen" role="img" aria-label="Example Dispatch Centre page. Sample data; numbered controls explained below."><div class="gp-sidebar"><div class="gp-brand">▦ InventoryOS</div><div class="gp-nav">Dashboard</div><div class="gp-nav">Add stock</div><div class="gp-nav">Remove stock</div><div class="gp-nav">Discard stock</div><div class="gp-nav">Refunds</div><div class="gp-nav">Search stock</div><div class="gp-nav">Move stock</div><div class="gp-nav">Boxes</div><div class="gp-section">OPERATIONS</div><div class="gp-nav">Barcode printing</div><div class="gp-nav selected">Dispatch Centre</div><div class="gp-nav">Corrections</div><div class="gp-section">REPORTS</div><div class="gp-nav">Sales tracker</div><div class="gp-nav">Expenses</div><div class="gp-nav">Stale stock</div><div class="gp-nav">Settings</div></div><div class="gp-main"><div class="gp-title">Dispatch Centre</div><div class="gp-muted"></div><div class="gp-panel"><span class="gp-badge">1</span><strong>Backend Crop Preview</strong><div class="gp-muted">Select your shipping label file</div><span class="gp-action">Browse Files</span> <span class="gp-action">Upload To Packing Queue</span></div><div class="gp-panel"><div class="gp-subtitle"><span class="gp-badge">2</span>Packing Queue</div><div class="gp-row"><span>Refresh Queue</span><span>Search Locations</span><span>Print Pick List</span></div><div class="gp-line"><span>Dyson charger · Shelf 1</span><span>Qty: 1</span></div><span class="gp-action">Mark Packed</span></div></div></div></div><div class="guide-preview-caption"><div class="guide-preview-toolbar"><span>Illustrated example · sample data</span><button type="button" class="guide-preview-zoom" aria-label="Enlarge Dispatch Centre preview">Enlarge ↗</button></div><ol><li>Browse for your shipping label file and upload it to the packing queue.</li><li>Use the queue to find items and mark them packed after checking them.</li></ol></div></div>
                 <div class="guide-find"><strong>Find it:</strong> Dispatch Centre under Operations.</div>
             </article>
 
             <article class="guide-step">
-                <div class="guide-step-heading"><span class="guide-step-number">3</span><div><h4>Corrections</h4><p>Correct quantities, product assignments, locations and sale details while keeping an activity record.</p></div></div>
+                <div class="guide-step-heading"><span class="guide-step-number">5</span><div><h4>Corrections</h4><p>Correct quantities, product assignments, locations and sale details while keeping an activity record.</p></div></div>
                 <div class="guide-find"><strong>Find it:</strong> Corrections under Operations.</div>
             </article>
         </div>
