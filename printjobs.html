@@ -342,6 +342,7 @@ button{
 <button class="print-button" onclick="printLoadedLabels()">Print Loaded Labels</button>
 <button class="refresh-button" onclick="loadPrintJobs()">Refresh Print Jobs</button>
 <button class="clear-button" onclick="clearLoadedLabels()">Clear Loaded Labels</button>
+        <button class="clear-button" id="deletePrintJobButton" type="button" onclick="deleteSelectedPrintJob()">Delete Print Job</button>
 
 </div>
 
@@ -384,6 +385,46 @@ function hideLoading(){
     document.getElementById("loadingOverlay").style.display = "none";
 }
 
+let deletingPrintJob = false;
+let printJobRequestVersion = 0;
+
+async function deleteSelectedPrintJob(){
+    if(deletingPrintJob) return;
+    const select = document.getElementById("printJobSelect");
+    const jobId = select.value;
+    if(!jobId){
+        alert("Select a print job first.");
+        return;
+    }
+    const option = select.options[select.selectedIndex];
+    const name = option.dataset.jobName || option.textContent;
+    if(!confirm('Delete print job "' + name + '" and all its saved labels?\n\nYour products and stock quantities will not change. This cannot be undone.')) return;
+    const button = document.getElementById("deletePrintJobButton");
+    deletingPrintJob = true;
+    ++printJobRequestVersion;
+    hideLoading();
+    select.disabled = true;
+    button.disabled = true;
+    button.textContent = "Deleting…";
+    try{
+        const data = await InventoryAPI.request("/print-jobs/" + encodeURIComponent(jobId), {method:"DELETE"});
+        if(!data.success) throw new Error(data.error || "Could not delete print job. Check that the updated printjobs.js is installed and the backend has restarted.");
+        clearLoadedLabels();
+        localStorage.removeItem("inventoryPrintJobs");
+        option.remove();
+        select.value = "";
+        loadPrintJobs();
+        alert('Print job "' + name + '" deleted. Your stock is unchanged.');
+    }catch(error){
+        alert(error.message || "Could not confirm deletion. Refresh the job list before trying again.");
+    }finally{
+        deletingPrintJob = false;
+        select.disabled = false;
+        button.disabled = false;
+        button.textContent = "Delete Print Job";
+    }
+}
+
 function loadPrintJobs(){
     showLoading();
 
@@ -405,6 +446,7 @@ function loadPrintJobs(){
         data.printJobs.slice().reverse().forEach(job=>{
             const option = document.createElement("option");
             option.value = job.printJobId || job.id;
+            option.dataset.jobName = job.name || "Unnamed print job";
             option.textContent =
             (job.name || "Unnamed print job") + " (" + job.labelCount + " labels)";
             select.appendChild(option);
@@ -418,6 +460,8 @@ function loadPrintJobs(){
 }
 
 function loadSelectedPrintJob(){
+    if(deletingPrintJob) return;
+    const requestVersion = ++printJobRequestVersion;
     const printJobId = document.getElementById("printJobSelect").value;
 
     if(!printJobId){
@@ -429,6 +473,7 @@ function loadSelectedPrintJob(){
 
     InventoryAPI.request("/print-jobs/" + encodeURIComponent(printJobId) + "/labels")
     .then(data=>{
+        if(requestVersion !== printJobRequestVersion) return;
         hideLoading();
 
         if(!data.success){
@@ -443,6 +488,7 @@ function loadSelectedPrintJob(){
         renderPreview(data.printJob && data.printJob.name, loadedLabels);
     })
     .catch(error=>{
+        if(requestVersion !== printJobRequestVersion) return;
         hideLoading();
         console.error(error);
         document.getElementById("summary").innerHTML =
