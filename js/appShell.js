@@ -259,7 +259,8 @@ const InventoryOSAppShell = (function(){
     function getUser(){
         try{
             if(
-                window.InventoryAPI &&
+                typeof InventoryAPI !== "undefined" &&
+                InventoryAPI &&
                 typeof InventoryAPI.getUser ===
                     "function"
             ){
@@ -453,7 +454,8 @@ const InventoryOSAppShell = (function(){
             }
 
             if(
-                !window.InventoryAPI ||
+                typeof InventoryAPI === "undefined" ||
+                !InventoryAPI ||
                 typeof InventoryAPI.me !== "function"
             ){
                 return;
@@ -855,7 +857,8 @@ const InventoryOSAppShell = (function(){
                 "click",
                 function(){
                     if(
-                        window.InventoryAPI &&
+                        typeof InventoryAPI !== "undefined" &&
+                        InventoryAPI &&
                         typeof InventoryAPI.logout ===
                             "function"
                     ){
