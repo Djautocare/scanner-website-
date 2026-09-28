@@ -744,17 +744,6 @@ button:disabled{
     </div>
 
     <div class="panel">
-        <h2 style="margin-top:0;">Manual Packing Item</h2>
-        <div class="muted small">Use this when a label only gives a tracking number or when the item name cannot be detected yet.</div>
-
-        <div class="form-grid">
-            <input id="manualDescription" type="text" placeholder="Item description e.g. Blue hoodie">
-            <input id="manualQty" type="number" min="1" value="1">
-            <button id="manualAddBtn">Add</button>
-        </div>
-    </div>
-
-    <div class="panel">
         <h2 style="margin:0;">Packing Queue</h2>
         <div class="muted small">Search locations first. Nothing is removed from stock from this page.</div>
 
@@ -762,6 +751,7 @@ button:disabled{
             <button id="refreshBtn" class="secondary">Refresh Queue</button>
             <button id="searchBtn">Search Locations</button>
             <button id="printBtn" class="secondary">Print Pick List</button>
+            <button id="mobileShareQueueLabelsBtn" class="secondary" type="button">📱 Mobile print cropped shipping labels</button>
         </div>
 
         <div class="view-tabs">
@@ -1432,7 +1422,7 @@ function openMobilePrintFallback(file){
     );
 }
 
-async function shareLabelsForMobile(){
+async function shareLabelsForMobile(buttonId = "mobileShareLabelsBtn", defaultLabel = "📱 Share / Mobile Print"){
     const labels = getQueuedCourierLabels();
 
     if(!labels.length){
@@ -1440,7 +1430,10 @@ async function shareLabelsForMobile(){
         return;
     }
 
-    const button = document.getElementById("mobileShareLabelsBtn");
+    const button = document.getElementById(buttonId);
+    if(!button){
+        throw new Error("Mobile print button is unavailable.");
+    }
     button.disabled = true;
 
     try{
@@ -1525,7 +1518,7 @@ async function shareLabelsForMobile(){
         );
     }finally{
         button.disabled = false;
-        button.textContent = "📱 Share / Mobile Print";
+        button.textContent = defaultLabel;
     }
 }
 
@@ -3320,36 +3313,6 @@ uploadBtn.addEventListener("click", async () => {
     }
 });
 
-document.getElementById("manualAddBtn").addEventListener("click", async () => {
-    const description = document.getElementById("manualDescription").value.trim();
-    const qty = Number(document.getElementById("manualQty").value || 1);
-
-    if(!description){
-        alert("Enter an item description first.");
-        return;
-    }
-
-    showLoading("Adding manual item...");
-
-    try{
-        const res = await apiFetch("/shipping-labels/manual-item", {
-            method:"POST",
-            body:JSON.stringify({description, qty})
-        });
-
-        const data = await res.json();
-        if(!data.success) throw new Error(data.error || "Could not add item");
-
-        document.getElementById("manualDescription").value = "";
-        document.getElementById("manualQty").value = 1;
-        await loadQueue();
-    }catch(err){
-        alert(err.message || "Could not add item");
-    }finally{
-        hideLoading();
-    }
-});
-
 document.getElementById("refreshBtn").addEventListener("click", loadQueue);
 
 document.getElementById("searchBtn").addEventListener("click", async () => {
@@ -3426,6 +3389,14 @@ document.getElementById("refreshPrintPreviewBtn").addEventListener("click", rend
 document.getElementById("mobileShareLabelsBtn").addEventListener(
     "click",
     shareLabelsForMobile
+);
+
+document.getElementById("mobileShareQueueLabelsBtn").addEventListener(
+    "click",
+    () => shareLabelsForMobile(
+        "mobileShareQueueLabelsBtn",
+        "📱 Mobile print cropped shipping labels"
+    )
 );
 
 /*
