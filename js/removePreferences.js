@@ -341,7 +341,7 @@ const InventoryOSRemovePreferences = (function(){
 
         card.innerHTML = `
             <div class="card-title">
-                <span class="card-icon">➖</span>
+                <span class="card-icon">\u2796</span>
                 Selling & Dispatch
             </div>
 
@@ -461,11 +461,11 @@ const InventoryOSRemovePreferences = (function(){
                 <label class="remove-pref-row">
                     <span class="remove-pref-copy">
                         <span class="remove-pref-title">
-                            Print labels when Let’s Pack starts
+                            Print labels when Let\u2019s Pack starts
                         </span>
 
                         <span class="remove-pref-help">
-                            Automatically send the queued 4×6 shipping labels to the selected QZ printer before opening the simplified packing screen.
+                            Automatically send the queued 4\u00d76 shipping labels to the selected QZ printer before opening the simplified packing screen.
                         </span>
                     </span>
 
@@ -784,7 +784,9 @@ const InventoryOSRemovePreferences = (function(){
         if(originalRemoveBundleStock){
             window.removeBundleStock =
                 function(){
-                    if(current.track_sales_data){
+                    // The plan-aware page owns both sales and stock-only queues.
+                    // Older pages still use the legacy behaviour below.
+                    if(originalRemoveBundleStock.usesPickingPlan || current.track_sales_data){
                         return originalRemoveBundleStock();
                     }
 
@@ -925,7 +927,7 @@ const InventoryOSRemovePreferences = (function(){
                     if(status){
                         status.textContent =
                             checked
-                                ? "Scanner mode on — barcode box stays focused."
+                                ? "Scanner mode on \u2014 barcode box stays focused."
                                 : "Scanner mode off.";
                     }
 
@@ -1002,11 +1004,11 @@ const InventoryOSRemovePreferences = (function(){
                     String(result.textContent || "");
 
                 if(
-                    /sold at £0\.00 each/i.test(text)
+                    /sold at \u00a30\.00 each/i.test(text)
                 ){
                     result.textContent =
                         text.replace(
-                            /sold at £0\.00 each\.?/i,
+                            /sold at \u00a30\.00 each\.?/i,
                             "removed without sales tracking."
                         );
                 }
