@@ -578,44 +578,46 @@ button{
 
 .guide-find strong{color:#fff;}
 
-.guide-visual{
-    position:relative;
-    min-height:142px;
-    overflow:hidden;
-    border:1px solid rgba(255,255,255,.1);
-    border-radius:11px;
-    background:#090909;
-}
-
-.mock-window{display:grid;grid-template-columns:54px 1fr;height:142px;}
-.mock-sidebar{padding:9px 7px;background:#11111a;border-right:1px solid rgba(255,255,255,.08);}
-.mock-logo{height:10px;width:28px;border-radius:3px;background:#8e44ff;margin:1px auto 12px;}
-.mock-nav-line{height:6px;border-radius:3px;background:rgba(255,255,255,.18);margin:8px 3px;}
-.mock-nav-line.active{background:#8e44ff;}
-.mock-main{padding:12px;position:relative;}
-.mock-heading{height:8px;width:76px;border-radius:4px;background:#eee;margin-bottom:10px;}
-.mock-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
-.mock-stat{height:30px;border-radius:6px;background:#1e1e28;border:1px solid rgba(255,255,255,.08);}
-.mock-stat::before{content:"";display:block;width:20px;height:5px;margin:7px;border-radius:3px;background:#20c997;}
-.mock-table{height:47px;margin-top:9px;border-radius:6px;background:linear-gradient(180deg,#1b1b22 0 20%,transparent 20% 28%,#1b1b22 28% 48%,transparent 48% 56%,#1b1b22 56% 76%,transparent 76%);}
-.mock-form{padding:12px;}
-.mock-label{height:6px;width:70px;border-radius:3px;background:#aaa;margin-bottom:5px;}
-.mock-input{height:20px;border:1px solid rgba(255,255,255,.16);border-radius:5px;background:#1d1d24;margin-bottom:9px;}
-.mock-button{height:20px;border-radius:5px;background:#8e44ff;}
-.mock-split{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
-.mock-list{padding:11px;}
-.mock-list-row{height:18px;border-radius:5px;background:#1c1c23;margin-bottom:6px;border-left:3px solid #20c997;}
-.mock-list-row:nth-child(2){border-left-color:#4da3ff;}
-.mock-list-row:nth-child(3){border-left-color:#b56cff;}
-.mock-pin{position:absolute;z-index:2;padding:4px 7px;border-radius:6px;background:#fff;color:#111;font-size:10px;font-weight:bold;box-shadow:0 3px 12px rgba(0,0,0,.4);animation:guidePulse 2s ease-in-out infinite;}
-.mock-pin::before{content:"";position:absolute;inset:-4px;border:2px solid currentColor;border-radius:8px;opacity:.55;animation:guideRing 2s ease-in-out infinite;}
-.pin-top{top:9px;right:10px;}
-.pin-mid{top:61px;right:18px;}
-.pin-left{top:42px;left:68px;}
-.pin-bottom{bottom:10px;right:16px;}
-
-@keyframes guidePulse{0%,100%{transform:scale(1);opacity:.9;}50%{transform:scale(1.04);opacity:1;}}
-@keyframes guideRing{0%,100%{transform:scale(.96);opacity:.2;}50%{transform:scale(1.08);opacity:.8;}}
+.guide-visual{border:1px solid #363240;border-radius:12px;overflow:hidden;background:#0c0b10;}
+.guide-preview-scroll{overflow:auto;}
+.guide-screen{display:grid;grid-template-columns:112px minmax(280px,1fr);min-width:420px;min-height:340px;color:#eee;font-family:Inter,Arial,sans-serif;font-size:11px;line-height:1.45;text-align:left;}
+.guide-screen *{box-sizing:border-box;}
+.guide-screen .gp-sidebar{padding:14px 8px;background:#100f16;border-right:1px solid #292632;}
+.guide-screen .gp-brand{font-size:14px;font-weight:800;color:#7394ff;margin-bottom:16px;}
+.guide-screen .gp-nav{padding:5px 6px;border-radius:5px;color:#b5b0c2;}
+.guide-screen .gp-nav.selected{background:#29203f;color:#d5b8ff;border-left:2px solid #a06bff;}
+.guide-screen .gp-section{color:#837c92;font-size:8px;letter-spacing:1px;margin:12px 6px 3px;}
+.guide-screen .gp-main{padding:16px;background:radial-gradient(ellipse at top right,#20172e,transparent 70%),#0c0b10;}
+.guide-screen .gp-title{font-size:20px;line-height:1.2;font-weight:750;margin-bottom:8px;letter-spacing:-.5px;}
+.guide-screen .gp-muted{color:#a8a1b5;font-size:10px;margin:5px 0 10px;}
+.guide-screen .gp-panel{background:#19161f;border:1px solid #302a3a;border-radius:8px;padding:10px;margin:10px 0;}
+.guide-screen .gp-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.guide-screen .gp-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0;}
+.guide-screen .gp-stat{background:#19161f;border:1px solid #302a3a;border-radius:8px;padding:8px;font-size:9px;color:#bfb8cd;}
+.guide-screen .gp-stat strong{display:block;font-size:19px;color:#fff;margin:5px 0;}
+.guide-screen .gp-label{display:block;font-weight:650;margin:9px 0 5px;}
+.guide-screen .gp-field{padding:8px;border:1px solid #44394f;border-radius:6px;background:#100e16;color:#eee;min-width:0;}
+.guide-screen .gp-half{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.guide-screen .gp-action{display:inline-block;background:#8151dc;border:1px solid #9e75e7;border-radius:6px;padding:7px 10px;color:#fff;font-weight:650;margin-top:8px;}
+.guide-screen .gp-action.secondary{background:#272230;border-color:#463a56;}
+.guide-screen .gp-subtitle{font-weight:700;font-size:13px;margin:10px 0 5px;}
+.guide-screen .gp-line{padding:8px 0;border-bottom:1px solid #332d3e;display:flex;justify-content:space-between;gap:8px;}
+.guide-screen .gp-badge{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;background:#bba0ff;color:#160e25;font-size:11px;font-weight:800;margin-right:5px;box-shadow:0 0 0 3px #a983ff22;vertical-align:middle;}
+.guide-screen .gp-bars{display:flex;height:65px;gap:9px;align-items:end;border-bottom:1px solid #423449;margin-top:15px;}
+.guide-screen .gp-bars i{flex:1;background:linear-gradient(#ac85ff,#5c39a3);border-radius:3px 3px 0 0;}
+.guide-preview-caption{padding:12px;border-top:1px solid #332d3e;color:#c3bacf;font-size:12px;line-height:1.6;}
+.guide-preview-caption ol{margin:8px 0 0;padding-left:20px;}
+.guide-preview-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.guide-preview-zoom{cursor:pointer;border:1px solid #65517f;border-radius:6px;padding:6px 10px;background:#271e36;color:#eee;font:inherit;}
+.guide-preview-zoom:focus-visible{outline:2px solid #c1a0ff;outline-offset:3px;}
+#guidePreviewDialog{width:min(950px,94vw);max-height:90vh;overflow:auto;padding:18px;background:#131018;color:#fff;border:1px solid #65517f;border-radius:16px;}
+#guidePreviewDialog::backdrop{background:#000b;}
+#guidePreviewDialog .guide-screen{font-size:14px;grid-template-columns:155px minmax(280px,1fr);min-height:440px;}
+#guidePreviewDialog .gp-main{padding:24px;}
+#guidePreviewDialog .gp-title{font-size:28px;}
+#guidePreviewDialog .gp-muted,#guidePreviewDialog .gp-stat{font-size:12px;}
+#guidePreviewDialog .gp-nav{padding:7px;}
+#guidePreviewDialog .guide-preview-toolbar{margin-bottom:14px;}
 
 .guide-note{
     padding:12px 14px;
@@ -925,31 +927,31 @@ button{
         <div class="guide-step-grid">
             <article class="guide-step">
                 <div class="guide-step-heading"><span class="guide-step-number">1</span><div><h4>Dashboard</h4><p>See your current stock, locations, sales and reminders at a glance.</p></div></div>
-                <div class="guide-visual"><div class="mock-window"><div class="mock-sidebar"><div class="mock-logo"></div><div class="mock-nav-line active"></div><div class="mock-nav-line"></div><div class="mock-nav-line"></div><div class="mock-nav-line"></div></div><div class="mock-main"><div class="mock-heading"></div><div class="mock-stat-row"><div class="mock-stat"></div><div class="mock-stat"></div><div class="mock-stat"></div></div><div class="mock-table"></div><span class="mock-pin pin-top">Summary cards</span></div></div></div>
+                <div class="guide-visual"><div class="guide-preview-scroll"><div class="guide-screen" role="img" aria-label="Example Dashboard page. Sample data; numbered controls explained below."><div class="gp-sidebar"><div class="gp-brand">▦ InventoryOS</div><div class="gp-nav selected">Dashboard</div><div class="gp-nav">Add stock</div><div class="gp-nav">Remove stock</div><div class="gp-nav">Discard stock</div><div class="gp-nav">Refunds</div><div class="gp-nav">Search stock</div><div class="gp-nav">Move stock</div><div class="gp-nav">Boxes</div><div class="gp-section">OPERATIONS</div><div class="gp-nav">Barcode printing</div><div class="gp-nav">Dispatch Centre</div><div class="gp-nav">Corrections</div><div class="gp-section">REPORTS</div><div class="gp-nav">Sales tracker</div><div class="gp-nav">Expenses</div><div class="gp-nav">Stale stock</div><div class="gp-nav">Settings</div></div><div class="gp-main"><div class="gp-title">Your business at a glance</div><div class="gp-muted">Good evening</div><span class="gp-badge">1</span><div class="gp-grid"><div class="gp-stat">Active stock<strong>128</strong>24 active products</div><div class="gp-stat">This month<strong>£480</strong>16 sales recorded</div><div class="gp-stat">Profit<strong>£320</strong>After recorded expenses</div></div><div class="gp-panel"><div class="gp-subtitle">Sales performance</div><div class="gp-muted">Recent reporting periods</div><div class="gp-bars"><i style="height:30%"></i><i style="height:55%"></i><i style="height:42%"></i><i style="height:78%"></i><i style="height:65%"></i><i style="height:95%"></i></div></div><div class="gp-panel"><span class="gp-badge">2</span><strong>Recent activity</strong><div class="gp-line"><span>Stock added · Dyson charger</span><span>+2</span></div></div></div></div></div><div class="guide-preview-caption"><div class="guide-preview-toolbar"><span>Illustrated example · sample data</span><button type="button" class="guide-preview-zoom" aria-label="Enlarge Dashboard preview">Enlarge ↗</button></div><ol><li>Read the summary cards for stock, monthly income and profit.</li><li>Check recent activity to see stock changes.</li></ol></div></div>
                 <div class="guide-find"><strong>Find it:</strong> Dashboard in the left menu.</div>
             </article>
 
             <article class="guide-step">
                 <div class="guide-step-heading"><span class="guide-step-number">2</span><div><h4>Set up locations</h4><p>Choose whether your locations are called boxes, shelves, racks or something custom.</p></div></div>
-                <div class="guide-visual"><div class="mock-window"><div class="mock-sidebar"><div class="mock-logo"></div><div class="mock-nav-line"></div><div class="mock-nav-line"></div><div class="mock-nav-line active"></div><div class="mock-nav-line"></div></div><div class="mock-main mock-form"><div class="mock-heading"></div><div class="mock-label"></div><div class="mock-input"></div><div class="mock-label"></div><div class="mock-input"></div><div class="mock-button"></div><span class="mock-pin pin-left">Location wording</span></div></div></div>
+                <div class="guide-visual"><div class="guide-preview-scroll"><div class="guide-screen" role="img" aria-label="Example Workspace Settings page. Sample data; numbered controls explained below."><div class="gp-sidebar"><div class="gp-brand">▦ InventoryOS</div><div class="gp-nav">Dashboard</div><div class="gp-nav">Add stock</div><div class="gp-nav">Remove stock</div><div class="gp-nav">Discard stock</div><div class="gp-nav">Refunds</div><div class="gp-nav">Search stock</div><div class="gp-nav">Move stock</div><div class="gp-nav">Boxes</div><div class="gp-section">OPERATIONS</div><div class="gp-nav">Barcode printing</div><div class="gp-nav">Dispatch Centre</div><div class="gp-nav">Corrections</div><div class="gp-section">REPORTS</div><div class="gp-nav">Sales tracker</div><div class="gp-nav">Expenses</div><div class="gp-nav">Stale stock</div><div class="gp-nav selected">Settings</div></div><div class="gp-main"><div class="gp-title">Workspace Settings</div><div class="gp-muted">Personalise how your storage locations are named.</div><div class="gp-panel"><div class="gp-subtitle">Location Wording</div><div class="gp-label"><span class="gp-badge">1</span>Preset</div><div class="gp-field">Shelves ▾</div><div class="gp-half"><div class="gp-label">Singular label</div><div class="gp-field">Shelf</div><div class="gp-label">Plural label</div><div class="gp-field">Shelves</div></div><div class="gp-label">Icon</div><div class="gp-field">▤</div><span class="gp-action"><span class="gp-badge">2</span>Save Settings</span></div></div></div></div><div class="guide-preview-caption"><div class="guide-preview-toolbar"><span>Illustrated example · sample data</span><button type="button" class="guide-preview-zoom" aria-label="Enlarge Workspace Settings preview">Enlarge ↗</button></div><ol><li>Choose a preset, or customise the singular and plural labels.</li><li>Save the wording. A numeric location “1” displays as “Shelf 1”; a saved name “Box 1” stays unchanged.</li></ol></div></div>
                 <div class="guide-find"><strong>Find it:</strong> Settings → Workspace Settings.</div>
             </article>
 
             <article class="guide-step">
-                <div class="guide-step-heading"><span class="guide-step-number">3</span><div><h4>Add stock</h4><p>Scan or type a product, enter the quantity and choose the saved location. The raw location value is kept safely in the background.</p></div></div>
-                <div class="guide-visual"><div class="mock-window"><div class="mock-sidebar"><div class="mock-logo"></div><div class="mock-nav-line"></div><div class="mock-nav-line active"></div><div class="mock-nav-line"></div><div class="mock-nav-line"></div></div><div class="mock-main mock-form"><div class="mock-heading"></div><div class="mock-split"><div><div class="mock-label"></div><div class="mock-input"></div></div><div><div class="mock-label"></div><div class="mock-input"></div></div></div><div class="mock-label"></div><div class="mock-input"></div><div class="mock-button"></div><span class="mock-pin pin-bottom">Save stock</span></div></div></div>
+                <div class="guide-step-heading"><span class="guide-step-number">3</span><div><h4>Add stock</h4><p>Scan or type a product, enter the quantity and choose the saved location. Save the item to add it to your inventory.</p></div></div>
+                <div class="guide-visual"><div class="guide-preview-scroll"><div class="guide-screen" role="img" aria-label="Example Add Stock page. Sample data; numbered controls explained below."><div class="gp-sidebar"><div class="gp-brand">▦ InventoryOS</div><div class="gp-nav">Dashboard</div><div class="gp-nav selected">Add stock</div><div class="gp-nav">Remove stock</div><div class="gp-nav">Discard stock</div><div class="gp-nav">Refunds</div><div class="gp-nav">Search stock</div><div class="gp-nav">Move stock</div><div class="gp-nav">Boxes</div><div class="gp-section">OPERATIONS</div><div class="gp-nav">Barcode printing</div><div class="gp-nav">Dispatch Centre</div><div class="gp-nav">Corrections</div><div class="gp-section">REPORTS</div><div class="gp-nav">Sales tracker</div><div class="gp-nav">Expenses</div><div class="gp-nav">Stale stock</div><div class="gp-nav">Settings</div></div><div class="gp-main"><div class="gp-title">Add Stock</div><div class="gp-muted">Add item, choose shelf, print barcode.</div><div class="gp-panel"><div class="gp-label"><span class="gp-badge">1</span>Item Description</div><div class="gp-field">Dyson charger</div><div class="gp-muted">Type to search existing products</div><div class="gp-half"><div class="gp-label">Quantity</div><div class="gp-field">2</div><div class="gp-label"><span class="gp-badge">2</span>Shelf Number</div><div class="gp-field">1</div></div><div class="gp-muted">☑ Auto print 2×1 barcode label</div><span class="gp-action"><span class="gp-badge">3</span>＋ Save Product</span><div class="gp-muted">▸ Printing Options</div></div></div></div></div><div class="guide-preview-caption"><div class="guide-preview-toolbar"><span>Illustrated example · sample data</span><button type="button" class="guide-preview-zoom" aria-label="Enlarge Add Stock preview">Enlarge ↗</button></div><ol><li>Enter the item description and select an existing match if needed.</li><li>Set the quantity and storage location. This example uses the Shelves preference.</li><li>Save Product adds the stock; optional printing creates a label.</li></ol></div></div>
                 <div class="guide-find"><strong>Find it:</strong> Add stock in the left menu.</div>
             </article>
 
             <article class="guide-step">
                 <div class="guide-step-heading"><span class="guide-step-number">4</span><div><h4>Manage and find stock</h4><p>Search items, move stock between locations, remove sold stock, record broken items and process refunds.</p></div></div>
-                <div class="guide-visual"><div class="mock-window"><div class="mock-sidebar"><div class="mock-logo"></div><div class="mock-nav-line"></div><div class="mock-nav-line"></div><div class="mock-nav-line active"></div><div class="mock-nav-line"></div></div><div class="mock-main mock-list"><div class="mock-heading"></div><div class="mock-list-row"></div><div class="mock-list-row"></div><div class="mock-list-row"></div><span class="mock-pin pin-mid">Choose an action</span></div></div></div>
+                <div class="guide-visual"><div class="guide-preview-scroll"><div class="guide-screen" role="img" aria-label="Example Search Stock page. Sample data; numbered controls explained below."><div class="gp-sidebar"><div class="gp-brand">▦ InventoryOS</div><div class="gp-nav">Dashboard</div><div class="gp-nav">Add stock</div><div class="gp-nav">Remove stock</div><div class="gp-nav">Discard stock</div><div class="gp-nav">Refunds</div><div class="gp-nav selected">Search stock</div><div class="gp-nav">Move stock</div><div class="gp-nav">Boxes</div><div class="gp-section">OPERATIONS</div><div class="gp-nav">Barcode printing</div><div class="gp-nav">Dispatch Centre</div><div class="gp-nav">Corrections</div><div class="gp-section">REPORTS</div><div class="gp-nav">Sales tracker</div><div class="gp-nav">Expenses</div><div class="gp-nav">Stale stock</div><div class="gp-nav">Settings</div></div><div class="gp-main"><div class="gp-title">Search Stock</div><div class="gp-muted"></div><div class="gp-label"><span class="gp-badge">1</span>Search or Barcode</div><div class="gp-field">Dyson charger</div><span class="gp-action">Search</span><div class="gp-panel"><div class="gp-subtitle">Dyson charger</div><div class="gp-muted">Barcode: 100023</div><span class="gp-badge">2</span><strong>Locations</strong><div class="gp-line"><span>Shelf 1</span><span>Qty: 2</span></div><span class="gp-action">Quick Sale From Shelf 1</span></div></div></div></div><div class="guide-preview-caption"><div class="guide-preview-toolbar"><span>Illustrated example · sample data</span><button type="button" class="guide-preview-zoom" aria-label="Enlarge Search Stock preview">Enlarge ↗</button></div><ol><li>Type a description or scan a barcode, then search.</li><li>Read the locations and quantities on the matching product.</li></ol></div></div>
                 <div class="guide-find"><strong>Find it:</strong> Search stock, Move stock, Remove stock, Discard stock and Refunds.</div>
             </article>
 
             <article class="guide-step">
                 <div class="guide-step-heading"><span class="guide-step-number">5</span><div><h4>Reports and housekeeping</h4><p>Use Sales Tracker for performance, Expenses for costs and Stale Stock to find items that need attention.</p></div></div>
-                <div class="guide-visual"><div class="mock-window"><div class="mock-sidebar"><div class="mock-logo"></div><div class="mock-nav-line"></div><div class="mock-nav-line"></div><div class="mock-nav-line"></div><div class="mock-nav-line active"></div></div><div class="mock-main"><div class="mock-heading"></div><div class="mock-stat-row"><div class="mock-stat"></div><div class="mock-stat"></div><div class="mock-stat"></div></div><div class="mock-table"></div><span class="mock-pin pin-bottom">Reports</span></div></div></div>
+                <div class="guide-visual"><div class="guide-preview-scroll"><div class="guide-screen" role="img" aria-label="Example Sales Tracker page. Sample data; numbered controls explained below."><div class="gp-sidebar"><div class="gp-brand">▦ InventoryOS</div><div class="gp-nav">Dashboard</div><div class="gp-nav">Add stock</div><div class="gp-nav">Remove stock</div><div class="gp-nav">Discard stock</div><div class="gp-nav">Refunds</div><div class="gp-nav">Search stock</div><div class="gp-nav">Move stock</div><div class="gp-nav">Boxes</div><div class="gp-section">OPERATIONS</div><div class="gp-nav">Barcode printing</div><div class="gp-nav">Dispatch Centre</div><div class="gp-nav">Corrections</div><div class="gp-section">REPORTS</div><div class="gp-nav selected">Sales tracker</div><div class="gp-nav">Expenses</div><div class="gp-nav">Stale stock</div><div class="gp-nav">Settings</div></div><div class="gp-main"><div class="gp-title">Sales Tracker</div><div class="gp-muted"></div><span class="gp-action">Refresh Tracker</span><span class="gp-badge">1</span><div class="gp-grid"><div class="gp-stat">All Time Income<strong>£960</strong>Total sales recorded</div><div class="gp-stat">All Time Expenses<strong>£310</strong>Stock and equipment</div><div class="gp-stat">All Time Profit<strong>£650</strong>Income minus expenses</div></div><div class="gp-panel"><div class="gp-subtitle"><span class="gp-badge">2</span>This Month</div><div class="gp-grid"><div class="gp-stat">Income<strong>£480</strong></div><div class="gp-stat">Expenses<strong>£160</strong></div><div class="gp-stat">Profit<strong>£320</strong></div></div></div><div class="gp-subtitle">Last 10 Sales</div><div class="gp-line"><span>Dyson charger</span><span>£30.00</span></div></div></div></div><div class="guide-preview-caption"><div class="guide-preview-toolbar"><span>Illustrated example · sample data</span><button type="button" class="guide-preview-zoom" aria-label="Enlarge Sales Tracker preview">Enlarge ↗</button></div><ol><li>Use the all-time cards for overall performance.</li><li>Compare the monthly totals, then scroll to individual sales and the monthly breakdown.</li></ol></div></div>
                 <div class="guide-find"><strong>Find it:</strong> Reports in the left menu.</div>
             </article>
         </div>
@@ -964,13 +966,13 @@ button{
         <div class="guide-step-grid">
             <article class="guide-step">
                 <div class="guide-step-heading"><span class="guide-step-number">1</span><div><h4>Barcode printing</h4><p>Print product and location labels for your physical storage system, then scan them during stock movements.</p></div></div>
-                <div class="guide-visual"><div class="mock-window"><div class="mock-sidebar"><div class="mock-logo"></div><div class="mock-nav-line"></div><div class="mock-nav-line active"></div><div class="mock-nav-line"></div><div class="mock-nav-line"></div></div><div class="mock-main mock-list"><div class="mock-heading"></div><div class="mock-list-row"></div><div class="mock-list-row"></div><div class="mock-button"></div><span class="mock-pin pin-top">Print labels</span></div></div></div>
+                <div class="guide-visual"><div class="guide-preview-scroll"><div class="guide-screen" role="img" aria-label="Example Barcode Printing page. Sample data; numbered controls explained below."><div class="gp-sidebar"><div class="gp-brand">▦ InventoryOS</div><div class="gp-nav">Dashboard</div><div class="gp-nav">Add stock</div><div class="gp-nav">Remove stock</div><div class="gp-nav">Discard stock</div><div class="gp-nav">Refunds</div><div class="gp-nav">Search stock</div><div class="gp-nav">Move stock</div><div class="gp-nav">Boxes</div><div class="gp-section">OPERATIONS</div><div class="gp-nav selected">Barcode printing</div><div class="gp-nav">Dispatch Centre</div><div class="gp-nav">Corrections</div><div class="gp-section">REPORTS</div><div class="gp-nav">Sales tracker</div><div class="gp-nav">Expenses</div><div class="gp-nav">Stale stock</div><div class="gp-nav">Settings</div></div><div class="gp-main"><div class="gp-title">Barcode Printing</div><div class="gp-muted"></div><div class="gp-row"><span class="gp-action"><span class="gp-badge">1</span>Product Labels</span><span>Box Labels</span><span>Bulk Range</span><span>Print Jobs</span><span>Quick Print</span></div><div class="gp-panel"><div class="gp-subtitle">Product Labels</div><div class="gp-label"><span class="gp-badge">2</span>Live Product Search</div><div class="gp-field">Dyson charger</div><div class="gp-line"><span>Dyson charger</span><span>100023</span></div></div></div></div></div><div class="guide-preview-caption"><div class="guide-preview-toolbar"><span>Illustrated example · sample data</span><button type="button" class="guide-preview-zoom" aria-label="Enlarge Barcode Printing preview">Enlarge ↗</button></div><ol><li>Choose the label workflow from the tabs at the top.</li><li>Search for the product you want to label.</li></ol></div></div>
                 <div class="guide-find"><strong>Find it:</strong> Barcode Printing under Operations.</div>
             </article>
 
             <article class="guide-step">
                 <div class="guide-step-heading"><span class="guide-step-number">2</span><div><h4>Dispatch Centre</h4><p>Bring shipping labels into one queue, work through the packing order and confirm each item before dispatch.</p></div></div>
-                <div class="guide-visual"><div class="mock-window"><div class="mock-sidebar"><div class="mock-logo"></div><div class="mock-nav-line"></div><div class="mock-nav-line active"></div><div class="mock-nav-line"></div><div class="mock-nav-line"></div></div><div class="mock-main mock-list"><div class="mock-heading"></div><div class="mock-list-row"></div><div class="mock-list-row"></div><div class="mock-list-row"></div><span class="mock-pin pin-mid">Packing queue</span></div></div></div>
+                <div class="guide-visual"><div class="guide-preview-scroll"><div class="guide-screen" role="img" aria-label="Example Dispatch Centre page. Sample data; numbered controls explained below."><div class="gp-sidebar"><div class="gp-brand">▦ InventoryOS</div><div class="gp-nav">Dashboard</div><div class="gp-nav">Add stock</div><div class="gp-nav">Remove stock</div><div class="gp-nav">Discard stock</div><div class="gp-nav">Refunds</div><div class="gp-nav">Search stock</div><div class="gp-nav">Move stock</div><div class="gp-nav">Boxes</div><div class="gp-section">OPERATIONS</div><div class="gp-nav">Barcode printing</div><div class="gp-nav selected">Dispatch Centre</div><div class="gp-nav">Corrections</div><div class="gp-section">REPORTS</div><div class="gp-nav">Sales tracker</div><div class="gp-nav">Expenses</div><div class="gp-nav">Stale stock</div><div class="gp-nav">Settings</div></div><div class="gp-main"><div class="gp-title">Dispatch Centre</div><div class="gp-muted"></div><div class="gp-panel"><span class="gp-badge">1</span><strong>Backend Crop Preview</strong><div class="gp-muted">Select your shipping label file</div><span class="gp-action">Browse Files</span> <span class="gp-action">Upload To Packing Queue</span></div><div class="gp-panel"><div class="gp-subtitle"><span class="gp-badge">2</span>Packing Queue</div><div class="gp-row"><span>Refresh Queue</span><span>Search Locations</span><span>Print Pick List</span></div><div class="gp-line"><span>Dyson charger · Shelf 1</span><span>Qty: 1</span></div><span class="gp-action">Mark Packed</span></div></div></div></div><div class="guide-preview-caption"><div class="guide-preview-toolbar"><span>Illustrated example · sample data</span><button type="button" class="guide-preview-zoom" aria-label="Enlarge Dispatch Centre preview">Enlarge ↗</button></div><ol><li>Browse for your shipping label file and upload it to the packing queue.</li><li>Use the queue to find items and mark them packed after checking them.</li></ol></div></div>
                 <div class="guide-find"><strong>Find it:</strong> Dispatch Centre under Operations.</div>
             </article>
 
@@ -1468,5 +1470,30 @@ showAdminCard();
 
 
 <script src="js/appShell.js?v=5"></script>
+<dialog id="guidePreviewDialog" aria-labelledby="guidePreviewTitle">
+    <div class="guide-preview-toolbar"><strong id="guidePreviewTitle">Page preview</strong><button type="button" class="guide-preview-zoom" id="closeGuidePreview">Close ✕</button></div>
+    <div id="guidePreviewContent"></div>
+</dialog>
+<script>
+(function(){
+    const dialog = document.getElementById("guidePreviewDialog");
+    const content = document.getElementById("guidePreviewContent");
+    document.querySelectorAll(".guide-visual .guide-preview-zoom").forEach(button => {
+        button.addEventListener("click", () => {
+            const visual = button.closest(".guide-visual");
+            const heading = visual.closest(".guide-step").querySelector("h4");
+            document.getElementById("guidePreviewTitle").textContent = heading.textContent + " — illustrated example";
+            content.replaceChildren(visual.querySelector(".guide-preview-scroll").cloneNode(true));
+            const notes = document.createElement("div");
+            notes.className = "guide-preview-caption";
+            notes.append(visual.querySelector("ol").cloneNode(true));
+            content.append(notes);
+            dialog.showModal();
+        });
+    });
+    document.getElementById("closeGuidePreview").addEventListener("click", () => dialog.close());
+})();
+</script>
+
 </body>
 </html>
