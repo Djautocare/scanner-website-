@@ -490,6 +490,7 @@ button{
         <button class="search-button" onclick="loadSelectedPrintJob()">Load Print Job</button>
         <button class="print-button" onclick="printLoadedLabels()">Print Loaded Labels</button>
         <button class="clear-button" onclick="clearLoadedLabels()">Clear Loaded Labels</button>
+        <button class="clear-button" id="deletePrintJobButton" type="button" onclick="deleteSelectedPrintJob()">Delete Print Job</button>
 
         <div id="jobSummary"></div>
         <div id="jobPreview"></div>
@@ -975,6 +976,46 @@ function generateRangeLabels(){
 
 /* PRINT JOBS */
 
+let deletingPrintJob = false;
+let printJobRequestVersion = 0;
+
+async function deleteSelectedPrintJob(){
+    if(deletingPrintJob) return;
+    const select = document.getElementById("printJobSelect");
+    const jobId = select.value;
+    if(!jobId){
+        alert("Select a print job first.");
+        return;
+    }
+    const option = select.options[select.selectedIndex];
+    const name = option.dataset.jobName || option.textContent;
+    if(!confirm('Delete print job "' + name + '" and all its saved labels?\n\nYour products and stock quantities will not change. This cannot be undone.')) return;
+    const button = document.getElementById("deletePrintJobButton");
+    deletingPrintJob = true;
+    ++printJobRequestVersion;
+    hideLoading();
+    select.disabled = true;
+    button.disabled = true;
+    button.textContent = "Deleting…";
+    try{
+        const data = await InventoryAPI.request("/print-jobs/" + encodeURIComponent(jobId), {method:"DELETE"});
+        if(!data.success) throw new Error(data.error || "Could not delete print job. Check that the updated printjobs.js is installed and the backend has restarted.");
+        clearLoadedLabels();
+        localStorage.removeItem("inventoryPrintJobs");
+        option.remove();
+        select.value = "";
+        loadPrintJobs();
+        alert('Print job "' + name + '" deleted. Your stock is unchanged.');
+    }catch(error){
+        alert(error.message || "Could not confirm deletion. Refresh the job list before trying again.");
+    }finally{
+        deletingPrintJob = false;
+        select.disabled = false;
+        button.disabled = false;
+        button.textContent = "Delete Print Job";
+    }
+}
+
 function loadPrintJobs(){
     const cached = localStorage.getItem("inventoryPrintJobs");
 
@@ -1009,13 +1050,16 @@ function fillPrintJobs(jobs){
     jobs.slice().reverse().forEach(job=>{
         const option = document.createElement("option");
         option.value = job.printJobId;
+        option.dataset.jobName = job.name || "Unnamed print job";
         option.textContent =
-        job.printJobId + " - " + job.name + " (" + job.labelCount + " labels)";
+        (job.name || "Unnamed print job") + " (" + job.labelCount + " labels)";
         select.appendChild(option);
     });
 }
 
 function loadSelectedPrintJob(){
+    if(deletingPrintJob) return;
+    const requestVersion = ++printJobRequestVersion;
     const printJobId = document.getElementById("printJobSelect").value;
 
     if(!printJobId){
@@ -1027,6 +1071,7 @@ function loadSelectedPrintJob(){
 
     InventoryAPI.request("/print-jobs/" + encodeURIComponent(printJobId) + "/labels")
     .then(data=>{
+        if(requestVersion !== printJobRequestVersion) return;
         hideLoading();
 
         if(!data.success){
@@ -1037,9 +1082,10 @@ function loadSelectedPrintJob(){
 
         const labels = data.labels || [];
         renderBarcodes(labels);
-        renderJobPreview(printJobId, labels);
+        renderJobPreview(data.printJob && data.printJob.name, labels);
     })
     .catch(error=>{
+        if(requestVersion !== printJobRequestVersion) return;
         hideLoading();
         console.error(error);
 
@@ -1048,7 +1094,9 @@ function loadSelectedPrintJob(){
     });
 }
 
-function renderJobPreview(printJobId, labels){
+function renderJobPreview(jobName, labels){
+    const nameElement = document.createElement("span");
+    nameElement.textContent = jobName || "Unnamed print job";
     if(labels.length === 0){
         document.getElementById("jobSummary").innerHTML =
         "<div class='empty-state'>This print job has no labels.</div>";
@@ -1062,7 +1110,7 @@ function renderJobPreview(printJobId, labels){
         <div class="summary-grid">
             <div class="summary-card">
                 <div class="summary-title">Print Job</div>
-                <div class="summary-value">${printJobId}</div>
+                <div class="summary-value">${nameElement.innerHTML}</div>
             </div>
 
             <div class="summary-card">
