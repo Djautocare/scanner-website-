@@ -238,6 +238,37 @@ button{
     margin:8px 0;
 }
 
+.bundle-product-card{
+    align-items:flex-start;
+}
+
+.bundle-location-list{
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+
+.bundle-location-row{
+    display:grid;
+    grid-template-columns:minmax(90px,1fr) auto 72px;
+    align-items:center;
+    gap:8px;
+    padding:7px 8px;
+    border-radius:8px;
+    background:rgba(255,255,255,0.05);
+}
+
+.bundle-location-row select{
+    margin:0;
+    padding:7px;
+}
+
+.bundle-location-available{
+    color:#aaa;
+    font-size:12px;
+}
+
 .bundle-item-meta{
     color:#aaa;
     font-size:13px;
@@ -469,7 +500,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <button class="suggest-toggle warehouse-hidden" onclick="toggleSuggestions()" type="button">
     <span>Suggested Items</span>
-    <span class="suggest-count" id="suggestCountText">Type 2+ letters ▼</span>
+    <span class="suggest-count" id="suggestCountText">Type 2+ letters â–¼</span>
 </button>
 
 <div id="suggestPanel" class="suggest-panel warehouse-hidden">
@@ -493,7 +524,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
     <div class="helper-text">
         Each scan auto-adds to the bundle list when the scanner sends Enter.
     </div>
-    <div class="scanner-mode-pill" id="scannerModeStatus">Scanner mode on — barcode box stays focused.</div>
+    <div class="scanner-mode-pill" id="scannerModeStatus">Scanner mode on â€” barcode box stays focused.</div>
 </div>
 <div class="confirm-hint warehouse-only">Scan items into the bundle. Say a price like <strong>three fifty</strong>, then say <strong>confirm sale</strong> or <strong>complete sale</strong>.</div>
 
@@ -504,14 +535,14 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
             Listening mode
         </label>
         <div class="helper-text">
-            Say <strong>three fifty</strong>, <strong>£3.50</strong>, or <strong>twelve pounds</strong>. You can still say “price” if you want.
+            Say <strong>three fifty</strong>, <strong>Â£3.50</strong>, or <strong>twelve pounds</strong>. You can still say â€œpriceâ€ if you want.
         </div>
     </div>
     <div class="voice-row">
         <button class="add-button" onclick="startVoicePrice()" type="button">Activate Listening Mode</button>
         <button class="clear-button" onclick="stopVoicePrice()" type="button">Stop Listening Mode</button>
     </div>
-    <button class="clear-button" onclick="testFillPrice()" type="button" style="font-size:13px;padding:10px;">Test Fill £3.50</button>
+    <button class="clear-button" onclick="testFillPrice()" type="button" style="font-size:13px;padding:10px;">Test Fill Â£3.50</button>
     <div class="voice-status" id="voiceStatus">Listening mode is off.</div>
 </div>
 
@@ -519,7 +550,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <div class="warehouse-price-card">
     <div class="input-label">Sale Amount</div>
-    <input type="number" id="saleAmount" placeholder="Sale amount £" step="0.001" min="0" oninput="renderBundleList()">
+    <input type="number" id="saleAmount" placeholder="Sale amount Â£" step="0.001" min="0" oninput="renderBundleList()">
     <div id="splitPreview" class="split-preview"></div>
     <div class="warehouse-status warehouse-only" id="warehouseStatus">Listening is on. Say a price, then say confirm sale.</div>
 </div>
@@ -533,7 +564,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 </div>
 
 <div class="links-grid">
-    <a class="link-card" href="index.html">← Back to Dashboard</a>
+    <a class="link-card" href="index.html">â† Back to Dashboard</a>
     <a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 </div>
 
@@ -593,7 +624,7 @@ function normaliseBarcode(value){
 }
 
 function poundsToMills(value){
-    const raw = String(value ?? "0").replace(/£/g, "").replace(/,/g, "").trim();
+    const raw = String(value ?? "0").replace(/Â£/g, "").replace(/,/g, "").trim();
     if(!/^\d+(?:\.\d{1,3})?$/.test(raw)) return null;
     const parts = raw.split(".");
     const whole = Number(parts[0] || 0);
@@ -642,7 +673,7 @@ function locationSummary(item){
     const locations = activeLocations(item);
     if(locations.length === 0) return "Location unavailable";
     return locations.map(function(loc){
-        return InventoryWorkspace.formatLocationName(loc.location || "Unknown location") + " — Qty " + loc.qty;
+        return InventoryWorkspace.formatLocationName(loc.location || "Unknown location") + " â€” Qty " + loc.qty;
     }).join(" | ");
 }
 
@@ -653,11 +684,6 @@ function looksLikeBarcodeInput(value){
 
 function totalBundleUnits(){
     return bundleItems.reduce(function(sum, item){
-        if(Array.isArray(item.allocations)){
-            return sum + item.allocations.reduce(function(total, allocation){
-                return total + Math.max(0, Number(allocation.qty || 0));
-            }, 0);
-        }
         return sum + Number(item.qty || 1);
     }, 0);
 }
@@ -731,16 +757,16 @@ function updateSuggestToggleText(){
     const countText = document.getElementById("suggestCountText");
 
     if(input.length < 2 || looksLikeBarcodeInput(input)){
-        countText.innerText = "Type 2+ letters ▼";
+        countText.innerText = "Type 2+ letters \u25BC";
         return;
     }
     if(suggestedItems.length === 0){
-        countText.innerText = "No matches ▼";
+        countText.innerText = "No matches \u25BC";
         return;
     }
     countText.innerText = suggestedItems.length + " match" +
         (suggestedItems.length === 1 ? "" : "es") +
-        (panel.classList.contains("open") ? " ▲" : " ▼");
+        (panel.classList.contains("open") ? " \u25B2" : " \u25BC");
 }
 
 function searchSuggestedItems(){
@@ -804,7 +830,7 @@ function selectSuggestedItem(index){
         escapeHtml(item.description || "") + "</strong></div>";
 
     document.getElementById("result").innerText =
-        "Selected " + (item.description || "Item") + " — " +
+        "Selected " + (item.description || "Item") + " â€” " +
         locationSummary(item) + ". Press Add to Bundle List.";
     updateSuggestToggleText();
 }
@@ -889,10 +915,10 @@ function changeBundleLocation(index, location){
 function changeBundleQuantity(index, quantity){
     const item = bundleItems[index];
     if(!item) return;
-    ensureBundleAllocations(item);
-    const first = item.allocations[0];
-    if(first) first.qty = Math.min(first.available, Math.max(0, Number.parseInt(String(quantity || "0"), 10)));
-    item.qty = totalItemAllocated(item);
+    item.qty = Math.min(
+        item.locations.reduce(function(sum, location){ return sum + Number(location.qty || 0); }, 0),
+        Math.max(0, Number.parseInt(String(quantity || "0"), 10))
+    );
     renderBundleList();
 }
 
@@ -928,30 +954,19 @@ function renderBundleList(){
         </div>
     `;
 
-    const groups = {};
     bundleItems.forEach(function(item,index){
-        ensureBundleAllocations(item);
-        item.allocations.forEach(function(allocation){
-            if(!groups[allocation.location]) groups[allocation.location] = [];
-            groups[allocation.location].push({item:item,index:index,allocation:allocation});
-        });
-    });
-    Object.keys(groups).sort().forEach(function(location){
-        html += `<div class="bundle-location-group"><div class="bundle-location-title">${InventoryWorkspace.locationNameHtml(location)}</div>`;
-        groups[location].forEach(function(entry){
-            const options = Array.from({length:entry.allocation.available + 1}, function(_,qty){
-                return `<option value="${qty}" ${qty === entry.allocation.qty ? "selected" : ""}>${qty}</option>`;
-            }).join("");
-            html += `<div class="bundle-item bundle-location-item"><div class="bundle-item-main"><strong>${escapeHtml(entry.item.description)}</strong><div class="bundle-item-meta">Available in this location: ${entry.allocation.available}</div></div><div class="bundle-item-controls"><label>QTY from this location</label><select onchange="updateBundleLocationQty(${entry.index}, '${escapeJs(location)}', this.value)">${options}</select><button class="small-remove" onclick="removeBundleItem(${entry.index})" type="button">Remove item</button></div></div>`;
-        });
-        html += `</div>`;
+        const totalAvailable = item.locations.reduce(function(sum, location){ return sum + Number(location.qty || 0); }, 0);
+        const options = Array.from({length:totalAvailable + 1}, function(_,qty){
+            return `<option value="${qty}" ${qty === Number(item.qty || 0) ? "selected" : ""}>${qty}</option>`;
+        }).join("");
+        html += `<div class="bundle-item bundle-product-card"><div class="bundle-item-main"><strong>${escapeHtml(item.description)}</strong><div class="bundle-item-meta">Available across ${item.locations.length} location${item.locations.length === 1 ? "" : "s"}: ${totalAvailable}</div></div><div class="bundle-item-controls"><label>Quantity needed</label><select onchange="changeBundleQuantity(${index}, this.value)">${options}</select><button class="small-remove" onclick="removeBundleItem(${index})" type="button">Remove item</button></div></div>`;
     });
 
     bundleBox.innerHTML = html;
 
     const totalMills = poundsToMills(document.getElementById("saleAmount").value);
     splitPreview.innerHTML = totalMills !== null && totalMills > 0
-        ? "Exact bundle split: £" + millsToPounds(totalMills) + " across " +
+        ? "Exact bundle split: Â£" + millsToPounds(totalMills) + " across " +
           unitCount + " unit" + (unitCount === 1 ? "" : "s") + "."
         : "Enter the total bundle price and it will split equally across all units being removed.";
 }
@@ -973,6 +988,40 @@ function getSelectedInventoryHeaderForRemove(){
 
 function hasSelectedInventoryForRemove(){
     return Boolean(getSelectedInventoryHeaderForRemove());
+}
+
+function buildEfficientPickPlan(){
+    const remaining = bundleItems.map(function(item){ return Math.max(0, Number(item.qty || 0)); });
+    const plan = [];
+    const locations = {};
+    bundleItems.forEach(function(item,index){
+        item.locations.forEach(function(location){
+            if(!locations[location.location]) locations[location.location] = [];
+            locations[location.location].push({index:index, available:Number(location.qty || 0)});
+        });
+    });
+    while(remaining.some(function(qty){ return qty > 0; })){
+        let bestLocation = null;
+        let bestScore = 0;
+        Object.keys(locations).forEach(function(location){
+            const score = locations[location].reduce(function(sum, entry){
+                return sum + Math.min(remaining[entry.index], entry.available);
+            }, 0);
+            if(score > bestScore){ bestScore = score; bestLocation = location; }
+        });
+        if(!bestLocation || bestScore <= 0) return null;
+        const picked = [];
+        locations[bestLocation].forEach(function(entry){
+            const qty = Math.min(remaining[entry.index], entry.available);
+            if(qty > 0){
+                remaining[entry.index] -= qty;
+                picked.push({index:entry.index, qty:qty});
+            }
+        });
+        plan.push({location:bestLocation, items:picked});
+        delete locations[bestLocation];
+    }
+    return plan;
 }
 
 function showNoInventorySelected(){
@@ -1025,7 +1074,7 @@ function removeSingleStock(locationOverride = ""){
                 html += `
                     <button class="location-button"
                         onclick="removeSingleStock('${escapeJs(loc.location)}')" type="button">
-                        ${InventoryWorkspace.locationNameHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
+                        ${InventoryWorkspace.locationNameHtml(loc.location)} â€” Qty: ${Number(loc.qty || 0)}
                     </button>`;
             });
             document.getElementById("locationChoices").innerHTML = html;
@@ -1043,7 +1092,7 @@ function removeSingleStock(locationOverride = ""){
         flashSuccess();
         speakText("Sale complete");
         document.getElementById("result").innerText =
-            "Removed 1 × " + (data.description || barcode) + " at " +
+            "Removed 1 Ã— " + (data.description || barcode) + " at " +
             InventoryWorkspace.formatLocationName(data.location) + ". Remaining there: " + data.remainingQty;
 
         document.getElementById("barcode").value = "";
@@ -1078,12 +1127,12 @@ function removeBundleStock(){
         return;
     }
 
+    const pickPlan = buildEfficientPickPlan();
     const lineItems = [];
-    bundleItems.forEach(function(item){
-        ensureBundleAllocations(item).forEach(function(allocation){
-            if(Number(allocation.qty || 0) > 0){
-                lineItems.push({barcode:item.barcode, description:item.description, location:allocation.location, qty:Number(allocation.qty)});
-            }
+    (pickPlan || []).forEach(function(group){
+        group.items.forEach(function(entry){
+            const item = bundleItems[entry.index];
+            lineItems.push({barcode:item.barcode, description:item.description, location:group.location, qty:entry.qty});
         });
     });
     if(lineItems.length === 0 || totalBundleUnits() === 0){
@@ -1134,7 +1183,7 @@ function processNextBundleItem(){
 
         document.getElementById("result").innerText =
             "Bundle removed. " + totalRemoved + " item" +
-            (totalRemoved === 1 ? "" : "s") + " recorded for £" +
+            (totalRemoved === 1 ? "" : "s") + " recorded for Â£" +
             millsToPounds(totalAllocated) + ".";
 
         bundleItems = [];
@@ -1151,7 +1200,7 @@ function processNextBundleItem(){
     pendingBundleItem = pendingBundleQueue.shift();
 
     document.getElementById("result").innerText =
-        "Removing " + pendingBundleItem.qty + " × " +
+        "Removing " + pendingBundleItem.qty + " Ã— " +
         pendingBundleItem.description + "...";
 
     showLoading();
@@ -1198,7 +1247,7 @@ function processNextBundleItem(){
         });
 
         document.getElementById("result").innerText =
-            "Removed " + confirmedQty + " × " +
+            "Removed " + confirmedQty + " Ã— " +
             (data.description || pendingBundleItem.description) +
             ". Continuing bundle...";
 
@@ -1231,7 +1280,7 @@ function showBundleLocationChoices(locations){
             <button class="location-button"
                 onclick="continueBundleWithLocation('${escapeJs(loc.location)}', ${Number(loc.qty || 0)})"
                 type="button">
-                ${InventoryWorkspace.locationNameHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
+                ${InventoryWorkspace.locationNameHtml(loc.location)} â€” Qty: ${Number(loc.qty || 0)}
             </button>`;
     });
 
@@ -1360,7 +1409,7 @@ function parseSpokenPrice(text){
         .replace(/pounds?/g,"")
         .replace(/quid/g,"")
         .replace(/gbp/g,"")
-        .replace(/£/g,"")
+        .replace(/Â£/g,"")
         .replace(/,/g,"")
         .trim();
 
@@ -1368,7 +1417,7 @@ function parseSpokenPrice(text){
         return null;
     }
 
-    // £3.50 / 3.50 / 3:50 / 3 point 50
+    // Â£3.50 / 3.50 / 3:50 / 3 point 50
     let decimal = phrase.match(/(\d+)\s*(?:\.|:|point)\s*(\d{1,2})/);
     if(decimal){
         let pounds = Number(decimal[1]);
@@ -1386,7 +1435,7 @@ function parseSpokenPrice(text){
         return (pounds + Number(pence) / 100).toFixed(2);
     }
 
-    // Just 12 = £12.00
+    // Just 12 = Â£12.00
     let whole = phrase.match(/\b(\d+)\b/);
     if(whole){
         return Number(whole[1]).toFixed(2);
@@ -1407,12 +1456,12 @@ function parseSpokenPrice(text){
         return null;
     }
 
-    // one word: "twelve" = £12.00
+    // one word: "twelve" = Â£12.00
     if(words.length === 1){
         return wordsToNumber(words).toFixed(2);
     }
 
-    // two/three words: "three fifty" = £3.50, "seven ninety nine" = £7.99
+    // two/three words: "three fifty" = Â£3.50, "seven ninety nine" = Â£7.99
     const poundWords = [words[0]];
     const penceWords = words.slice(1);
 
@@ -1455,8 +1504,8 @@ function fillSalePriceFromSpeech(transcript){
         saleInput.dispatchEvent(new Event("input", { bubbles:true }));
 
         renderBundleList();
-        setVoiceStatus("Heard: '" + transcript + "' → Price set to £" + price, true);
-        setWarehouseStatus("Price set to £" + price + ". Say confirm sale or complete sale.");
+        setVoiceStatus("Heard: '" + transcript + "' â†’ Price set to Â£" + price, true);
+        setWarehouseStatus("Price set to Â£" + price + ". Say confirm sale or complete sale.");
         speakPriceSet(price);
         scheduleBarcodeRefocus();
         return true;
