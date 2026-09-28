@@ -469,7 +469,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <button class="suggest-toggle warehouse-hidden" onclick="toggleSuggestions()" type="button">
     <span>Suggested Items</span>
-    <span class="suggest-count" id="suggestCountText">Type 2+ letters â–¼</span>
+    <span class="suggest-count" id="suggestCountText">Type 2+ letters ▼</span>
 </button>
 
 <div id="suggestPanel" class="suggest-panel warehouse-hidden">
@@ -493,7 +493,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
     <div class="helper-text">
         Each scan auto-adds to the bundle list when the scanner sends Enter.
     </div>
-    <div class="scanner-mode-pill" id="scannerModeStatus">Scanner mode on â€” barcode box stays focused.</div>
+    <div class="scanner-mode-pill" id="scannerModeStatus">Scanner mode on — barcode box stays focused.</div>
 </div>
 <div class="confirm-hint warehouse-only">Scan items into the bundle. Say a price like <strong>three fifty</strong>, then say <strong>confirm sale</strong> or <strong>complete sale</strong>.</div>
 
@@ -504,14 +504,14 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
             Listening mode
         </label>
         <div class="helper-text">
-            Say <strong>three fifty</strong>, <strong>Â£3.50</strong>, or <strong>twelve pounds</strong>. You can still say â€œpriceâ€ if you want.
+            Say <strong>three fifty</strong>, <strong>£3.50</strong>, or <strong>twelve pounds</strong>. You can still say “price” if you want.
         </div>
     </div>
     <div class="voice-row">
         <button class="add-button" onclick="startVoicePrice()" type="button">Activate Listening Mode</button>
         <button class="clear-button" onclick="stopVoicePrice()" type="button">Stop Listening Mode</button>
     </div>
-    <button class="clear-button" onclick="testFillPrice()" type="button" style="font-size:13px;padding:10px;">Test Fill Â£3.50</button>
+    <button class="clear-button" onclick="testFillPrice()" type="button" style="font-size:13px;padding:10px;">Test Fill £3.50</button>
     <div class="voice-status" id="voiceStatus">Listening mode is off.</div>
 </div>
 
@@ -519,7 +519,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <div class="warehouse-price-card">
     <div class="input-label">Sale Amount</div>
-    <input type="number" id="saleAmount" placeholder="Sale amount Â£" step="0.001" min="0" oninput="renderBundleList()">
+    <input type="number" id="saleAmount" placeholder="Sale amount £" step="0.001" min="0" oninput="renderBundleList()">
     <div id="splitPreview" class="split-preview"></div>
     <div class="warehouse-status warehouse-only" id="warehouseStatus">Listening is on. Say a price, then say confirm sale.</div>
 </div>
@@ -533,7 +533,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 </div>
 
 <div class="links-grid">
-    <a class="link-card" href="index.html">â† Back to Dashboard</a>
+    <a class="link-card" href="index.html">← Back to Dashboard</a>
     <a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 </div>
 
@@ -593,7 +593,7 @@ function normaliseBarcode(value){
 }
 
 function poundsToMills(value){
-    const raw = String(value ?? "0").replace(/Â£/g, "").replace(/,/g, "").trim();
+    const raw = String(value ?? "0").replace(/£/g, "").replace(/,/g, "").trim();
     if(!/^\d+(?:\.\d{1,3})?$/.test(raw)) return null;
     const parts = raw.split(".");
     const whole = Number(parts[0] || 0);
@@ -642,7 +642,7 @@ function locationSummary(item){
     const locations = activeLocations(item);
     if(locations.length === 0) return "Location unavailable";
     return locations.map(function(loc){
-        return InventoryWorkspace.formatLocationName(loc.location || "Unknown location") + " â€” Qty " + loc.qty;
+        return InventoryWorkspace.formatLocationName(loc.location || "Unknown location") + " — Qty " + loc.qty;
     }).join(" | ");
 }
 
@@ -731,16 +731,16 @@ function updateSuggestToggleText(){
     const countText = document.getElementById("suggestCountText");
 
     if(input.length < 2 || looksLikeBarcodeInput(input)){
-        countText.innerText = "Type 2+ letters â–¼";
+        countText.innerText = "Type 2+ letters ▼";
         return;
     }
     if(suggestedItems.length === 0){
-        countText.innerText = "No matches â–¼";
+        countText.innerText = "No matches ▼";
         return;
     }
     countText.innerText = suggestedItems.length + " match" +
         (suggestedItems.length === 1 ? "" : "es") +
-        (panel.classList.contains("open") ? " â–²" : " â–¼");
+        (panel.classList.contains("open") ? " ▲" : " ▼");
 }
 
 function searchSuggestedItems(){
@@ -804,7 +804,7 @@ function selectSuggestedItem(index){
         escapeHtml(item.description || "") + "</strong></div>";
 
     document.getElementById("result").innerText =
-        "Selected " + (item.description || "Item") + " â€” " +
+        "Selected " + (item.description || "Item") + " — " +
         locationSummary(item) + ". Press Add to Bundle List.";
     updateSuggestToggleText();
 }
@@ -951,7 +951,7 @@ function renderBundleList(){
 
     const totalMills = poundsToMills(document.getElementById("saleAmount").value);
     splitPreview.innerHTML = totalMills !== null && totalMills > 0
-        ? "Exact bundle split: Â£" + millsToPounds(totalMills) + " across " +
+        ? "Exact bundle split: £" + millsToPounds(totalMills) + " across " +
           unitCount + " unit" + (unitCount === 1 ? "" : "s") + "."
         : "Enter the total bundle price and it will split equally across all units being removed.";
 }
@@ -1025,7 +1025,7 @@ function removeSingleStock(locationOverride = ""){
                 html += `
                     <button class="location-button"
                         onclick="removeSingleStock('${escapeJs(loc.location)}')" type="button">
-                        ${InventoryWorkspace.locationNameHtml(loc.location)} â€” Qty: ${Number(loc.qty || 0)}
+                        ${InventoryWorkspace.locationNameHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
                     </button>`;
             });
             document.getElementById("locationChoices").innerHTML = html;
@@ -1043,7 +1043,7 @@ function removeSingleStock(locationOverride = ""){
         flashSuccess();
         speakText("Sale complete");
         document.getElementById("result").innerText =
-            "Removed 1 Ã— " + (data.description || barcode) + " at " +
+            "Removed 1 × " + (data.description || barcode) + " at " +
             InventoryWorkspace.formatLocationName(data.location) + ". Remaining there: " + data.remainingQty;
 
         document.getElementById("barcode").value = "";
@@ -1134,7 +1134,7 @@ function processNextBundleItem(){
 
         document.getElementById("result").innerText =
             "Bundle removed. " + totalRemoved + " item" +
-            (totalRemoved === 1 ? "" : "s") + " recorded for Â£" +
+            (totalRemoved === 1 ? "" : "s") + " recorded for £" +
             millsToPounds(totalAllocated) + ".";
 
         bundleItems = [];
@@ -1151,7 +1151,7 @@ function processNextBundleItem(){
     pendingBundleItem = pendingBundleQueue.shift();
 
     document.getElementById("result").innerText =
-        "Removing " + pendingBundleItem.qty + " Ã— " +
+        "Removing " + pendingBundleItem.qty + " × " +
         pendingBundleItem.description + "...";
 
     showLoading();
@@ -1198,7 +1198,7 @@ function processNextBundleItem(){
         });
 
         document.getElementById("result").innerText =
-            "Removed " + confirmedQty + " Ã— " +
+            "Removed " + confirmedQty + " × " +
             (data.description || pendingBundleItem.description) +
             ". Continuing bundle...";
 
@@ -1231,7 +1231,7 @@ function showBundleLocationChoices(locations){
             <button class="location-button"
                 onclick="continueBundleWithLocation('${escapeJs(loc.location)}', ${Number(loc.qty || 0)})"
                 type="button">
-                ${InventoryWorkspace.locationNameHtml(loc.location)} â€” Qty: ${Number(loc.qty || 0)}
+                ${InventoryWorkspace.locationNameHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
             </button>`;
     });
 
@@ -1360,7 +1360,7 @@ function parseSpokenPrice(text){
         .replace(/pounds?/g,"")
         .replace(/quid/g,"")
         .replace(/gbp/g,"")
-        .replace(/Â£/g,"")
+        .replace(/£/g,"")
         .replace(/,/g,"")
         .trim();
 
@@ -1368,7 +1368,7 @@ function parseSpokenPrice(text){
         return null;
     }
 
-    // Â£3.50 / 3.50 / 3:50 / 3 point 50
+    // £3.50 / 3.50 / 3:50 / 3 point 50
     let decimal = phrase.match(/(\d+)\s*(?:\.|:|point)\s*(\d{1,2})/);
     if(decimal){
         let pounds = Number(decimal[1]);
@@ -1386,7 +1386,7 @@ function parseSpokenPrice(text){
         return (pounds + Number(pence) / 100).toFixed(2);
     }
 
-    // Just 12 = Â£12.00
+    // Just 12 = £12.00
     let whole = phrase.match(/\b(\d+)\b/);
     if(whole){
         return Number(whole[1]).toFixed(2);
@@ -1407,12 +1407,12 @@ function parseSpokenPrice(text){
         return null;
     }
 
-    // one word: "twelve" = Â£12.00
+    // one word: "twelve" = £12.00
     if(words.length === 1){
         return wordsToNumber(words).toFixed(2);
     }
 
-    // two/three words: "three fifty" = Â£3.50, "seven ninety nine" = Â£7.99
+    // two/three words: "three fifty" = £3.50, "seven ninety nine" = £7.99
     const poundWords = [words[0]];
     const penceWords = words.slice(1);
 
@@ -1455,8 +1455,8 @@ function fillSalePriceFromSpeech(transcript){
         saleInput.dispatchEvent(new Event("input", { bubbles:true }));
 
         renderBundleList();
-        setVoiceStatus("Heard: '" + transcript + "' â†’ Price set to Â£" + price, true);
-        setWarehouseStatus("Price set to Â£" + price + ". Say confirm sale or complete sale.");
+        setVoiceStatus("Heard: '" + transcript + "' → Price set to £" + price, true);
+        setWarehouseStatus("Price set to £" + price + ". Say confirm sale or complete sale.");
         speakPriceSet(price);
         scheduleBarcodeRefocus();
         return true;
