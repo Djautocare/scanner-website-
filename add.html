@@ -435,6 +435,9 @@ let liveSearchTimer = null;
 let boxSearchTimer = null;
 let allBoxes = [];
 let selectedExistingBarcode = "";
+let savingProduct = false;
+let creatingPrintJob = false;
+let printJobsLoadVersion = 0;
 
 const ADD_PRINT_PREFERENCE_KEYS = Object.freeze({
     autoPrint: "inventoryos_add_auto_print_labels",
@@ -840,13 +843,52 @@ function fillPrintJobDropdown(jobs){
     });
 }
 
-function loadPrintJobs(){
+async function loadPrintJobs(selectedId){
     const select = document.getElementById("printJob");
-    select.innerHTML = '<option value="">Select a print job...</option>';
+    const version = ++printJobsLoadVersion;
+    const previous = selectedId === undefined ? select.value : selectedId;
+    select.disabled = true;
+    select.innerHTML = '<option value="">Loading print jobs...</option>';
+    try{
+        const data = await InventoryAPI.request("/print-jobs");
+        if(version !== printJobsLoadVersion) return;
+        if(!data.success) throw new Error(data.error || "Could not load print jobs");
+        fillPrintJobDropdown(data.printJobs || []);
+        select.value = previous || "";
+    }catch(error){
+        if(version !== printJobsLoadVersion) return;
+        select.innerHTML = '<option value="">Could not load print jobs — reload the page to retry</option>';
+    }finally{
+        if(version === printJobsLoadVersion) select.disabled = false;
+    }
 }
 
-function createPrintJob(){
-    flashError("Print jobs are not connected to the new backend yet.");
+async function createPrintJob(){
+    if(creatingPrintJob) return;
+    const input = document.getElementById("newPrintJobName");
+    const name = input.value.trim();
+    if(!name){
+        flashError("Enter a name for the print job.");
+        input.focus();
+        return;
+    }
+    creatingPrintJob = true;
+    const inventoryHeader = InventoryAPI.getSelectedInventoryHeader();
+    try{
+        const data = await InventoryAPI.request("/print-jobs", {
+            method:"POST",
+            body:JSON.stringify({name})
+        });
+        if(!data.success) throw new Error(data.error || "Could not create print job");
+        if(inventoryHeader !== InventoryAPI.getSelectedInventoryHeader()) return;
+        input.value = "";
+        await loadPrintJobs(data.printJob.printJobId || data.printJob.id);
+        setSaveStatus("Print job created. Select Create barcode labels for these items to add labels when saving stock.");
+    }catch(error){
+        flashError(error.message || "Could not create print job.");
+    }finally{
+        creatingPrintJob = false;
+    }
 }
 
 function searchExistingProductsLive(){
@@ -930,6 +972,8 @@ function clearMatchResults(){
 }
 
 function saveProduct(){
+    if(savingProduct) return;
+    let stockSaved = false;
     const description = document.getElementById("description").value.trim();
     const qty = document.getElementById("qty").value;
     const location = document.getElementById("location").value;
@@ -953,16 +997,24 @@ function saveProduct(){
 
     const finalLocation = document.getElementById("location").value;
 
-    if(addToPrintJob){
-        flashError("Print jobs are not connected to the new backend yet. Untick Add labels to print job.");
+    if(addToPrintJob && !printJobId){
+        flashError("Select or create a print job first.");
+        return;
+    }
+    if(addToPrintJob && (!Number.isInteger(Number(qty)) || Number(qty) <= 0)){
+        flashError("Enter a positive whole-number quantity for the labels.");
         return;
     }
 
+    const inventoryHeader = InventoryAPI.getSelectedInventoryHeader();
+    const requestHeaders = inventoryHeader ? {"X-Inventory-Ids":inventoryHeader} : {};
+    savingProduct = true;
     showLoading();
     setSaveStatus("Saving...");
 
-    apiFetch("/stock/add",{
+    return apiFetch("/stock/add",{
         method:"POST",
+        headers:requestHeaders,
         body:JSON.stringify({
             barcode:selectedExistingBarcode || "",
             description:description,
@@ -971,14 +1023,31 @@ function saveProduct(){
         })
     })
     .then(res=>res.json())
-    .then(data=>{
-        hideLoading();
+    .then(async data=>{
 
         if(!data.success){
             flashError(data.error || "Error saving product.");
             return;
         }
 
+        stockSaved = true;
+        let labelError = "";
+        if(addToPrintJob){
+            try{
+                const result = await InventoryAPI.request("/print-jobs/" + encodeURIComponent(printJobId) + "/items", {
+                    method:"POST",
+                    headers:requestHeaders,
+                    body:JSON.stringify({barcode:data.barcode, quantity:Number(qty)})
+                });
+                if(!result.success) throw new Error(result.error || "Could not confirm labels were saved");
+            }catch(error){
+                labelError = error.message || "Could not confirm labels were saved";
+            }
+        }
+        // Clear saved inputs even when the separate label request fails.
+        document.getElementById("description").value = "";
+        document.getElementById("qty").value = "1";
+        clearMatchResults();
         document.getElementById("barcodeText").innerText = data.barcode;
 
         JsBarcode("#barcode", data.barcode, {
@@ -990,8 +1059,14 @@ function saveProduct(){
         });
 
         loadBoxes();
-        flashSuccess();
-        setSaveStatus("Saved: " + data.barcode);
+        if(labelError){
+            const message = "Stock saved: " + data.barcode + ". Print-job labels could not be confirmed: " + labelError + ". Do not add the stock again. Check the job in Barcode Printing before printing missing labels separately.";
+            flashError(message);
+            setSaveStatus(message);
+        }else{
+            flashSuccess();
+            setSaveStatus("Saved: " + data.barcode + (addToPrintJob ? " — " + qty + " labels added to the print job." : ""));
+        }
 
         if(printLabels){
             printBarcodeLabelQz(data.barcode, description, qty)
@@ -1013,7 +1088,11 @@ function saveProduct(){
     .catch(error=>{
         hideLoading();
         console.error(error);
-        flashError("Error saving product.");
+        flashError(stockSaved ? "Stock was saved, but a follow-up step failed. Do not add the stock again; check the saved item and print job." : "Could not confirm stock was saved. Check your inventory before trying again.");
+    })
+    .finally(()=>{
+        savingProduct = false;
+        hideLoading();
     });
 }
 
@@ -1066,6 +1145,7 @@ initialisePrintPreferences();
 window.addEventListener("inventory-selection-changed", function(){
     clearMatchResults();
     loadBoxes();
+    loadPrintJobs("");
 });
 
 loadBoxes();
