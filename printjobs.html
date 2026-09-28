@@ -406,7 +406,7 @@ function loadPrintJobs(){
             const option = document.createElement("option");
             option.value = job.printJobId || job.id;
             option.textContent =
-            (job.printJobId || job.id) + " - " + job.name + " (" + job.labelCount + " labels)";
+            (job.name || "Unnamed print job") + " (" + job.labelCount + " labels)";
             select.appendChild(option);
         });
     })
@@ -440,7 +440,7 @@ function loadSelectedPrintJob(){
         loadedLabels = data.labels || [];
 
         renderPrintableLabels(loadedLabels);
-        renderPreview(printJobId, loadedLabels);
+        renderPreview(data.printJob && data.printJob.name, loadedLabels);
     })
     .catch(error=>{
         hideLoading();
@@ -477,7 +477,9 @@ function renderPrintableLabels(labels){
     });
 }
 
-function renderPreview(printJobId, labels){
+function renderPreview(jobName, labels){
+    const nameElement = document.createElement("span");
+    nameElement.textContent = jobName || "Unnamed print job";
     if(labels.length === 0){
         document.getElementById("summary").innerHTML =
         "<div class='empty-state'>This print job has no labels.</div>";
@@ -493,7 +495,7 @@ function renderPreview(printJobId, labels){
             <div class="summary-grid">
                 <div class="summary-card">
                     <div class="summary-title">Print Job</div>
-                    <div class="summary-value">${printJobId}</div>
+                    <div class="summary-value">${nameElement.innerHTML}</div>
                 </div>
 
                 <div class="summary-card">
