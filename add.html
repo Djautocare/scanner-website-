@@ -838,7 +838,7 @@ function fillPrintJobDropdown(jobs){
     jobs.forEach(job=>{
         const option = document.createElement("option");
         option.value = job.printJobId;
-        option.textContent = job.printJobId + " - " + job.name;
+        option.textContent = job.name || "Unnamed print job";
         select.appendChild(option);
     });
 }
