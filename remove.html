@@ -220,6 +220,24 @@ button{
     font-size:14px;
 }
 
+.bundle-location-group{
+    margin:12px 0;
+    padding:10px;
+    border:1px solid rgba(111,66,193,0.35);
+    border-radius:12px;
+    background:rgba(111,66,193,0.06);
+}
+
+.bundle-location-title{
+    font-weight:bold;
+    color:#e1d4ff;
+    margin:2px 0 8px;
+}
+
+.bundle-location-item{
+    margin:8px 0;
+}
+
 .bundle-item-meta{
     color:#aaa;
     font-size:13px;
@@ -451,7 +469,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <button class="suggest-toggle warehouse-hidden" onclick="toggleSuggestions()" type="button">
     <span>Suggested Items</span>
-    <span class="suggest-count" id="suggestCountText">Type 2+ letters ▼</span>
+    <span class="suggest-count" id="suggestCountText">Type 2+ letters â–¼</span>
 </button>
 
 <div id="suggestPanel" class="suggest-panel warehouse-hidden">
@@ -475,7 +493,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
     <div class="helper-text">
         Each scan auto-adds to the bundle list when the scanner sends Enter.
     </div>
-    <div class="scanner-mode-pill" id="scannerModeStatus">Scanner mode on — barcode box stays focused.</div>
+    <div class="scanner-mode-pill" id="scannerModeStatus">Scanner mode on â€” barcode box stays focused.</div>
 </div>
 <div class="confirm-hint warehouse-only">Scan items into the bundle. Say a price like <strong>three fifty</strong>, then say <strong>confirm sale</strong> or <strong>complete sale</strong>.</div>
 
@@ -486,14 +504,14 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
             Listening mode
         </label>
         <div class="helper-text">
-            Say <strong>three fifty</strong>, <strong>£3.50</strong>, or <strong>twelve pounds</strong>. You can still say “price” if you want.
+            Say <strong>three fifty</strong>, <strong>Â£3.50</strong>, or <strong>twelve pounds</strong>. You can still say â€œpriceâ€ if you want.
         </div>
     </div>
     <div class="voice-row">
         <button class="add-button" onclick="startVoicePrice()" type="button">Activate Listening Mode</button>
         <button class="clear-button" onclick="stopVoicePrice()" type="button">Stop Listening Mode</button>
     </div>
-    <button class="clear-button" onclick="testFillPrice()" type="button" style="font-size:13px;padding:10px;">Test Fill £3.50</button>
+    <button class="clear-button" onclick="testFillPrice()" type="button" style="font-size:13px;padding:10px;">Test Fill Â£3.50</button>
     <div class="voice-status" id="voiceStatus">Listening mode is off.</div>
 </div>
 
@@ -501,7 +519,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 
 <div class="warehouse-price-card">
     <div class="input-label">Sale Amount</div>
-    <input type="number" id="saleAmount" placeholder="Sale amount £" step="0.001" min="0" oninput="renderBundleList()">
+    <input type="number" id="saleAmount" placeholder="Sale amount Â£" step="0.001" min="0" oninput="renderBundleList()">
     <div id="splitPreview" class="split-preview"></div>
     <div class="warehouse-status warehouse-only" id="warehouseStatus">Listening is on. Say a price, then say confirm sale.</div>
 </div>
@@ -515,7 +533,7 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
 </div>
 
 <div class="links-grid">
-    <a class="link-card" href="index.html">← Back to Dashboard</a>
+    <a class="link-card" href="index.html">â† Back to Dashboard</a>
     <a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
 </div>
 
@@ -575,7 +593,7 @@ function normaliseBarcode(value){
 }
 
 function poundsToMills(value){
-    const raw = String(value ?? "0").replace(/£/g, "").replace(/,/g, "").trim();
+    const raw = String(value ?? "0").replace(/Â£/g, "").replace(/,/g, "").trim();
     if(!/^\d+(?:\.\d{1,3})?$/.test(raw)) return null;
     const parts = raw.split(".");
     const whole = Number(parts[0] || 0);
@@ -624,7 +642,7 @@ function locationSummary(item){
     const locations = activeLocations(item);
     if(locations.length === 0) return "Location unavailable";
     return locations.map(function(loc){
-        return InventoryWorkspace.formatLocationName(loc.location || "Unknown location") + " — Qty " + loc.qty;
+        return InventoryWorkspace.formatLocationName(loc.location || "Unknown location") + " â€” Qty " + loc.qty;
     }).join(" | ");
 }
 
@@ -635,8 +653,51 @@ function looksLikeBarcodeInput(value){
 
 function totalBundleUnits(){
     return bundleItems.reduce(function(sum, item){
+        if(Array.isArray(item.allocations)){
+            return sum + item.allocations.reduce(function(total, allocation){
+                return total + Math.max(0, Number(allocation.qty || 0));
+            }, 0);
+        }
         return sum + Number(item.qty || 1);
     }, 0);
+}
+
+function ensureBundleAllocations(item){
+    const locations = activeLocations(item);
+    if(!Array.isArray(item.allocations)){
+        item.allocations = locations.map(function(loc, index){
+            return {location:loc.location, available:loc.qty, qty:index === 0 ? Math.min(1, loc.qty) : 0};
+        });
+    }else{
+        item.allocations = locations.map(function(loc, index){
+            const existing = item.allocations.find(function(allocation){
+                return String(allocation.location) === String(loc.location);
+            });
+            return {location:loc.location, available:loc.qty, qty:Math.min(loc.qty, Math.max(0, Number(existing ? existing.qty : 0)))};
+        });
+        if(item.allocations.length && item.allocations.every(function(allocation){ return allocation.qty === 0; })){
+            item.allocations[0].qty = Math.min(1, item.allocations[0].available);
+        }
+    }
+    item.qty = totalItemAllocated(item);
+    return item.allocations;
+}
+
+function totalItemAllocated(item){
+    return (item.allocations || []).reduce(function(sum, allocation){
+        return sum + Math.max(0, Number(allocation.qty || 0));
+    }, 0);
+}
+
+function updateBundleLocationQty(index, location, quantity){
+    const item = bundleItems[index];
+    if(!item) return;
+    const allocations = ensureBundleAllocations(item);
+    const allocation = allocations.find(function(entry){ return String(entry.location) === String(location); });
+    if(!allocation) return;
+    allocation.qty = Math.min(allocation.available, Math.max(0, Number.parseInt(String(quantity || "0"), 10)));
+    item.qty = totalItemAllocated(item);
+    renderBundleList();
 }
 
 function getBundleItemAvailable(item){
@@ -670,16 +731,16 @@ function updateSuggestToggleText(){
     const countText = document.getElementById("suggestCountText");
 
     if(input.length < 2 || looksLikeBarcodeInput(input)){
-        countText.innerText = "Type 2+ letters ▼";
+        countText.innerText = "Type 2+ letters â–¼";
         return;
     }
     if(suggestedItems.length === 0){
-        countText.innerText = "No matches ▼";
+        countText.innerText = "No matches â–¼";
         return;
     }
     countText.innerText = suggestedItems.length + " match" +
         (suggestedItems.length === 1 ? "" : "es") +
-        (panel.classList.contains("open") ? " ▲" : " ▼");
+        (panel.classList.contains("open") ? " â–²" : " â–¼");
 }
 
 function searchSuggestedItems(){
@@ -743,7 +804,7 @@ function selectSuggestedItem(index){
         escapeHtml(item.description || "") + "</strong></div>";
 
     document.getElementById("result").innerText =
-        "Selected " + (item.description || "Item") + " — " +
+        "Selected " + (item.description || "Item") + " â€” " +
         locationSummary(item) + ". Press Add to Bundle List.";
     updateSuggestToggleText();
 }
@@ -777,30 +838,32 @@ function addBundleItem(details){
     const locations = activeLocations(details);
     if(!barcode || locations.length === 0) return;
 
-    const defaultLocation = locations[0].location;
-    const existing = bundleItems.find(function(item){
-        return item.barcode === barcode && item.location === defaultLocation;
-    });
+    const existing = bundleItems.find(function(item){ return item.barcode === barcode; });
 
     if(existing){
-        const available = getBundleItemAvailable(existing);
+        ensureBundleAllocations(existing);
+        const available = locations.reduce(function(sum, loc){ return sum + Number(loc.qty || 0); }, 0);
         if(existing.qty < available){
-            existing.qty++;
+            const first = existing.allocations.find(function(allocation){ return allocation.qty < allocation.available; });
+            if(first) first.qty++;
+            existing.qty = totalItemAllocated(existing);
             document.getElementById("result").innerText =
                 existing.description + " quantity increased to " + existing.qty + ".";
         }else{
             document.getElementById("result").innerText =
-                existing.description + " is already set to all " + available +
-                " available at " + InventoryWorkspace.formatLocationName(existing.location) + ".";
+                existing.description + " is already set to all available stock.";
         }
     }else{
         bundleItems.push({
             barcode:barcode,
             description:String(details.description || barcode),
             locations:locations,
-            location:defaultLocation,
+            location:locations[0].location,
             available:Number(locations[0].qty || 1),
-            qty:1
+            qty:1,
+            allocations:locations.map(function(loc,index){
+                return {location:loc.location, available:Number(loc.qty || 0), qty:index === 0 ? 1 : 0};
+            })
         });
 
         document.getElementById("result").innerText =
@@ -820,23 +883,16 @@ function removeBundleItem(index){
 }
 
 function changeBundleLocation(index, location){
-    const item = bundleItems[index];
-    if(!item) return;
-
-    item.location = String(location || "");
-    item.available = getBundleItemAvailable(item);
-    item.qty = Math.min(Math.max(1, Number(item.qty || 1)), item.available);
-    renderBundleList();
+    return updateBundleLocationQty(index, location, 1);
 }
 
 function changeBundleQuantity(index, quantity){
     const item = bundleItems[index];
     if(!item) return;
-
-    item.qty = Math.min(
-        Math.max(1, Number.parseInt(String(quantity || "1"), 10)),
-        getBundleItemAvailable(item)
-    );
+    ensureBundleAllocations(item);
+    const first = item.allocations[0];
+    if(first) first.qty = Math.min(first.available, Math.max(0, Number.parseInt(String(quantity || "0"), 10)));
+    item.qty = totalItemAllocated(item);
     renderBundleList();
 }
 
@@ -872,50 +928,30 @@ function renderBundleList(){
         </div>
     `;
 
+    const groups = {};
     bundleItems.forEach(function(item,index){
-        item.available = getBundleItemAvailable(item);
-        item.qty = Math.min(Math.max(1, Number(item.qty || 1)), item.available);
-
-        const locationControl = item.locations.length > 1
-            ? `
-                <label>Location</label>
-                <select onchange="changeBundleLocation(${index}, this.value)">
-                    ${item.locations.map(function(loc){
-                        return `<option data-location-name="${escapeHtml(loc.location)}" data-location-suffix=" — ${Number(loc.qty)} available" value="${escapeHtml(loc.location)}" ${loc.location === item.location ? "selected" : ""}>
-                            ${escapeHtml(InventoryWorkspace.formatLocationName(loc.location))} — ${Number(loc.qty)} available
-                        </option>`;
-                    }).join("")}
-                </select>
-            `
-            : `<div class="bundle-item-meta">${InventoryWorkspace.locationNameHtml(item.location)} • ${item.available} available</div>`;
-
-        const quantityOptions = Array.from({length:item.available}, function(_,i){ return i + 1; })
-            .map(function(qty){
-                return `<option value="${qty}" ${qty === item.qty ? "selected" : ""}>${qty}</option>`;
+        ensureBundleAllocations(item);
+        item.allocations.forEach(function(allocation){
+            if(!groups[allocation.location]) groups[allocation.location] = [];
+            groups[allocation.location].push({item:item,index:index,allocation:allocation});
+        });
+    });
+    Object.keys(groups).sort().forEach(function(location){
+        html += `<div class="bundle-location-group"><div class="bundle-location-title">${InventoryWorkspace.locationNameHtml(location)}</div>`;
+        groups[location].forEach(function(entry){
+            const options = Array.from({length:entry.allocation.available + 1}, function(_,qty){
+                return `<option value="${qty}" ${qty === entry.allocation.qty ? "selected" : ""}>${qty}</option>`;
             }).join("");
-
-        html += `
-            <div class="bundle-item">
-                <div class="bundle-item-main">
-                    <strong>${escapeHtml(item.description)}</strong>
-                    ${locationControl}
-                </div>
-                <div class="bundle-item-controls">
-                    <label>Removing</label>
-                    <select onchange="changeBundleQuantity(${index}, this.value)">
-                        ${quantityOptions}
-                    </select>
-                    <button class="small-remove" onclick="removeBundleItem(${index})" type="button">Remove</button>
-                </div>
-            </div>
-        `;
+            html += `<div class="bundle-item bundle-location-item"><div class="bundle-item-main"><strong>${escapeHtml(entry.item.description)}</strong><div class="bundle-item-meta">Available in this location: ${entry.allocation.available}</div></div><div class="bundle-item-controls"><label>QTY from this location</label><select onchange="updateBundleLocationQty(${entry.index}, '${escapeJs(location)}', this.value)">${options}</select><button class="small-remove" onclick="removeBundleItem(${entry.index})" type="button">Remove item</button></div></div>`;
+        });
+        html += `</div>`;
     });
 
     bundleBox.innerHTML = html;
 
     const totalMills = poundsToMills(document.getElementById("saleAmount").value);
     splitPreview.innerHTML = totalMills !== null && totalMills > 0
-        ? "Exact bundle split: £" + millsToPounds(totalMills) + " across " +
+        ? "Exact bundle split: Â£" + millsToPounds(totalMills) + " across " +
           unitCount + " unit" + (unitCount === 1 ? "" : "s") + "."
         : "Enter the total bundle price and it will split equally across all units being removed.";
 }
@@ -989,7 +1025,7 @@ function removeSingleStock(locationOverride = ""){
                 html += `
                     <button class="location-button"
                         onclick="removeSingleStock('${escapeJs(loc.location)}')" type="button">
-                        ${InventoryWorkspace.locationNameHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
+                        ${InventoryWorkspace.locationNameHtml(loc.location)} â€” Qty: ${Number(loc.qty || 0)}
                     </button>`;
             });
             document.getElementById("locationChoices").innerHTML = html;
@@ -1007,7 +1043,7 @@ function removeSingleStock(locationOverride = ""){
         flashSuccess();
         speakText("Sale complete");
         document.getElementById("result").innerText =
-            "Removed 1 × " + (data.description || barcode) + " at " +
+            "Removed 1 Ã— " + (data.description || barcode) + " at " +
             InventoryWorkspace.formatLocationName(data.location) + ". Remaining there: " + data.remainingQty;
 
         document.getElementById("barcode").value = "";
@@ -1042,14 +1078,23 @@ function removeBundleStock(){
         return;
     }
 
+    const lineItems = [];
+    bundleItems.forEach(function(item){
+        ensureBundleAllocations(item).forEach(function(allocation){
+            if(Number(allocation.qty || 0) > 0){
+                lineItems.push({barcode:item.barcode, description:item.description, location:allocation.location, qty:Number(allocation.qty)});
+            }
+        });
+    });
+    if(lineItems.length === 0 || totalBundleUnits() === 0){
+        alert("Choose at least one quantity from a location");
+        return;
+    }
     const unitAllocations = allocateBundleAmounts(totalSaleMills, totalBundleUnits());
     let allocationOffset = 0;
 
-    pendingBundleQueue = bundleItems.map(function(item){
-        const qty = Math.min(
-            Math.max(1, Number.parseInt(String(item.qty || 1), 10)),
-            getBundleItemAvailable(item)
-        );
+    pendingBundleQueue = lineItems.map(function(item){
+        const qty = item.qty;
 
         const lineMills = unitAllocations
             .slice(allocationOffset, allocationOffset + qty)
@@ -1089,7 +1134,7 @@ function processNextBundleItem(){
 
         document.getElementById("result").innerText =
             "Bundle removed. " + totalRemoved + " item" +
-            (totalRemoved === 1 ? "" : "s") + " recorded for £" +
+            (totalRemoved === 1 ? "" : "s") + " recorded for Â£" +
             millsToPounds(totalAllocated) + ".";
 
         bundleItems = [];
@@ -1106,7 +1151,7 @@ function processNextBundleItem(){
     pendingBundleItem = pendingBundleQueue.shift();
 
     document.getElementById("result").innerText =
-        "Removing " + pendingBundleItem.qty + " × " +
+        "Removing " + pendingBundleItem.qty + " Ã— " +
         pendingBundleItem.description + "...";
 
     showLoading();
@@ -1153,7 +1198,7 @@ function processNextBundleItem(){
         });
 
         document.getElementById("result").innerText =
-            "Removed " + confirmedQty + " × " +
+            "Removed " + confirmedQty + " Ã— " +
             (data.description || pendingBundleItem.description) +
             ". Continuing bundle...";
 
@@ -1186,7 +1231,7 @@ function showBundleLocationChoices(locations){
             <button class="location-button"
                 onclick="continueBundleWithLocation('${escapeJs(loc.location)}', ${Number(loc.qty || 0)})"
                 type="button">
-                ${InventoryWorkspace.locationNameHtml(loc.location)} — Qty: ${Number(loc.qty || 0)}
+                ${InventoryWorkspace.locationNameHtml(loc.location)} â€” Qty: ${Number(loc.qty || 0)}
             </button>`;
     });
 
@@ -1315,7 +1360,7 @@ function parseSpokenPrice(text){
         .replace(/pounds?/g,"")
         .replace(/quid/g,"")
         .replace(/gbp/g,"")
-        .replace(/£/g,"")
+        .replace(/Â£/g,"")
         .replace(/,/g,"")
         .trim();
 
@@ -1323,7 +1368,7 @@ function parseSpokenPrice(text){
         return null;
     }
 
-    // £3.50 / 3.50 / 3:50 / 3 point 50
+    // Â£3.50 / 3.50 / 3:50 / 3 point 50
     let decimal = phrase.match(/(\d+)\s*(?:\.|:|point)\s*(\d{1,2})/);
     if(decimal){
         let pounds = Number(decimal[1]);
@@ -1341,7 +1386,7 @@ function parseSpokenPrice(text){
         return (pounds + Number(pence) / 100).toFixed(2);
     }
 
-    // Just 12 = £12.00
+    // Just 12 = Â£12.00
     let whole = phrase.match(/\b(\d+)\b/);
     if(whole){
         return Number(whole[1]).toFixed(2);
@@ -1362,12 +1407,12 @@ function parseSpokenPrice(text){
         return null;
     }
 
-    // one word: "twelve" = £12.00
+    // one word: "twelve" = Â£12.00
     if(words.length === 1){
         return wordsToNumber(words).toFixed(2);
     }
 
-    // two/three words: "three fifty" = £3.50, "seven ninety nine" = £7.99
+    // two/three words: "three fifty" = Â£3.50, "seven ninety nine" = Â£7.99
     const poundWords = [words[0]];
     const penceWords = words.slice(1);
 
@@ -1410,8 +1455,8 @@ function fillSalePriceFromSpeech(transcript){
         saleInput.dispatchEvent(new Event("input", { bubbles:true }));
 
         renderBundleList();
-        setVoiceStatus("Heard: '" + transcript + "' → Price set to £" + price, true);
-        setWarehouseStatus("Price set to £" + price + ". Say confirm sale or complete sale.");
+        setVoiceStatus("Heard: '" + transcript + "' â†’ Price set to Â£" + price, true);
+        setWarehouseStatus("Price set to Â£" + price + ". Say confirm sale or complete sale.");
         speakPriceSet(price);
         scheduleBarcodeRefocus();
         return true;
