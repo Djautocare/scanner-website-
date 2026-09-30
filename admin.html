@@ -21,7 +21,7 @@
 <section id="users" class="section"><h2>User Management</h2><div class="filters"><input id="search" placeholder="Search name or email"><select id="planFilter"><option value="">All plans</option><option>free</option><option>starter</option><option>pro</option><option>business</option></select><select id="billingFilter"><option value="">All billing</option><option value="active">Active</option><option value="trialing">Trialing</option><option value="past_due">Past due</option><option value="cancelled">Cancelled</option><option value="free">Free</option><option value="none">None</option></select><select id="stateFilter"><option value="">All accounts</option><option value="online">Online</option><option value="verified">Verified</option><option value="unverified">Unverified</option><option value="suspended">Suspended</option><option value="admin">Admins</option></select></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Billing</th><th>Verified</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody id="usersTable"></tbody></table></div><div class="status" id="status"></div></div></section>
 <section id="mailing-list" class="section">
 <h2>Mailing List</h2>
-<p class="helper">Review account holders who chose to receive InventoryOS emails. Add opted-in addresses to your mailing platform manually. Users who did not opt in are marked clearly and should not be added.</p>
+<p class="helper">Manage InventoryOS email consent here. Add someone only after they have explicitly agreed to receive marketing emails. Manual additions are recorded in the admin audit log.</p>
 <div class="grid">
 <div class="card"><div class="card-title">Opted in</div><div class="card-value" id="mailingOptedInCount">-</div></div>
 <div class="card"><div class="card-title">Not opted in</div><div class="card-value" id="mailingOptedOutCount">-</div></div>
@@ -32,7 +32,7 @@
 <button class="dark" id="refreshMailingBtn">Refresh</button>
 <button id="copyMailingEmailsBtn">Copy opted-in emails</button>
 </div>
-<div class="card"><div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Mailing list choice</th><th>Consent recorded</th><th>Account</th><th>Action</th></tr></thead><tbody id="mailingListTable"></tbody></table></div><div class="status" id="mailingListStatus"></div></div>
+<div class="card"><div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Mailing list choice</th><th>Consent / change recorded</th><th>Account</th><th>Action</th></tr></thead><tbody id="mailingListTable"></tbody></table></div><div class="status" id="mailingListStatus"></div></div>
 </section>
 <section id="audit" class="section"><h2>Admin Audit Log</h2><div class="card"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Admin</th><th>Target</th><th>Action</th><th>Details</th></tr></thead><tbody id="auditTable"></tbody></table></div></div></section>
 <section id="system" class="section"><h2>System</h2><div class="grid"><div class="card"><div class="card-title">API Health</div><div class="card-value" id="apiHealth">-</div><button id="refreshHealthBtn">Refresh</button></div><div class="card"><div class="card-title">Database Size</div><div class="card-value" id="storageUsed">-</div></div><div class="card"><div class="card-title">API Uptime</div><div class="card-value" id="apiUptime">-</div></div><div class="card"><div class="card-title">Current API</div><div id="apiBase" style="word-break:break-word;color:#ccc"></div></div></div></section>
@@ -49,6 +49,18 @@ async function overview(){const d=await InventoryAPI.request('/admin/overview?_t
 async function analytics(){const d=await InventoryAPI.request('/admin/analytics?_t='+Date.now());if(!d.success)return;$('storageUsed').textContent=d.analytics.storage_used;$('apiUptime').textContent=uptime(d.analytics.api_uptime_seconds)}
 let searchTimer;function queueUsers(){clearTimeout(searchTimer);searchTimer=setTimeout(loadUsers,250)}async function loadUsers(){const q=new URLSearchParams({search:$('search').value.trim(),plan:$('planFilter').value,status:$('billingFilter').value,state:$('stateFilter').value,_t:Date.now()});const d=await InventoryAPI.request('/admin/users?'+q);if(!d.success){$('status').textContent=d.error||'Could not load users';return}renderUsers(d.users||[])}function button(text,cls,fn){const b=document.createElement('button');b.textContent=text;b.className=cls;b.onclick=fn;return b}function renderUsers(users){const body=$('usersTable');body.innerHTML='';for(const u of users){const tr=document.createElement('tr');tr.innerHTML=`<td>${esc(u.name||'-')}</td><td>${esc(u.email||'-')}</td><td>${plan(u)}</td><td>${billing(u)}</td><td>${verified(u.email_verified)}</td><td>${status(u)}</td><td>${date(u.last_seen)}</td><td><div class="actions"></div></td>`;const a=tr.querySelector('.actions');a.append(button('View','small dark',()=>viewUser(u.id)));if(!u.email_verified)a.append(button('Verify','small',()=>postAction(u.id,'verify',{},'Verify this user?')));a.append(button(u.is_admin?'Remove Admin':'Make Admin','small dark',()=>postAction(u.id,'admin',{is_admin:!u.is_admin},u.is_admin?'Remove admin access?':'Make this user an admin?')));a.append(button(u.is_suspended?'Unsuspend':'Suspend','small dark',()=>postAction(u.id,'suspend',{is_suspended:!u.is_suspended},u.is_suspended?'Unsuspend this user?':'Suspend this user?')));a.append(button('Reset Password','small dark',()=>postAction(u.id,'password-reset',{},'Send a password reset email?')));a.append(button('Safe Delete','small danger',()=>openDelete(u)));body.append(tr)}if(!users.length)body.innerHTML='<tr><td colspan="8">No users found</td></tr>'}
 let mailingSearchTimer;
+async function changeMailingConsent(userId,action){
+    const adding=action==='opt-in';
+    const prompt=adding
+        ?'Only add this person if they have explicitly agreed to receive InventoryOS marketing emails. Confirm that you have their consent.'
+        :'Remove this person from the mailing list? They will be marked opted out.';
+    if(!confirm(prompt))return;
+    const payload=adding?{confirmConsent:true}:{};
+    const result=await InventoryAPI.request('/admin/mailing-list/'+encodeURIComponent(userId)+'/'+action,{method:'POST',body:JSON.stringify(payload)});
+    if(!result.success){$('mailingListStatus').textContent=result.error||'Could not update mailing-list choice';return}
+    $('mailingListStatus').textContent=result.message||'Mailing-list choice updated';
+    await loadMailingList();
+}
 async function loadMailingList(){
     const status=$('mailingListStatus');
     status.textContent='Loading mailing list choices...';
@@ -61,17 +73,26 @@ async function loadMailingList(){
     $('mailingListTable').innerHTML=rows.map(user=>{
         const optedIn=!!user.marketing_emails_opt_in;
         const account=user.email_verified?'<span class="badge good">Verified</span>':'<span class="badge warn">Unverified</span>';
-        const choice=optedIn?'<span class="badge good">Opted in</span>':'<span class="badge offline">Not opted in</span>';
-        const copyButton=optedIn?'<button class="small dark" data-copy-email="'+esc(user.email||'')+'">Copy email</button>':'-';
-        return '<tr><td>'+esc(user.name||'-')+'</td><td>'+esc(user.email||'-')+'</td><td>'+choice+'</td><td>'+date(user.marketing_emails_opt_in_at)+'</td><td>'+account+'</td><td>'+copyButton+'</td></tr>';
+        const removed=!!user.marketing_emails_opt_out_at;
+        const choice=optedIn?'<span class="badge good">Opted in</span>':(removed?'<span class="badge bad">Opted out</span>':'<span class="badge offline">Not opted in</span>');
+        const source=user.marketing_emails_opt_in_source==='admin'?'Admin addition':'Sign-up choice';
+        const recorded=optedIn?source+' · '+date(user.marketing_emails_opt_in_at):(removed?'Removed · '+date(user.marketing_emails_opt_out_at):'No opt-in recorded');
+        const actionButton=optedIn
+            ?'<button class="small danger" data-mailing-action="opt-out" data-user-id="'+esc(user.id)+'">Remove from list</button>'
+            :'<button class="small good-btn" data-mailing-action="opt-in" data-user-id="'+esc(user.id)+'">Add to list</button>';
+        const copyButton=optedIn?'<button class="small dark" data-copy-email="'+esc(user.email||'')+'">Copy email</button>':'';
+        return '<tr><td>'+esc(user.name||'-')+'</td><td>'+esc(user.email||'-')+'</td><td>'+choice+'</td><td>'+esc(recorded)+'</td><td>'+account+'</td><td><div class="actions">'+actionButton+copyButton+'</div></td></tr>';
     }).join('')||'<tr><td colspan="6">No matching accounts</td></tr>';
+    $('mailingListTable').querySelectorAll('[data-mailing-action]').forEach(button=>{
+        button.onclick=()=>changeMailingConsent(button.dataset.userId,button.dataset.mailingAction);
+    });
     $('mailingListTable').querySelectorAll('[data-copy-email]').forEach(button=>{
         button.onclick=async()=>{
             try{await navigator.clipboard.writeText(button.dataset.copyEmail);status.textContent='Email copied. You can add this opted-in contact manually.'}
             catch{status.textContent='Could not copy email. Select and copy it from the table instead.'}
         };
     });
-    status.textContent=rows.length+' account'+(rows.length===1?'':'s')+' shown. Only users marked Opted in should be added to your mailing platform.';
+    status.textContent=rows.length+' account'+(rows.length===1?'':'s')+' shown. Confirm explicit consent before using Add to list.';
 }
 async function copyOptedInEmails(){
     const status=$('mailingListStatus');
