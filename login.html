@@ -240,6 +240,54 @@ button{
 
 .legal-links a:hover{color:#cba7ff;text-decoration:underline;}
 
+.consent{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-top:20px;
+    color:#c8c5cd;
+    font-size:13px;
+    line-height:1.5;
+    cursor:pointer;
+}
+
+.consent input{
+    flex:0 0 18px;
+    width:18px;
+    height:18px;
+    margin:2px 0 0;
+    padding:0;
+    accent-color:#8e44ff;
+    cursor:pointer;
+}
+
+.consent a{color:#cba7ff;text-decoration:underline;}
+.consent a:focus-visible{outline:2px solid #b56cff;outline-offset:3px;border-radius:2px;}
+
+.marketing-consent{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-top:14px;
+    color:#aaa5b3;
+    font-size:12px;
+    line-height:1.5;
+    cursor:pointer;
+}
+
+.marketing-consent input{
+    flex:0 0 18px;
+    width:18px;
+    height:18px;
+    margin:2px 0 0;
+    padding:0;
+    accent-color:#8e44ff;
+    cursor:pointer;
+}
+
+.marketing-consent a{color:#cba7ff;text-decoration:underline;}
+.marketing-consent a:focus-visible{outline:2px solid #b56cff;outline-offset:3px;border-radius:2px;}
+
 @media(max-width:520px){
     body{padding-top:20px;}
     .brand-link{font-size:25px;margin-bottom:12px;}
@@ -289,6 +337,16 @@ button{
 
     <div class="strength" id="strengthText">Use 10+ characters with uppercase, lowercase and a number.</div>
     <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+
+    <label class="consent" for="acceptPolicies">
+        <input type="checkbox" id="acceptPolicies" required>
+        <span>I agree to the <a href="https://inventoryos.co.uk/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and have read the <a href="https://inventoryos.co.uk/data-security.html" target="_blank" rel="noopener noreferrer">Data &amp; Security information</a>.</span>
+    </label>
+
+    <label class="marketing-consent" for="marketingEmailsOptIn">
+        <input type="checkbox" id="marketingEmailsOptIn">
+        <span>Email me InventoryOS product updates, new features, useful tips and occasional offers. I can unsubscribe at any time. InventoryOS will not sell or share my email address with third parties for their own marketing. Email providers may process it on our behalf as described in the <a href="https://inventoryos.co.uk/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</span>
+    </label>
 
     <button class="primary-button" onclick="register()" type="button">Create Account</button>
 
@@ -454,14 +512,22 @@ async function login(){
 }
 
 async function register(){
+    const consent = document.getElementById("acceptPolicies");
+    if(!consent.checked){
+        setStatus("Please agree to the Privacy Policy and confirm you have read the Data & Security information to create an account.", "error");
+        consent.focus();
+        return;
+    }
+
     try{
         setStatus("Creating account...");
 
         const name = document.getElementById("registerName").value.trim();
         const email = document.getElementById("registerEmail").value.trim();
         const password = document.getElementById("registerPassword").value;
+        const marketingEmailsOptIn = document.getElementById("marketingEmailsOptIn").checked;
 
-        const data = await InventoryAPI.register(name, email, password);
+        const data = await InventoryAPI.register(name, email, password, marketingEmailsOptIn);
 
         if(!data.success){
             setStatus(data.error || "Registration failed", "error");
