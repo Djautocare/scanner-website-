@@ -272,12 +272,12 @@ button{
 }
 
 .billing-action{
-    background:linear-gradient(135deg,#8e44ff,#6f42c1);
-    border:1px solid rgba(142,68,255,.5);
-    box-shadow:0 8px 20px rgba(111,66,193,.2);
+    background:linear-gradient(135deg,var(--accent,#45d36a),rgba(var(--accent-rgb,69,211,106),.72));
+    border:1px solid rgba(var(--accent-rgb,69,211,106),.5);
+    box-shadow:0 8px 20px rgba(var(--accent-rgb,69,211,106),.18);
 }
 .billing-action:hover{filter:brightness(1.12);}
-.billing-action:focus-visible{outline:2px solid #c8aaff;outline-offset:3px;}
+.billing-action:focus-visible{outline:2px solid var(--accent,#45d36a);outline-offset:3px;}
 
 .theme-swatch-grid{
     display:grid;
