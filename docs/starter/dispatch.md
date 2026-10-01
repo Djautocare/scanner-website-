@@ -17,5 +17,3 @@ The **Mobile print cropped shipping labels** control is in the Packing Queue con
 ## Print from a connected PC
 
 Use **Print Shipping Labels** from the 4×6 preview after checking the printer and crop. **Clear Pending Prints** clears queued printing tasks; verify what is selected first.
-
-> **Note:** the older screenshot set showed a Manual Packing Item control that has since been removed, so this page intentionally uses current control names without that image.
