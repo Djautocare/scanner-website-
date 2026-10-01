@@ -47,6 +47,12 @@ const InventoryOSAppShell = (function(){
         },
         "corrections.html":{
             key:"corrections"
+        },
+        "reorders.html":{
+            key:"reorders"
+        },
+        "reorder-rule.html":{
+            key:"reorders"
         }
     };
 
@@ -125,6 +131,12 @@ const InventoryOSAppShell = (function(){
                     href:"corrections.html",
                     icon:"✎",
                     label:"Corrections"
+                },
+                {
+                    key:"reorders",
+                    href:"reorders.html",
+                    icon:"↻",
+                    label:"Reordering"
                 }
             ]
         },
@@ -231,7 +243,10 @@ const InventoryOSAppShell = (function(){
             "settings":"settings",
 
             "corrections":"corrections",
-            "correction":"corrections"
+            "correction":"corrections",
+            "reorders":"reorders",
+            "reorder":"reorders",
+            "reorder-rules":"reorders"
         };
 
         if(routeAliases[route]){

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Create reorder rule | InventoryOS</title>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
+<link rel="stylesheet" href="css/appShell.css?v=3">
+<style>
+*{box-sizing:border-box}body{margin:0;padding:18px;background:#0d0d0d;color:#f7f7f8;font-family:Arial,sans-serif}.page{max-width:780px;margin:auto}.panel{background:linear-gradient(180deg,#1d1d1d,#151515);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}h1{margin:8px 0}.subtitle{color:#aaa;margin:0 0 20px}.field{margin:16px 0;position:relative}.field label{display:block;margin-bottom:6px;color:#ddd;font-weight:700;font-size:14px}.field input{width:100%;padding:12px;background:#101015;border:1px solid #3b3b45;border-radius:10px;color:#fff;font-size:15px}.helper{font-size:12px;color:#999;margin-top:5px;line-height:1.4}.suggestions{display:none;position:absolute;z-index:20;top:100%;left:0;right:0;max-height:240px;overflow:auto;background:#202027;border:1px solid #4b4b55;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.4)}.suggestions.open{display:block}.suggestion{display:block;width:100%;border:0;border-bottom:1px solid #3c3c44;background:transparent;color:#fff;text-align:left;padding:11px;cursor:pointer}.suggestion:hover{background:#333342}.selected{color:#9be4a1;font-size:13px;margin-top:6px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.actions button,.actions a{border:0;border-radius:10px;padding:12px 16px;background:#7952e8;color:white;font-weight:700;cursor:pointer;text-decoration:none}.actions .secondary{background:#30303a}.status{min-height:22px;color:#aaa;margin-top:10px}.locked{display:none;padding:18px;border:1px solid rgba(255,184,77,.3);border-radius:14px;background:rgba(255,184,77,.08)}.locked.show{display:block}.hidden{display:none!important}.locked a{color:#d1bdff;font-weight:bold}input[type=number]{max-width:100%} @media(max-width:650px){.panel{padding:17px}}
+</style>
+</head>
+<body><div class="page"><div class="panel">
+<h1 id="pageTitle">Create item reorder rule</h1>
+<p class="subtitle">Set the stock level that should prompt an order and the quantity to replenish up to.</p>
+<div id="locked" class="locked"></div>
+<form id="ruleForm">
+<div class="field"><label for="itemName">Item name</label><input id="itemName" name="item_name" autocomplete="off" maxlength="200" required placeholder="Start typing a product name"><div class="helper">Previously used items appear as suggestions. A new name is added to your product suggestions when you save the rule.</div><div id="suggestions" class="suggestions"></div><div id="selectedItem" class="selected"></div></div>
+<div class="field"><label for="websiteUrl">Website link to order from</label><input id="websiteUrl" name="website_url" type="url" required placeholder="https://supplier.co.uk/product"></div>
+<div class="field"><label for="supplierPhone">Supplier contact number <span class="helper">(optional)</span></label><input id="supplierPhone" name="supplier_phone" type="tel" autocomplete="tel" placeholder="Phone number"></div>
+<div class="field"><label for="supplierEmail">Supplier email <span class="helper">(optional)</span></label><input id="supplierEmail" name="supplier_email" type="email" autocomplete="email" placeholder="name@supplier.co.uk"></div>
+<div class="field"><label for="minimumStock">Minimum stock to trigger a reminder</label><input id="minimumStock" name="minimum_stock" type="number" min="0" step="1" value="2" required><div class="helper">The reminder appears when your current quantity reaches this number or lower.</div></div>
+<div class="field"><label for="reorderTo">Reorder up to</label><input id="reorderTo" name="reorder_to" type="number" min="1" step="1" value="10" required><div class="helper">InventoryOS will calculate how many units are needed to bring stock back to this level.</div></div>
+<div class="actions"><button id="saveBtn" type="submit">Save reorder rule</button><a class="secondary" href="reorders.html">Cancel</a></div>
+<div id="status" class="status" role="status"></div>
+</form>
+</div></div>
+<script src="js/theme.js"></script><script src="js/api.js"></script><script src="js/workspace.js?v=5"></script><script src="js/inventoryTopbar.js?v=5"></script>
+<script>
+(function(){
+    const $=id=>document.getElementById(id);const form=$("ruleForm");const ruleId=new URLSearchParams(location.search).get("id");let selectedProductId="",searchTimer=null;
+    const esc=value=>String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    function showLocked(data){if(!data?.billing_required&&!data?.upgrade_required)return false;$("locked").classList.add("show");$("locked").innerHTML='<strong>Reordering is a Pro feature</strong><p>'+esc(data.error||"Upgrade to Pro to create reorder rules.")+'</p><a href="billing.html?plan=pro&source=reorder-feature">View Pro plan</a>';form.classList.add("hidden");return true}
+    async function searchProducts(){const query=$("itemName").value.trim();selectedProductId="";$("selectedItem").textContent="";const box=$("suggestions");if(query.length<2){box.classList.remove("open");box.innerHTML="";return}const data=await InventoryAPI.getProducts(query);if(!data.success||!data.products?.length){box.classList.remove("open");box.innerHTML="";return}box.innerHTML=data.products.slice(0,8).map((product,index)=>'<button type="button" class="suggestion" data-index="'+index+'"><strong>'+esc(product.description||"Unnamed item")+'</strong><br><span class="helper">'+esc(product.barcode||"")+' · current stock '+Number(product.total_qty||0)+'</span></button>').join("");box.classList.add("open");box.querySelectorAll("[data-index]").forEach(button=>button.onclick=()=>{const product=data.products[Number(button.dataset.index)];$("itemName").value=product.description||"";selectedProductId=product.id;$("selectedItem").textContent="Using existing item · "+(product.barcode||"no barcode");box.classList.remove("open");box.innerHTML=""})}
+    async function loadRule(){if(!ruleId)return;$("pageTitle").textContent="Adjust reorder rule";$("saveBtn").textContent="Save changes";const data=await InventoryAPI.request("/reorder/"+encodeURIComponent(ruleId));if(showLocked(data))return;if(!data.success){$("status").textContent=data.error||"Could not load rule";return}const r=data.rule;$("itemName").value=r.item_name||"";selectedProductId=r.product_id||"";$("selectedItem").textContent="Existing item · "+(r.barcode||"");$("websiteUrl").value=r.website_url||"";$("supplierPhone").value=r.supplier_phone||"";$("supplierEmail").value=r.supplier_email||"";$("minimumStock").value=Number(r.minimum_stock);$("reorderTo").value=Number(r.reorder_to)}
+    form.onsubmit=async event=>{event.preventDefault();const body=Object.fromEntries(new FormData(form).entries());body.product_id=selectedProductId;body.minimum_stock=Number(body.minimum_stock);body.reorder_to=Number(body.reorder_to);$("status").textContent="Saving…";const data=await InventoryAPI.request(ruleId?"/reorder/"+encodeURIComponent(ruleId):"/reorder",{method:ruleId?"PUT":"POST",body:JSON.stringify(body)});if(showLocked(data))return;if(!data.success){$("status").textContent=data.error||"Could not save reorder rule";return}location.href="reorders.html?updated=1"};
+    $("itemName").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(searchProducts,220)});
+    document.addEventListener("click",event=>{if(!event.target.closest(".field"))$("suggestions").classList.remove("open")});
+    async function initialise(){
+        const access=await InventoryAPI.request("/reorder?_t="+Date.now());
+        if(showLocked(access))return;
+        if(!access.success){$("status").textContent=access.error||"Could not check reorder access";return}
+        if(ruleId)await loadRule();
+    }
+    window.addEventListener("inventoryos-shell-ready",initialise,{once:true});
+})();
+</script>
+<script src="js/appShell.js?v=6"></script>
+</body></html>
