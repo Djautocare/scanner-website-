@@ -267,9 +267,17 @@ button{
 }
 
 .muted-button{
-    background:linear-gradient(135deg,#333,#222);
-    border:1px solid rgba(255,255,255,0.10);
+    background:linear-gradient(135deg,#30243f,#211a2d);
+    border:1px solid rgba(142,68,255,0.38);
 }
+
+.billing-action{
+    background:linear-gradient(135deg,#8e44ff,#6f42c1);
+    border:1px solid rgba(142,68,255,.5);
+    box-shadow:0 8px 20px rgba(111,66,193,.2);
+}
+.billing-action:hover{filter:brightness(1.12);}
+.billing-action:focus-visible{outline:2px solid #c8aaff;outline-offset:3px;}
 
 .theme-swatch-grid{
     display:grid;
@@ -809,6 +817,22 @@ button{
     </div>
 </div>
 
+<div class="card" id="billingSettingsCard">
+    <div class="card-title">
+        <span class="card-icon">💳</span>
+        Billing &amp; subscriptions
+    </div>
+    <div class="helper">
+        View your InventoryOS plan, manage subscriptions, update payment details and access invoices through Stripe.
+    </div>
+    <button type="button" class="billing-action" id="settingsManageBilling" onclick="openSettingsBilling()">
+        Manage billing
+    </button>
+    <div class="result" id="billingSettingsResult" role="status" aria-live="polite">
+        Stripe opens securely in a new billing session. You can manage your plan and any active add-ons there.
+    </div>
+</div>
+
 <div class="card" id="adminCard" style="display:none;">
     <div class="card-title"><span class="card-icon">🛡️</span>Administration</div>
     <div class="helper">
@@ -1133,6 +1157,32 @@ function safeText(value){
             ? ""
             : value
     );
+}
+
+async function openSettingsBilling(){
+    const button = document.getElementById("settingsManageBilling");
+    const result = document.getElementById("billingSettingsResult");
+    button.disabled = true;
+    result.className = "result";
+    result.innerText = "Opening Stripe billing...";
+    try{
+        const data = await InventoryAPI.request("/billing/create-portal-session",{method:"POST",body:JSON.stringify({})});
+        if(data.success && data.url){
+            window.location.href = data.url;
+            return;
+        }
+        if(String(data.error || "").toLowerCase().includes("no stripe customer")){
+            window.location.href = "billing.html";
+            return;
+        }
+        result.className = "result error";
+        result.innerText = data.error || "Could not open Stripe billing. Try the Billing & Plans page.";
+    }catch(error){
+        result.className = "result error";
+        result.innerText = error.message || "Could not open Stripe billing. Try the Billing & Plans page.";
+    }finally{
+        button.disabled = false;
+    }
 }
 
 function userDisplayName(user){
