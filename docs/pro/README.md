@@ -10,6 +10,8 @@ Use the **inventory selector** in the top bar when you have more than one invent
 
 Open **Settings → Open Workspace Settings → Location Wording**. Choose the preferred singular and plural names, then **Save Settings**. Numeric locations can display with the chosen word; an explicitly saved name such as “Box 1” keeps its saved wording.
 
+<figure><img src="../.gitbook/assets/workspace-settings.jpg" alt=""><figcaption></figcaption></figure>
+
 ## Connect Gmail for shipping labels
 
 In **Dispatch Centre → Email Label Import**, connect the Gmail account, scan relevant messages, review the selected attachments, then import the shipping labels to the packing queue. This connection is optional; the manual PDF upload remains available.

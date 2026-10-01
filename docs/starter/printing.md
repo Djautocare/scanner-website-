@@ -2,12 +2,13 @@
 
 **Find it:** left menu → **Barcode Printing**. Product labels are for individual items; box/location labels mark your storage. Printing and print-job access depend on your plan. QZ Tray direct printing is a Pro feature.
 
-
 ## Print a product label
 
 1. Open the **Product Labels** tab.
 2. Search for an existing product or scan its barcode.
 3. Check the displayed product and quantity, then select the available print action.
+
+<figure><img src="../.gitbook/assets/barcode-printing.jpg" alt=""><figcaption></figcaption></figure>
 
 ## Print a location label or a range
 

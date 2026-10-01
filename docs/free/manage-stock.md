@@ -7,6 +7,7 @@
 3. Find the item by name or barcode, set the quantity, choose the destination, and review the move before confirming.
 4. Check **Search Stock** to see the updated location totals.
 
+<figure><img src="../.gitbook/assets/move-stock.jpg" alt=""><figcaption></figcaption></figure>
 
 ## Remove sold stock
 
@@ -16,7 +17,10 @@
 
 If there is not enough stock in a location, reduce the requested quantity or correct the saved stock before trying again. For broken, lost or donated stock, use **Discard Stock** instead of treating it as sold.
 
+<figure><img src="../.gitbook/assets/remove-stock.jpg" alt=""><figcaption></figcaption></figure>
+
 ## Check slow-moving products
 
 Open **Stale Stock** and refresh the report to review items that have sat for a while. Use the result as a prompt to inspect the actual location and listing before making changes.
 
+<figure><img src="../.gitbook/assets/stale-stock.jpg" alt=""><figcaption></figcaption></figure>
