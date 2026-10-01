@@ -1,0 +1,12 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+site:
+  title: InventoryOS Guide
+  structure:
+    - type: space
+      key: inventoryos-guide
+      title: InventoryOS Guide
+      path: guide
+      default: true
+      content:
+        directory: ./docs
+        language: en
