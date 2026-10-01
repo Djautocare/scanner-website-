@@ -2,7 +2,7 @@
 
 InventoryOS helps you track what you own, where it is, what sold, and what to do next. Start with one item and one storage location, then try the later chapters when you need them.
 
-> **In this guide:** the screenshots use a demo account and demo email. The navigation is based on InventoryOS; your screen may show a different theme, plan, or location word. No customer names or account emails are shown.
+> **In this guide:** the navigation is based on InventoryOS. Your screen may show a different theme, plan, or location word.
 
 ## Pick your starting point
 
@@ -24,4 +24,4 @@ The optional reorder reminder email add-on is separate from the Pro plan. Plan d
 5. Follow [Moving and removing stock](free/manage-stock.md) when the item moves or sells.
 
 
-*Look for the navigation on the left and the workspace and inventory selectors at the top. The bottom-left demo identity is an example.*
+*Look for the navigation on the left and the workspace and inventory selectors at the top.*
