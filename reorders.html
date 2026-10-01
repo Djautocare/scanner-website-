@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Reordering | InventoryOS</title>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css">
+<link rel="stylesheet" href="css/appShell.css?v=3">
+<style>
+*{box-sizing:border-box}body{margin:0;padding:18px;background:#0d0d0d;color:#f7f7f8;font-family:Arial,sans-serif}.page{max-width:1100px;margin:auto}.panel{background:linear-gradient(180deg,#1d1d1d,#151515);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}h1{margin:8px 0;font-size:32px}.subtitle{color:#aaa;margin:0 0 20px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.toolbar button,.reorder-card button,.inline-editor button{border:0;border-radius:11px;padding:11px 14px;background:#7952e8;color:white;font-weight:700;cursor:pointer}.toolbar .secondary,.inline-editor .secondary{background:#30303a}.summary{padding:14px 16px;border:1px solid rgba(255,184,77,.3);background:rgba(255,184,77,.08);border-radius:14px;color:#ffd18c;margin:16px 0}.summary.good{border-color:rgba(99,212,113,.3);background:rgba(99,212,113,.08);color:#a8e8af}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}.reorder-card{background:linear-gradient(145deg,#24242b,#19191e);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:16px}.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.item-name{font-size:19px;font-weight:700;overflow-wrap:anywhere}.qty-pill{white-space:nowrap;border-radius:999px;padding:6px 10px;background:rgba(255,184,77,.15);color:#ffd18c;font-size:13px;font-weight:700}.supplier-link{display:inline-block;color:#bda7ff;margin-top:10px;overflow-wrap:anywhere}.card-toggle{width:100%;text-align:left;background:transparent!important;color:inherit!important;padding:0!important;margin:0!important}.detail{border-top:1px solid rgba(255,255,255,.1);margin-top:14px;padding-top:12px;color:#ccc;line-height:1.6}.detail strong{color:#fff}.adjust-card{display:block}.editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.editor-grid label,.field label{display:block;font-size:13px;color:#c9c9ce;margin-bottom:5px}.editor-grid input,.field input{width:100%;background:#101015;color:#fff;border:1px solid #3b3b45;border-radius:9px;padding:10px;font-size:14px}.field{margin:14px 0}.editor-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.editor-actions .delete{background:#a73340}.empty{border:1px dashed #45454f;border-radius:14px;padding:22px;text-align:center;color:#bbb}.locked{padding:24px;border:1px solid rgba(255,184,77,.32);background:rgba(255,184,77,.08);border-radius:16px}.locked a{color:#d1bdff;font-weight:700}.hidden{display:none!important}.helper{font-size:12px;color:#999;margin-top:4px}.status{min-height:22px;margin:8px 0;color:#aaa}.view-tabs{display:flex;gap:8px;margin:16px 0}.view-tabs button{background:#292932;border:1px solid #41414b;color:#eee;border-radius:10px;padding:9px 12px;cursor:pointer}.view-tabs button.active{background:#7952e8;border-color:#7952e8}a{color:#beaaff}@media(max-width:650px){.panel{padding:17px}h1{font-size:27px}.editor-grid{grid-template-columns:1fr}.card-head{display:block}.qty-pill{display:inline-block;margin-top:8px}}
+</style>
+</head>
+<body>
+<div class="page"><div class="panel">
+<h1>Reordering</h1>
+<p class="subtitle">See which items are running low and how many to order to reach your target.</p>
+<div class="toolbar"><button id="createRuleBtn">Create item reorder rule</button><button class="secondary" id="adjustRulesBtn">Adjustments</button><button class="secondary" id="refreshBtn">Refresh</button></div>
+<div id="summary" class="summary">Loading reorder rules…</div>
+<div id="locked" class="locked hidden"></div>
+<div id="appContent">
+<div class="view-tabs"><button class="active" data-view="needed">Needs reordering</button><button data-view="all">All rules</button></div>
+<div id="rulesGrid" class="grid"></div>
+</div>
+<div id="status" class="status" role="status"></div>
+</div></div>
+<script src="js/theme.js"></script>
+<script src="js/api.js"></script>
+<script src="js/workspace.js?v=5"></script>
+<script src="js/inventoryTopbar.js?v=5"></script>
+<script>
+(function(){
+    const $=id=>document.getElementById(id);
+    const esc=value=>String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    let rules=[],view="needed",expandedId=null;
+    function supplierName(value){try{return new URL(value).hostname.replace(/^www\./i,"")}catch{return value||"Unknown supplier"}}
+    function lockedMessage(data){
+        if(!data?.billing_required&&!data?.upgrade_required)return false;
+        $("appContent").classList.add("hidden");$("summary").classList.add("hidden");
+        $("locked").classList.remove("hidden");
+        $("locked").innerHTML='<h2>Reordering is a Pro feature</h2><p>'+esc(data.error||"Upgrade to Pro to create reorder rules and track low stock.")+'</p><a href="billing.html?plan=pro&source=reorder-feature">View Pro plan</a>';
+        return true;
+    }
+    async function loadRules(){
+        $("status").textContent="Loading…";
+        const data=await InventoryAPI.request("/reorder?_t="+Date.now());
+        if(lockedMessage(data))return;
+        if(!data.success){$("status").textContent=data.error||"Could not load reorder rules";return}
+        rules=data.rules||[];render();
+    }
+    function render(){
+        $("locked").classList.add("hidden");$("appContent").classList.remove("hidden");$("summary").classList.remove("hidden");
+        const pending=rules.filter(rule=>rule.needs_reorder);
+        $("summary").classList.toggle("good",pending.length===0);
+        $("summary").textContent=pending.length?pending.length+" item"+(pending.length===1?" needs":"s need")+" reordering":"Everything is above its reorder threshold.";
+        document.querySelectorAll("[data-view]").forEach(button=>button.classList.toggle("active",button.dataset.view===view));
+        const showing=view==="needed"?pending:rules;
+        if(!showing.length){$("rulesGrid").innerHTML='<div class="empty">'+(view==="needed"?'No items need reordering right now.':'No reorder rules yet. Create a rule to get started.')+'</div>';$("status").textContent=rules.length+" reorder rule"+(rules.length===1?"":"s")+" saved.";return}
+        $("rulesGrid").innerHTML=showing.map(rule=>{
+            const expanded=String(expandedId)===String(rule.id);
+            const details=expanded?'<div class="detail"><div><strong>Current stock:</strong> '+Number(rule.current_stock||0)+'</div><div><strong>Reorder when at or below:</strong> '+Number(rule.minimum_stock)+'</div><div><strong>Order up to:</strong> '+Number(rule.reorder_to)+'</div><div><strong>Phone:</strong> '+esc(rule.supplier_phone||"Unknown")+'</div><div><strong>Email:</strong> '+esc(rule.supplier_email||"Unknown")+'</div><div><strong>Inventory:</strong> '+esc(rule.inventory_name||"Current inventory")+'</div></div>':'';
+            const editor=expanded&&view==="all"?'<form class="inline-editor" data-edit-form="'+esc(rule.id)+'"><div class="editor-grid"><div><label>Item name</label><input name="item_name" required maxlength="200" value="'+esc(rule.item_name)+'"></div><div><label>Supplier website link</label><input name="website_url" type="url" required value="'+esc(rule.website_url)+'"></div><div><label>Supplier phone</label><input name="supplier_phone" type="tel" value="'+esc(rule.supplier_phone||"")+'" placeholder="Optional"></div><div><label>Supplier email</label><input name="supplier_email" type="email" value="'+esc(rule.supplier_email||"")+'" placeholder="Optional"></div><div><label>Minimum stock</label><input name="minimum_stock" type="number" min="0" step="1" required value="'+Number(rule.minimum_stock)+'"></div><div><label>Reorder up to</label><input name="reorder_to" type="number" min="1" step="1" required value="'+Number(rule.reorder_to)+'"></div></div><div class="editor-actions"><button type="submit">Save rule</button><button type="button" class="delete" data-delete-rule="'+esc(rule.id)+'">Delete rule</button></div></form>':'';
+            return '<article class="reorder-card '+(view==="all"?"adjust-card":"")+'"><div class="card-head"><button class="card-toggle" data-expand="'+esc(rule.id)+'" aria-expanded="'+expanded+'"><span class="item-name">'+esc(rule.item_name||"Unnamed item")+'</span><span class="qty-pill">'+(rule.needs_reorder?'Order '+Number(rule.quantity_to_order):'Stock '+Number(rule.current_stock))+'</span></button></div><a class="supplier-link" href="'+esc(rule.website_url)+'" target="_blank" rel="noopener noreferrer">'+esc(supplierName(rule.website_url))+' ↗</a>'+details+editor+'</article>';
+        }).join("");
+        $("rulesGrid").querySelectorAll("[data-expand]").forEach(button=>button.onclick=()=>{expandedId=String(expandedId)===button.dataset.expand?null:button.dataset.expand;render()});
+        $("rulesGrid").querySelectorAll("[data-edit-form]").forEach(form=>form.onsubmit=event=>saveRule(event,form));
+        $("rulesGrid").querySelectorAll("[data-delete-rule]").forEach(button=>button.onclick=()=>deleteRule(button.dataset.deleteRule));
+        $("status").textContent=showing.length+" item"+(showing.length===1?"":"s")+" shown.";
+    }
+    async function saveRule(event,form){
+        event.preventDefault();const id=form.dataset.editForm,formData=new FormData(form),body=Object.fromEntries(formData.entries());
+        body.minimum_stock=Number(body.minimum_stock);body.reorder_to=Number(body.reorder_to);
+        $("status").textContent="Saving rule…";
+        const data=await InventoryAPI.request("/reorder/"+encodeURIComponent(id),{method:"PUT",body:JSON.stringify(body)});
+        if(!data.success){$("status").textContent=data.error||"Could not save rule";return}
+        expandedId=null;$("status").textContent="Reorder rule updated.";await loadRules();
+    }
+    async function deleteRule(id){
+        if(!confirm("Delete this reorder rule? The product and its stock will remain in your inventory."))return;
+        const data=await InventoryAPI.request("/reorder/"+encodeURIComponent(id),{method:"DELETE"});
+        if(!data.success){$("status").textContent=data.error||"Could not delete rule";return}
+        expandedId=null;$("status").textContent="Reorder rule deleted.";await loadRules();
+    }
+    $("createRuleBtn").onclick=()=>location.href="reorder-rule.html";
+    $("adjustRulesBtn").onclick=()=>{view=view==="all"?"needed":"all";expandedId=null;render()};
+    $("refreshBtn").onclick=loadRules;
+    document.querySelectorAll("[data-view]").forEach(button=>button.onclick=()=>{view=button.dataset.view;expandedId=null;render()});
+    window.addEventListener("inventoryos-shell-ready",loadRules,{once:true});
+})();
+</script>
+<script src="js/appShell.js?v=6"></script>
+</body>
+</html>
