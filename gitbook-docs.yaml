@@ -8,5 +8,5 @@ site:
       path: guide
       default: true
       content:
-        directory: ./docs
+        directory: null
         language: en
