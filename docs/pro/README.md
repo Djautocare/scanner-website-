@@ -1,6 +1,6 @@
 # Pro: advanced workflows
 
-Pro includes Starter, removes the active-stock item limit, and adds multiple inventories, Gmail shipping-label import, direct QZ Tray printing, custom workspace location wording, and reorder rules.
+Pro includes Starter, removes the active-stock item limit, and adds multiple inventories, automatic shipping-label email import, direct QZ Tray printing, custom workspace location wording, and reorder rules.
 
 ## Keep inventories separate
 
@@ -12,9 +12,11 @@ Open **Settings → Open Workspace Settings → Location Wording**. Choose the p
 
 <figure><img src="../.gitbook/assets/workspace-settings.jpg" alt=""><figcaption></figcaption></figure>
 
-## Connect Gmail for shipping labels
+## Email shipping labels to your workspace
 
-In **Dispatch Centre → Email Label Import**, connect the Gmail account, scan relevant messages, review the selected attachments, then import the shipping labels to the packing queue. This connection is optional; the manual PDF upload remains available.
+In **Settings** or **Dispatch Centre → Email Shipping Labels to InventoryOS**, create and copy your workspace address. Forward a shipping-label email with PDF, PNG or JPEG attachments. InventoryOS crops the labels and adds them to the Packing Queue for review. Everyone in your workspace can use the same address. Manual upload remains available.
+
+Use a shipping-label filter in your email provider for automatic forwarding. Duplicate attachments are skipped. A downgrade locks import without deleting the address; upgrading reactivates it. **Regenerate address** disables the old address, so update forwarding rules. Imports never automatically print or remove stock.
 
 ## Print directly from the PC
 

@@ -1,6 +1,6 @@
 # Packing and shipping labels
 
-**Find it:** left menu → **Dispatch Centre**. Starter can upload shipping-label PDFs manually. Gmail scanning and import are Pro features.
+**Find it:** left menu → **Dispatch Centre**. Starter can upload shipping-label PDFs manually. Automatic shipping-label email import is available with Pro and Business.
 
 ## Add a label to the queue
 
