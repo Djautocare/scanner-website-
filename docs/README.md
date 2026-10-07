@@ -10,7 +10,7 @@ InventoryOS helps you track what you own, where it is, what sold, and what to do
 | --- | --- |
 | **Free** | Dashboard, locations, add/search/move/remove stock, basic stale-stock checks. Up to 100 active stock items. |
 | **Starter** | Receipts and expenses, full sales history, corrections/refunds, barcode labels, saved print jobs, and Dispatch Centre. Up to 1,000 active items. |
-| **Pro** | Unlimited items, multiple inventories, custom location wording, Gmail label import, direct QZ Tray printing, and reorder rules. |
+| **Pro** | Unlimited items, multiple inventories, custom location wording, Automatic shipping-label email import, direct QZ Tray printing, and reorder rules. |
 | **Business** | Shared workspaces, team members, and roles. |
 
 The optional reorder reminder email add-on is separate from the Pro plan. Plan details and feature access can change; check **Settings → Manage billing** for the account's current plan.
