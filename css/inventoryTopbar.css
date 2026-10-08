@@ -212,3 +212,164 @@
         width:100%;
     }
 }
+
+.inventory-topbar-scroll-hint{
+    display:none;
+}
+
+/* On phones and tablets, only the controls row scrolls sideways. */
+@media(max-width:900px){
+    .dashboard-app .dashboard-top,
+    .ios-shell-app .ios-shell-header{
+        display:grid;
+        grid-template-columns:42px minmax(0,1fr) 42px;
+        gap:10px;
+    }
+
+    .dashboard-top .mobile-menu-button,
+    .ios-shell-header .ios-shell-mobile-menu{
+        grid-column:1;
+        grid-row:1;
+    }
+
+    .dashboard-top .dashboard-heading,
+    .ios-shell-header .ios-shell-heading{
+        grid-column:2;
+        grid-row:1;
+        min-width:0;
+    }
+
+    .dashboard-top .dashboard-heading h1,
+    .ios-shell-header .ios-shell-heading h1{
+        font-size:20px !important;
+        overflow-wrap:anywhere;
+    }
+
+    .dashboard-top .dashboard-avatar,
+    .ios-shell-header .ios-shell-header-avatar{
+        grid-column:3;
+        grid-row:1;
+        margin:0;
+    }
+
+    .dashboard-top .dashboard-toolbar,
+    .ios-shell-header .ios-shell-header-tools{
+        grid-column:1 / -1;
+        grid-row:2;
+        width:100%;
+        max-width:100%;
+        min-width:0;
+    }
+
+    .ios-shell-header .ios-shell-topbar-host{
+        width:100%;
+        max-width:100%;
+        min-width:0;
+    }
+
+    #inventory-topbar,
+    #inventory-topbar .inventory-topbar{
+        width:100%;
+        max-width:100%;
+        min-width:0;
+    }
+
+    #inventory-topbar .inventory-topbar{
+        display:block;
+    }
+
+    #inventory-topbar .inventory-topbar-right{
+        display:flex;
+        align-items:center;
+        justify-content:flex-start;
+        flex-wrap:nowrap;
+        gap:8px;
+        width:100%;
+        min-width:0;
+        max-width:100%;
+        padding:4px 2px 8px;
+        overflow-x:auto;
+        overflow-y:hidden;
+        overscroll-behavior-x:contain;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:thin;
+        scrollbar-color:rgba(var(--accent-rgb),0.4) transparent;
+    }
+
+    #inventory-topbar .inventory-topbar-right:focus-visible{
+        outline:2px solid var(--accent);
+        outline-offset:2px;
+    }
+
+    #inventory-topbar .inventory-switcher{
+        flex:0 0 170px;
+        min-width:0;
+        max-width:170px;
+    }
+
+    #inventory-topbar .inventory-switcher-btn{
+        width:100% !important;
+        max-width:none;
+        min-width:0;
+        min-height:42px;
+        justify-content:flex-start;
+    }
+
+    #inventory-topbar .inventory-switcher-btn > span:not(.box):not(.chev){
+        flex:1;
+        min-width:0;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+    }
+
+    #inventory-topbar .inventory-switcher-btn .box,
+    #inventory-topbar .inventory-switcher-btn .chev{
+        flex:0 0 auto;
+    }
+
+    #inventory-topbar .inventory-plan-pill{
+        flex:0 0 auto;
+        width:auto !important;
+        min-width:108px;
+        min-height:42px;
+        max-width:150px;
+    }
+
+    #inventory-topbar .topbar-settings{
+        flex:0 0 42px;
+        width:42px !important;
+        min-width:42px;
+        min-height:42px;
+    }
+
+    /* Fixed menus escape the scrolling row and stay inside the phone screen. */
+    #inventory-topbar .inventory-switcher-menu{
+        position:fixed !important;
+        top:var(--topbar-menu-top,135px) !important;
+        left:12px !important;
+        right:12px !important;
+        width:auto !important;
+        max-width:none;
+        max-height:var(--topbar-menu-height,60vh);
+        overflow-y:auto;
+        overscroll-behavior:contain;
+        box-sizing:border-box;
+    }
+
+    #inventory-topbar .inventory-menu-row > div{
+        min-width:0;
+    }
+
+    #inventory-topbar .inv-name{
+        overflow-wrap:anywhere;
+    }
+
+    #inventory-topbar .inventory-topbar-scroll-hint{
+        display:block;
+        margin:3px 2px 0;
+        color:var(--muted,#a8adb5);
+        font-size:10px;
+        line-height:1.4;
+    }
+}
