@@ -6,6 +6,7 @@ const InventoryTopbar = (function(){
         "inventoryos_selected_workspace_id";
 
     let apiPatched = false;
+    let controlsEvents;
 
     function hasInventoryAPI(){
         return (
@@ -599,6 +600,10 @@ const InventoryTopbar = (function(){
             state.groups[0] ||
             null;
 
+        controlsEvents?.abort();
+        controlsEvents = new AbortController();
+        const controlsSignal = controlsEvents.signal;
+
         container.innerHTML = `
             <div class="inventory-topbar">
                 <div class="inventory-topbar-left">
@@ -627,7 +632,7 @@ const InventoryTopbar = (function(){
                     </div>
                 </div>
 
-                <div class="inventory-topbar-right">
+                <div class="inventory-topbar-right" role="region" aria-label="Workspace, inventory and subscription controls" tabindex="0">
                     <div
                         class="inventory-switcher"
                         id="workspaceSwitcher"
@@ -636,6 +641,8 @@ const InventoryTopbar = (function(){
                             class="inventory-switcher-btn"
                             type="button"
                             id="workspaceSwitcherBtn"
+                            aria-expanded="false"
+                            aria-controls="workspaceSwitcherMenu"
                         >
                             <span class="box">🏢</span>
 
@@ -680,6 +687,8 @@ const InventoryTopbar = (function(){
                             class="inventory-switcher-btn"
                             type="button"
                             id="inventorySwitcherBtn"
+                            aria-expanded="false"
+                            aria-controls="inventorySwitcherMenu"
                         >
                             <span class="box">📦</span>
 
@@ -733,11 +742,13 @@ const InventoryTopbar = (function(){
                     <button
                         class="topbar-settings"
                         type="button"
+                        aria-label="Settings"
                         onclick="window.location.href='settings.html'"
                     >
                         ⚙
                     </button>
                 </div>
+                <p class="inventory-topbar-scroll-hint">Swipe sideways for inventory, plan and settings</p>
             </div>
         `;
 
@@ -796,13 +807,29 @@ const InventoryTopbar = (function(){
                 workspaceSwitcher
                     .classList
                     .remove("open");
+                workspaceBtn.setAttribute("aria-expanded", "false");
             }
 
             if(except !== "inventory"){
                 inventorySwitcher
                     .classList
                     .remove("open");
+                inventoryBtn.setAttribute("aria-expanded", "false");
             }
+        }
+
+        function positionMenu(switcher){
+            const menu = switcher.querySelector(".inventory-switcher-menu");
+            if(!window.matchMedia("(max-width:900px)").matches){
+                menu.style.removeProperty("--topbar-menu-top");
+                menu.style.removeProperty("--topbar-menu-height");
+                return;
+            }
+            const bottom = switcher.getBoundingClientRect().bottom;
+            const height = window.visualViewport?.height || window.innerHeight;
+            const top = Math.max(12, Math.min(bottom + 8, Math.max(12, height - 160)));
+            menu.style.setProperty("--topbar-menu-top", top + "px");
+            menu.style.setProperty("--topbar-menu-height", Math.max(0, height - top - 12) + "px");
         }
 
         function updateInventoryLabel(){
@@ -1106,6 +1133,8 @@ const InventoryTopbar = (function(){
                     workspaceSwitcher
                         .classList
                         .add("open");
+                    workspaceBtn.setAttribute("aria-expanded", "true");
+                    positionMenu(workspaceSwitcher);
                 }
             }
         );
@@ -1126,6 +1155,8 @@ const InventoryTopbar = (function(){
                     inventorySwitcher
                         .classList
                         .add("open");
+                    inventoryBtn.setAttribute("aria-expanded", "true");
+                    positionMenu(inventorySwitcher);
                 }
             }
         );
@@ -1167,8 +1198,20 @@ const InventoryTopbar = (function(){
                 ){
                     closeMenus();
                 }
-            }
+            },
+            {signal:controlsSignal}
         );
+
+        container.querySelector(".inventory-topbar-right").addEventListener("scroll", () => closeMenus(), {passive:true, signal:controlsSignal});
+        window.addEventListener("scroll", () => closeMenus(), {passive:true, signal:controlsSignal});
+        window.addEventListener("resize", () => {
+            [workspaceSwitcher, inventorySwitcher].forEach(switcher => {
+                if(switcher.classList.contains("open")) positionMenu(switcher);
+            });
+        }, {signal:controlsSignal});
+        document.addEventListener("keydown", event => {
+            if(event.key === "Escape") closeMenus();
+        }, {signal:controlsSignal});
 
         renderWorkspaceList();
         renderInventoryList();
