@@ -2,7 +2,7 @@
     "use strict";
     const root=document.querySelector("[data-inbound-labels]");
     if(!root)return;
-    let data=null, requestId=0, pending=false, seenImports="", poll, statusBusy=false;
+    let data=null, requestId=0, pending=false, seenImports="", poll, statusBusy=false, renderedProgressKey="";
     const escape=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     const labels={queued:"Waiting to import",processing:"Processing labels",retry:"Retrying automatically",locked:"Import blocked",failed:"Import failed",no_labels:"No label attachments",setup_received:"Forwarding confirmation received",completed:"Imported",completed_with_skips:"Completed with skipped files"};
     const workspace=()=>localStorage.getItem("inventoryos_selected_workspace_id")||"";
@@ -11,10 +11,40 @@
         if(!data.recent?.length)return '<p class="inbound-empty">No emails received yet. Send a test or forward a shipping-label email to get started.</p>';
         return '<ul class="inbound-activity">'+data.recent.map(event=>'<li><div><strong>'+(event.replay_of?'Reimport · ':'')+escape(event.subject)+'</strong><small>'+escape(labels[event.status]||event.status)+(event.imported_count?' · '+Number(event.imported_count)+' labels':'')+(event.duplicate_count?' · '+Number(event.duplicate_count)+' duplicates skipped':'')+(event.skipped_count?' · '+Number(event.skipped_count)+' unsupported files skipped':'')+(event.error_code==='PLAN_LOCKED'?' · Pro or Business required':event.error_code==='ADDRESS_REGENERATED'?' · Sent to an old address':'')+'</small>'+(event.setup_text?'<details><summary>Forwarding confirmation (owner/admin only)</summary><p>Use the code or Google URL below to confirm forwarding in your email provider. This message expires here after seven days.</p><pre class="inbound-setup-text">'+escape(event.setup_text)+'</pre></details>':'')+'</div><time>'+escape(new Date(event.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))+'</time></li>').join('')+'</ul>';
     }
+    const dismissedProgress=new Map();
+    function progressDismissals(){
+        const key=workspace();
+        if(!dismissedProgress.has(key)){
+            let stored={};
+            try{stored=JSON.parse(localStorage.getItem('inventoryos_dismissed_import_progress:'+key)||'{}');}catch{}
+            if(!stored||typeof stored!=='object'||Array.isArray(stored))stored={};
+            dismissedProgress.set(key,stored);
+        }
+        const stored=dismissedProgress.get(key);
+        for(const id of Object.keys(stored))if(Number(stored[id])<=Date.now())delete stored[id];
+        return stored;
+    }
+    function visibleProgress(){
+        const dismissed=progressDismissals();
+        return (data?.progress||[]).filter(job=>Number(job.finished)<Number(job.total)
+            || (!dismissed[job.id] && Date.parse(job.finished_at)>Date.now()-5*60*1000));
+    }
+    function progressKey(){return visibleProgress().map(job=>job.id).join(',');}
+    function clearFinishedProgress(){
+        const dismissed=progressDismissals();
+        visibleProgress().forEach(job=>{
+            if(Number(job.finished)>=Number(job.total))dismissed[job.id]=Date.parse(job.finished_at)+5*60*1000;
+        });
+        try{localStorage.setItem('inventoryos_dismissed_import_progress:'+workspace(),JSON.stringify(dismissed));}catch{}
+        render();
+        message('Finished progress cleared. Import history is still available in Recent email activity.');
+    }
     function progressPanel(){
-        if(!data.progress?.length)return '';
-        return '<section class="inbound-progress-panel" aria-label="Email import progress"><h3>Label import progress</h3>'+
-            data.progress.map(job=>{
+        const jobs=visibleProgress();
+        if(!jobs.length)return '';
+        const hasFinished=jobs.some(job=>Number(job.finished)>=Number(job.total));
+        return '<section class="inbound-progress-panel" aria-label="Email import progress"><div class="inbound-heading"><h3>Label import progress</h3><button type="button" data-inbound-action="clear-progress" '+(!hasFinished?'disabled':'')+'>Clear now</button></div>'+
+            jobs.map(job=>{
                 const total=Number(job.total),finished=Number(job.finished);
                 const active=finished<total;
                 const title=job.is_reimport?'Reimporting previous emails':job.subject||'Incoming shipping-label email';
@@ -36,9 +66,10 @@
                     (job.retrying?'<small>A temporary issue is being retried. You do not need to send the email again.</small>':'')+
                     (!active&&(job.failed||job.skipped)?'<small>Open Recent email activity below for the individual results.</small>':'')+
                     '</article>';
-            }).join('')+'<p class="inbound-note">Updates every five seconds. Finished results stay here for 30 minutes. Labels are not automatically printed.</p></section>';
+            }).join('')+'<p class="inbound-note">Updates every five seconds. Finished results stay here for five minutes. Clear now hides finished results only. Labels are not automatically printed.</p></section>';
     }
     function render(){
+        renderedProgressKey=progressKey();
         const openDetails=new Set(Array.from(root.querySelectorAll('details[open]'),el=>el.querySelector('summary')?.textContent));
         const replayCount=root.querySelector('#inboundReplayCount')?.value;
         const focusedId=root.contains(document.activeElement)?document.activeElement.id:null;
@@ -66,7 +97,7 @@
             if(id!==requestId||current!==workspace())return;
             if(!result.success)throw new Error(result.error||'Install the inbound email backend update first.');
             const previous=JSON.stringify(data);data=result;
-            if(previous!==JSON.stringify(data))render();
+            if(previous!==JSON.stringify(data)||renderedProgressKey!==progressKey())render();
             const imports=data.recent.filter(e=>Number(e.imported_count)>0).map(e=>e.id+':'+e.imported_count).join(',')+'|'+(data.progress||[]).map(e=>e.id+':'+e.imported).join(',');
             if(imports!==seenImports){seenImports=imports;window.dispatchEvent(new CustomEvent('inbound-labels-updated'));}
             if(!quiet)message('Email activity is up to date.');
@@ -78,6 +109,7 @@
     root.addEventListener('click',async event=>{
         const button=event.target.closest('[data-inbound-action]');if(!button||pending)return;
         const action=button.dataset.inboundAction;
+        if(action==='clear-progress'){clearFinishedProgress();return;}
         if(action==='refresh'){await load();return;}
         if(action==='copy'){
             try{await navigator.clipboard.writeText(data.address);message('Address copied. Paste it into your email provider.');}
@@ -103,9 +135,10 @@
     });
     window.addEventListener('inventory-selection-changed',()=>{data=null;seenImports='';root.innerHTML='<p>Loading workspace shipping-label email…</p>';void load(true);});
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)void load(true);});
-    poll=setInterval(()=>{if(!document.hidden&&!pending)void load(true);},5000);
+    poll=setInterval(()=>{if(!document.hidden&&!pending){if(data&&renderedProgressKey!==progressKey())render();void load(true);}},5000);
     window.addEventListener('pagehide',()=>clearInterval(poll),{once:true});
     void load(true);
 })();
+
 
 
