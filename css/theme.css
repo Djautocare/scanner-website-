@@ -1,5 +1,21 @@
 /* InventoryOS shared theme engine */
 
+/* Keep the page in the viewport, including mobile browser edge scrolling.
+   Wide tables can still scroll inside their own wrappers. Scope this to
+   screens so printing keeps its existing page layout. */
+@media screen{
+    html{
+        overflow-x:hidden;
+        overscroll-behavior-x:none;
+    }
+
+    @supports(overflow-x:clip){
+        html{
+            overflow-x:clip;
+        }
+    }
+}
+
 :root{
     --theme-name: "green";
 
