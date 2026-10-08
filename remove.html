@@ -290,6 +290,8 @@ button{
 .bundle-plan-group h4{margin:0 0 8px;color:#91caff;font-size:16px;}
 .bundle-plan-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;padding:10px 0;border-top:1px solid rgba(255,255,255,.08);}
 .bundle-plan-line span{overflow-wrap:anywhere;}
+.bundle-plan-line label{grid-column:1 / -1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;}
+.bundle-plan-line select{min-width:0;max-width:100%;width:auto;flex:1;}
 .bundle-plan-line small{grid-column:1 / -1;color:#a9b6c5;}
 button:disabled,.bundle-qty:disabled{opacity:.55;cursor:wait;}
 
@@ -1137,6 +1139,51 @@ async function refreshBundleStock(snapshot, inventory){
     return refreshed;
 }
 
+// Keep shared pickups from the original consolidation fixed. Standalone
+// products can move as a whole only to a location holding their full demand.
+function initialiseSourceChoices(plan){
+    plan.consolidatedGroups=JSON.parse(JSON.stringify(plan.groups));
+    plan.sourceChoices={};
+    plan.fixedItems=Array.from(new Set(plan.groups.filter(function(g){
+        return new Set(g.items.map(function(l){return l.index;})).size>1;
+    }).flatMap(function(g){return g.items.map(function(l){return l.index;});})));
+}
+
+function sourceAlternatives(plan,index){
+    if(plan.fixedItems.includes(index)) return [];
+    const item=bundleItems[index];
+    return activeLocations(item).filter(function(stock){return stock.qty>=item.qty;});
+}
+
+function changePickingSource(index,location){
+    if(bundleBusy || !pickingPlan || pickingPlanSignature!==currentBundleSignature()) return;
+    if(location && !sourceAlternatives(pickingPlan,index).some(function(s){return s.location===location;})) return;
+    pickingPlan.sourceChoices[index]=location;
+    const groups=new Map();
+    pickingPlan.consolidatedGroups.forEach(function(group){
+        group.items.forEach(function(line){
+            if(pickingPlan.sourceChoices[line.index]) return;
+            if(!groups.has(group.location)) groups.set(group.location,{location:group.location,items:[]});
+            groups.get(group.location).items.push({...line});
+        });
+    });
+    Object.keys(pickingPlan.sourceChoices).forEach(function(key){
+        const location=pickingPlan.sourceChoices[key];
+        if(!location) return;
+        const index=Number(key),item=bundleItems[index];
+        const stock=sourceAlternatives(pickingPlan,index).find(function(s){return s.location===location;});
+        if(!stock) throw new Error("Source stock changed. Consolidate again.");
+        if(!groups.has(location)) groups.set(location,{location:location,items:[]});
+        groups.get(location).items.push({index:index,barcode:item.barcode,description:item.description,
+            qty:item.qty,available:stock.qty,remaining:stock.qty-item.qty});
+    });
+    pickingPlan.groups=Array.from(groups.values()).sort(function(a,b){return a.location.localeCompare(b.location,undefined,{numeric:true});});
+    bundleMessage=Object.values(pickingPlan.sourceChoices).some(Boolean)
+        ? "Source choice updated. The displayed locations and quantities will be used for removal."
+        : "Consolidated route restored. Shared pickups remain together.";
+    renderPickingPlan();
+}
+
 function renderPickingPlan(){
     const box = document.getElementById("bundlePlan");
     if(!box) return;
@@ -1149,6 +1196,7 @@ function renderPickingPlan(){
     const heading = document.createElement("h3");
     heading.textContent = "Pick from " + pickingPlan.groups.length + " location" + (pickingPlan.groups.length===1 ? "" : "s");
     box.appendChild(heading);
+    const shownChoices=new Set();
     pickingPlan.groups.forEach(function(group){
         const section = document.createElement("section");
         section.className = "bundle-plan-group";
@@ -1165,6 +1213,34 @@ function renderPickingPlan(){
             const after = document.createElement("small");
             after.textContent = line.remaining===0 ? "Empties this item from this location" : line.remaining + " of this item left here";
             row.append(name,qty,after);
+            if(pickingPlan.fixedItems.includes(line.index)){
+                const fixed=document.createElement("small");
+                fixed.textContent="Shared pickup — kept together for efficiency";
+                row.appendChild(fixed);
+            }else if(!shownChoices.has(line.index)){
+                shownChoices.add(line.index);
+                const alternatives=sourceAlternatives(pickingPlan,line.index);
+                const original=pickingPlan.consolidatedGroups.filter(function(g){return g.items.some(function(l){return l.index===line.index;});});
+                if(alternatives.some(function(a){return original.length>1 || a.location!==original[0].location;})){
+                    const label=document.createElement("label");
+                    label.textContent="Pick this item from ";
+                    const select=document.createElement("select");
+                    select.setAttribute("aria-label","Source location for "+line.description);
+                    const base=document.createElement("option");base.value="";
+                    base.textContent="Consolidated: "+original.map(function(g){return locationDisplayName(g.location);}).join(", ");
+                    select.appendChild(base);
+                    alternatives.forEach(function(stock){
+                        if(original.length===1 && stock.location===original[0].location) return;
+                        const option=document.createElement("option");option.value=stock.location;
+                        option.textContent=locationDisplayName(stock.location)+" ("+stock.qty+" available)";
+                        select.appendChild(option);
+                    });
+                    select.value=pickingPlan.sourceChoices[line.index]||"";
+                    select.disabled=bundleBusy;
+                    select.addEventListener("change",function(){changePickingSource(line.index,select.value);});
+                    label.appendChild(select);row.appendChild(label);
+                }
+            }
             section.appendChild(row);
         });
         box.appendChild(section);
@@ -1200,6 +1276,7 @@ async function showEfficientPickingPlan(){
         if(signature !== currentBundleSignature()) throw new Error("The bundle changed. Consolidate again.");
         bundleItems = refreshed;
         const plan = calculatePickingPlan(refreshed);
+        initialiseSourceChoices(plan);
         pickingPlan = plan;
         pickingPlanSignature = currentBundleSignature();
         bundleMessage = plan.exact
@@ -1818,3 +1895,4 @@ window.addEventListener("load", function(){
 <script src="js/appShell.js?v=5"></script>
 </body>
 </html>
+
