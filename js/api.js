@@ -28,8 +28,9 @@ const InventoryAPI=(function(){function detectApiBase(){const saved=localStorage
 (function(){
  function loadBusinessTrial(){
   if(!InventoryAPI.isLoggedIn()||window.InventoryBusinessTrial||document.getElementById('inventoryos-business-trial-script'))return;
-  const script=document.createElement('script');script.id='inventoryos-business-trial-script';script.src='js/businessTrial.js?v=2';script.async=true;document.head.append(script);
+  const script=document.createElement('script');script.id='inventoryos-business-trial-script';script.src='js/businessTrial.js?v=3';script.async=true;document.head.append(script);
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadBusinessTrial,{once:true});else loadBusinessTrial();
 })();
+
 
