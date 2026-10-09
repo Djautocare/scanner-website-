@@ -23,3 +23,12 @@ const InventoryAPI=(function(){function detectApiBase(){const saved=localStorage
  function load(){if(!InventoryAPI.isLoggedIn()||window.InventoryManufacturing)return;const s=document.createElement('script');s.src='js/manufacturingShared.js?v=1';s.async=true;document.head.append(s);}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
 })();
+
+
+(function(){
+ function loadBusinessTrial(){
+  if(!InventoryAPI.isLoggedIn()||window.InventoryBusinessTrial||document.getElementById('inventoryos-business-trial-script'))return;
+  const script=document.createElement('script');script.id='inventoryos-business-trial-script';script.src='js/businessTrial.js?v=1';script.async=true;document.head.append(script);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadBusinessTrial,{once:true});else loadBusinessTrial();
+})();

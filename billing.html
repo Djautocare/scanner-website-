@@ -203,7 +203,7 @@ button:disabled{opacity:0.55;cursor:not-allowed;}
 </style>
 
 <link rel="stylesheet" href="css/theme.css">
-</head>
+<link rel="stylesheet" href="css/businessTrial.css?v=1"></head>
 
 <body>
 <div class="page">
@@ -230,6 +230,7 @@ button:disabled{opacity:0.55;cursor:not-allowed;}
         <div class="badge" id="statusBadge">Checking...</div>
     </div>
 
+    <section id="businessTrialInfo" class="business-trial-info" hidden></section>
     <div class="grid" id="plansGrid"></div>
 
     <div id="message" class="message">Ready.</div>
@@ -240,6 +241,7 @@ button:disabled{opacity:0.55;cursor:not-allowed;}
     </div>
 </div>
 
+<script src="js/businessTrial.js?v=1"></script>
 <script src="js/theme.js"></script>
 <script src="js/api.js?v=manufacturing-1"></script>
 <script>
@@ -248,6 +250,11 @@ if(!InventoryAPI.requireLogin()){
 }
 
 let currentStatus = null;
+
+function billingRequest(path,options={}){
+    const workspace = localStorage.getItem("inventoryos_selected_workspace_id");
+    return InventoryAPI.request(path,{...options,headers:{...(options.headers || {}),...(workspace ? {"X-Workspace-Id":workspace} : {})}});
+}
 
 function money(value){
     return Number(value || 0).toFixed(2).replace(".00","");
@@ -298,6 +305,7 @@ function planDescription(key){
 }
 
 function buttonLabel(plan){
+    if(plan.key === "business" && currentStatus?.billing?.is_business_trial) return "Subscribe to Business";
     if(
         currentStatus &&
         currentStatus.billing &&
@@ -324,7 +332,7 @@ function renderStatus(data){
 
     let line = "Current workspace: " + ((data.workspace && data.workspace.name) || "Workspace") + ".";
 
-    if(billing.trial_ends_at && billing.billing_status === "trialing"){
+    if(!billing.is_business_trial && billing.trial_ends_at && billing.billing_status === "trialing"){
         line += " Trial ends: " + new Date(billing.trial_ends_at).toLocaleString() + ".";
     }
 
@@ -347,6 +355,7 @@ function renderStatus(data){
 
     text.innerText = line;
     updateDashboardButtons();
+    InventoryBusinessTrial.billing(data,loadBilling);
 }
 
 function renderPlans(plans){
@@ -371,6 +380,7 @@ function renderPlans(plans){
             <button class="${plan.key === "pro" ? "primary" : "secondary"}" data-plan="${plan.key}">
                 ${buttonLabel(plan)}
             </button>
+            ${plan.key === "business" ? InventoryBusinessTrial.requestMarkup(currentStatus) : ""}
         `;
 
         const button = card.querySelector("button");
@@ -379,7 +389,8 @@ function renderPlans(plans){
             currentStatus &&
             currentStatus.billing &&
             currentStatus.billing.plan_selected &&
-            currentStatus.billing.plan_key === plan.key
+            currentStatus.billing.plan_key === plan.key &&
+            !(plan.key === "business" && currentStatus.billing.is_business_trial)
         ){
             button.disabled = true;
         }
@@ -393,7 +404,7 @@ async function loadBilling(){
     setMessage("Loading billing status...");
 
     try{
-        const data = await InventoryAPI.request("/billing/status");
+        const data = await billingRequest("/billing/status");
 
         if(!data.success){
             setMessage(data.error || "Could not load billing status.");
@@ -429,7 +440,7 @@ async function choosePlan(plan){
     setMessage("Starting " + plan + " plan...");
 
     try{
-        const data = await InventoryAPI.request("/billing/create-checkout-session",{
+        const data = await billingRequest("/billing/create-checkout-session",{
             method:"POST",
             body:JSON.stringify({plan})
         });
@@ -462,7 +473,7 @@ async function openPortal(){
     setMessage("Opening billing portal...");
 
     try{
-        const data = await InventoryAPI.request("/billing/create-portal-session",{
+        const data = await billingRequest("/billing/create-portal-session",{
             method:"POST",
             body:JSON.stringify({})
         });
