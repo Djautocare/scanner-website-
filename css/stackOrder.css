@@ -1,12 +1,16 @@
 .stack-order-tools{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:18px 0}
 .stack-order-tools label{display:grid;gap:7px;flex:1;min-width:180px;font-size:13px}
 .stack-order-tools input{max-width:160px}
-.stack-order-tools button{width:auto;margin:0}
+.stack-order-tools button{appearance:none;width:auto;margin:0;padding:10px 14px;border:1px solid var(--accent,#45d36a);border-radius:10px;background:var(--accent,#45d36a);color:#111318;font:inherit;font-size:13px;font-weight:700;line-height:1.4;cursor:pointer;transition:filter .15s,box-shadow .15s}
+.stack-order-tools button:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 4px 14px rgba(var(--accent-rgb,69,211,106),.2)}
+.stack-order-tools button:disabled,.stack-order-head button:disabled{opacity:.55;cursor:not-allowed;filter:none;box-shadow:none}
+.stack-order-tools button:focus-visible,.stack-order-head button:focus-visible{outline:2px solid var(--accent,#45d36a);outline-offset:3px}
 .stack-order-card{padding:18px;border:1px solid var(--border,rgba(255,255,255,.12));border-radius:14px;margin:14px 0;background:var(--panel,#17171f)}
 .stack-order-head{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px}
 .stack-order-head label{display:grid;gap:6px;flex:1;min-width:130px;font-size:13px}
 .stack-order-head input{width:100%;margin:0;box-sizing:border-box}
-.stack-order-head button{width:auto;margin:0;background:transparent;border:1px solid var(--border,rgba(255,255,255,.2))}
+.stack-order-head button{appearance:none;width:auto;margin:0;padding:10px 14px;border-radius:10px;background:rgba(var(--accent-rgb,69,211,106),.12);color:var(--text,#fff);border:1px solid var(--accent,#45d36a);font:inherit;font-size:13px;font-weight:700;line-height:1.4;cursor:pointer}
+.stack-order-head button:hover:not(:disabled){background:rgba(var(--accent-rgb,69,211,106),.2)}
 .stack-order-positions{display:grid;gap:10px}
 .stack-order-position{display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,2fr);gap:12px;align-items:center;padding:10px;border-left:3px solid var(--accent,#45d36a);background:rgba(var(--accent-rgb,69,211,106),.06);border-radius:8px;font-size:13px}
 .stack-order-position select{width:100%;margin:0;box-sizing:border-box}
