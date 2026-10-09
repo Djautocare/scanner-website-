@@ -293,6 +293,25 @@ button{
 .bundle-plan-line label{grid-column:1 / -1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;}
 .bundle-plan-line select{min-width:0;max-width:100%;width:auto;flex:1;}
 .bundle-plan-line small{grid-column:1 / -1;color:#a9b6c5;}
+.bundle-plan-line.bundle-source-choice{width:100%;margin:8px 0 0;padding:12px;text-align:left;font-weight:normal;line-height:1.5;border:1px solid rgba(255,193,7,.6) !important;background:rgba(255,193,7,.10);color:#ffe28a;}
+.bundle-plan-line.bundle-source-choice small{color:#ead8a0;}
+.bundle-plan-line.bundle-source-choice:hover{background:rgba(255,193,7,.17);}
+.bundle-plan-line.bundle-source-choice:focus-visible{outline:3px solid #ffc107;outline-offset:3px;}
+.bundle-plan-line.bundle-source-locked{border-color:rgba(var(--accent-rgb,181,108,255),.65) !important;background:rgba(var(--accent-rgb,181,108,255),.10);color:var(--text,#fff);}
+.bundle-plan-line.bundle-source-locked small{color:var(--muted,#b8b3c4);}
+.bundle-source-locks{display:grid;gap:8px;margin:12px 0;}
+.bundle-source-lock{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 12px;border:1px solid rgba(var(--accent-rgb,181,108,255),.35);border-radius:10px;font-size:13px;text-align:left;}
+.bundle-source-lock button{width:auto;margin:0;padding:8px 11px;background:transparent;border:1px solid rgba(var(--accent-rgb,181,108,255),.45);font-size:12px;}
+.picking-source-dialog{position:fixed;inset:0;width:min(520px,calc(100vw - 28px));max-height:calc(100dvh - 40px);padding:22px;margin:auto;border:1px solid rgba(255,193,7,.5);border-radius:18px;background:var(--panel,#17171f);color:var(--text,#fff);overflow:auto;box-sizing:border-box;text-align:left;z-index:100;}
+.picking-source-dialog::backdrop{background:rgba(0,0,0,.72);}
+.picking-source-dialog h2{font-size:22px;margin:0 0 10px;overflow-wrap:anywhere;}
+.picking-source-dialog p{font-size:14px;line-height:1.6;color:var(--muted,#b8b3c4);}
+.picking-source-options{display:grid;gap:9px;margin:16px 0;}
+.picking-source-options button{margin:0;text-align:left;border:1px solid rgba(var(--accent-rgb,181,108,255),.4);background:rgba(var(--accent-rgb,181,108,255),.09);color:var(--text,#fff);padding:13px;}
+.picking-source-options button strong,.picking-source-options button small{display:block;overflow-wrap:anywhere;}
+.picking-source-options button small{font-weight:normal;margin-top:5px;font-size:13px;line-height:1.5;color:var(--muted,#b8b3c4);}
+.picking-source-options button:focus-visible{outline:2px solid var(--accent,#b56cff);outline-offset:3px;}
+.picking-source-close{margin:0;background:transparent;border:1px solid var(--border,rgba(255,255,255,.2));}
 button:disabled,.bundle-qty:disabled{opacity:.55;cursor:wait;}
 
 .small-remove{
@@ -597,6 +616,13 @@ body.warehouse-mode #bundleBox{max-height:45vh;overflow:auto;}
     </div>
 </div>
 
+<dialog id="pickingSourceDialog" class="picking-source-dialog" aria-labelledby="pickingSourceTitle" aria-describedby="pickingSourceInfo">
+    <h2 id="pickingSourceTitle">Choose a picking location</h2>
+    <p id="pickingSourceInfo"></p>
+    <div id="pickingSourceOptions" class="picking-source-options"></div>
+    <button id="pickingSourceClose" class="picking-source-close" type="button">Keep current plan</button>
+</dialog>
+
 <script src="js/theme.js"></script>
 <script src="js/api.js?v=manufacturing-1"></script>
 <script src="js/inventoryTopbar.js?v=5"></script>
@@ -620,11 +646,15 @@ let bundleBusy = false;
 let bundleRetryBlocked = false;
 let bundleInventoryId = "";
 let bundleMessage = "Choose quantities, then consolidate to see where to pick.";
+// Store choices by product barcode so adding/removing another item cannot shift a lock.
+let pickingSourceLocks = Object.create(null);
+let pickingSourcePickerIndex = null;
+let pickingSourcePickerSignature = "";
 
 function focusBarcodeInput(){
     setTimeout(function(){
         const barcodeInput = document.getElementById("barcode");
-        if(barcodeInput){
+        if(barcodeInput && pickingSourcePickerIndex === null){
             barcodeInput.focus();
             barcodeInput.select();
         }
@@ -889,6 +919,7 @@ function addBundleItem(details){
 
 function removeBundleItem(index){
     if(bundleBusy || bundleRetryBlocked) return;
+    if(bundleItems[index]) delete pickingSourceLocks[bundleItems[index].barcode];
     bundleItems.splice(index, 1);
     invalidatePickingPlan();
     renderBundleList();
@@ -908,6 +939,7 @@ function changeBundleQuantity(index, quantity){
     }
     const available = activeLocations(item).reduce(function(sum, location){ return sum + location.qty; }, 0);
     item.qty = Math.min(value, available);
+    if(!item.qty) delete pickingSourceLocks[item.barcode];
     if(input) input.value = item.qty;
     invalidatePickingPlan(value > available ? "Quantity limited to available stock. Consolidate to confirm locations." : undefined);
     // Keep the input/button DOM stable while the user types or clicks Consolidate.
@@ -925,6 +957,7 @@ function clearBundleList(){
     selectedSuggestedItem = null;
     bundleRetryBlocked = false;
     bundleInventoryId = "";
+    pickingSourceLocks = Object.create(null);
     invalidatePickingPlan();
     document.getElementById("locationChoices").innerHTML = "";
     document.getElementById("result").innerText = "Bundle list cleared.";
@@ -993,7 +1026,7 @@ function hasSelectedInventoryForRemove(){
 
 // Pure planner: minimise locations, then maximise cleared product/location stocks.
 // For very large searches the UI explicitly labels a safe best-found plan.
-function calculatePickingPlan(items, nodeLimit = 100000){
+function calculatePickingPlan(items, nodeLimit = 100000, sourceChoices = {}){
     const names = new Map();
     const demand = items.map(function(item){
         if(!Number.isSafeInteger(item.qty) || item.qty < 0) throw new Error("Enter whole-number quantities.");
@@ -1006,6 +1039,7 @@ function calculatePickingPlan(items, nodeLimit = 100000){
             if(seen.has(stock.location)) throw new Error("Duplicate location stock for " + item.description + ". Check the inventory before removing.");
             seen.add(stock.location);
             if(!demand[index]) return;
+            if(sourceChoices[index] && stock.location !== sourceChoices[index]) return;
             if(!names.has(stock.location)) names.set(stock.location, {name:stock.location, caps:items.map(function(){ return 0; })});
             names.get(stock.location).caps[index] = stock.qty;
         });
@@ -1015,7 +1049,8 @@ function calculatePickingPlan(items, nodeLimit = 100000){
     if(!demand.some(function(q){ return q > 0; })) return {groups:[], exact:true, emptied:0};
     demand.forEach(function(q,i){
         const available = locations.reduce(function(sum,l){ return sum+l.caps[i]; },0);
-        if(q > available) throw new Error(items[i].description + ": requested " + q + ", only " + available + " available. Adjust the quantity.");
+        if(q > available) throw new Error(items[i].description + ": requested " + q + ", only " + available + " available"+
+            (sourceChoices[i] ? " at the locked location " + sourceChoices[i] + ". Unlock that location or adjust the quantity." : ". Adjust the quantity."));
     });
     function covers(chosen){
         return demand.every(function(q,i){ return chosen.reduce(function(sum,l){ return sum+l.caps[i]; },0) >= q; });
@@ -1100,13 +1135,15 @@ function calculatePickingPlan(items, nodeLimit = 100000){
 }
 
 function invalidatePickingPlan(message){
+    closePickingSourcePicker(false);
     pickingPlan = null;
     pickingPlanSignature = "";
     bundleMessage = message || "Quantities changed. Consolidate to see the locations before removing stock.";
 }
 
 function currentBundleSignature(){
-    return JSON.stringify([getSelectedInventoryHeaderForRemove(),bundleItems.map(function(item){return [item.barcode,item.qty];})]);
+    return JSON.stringify([getSelectedInventoryHeaderForRemove(),bundleItems.map(function(item){return [item.barcode,item.qty];}),
+        Object.keys(pickingSourceLocks).sort().map(function(barcode){return [barcode,pickingSourceLocks[barcode]];})]);
 }
 
 function locationDisplayName(name){
@@ -1139,49 +1176,103 @@ async function refreshBundleStock(snapshot, inventory){
     return refreshed;
 }
 
-// Keep shared pickups from the original consolidation fixed. Standalone
-// products can move as a whole only to a location holding their full demand.
-function initialiseSourceChoices(plan){
-    plan.consolidatedGroups=JSON.parse(JSON.stringify(plan.groups));
-    plan.sourceChoices={};
+// Preserve grouped pickups. A customer's existing lock can still be changed
+// or released even when the recalculated route groups another item with it.
+function initialiseSourceChoices(plan, locks = pickingSourceLocks){
+    plan.sourceChoices=Object.fromEntries(bundleItems.map(function(item,index){
+        return [index,locks[item.barcode] || ""];
+    }).filter(function(entry){return entry[1];}));
     plan.fixedItems=Array.from(new Set(plan.groups.filter(function(g){
         return new Set(g.items.map(function(l){return l.index;})).size>1;
     }).flatMap(function(g){return g.items.map(function(l){return l.index;});})));
 }
 
 function sourceAlternatives(plan,index){
-    if(plan.fixedItems.includes(index)) return [];
+    if(plan.fixedItems.includes(index) && !plan.sourceChoices[index]) return [];
     const item=bundleItems[index];
+    if(!item || !item.qty) return [];
     return activeLocations(item).filter(function(stock){return stock.qty>=item.qty;});
 }
 
-function changePickingSource(index,location){
-    if(bundleBusy || !pickingPlan || pickingPlanSignature!==currentBundleSignature()) return;
+async function changePickingSource(index,location){
+    if(bundleBusy || bundleRetryBlocked || !pickingPlan || pickingPlanSignature!==currentBundleSignature()) return;
+    const item=bundleItems[index];
+    if(!item) return;
     if(location && !sourceAlternatives(pickingPlan,index).some(function(s){return s.location===location;})) return;
-    pickingPlan.sourceChoices[index]=location;
-    const groups=new Map();
-    pickingPlan.consolidatedGroups.forEach(function(group){
-        group.items.forEach(function(line){
-            if(pickingPlan.sourceChoices[line.index]) return;
-            if(!groups.has(group.location)) groups.set(group.location,{location:group.location,items:[]});
-            groups.get(group.location).items.push({...line});
+    const locks={...pickingSourceLocks};
+    if(location) locks[item.barcode]=location;
+    else delete locks[item.barcode];
+    closePickingSourcePicker(false);
+    await showEfficientPickingPlan(locks);
+}
+
+async function unlockPickingSource(barcode){
+    if(bundleBusy || bundleRetryBlocked) return;
+    const locks={...pickingSourceLocks};
+    delete locks[barcode];
+    closePickingSourcePicker(false);
+    await showEfficientPickingPlan(locks);
+}
+
+function closePickingSourcePicker(restoreFocus = true){
+    const item=bundleItems[pickingSourcePickerIndex];
+    const dialog=document.getElementById("pickingSourceDialog");
+    pickingSourcePickerIndex=null;
+    pickingSourcePickerSignature="";
+    if(dialog && dialog.open){
+        if(typeof dialog.close === "function") dialog.close();
+        else dialog.removeAttribute("open");
+    }
+    if(restoreFocus && item){
+        const button=Array.from(document.querySelectorAll("[data-picking-source-barcode]")).find(function(node){return node.dataset.pickingSourceBarcode===item.barcode;});
+        if(button && !button.disabled) button.focus();
+    }
+}
+
+function openPickingSourcePicker(index){
+    if(bundleBusy || bundleRetryBlocked || !pickingPlan || pickingPlanSignature!==currentBundleSignature()) return;
+    const item=bundleItems[index],alternatives=sourceAlternatives(pickingPlan,index);
+    if(!item || !alternatives.length) return;
+    pickingSourcePickerIndex=index;
+    pickingSourcePickerSignature=pickingPlanSignature;
+    const dialog=document.getElementById("pickingSourceDialog");
+    document.getElementById("pickingSourceTitle").textContent="Pick "+item.description+" from";
+    const current=pickingPlan.groups.filter(function(g){return g.items.some(function(line){return line.index===index;});}).map(function(g){return locationDisplayName(g.location);});
+    document.getElementById("pickingSourceInfo").textContent="Quantity needed: "+item.qty+". Current plan: "+current.join(", ")+". Choose a location to lock this item there and recalculate the other picks. Each option has enough stock for the full quantity.";
+    const options=document.getElementById("pickingSourceOptions");
+    options.replaceChildren();
+    alternatives.sort(function(a,b){return a.location.localeCompare(b.location,"en",{numeric:true});}).forEach(function(stock){
+        const button=document.createElement("button");
+        button.type="button";
+        button.dataset.pickingLocation=stock.location;
+        const title=document.createElement("strong");title.textContent=locationDisplayName(stock.location);
+        const detail=document.createElement("small");detail.textContent=stock.qty+" available • Take "+item.qty+" • "+(stock.qty-item.qty)+" remaining";
+        button.append(title,detail);
+        button.addEventListener("click",function(){
+            if(pickingSourcePickerSignature!==currentBundleSignature()) return closePickingSourcePicker();
+            changePickingSource(index,stock.location);
         });
+        options.appendChild(button);
     });
-    Object.keys(pickingPlan.sourceChoices).forEach(function(key){
-        const location=pickingPlan.sourceChoices[key];
-        if(!location) return;
-        const index=Number(key),item=bundleItems[index];
-        const stock=sourceAlternatives(pickingPlan,index).find(function(s){return s.location===location;});
-        if(!stock) throw new Error("Source stock changed. Consolidate again.");
-        if(!groups.has(location)) groups.set(location,{location:location,items:[]});
-        groups.get(location).items.push({index:index,barcode:item.barcode,description:item.description,
-            qty:item.qty,available:stock.qty,remaining:stock.qty-item.qty});
+    if(pickingSourceLocks[item.barcode]){
+        const automatic=document.createElement("button");automatic.type="button";automatic.textContent="Use automatic picking for this item";
+        automatic.addEventListener("click",function(){unlockPickingSource(item.barcode);});options.appendChild(automatic);
+    }
+    if(typeof dialog.showModal === "function"){if(!dialog.open) dialog.showModal();}
+    else dialog.setAttribute("open","");
+    options.querySelector("button")?.focus();
+}
+
+function renderPickingSourceLocks(box){
+    const locks=document.createElement("div");locks.className="bundle-source-locks";
+    bundleItems.forEach(function(item){
+        if(!pickingSourceLocks[item.barcode] || !item.qty) return;
+        const row=document.createElement("div");row.className="bundle-source-lock";
+        const text=document.createElement("span");text.textContent=item.description+" locked to "+locationDisplayName(pickingSourceLocks[item.barcode]);
+        const unlock=document.createElement("button");unlock.type="button";unlock.textContent="Use automatic picking";unlock.disabled=bundleBusy || bundleRetryBlocked;
+        unlock.addEventListener("click",function(){unlockPickingSource(item.barcode);});row.append(text,unlock);locks.appendChild(row);
     });
-    pickingPlan.groups=Array.from(groups.values()).sort(function(a,b){return a.location.localeCompare(b.location,undefined,{numeric:true});});
-    bundleMessage=Object.values(pickingPlan.sourceChoices).some(Boolean)
-        ? "Source choice updated. The displayed locations and quantities will be used for removal."
-        : "Consolidated route restored. Shared pickups remain together.";
-    renderPickingPlan();
+    if(locks.childElementCount) box.appendChild(locks);
 }
 
 function renderPickingPlan(){
@@ -1192,11 +1283,18 @@ function renderPickingPlan(){
     message.className = "bundle-plan-note";
     message.textContent = bundleMessage;
     box.appendChild(message);
+    renderPickingSourceLocks(box);
     if(!pickingPlan || pickingPlanSignature !== currentBundleSignature()) return;
     const heading = document.createElement("h3");
     heading.textContent = "Pick from " + pickingPlan.groups.length + " location" + (pickingPlan.groups.length===1 ? "" : "s");
     box.appendChild(heading);
-    const shownChoices=new Set();
+    const hasChoice=pickingPlan.groups.some(function(group){return group.items.some(function(line){
+        const current=pickingPlan.groups.filter(function(g){return g.items.some(function(l){return l.index===line.index;});}).map(function(g){return g.location;});
+        return sourceAlternatives(pickingPlan,line.index).some(function(s){return current.length>1 || !current.includes(s.location);});
+    });});
+    if(hasChoice){
+        const hint=document.createElement("p");hint.className="bundle-plan-note";hint.textContent="Yellow items have other picking locations. Select one to choose a location and recalculate the route.";box.appendChild(hint);
+    }
     pickingPlan.groups.forEach(function(group){
         const section = document.createElement("section");
         section.className = "bundle-plan-group";
@@ -1204,8 +1302,21 @@ function renderPickingPlan(){
         title.textContent = locationDisplayName(group.location);
         section.appendChild(title);
         group.items.forEach(function(line){
-            const row = document.createElement("div");
+            const alternatives=sourceAlternatives(pickingPlan,line.index);
+            const current=pickingPlan.groups.filter(function(g){return g.items.some(function(l){return l.index===line.index;});}).map(function(g){return g.location;});
+            const hasAlternative=alternatives.some(function(s){return current.length>1 || !current.includes(s.location);});
+            const locked=Boolean(pickingPlan.sourceChoices[line.index]);
+            const selectable=hasAlternative || locked;
+            const row = document.createElement(selectable ? "button" : "div");
             row.className = "bundle-plan-line";
+            if(selectable){
+                row.type="button";row.classList.add("bundle-source-choice");
+                if(!hasAlternative) row.classList.add("bundle-source-locked");
+                row.dataset.pickingSourceBarcode=bundleItems[line.index].barcode;
+                row.disabled=bundleBusy || bundleRetryBlocked;
+                row.setAttribute("aria-label","Choose picking location for "+line.description);
+                row.addEventListener("click",function(){openPickingSourcePicker(line.index);});
+            }
             const name = document.createElement("span");
             name.textContent = line.description;
             const qty = document.createElement("strong");
@@ -1213,33 +1324,14 @@ function renderPickingPlan(){
             const after = document.createElement("small");
             after.textContent = line.remaining===0 ? "Empties this item from this location" : line.remaining + " of this item left here";
             row.append(name,qty,after);
-            if(pickingPlan.fixedItems.includes(line.index)){
+            if(locked){
+                const lock=document.createElement("small");lock.textContent="Locked to "+locationDisplayName(pickingPlan.sourceChoices[line.index])+" • Select to change";row.appendChild(lock);
+            }else if(pickingPlan.fixedItems.includes(line.index)){
                 const fixed=document.createElement("small");
                 fixed.textContent="Shared pickup — kept together for efficiency";
                 row.appendChild(fixed);
-            }else if(!shownChoices.has(line.index)){
-                shownChoices.add(line.index);
-                const alternatives=sourceAlternatives(pickingPlan,line.index);
-                const original=pickingPlan.consolidatedGroups.filter(function(g){return g.items.some(function(l){return l.index===line.index;});});
-                if(alternatives.some(function(a){return original.length>1 || a.location!==original[0].location;})){
-                    const label=document.createElement("label");
-                    label.textContent="Pick this item from ";
-                    const select=document.createElement("select");
-                    select.setAttribute("aria-label","Source location for "+line.description);
-                    const base=document.createElement("option");base.value="";
-                    base.textContent="Consolidated: "+original.map(function(g){return locationDisplayName(g.location);}).join(", ");
-                    select.appendChild(base);
-                    alternatives.forEach(function(stock){
-                        if(original.length===1 && stock.location===original[0].location) return;
-                        const option=document.createElement("option");option.value=stock.location;
-                        option.textContent=locationDisplayName(stock.location)+" ("+stock.qty+" available)";
-                        select.appendChild(option);
-                    });
-                    select.value=pickingPlan.sourceChoices[line.index]||"";
-                    select.disabled=bundleBusy;
-                    select.addEventListener("change",function(){changePickingSource(line.index,select.value);});
-                    label.appendChild(select);row.appendChild(label);
-                }
+            }else if(hasAlternative){
+                const hint=document.createElement("small");hint.textContent="Select this yellow item to choose another location";row.appendChild(hint);
             }
             section.appendChild(row);
         });
@@ -1251,7 +1343,7 @@ function renderPickingPlan(){
     box.appendChild(note);
 }
 
-async function showEfficientPickingPlan(){
+async function showEfficientPickingPlan(proposedLocks = pickingSourceLocks){
     if(bundleBusy || bundleRetryBlocked) return;
     if(!hasSelectedInventoryForRemove()) return showNoInventorySelected();
     if(bundleInventoryId !== getSelectedInventoryHeaderForRemove()){
@@ -1267,6 +1359,8 @@ async function showEfficientPickingPlan(){
     const inventory = getSelectedInventoryHeaderForRemove();
     const signature = currentBundleSignature();
     const snapshot = snapshotBundle();
+    const locks=Object.fromEntries(snapshot.filter(function(item){return item.qty>0 && proposedLocks[item.barcode];}).map(function(item){return [item.barcode,proposedLocks[item.barcode]];}));
+    closePickingSourcePicker(false);
     bundleBusy = true;
     bundleMessage = "Checking current stock and consolidating...";
     renderBundleList();
@@ -1275,13 +1369,15 @@ async function showEfficientPickingPlan(){
         const refreshed = await refreshBundleStock(snapshot,inventory);
         if(signature !== currentBundleSignature()) throw new Error("The bundle changed. Consolidate again.");
         bundleItems = refreshed;
-        const plan = calculatePickingPlan(refreshed);
-        initialiseSourceChoices(plan);
+        const choices=Object.fromEntries(refreshed.map(function(item,index){return [index,locks[item.barcode]];}).filter(function(entry){return entry[1];}));
+        const plan = calculatePickingPlan(refreshed,100000,choices);
+        pickingSourceLocks=locks;
+        initialiseSourceChoices(plan,locks);
         pickingPlan = plan;
         pickingPlanSignature = currentBundleSignature();
         bundleMessage = plan.exact
-            ? "Fewest locations for these quantities. Where possible, smaller item stocks are emptied first."
-            : "Efficient plan found for this large bundle; the absolute fewest locations could not be confirmed.";
+            ? "Fewest locations for these quantities"+(Object.keys(locks).length ? " with your chosen locations locked" : "")+". Where possible, smaller item stocks are emptied first."
+            : "Efficient plan found"+(Object.keys(locks).length ? " with your chosen locations locked" : " for this large bundle")+"; the absolute fewest locations could not be confirmed.";
         document.getElementById("result").textContent = "Review the picking plan below, then press Remove Stock.";
     }catch(error){
         invalidatePickingPlan(error.message || "Could not build a picking plan. Nothing has been removed.");
@@ -1383,6 +1479,10 @@ function removeSingleStock(locationOverride = ""){
 
 async function removeBundleStock(){
     if(bundleBusy || bundleRetryBlocked) return;
+    if(pickingSourcePickerIndex !== null){
+        document.getElementById("result").textContent="Choose a picking location or close the location picker before removing stock.";
+        return;
+    }
     if(!hasSelectedInventoryForRemove()) return showNoInventorySelected();
     if(!bundleItems.length || !totalBundleUnits()){
         alert("Choose at least one item with a quantity above zero.");
@@ -1564,9 +1664,11 @@ function keepBarcodeFocused(){
     const scannerMode = document.getElementById("usbScannerMode");
     const barcodeInput = document.getElementById("barcode");
     if(!scannerMode || !scannerMode.checked || !barcodeInput) return;
+    if(pickingSourcePickerIndex !== null) return;
 
     const active = document.activeElement;
     const activeId = active ? active.id : "";
+    if(active && active.closest(".bundle-source-choice, .bundle-source-locks")) return;
 
     if(activeId !== "saleAmount" && !(active && active.classList.contains("bundle-qty")) && !String(active && active.tagName || "").toLowerCase().includes("select")){
         barcodeInput.focus();
@@ -1824,8 +1926,11 @@ function testFillPrice(){
 }
 
 document.addEventListener("click", scheduleBarcodeRefocus);
+document.getElementById("pickingSourceClose").addEventListener("click",function(){closePickingSourcePicker();});
+document.getElementById("pickingSourceDialog").addEventListener("cancel",function(event){event.preventDefault();closePickingSourcePicker();});
 window.addEventListener("inventory-selection-changed", function(){
     if(!bundleInventoryId || bundleInventoryId === getSelectedInventoryHeaderForRemove()) return;
+    pickingSourceLocks=Object.create(null);
     selectedSuggestedItem = null;
     suggestedItems = [];
     if(bundleBusy){
@@ -1895,5 +2000,6 @@ window.addEventListener("load", function(){
 <script src="js/appShell.js?v=5"></script>
 </body>
 </html>
+
 
 
