@@ -82,7 +82,7 @@ function admin(data,callbacks){
  render();adminTimer=setInterval(render,1000);
 }
 window.InventoryBusinessTrial={requestMarkup,billing,admin,stopAdmin};
-// Reuse the notice on dashboard and stock pages, outside the scrolling top bar.
+// Keep the trial label and timer compact inside the scrolling controls row.
 let noticeGeneration=0,noticeTimer=null;
 function clearNotice(){clearInterval(noticeTimer);$('businessTrialNotice')?.remove();}
 function noticeHost(){return $('iosShellTopbarHost')||$('inventory-topbar');}
@@ -94,10 +94,11 @@ async function refreshNotice(){
   if(g!==noticeGeneration||workspace!==localStorage.getItem('inventoryos_selected_workspace_id'))return;
   if(!data.success||!data.billing?.is_business_trial||!data.billing?.business_trial?.active){clearNotice();return;}
   if(workspace&&String(data.workspace?.id)!==workspace){clearNotice();return;}
-  if(!document.querySelector('link[href*="css/businessTrial.css"]')){const css=document.createElement('link');css.rel='stylesheet';css.href='css/businessTrial.css?v=1';document.head.append(css);}
-  clearNotice();const panel=document.createElement('section');panel.id='businessTrialNotice';panel.className='business-trial-info';
-  panel.innerHTML='<strong>Free Business trial</strong><p>'+esc(expiryText(data.billing.business_trial))+'</p><p data-trial-remaining role="timer"></p><a href="billing.html">View your plan</a>';
-  noticeHost().after(panel);
+  if(!document.querySelector('link[href*="css/businessTrial.css"]')){const css=document.createElement('link');css.rel='stylesheet';css.href='css/businessTrial.css?v=2';document.head.append(css);}
+  clearNotice();const panel=document.createElement('section');panel.id='businessTrialNotice';panel.className='business-trial-topbar';panel.setAttribute('aria-label','Business trial');
+  panel.innerHTML='<a class="business-trial-pill" href="billing.html" title="'+esc(expiryText(data.billing.business_trial))+'">Free Business trial</a><a class="business-trial-pill business-trial-timer" href="billing.html" title="'+esc(expiryText(data.billing.business_trial))+'"><span data-trial-remaining role="timer" aria-label="Business trial time remaining"></span></a>';
+  const controls=noticeHost().querySelector('.inventory-topbar-right');
+  if(controls)controls.append(panel);else noticeHost().after(panel);
   const offset=clockOffset(data),trial=data.billing.business_trial;let expired=false;
   const tick=()=>{panel.querySelector('[data-trial-remaining]').textContent=remaining(trial.ends_at,offset);if(!expired&&Date.parse(trial.ends_at)<=Date.now()+offset){expired=true;clearInterval(noticeTimer);refreshNotice();}};
   tick();if(!expired)noticeTimer=setInterval(tick,1000);
@@ -110,3 +111,4 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNot
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refreshNotice,{once:true});else refreshNotice();
 if(!/\/(admin|billing)\.html$/i.test(location.pathname))setInterval(()=>{if(!document.hidden)refreshNotice();},60000);
 })();
+

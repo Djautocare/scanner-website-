@@ -10,3 +10,9 @@
 .business-trial-admin [hidden]{display:none!important}
 .business-trial-admin button:disabled{opacity:.5;cursor:not-allowed}
 .business-trial-admin .helper{line-height:1.6;overflow-wrap:anywhere}
+.business-trial-topbar{display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:0;margin:0;padding:0;border:0;background:none}
+.business-trial-topbar .business-trial-pill{display:flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto;min-height:42px;box-sizing:border-box;margin:0;padding:10px 12px;border:1px solid rgba(var(--accent-rgb,69,211,106),.4);border-radius:13px;background:rgba(var(--accent-rgb,69,211,106),.10);color:var(--text,#fff);font-size:12px;font-weight:700;line-height:20px;white-space:nowrap;text-decoration:none}
+.business-trial-topbar .business-trial-pill:hover{background:rgba(var(--accent-rgb,69,211,106),.17)}
+.business-trial-topbar .business-trial-pill:focus-visible{outline:2px solid var(--accent,#45d36a);outline-offset:2px}
+.business-trial-topbar .business-trial-timer{font-weight:500;font-variant-numeric:tabular-nums;min-width:190px}
+
