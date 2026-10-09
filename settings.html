@@ -472,6 +472,7 @@ button{
 <link rel="stylesheet" href="css/appShell.css?v=4">
 <link rel="stylesheet" href="css/inventoryGuide.css?v=1">
 <link rel="stylesheet" href="css/inboundEmail.css?v=2">
+<link rel="stylesheet" href="css/help.css?v=1">
 </head>
 
 <body>
@@ -483,6 +484,7 @@ button{
 <div class="settings-tabs" role="tablist" aria-label="Settings sections">
     <button class="settings-tab active" type="button" role="tab" aria-selected="true" aria-controls="settingsPanel" data-settings-tab="settingsPanel">⚙ Settings</button>
     <button class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="guidePanel" data-settings-tab="guidePanel">▣ Inventory Guide</button>
+    <button class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="helpPanel" data-settings-tab="helpPanel">Help</button>
 </div>
 
 <div id="settingsPanel" class="settings-view">
@@ -699,6 +701,35 @@ button{
 
 <div id="guidePanel" class="settings-view" hidden>
     <div id="inventoryTour" class="tour" aria-label="Interactive InventoryOS guide"></div>
+</div>
+
+<div id="helpPanel" class="settings-view" hidden>
+    <div class="header-panel">
+        <h1>Help</h1>
+        <p class="subtitle">Tell us what you need a hand with. We’ll reply to your account email.</p>
+    </div>
+    <div class="help-layout">
+        <section class="help-panel">
+            <h2>Send a help request</h2>
+            <p class="help-copy">Include the page you’re using, what you tried and what happened. Please leave out passwords, card details and API keys.</p>
+            <div class="help-context"><strong>Account:</strong> <span id="helpAccount">Loading…</span><br><strong>Workspace:</strong> <span id="helpWorkspace">Loading…</span></div>
+            <form id="helpForm" class="help-form">
+                <label class="help-label" for="helpTopic">Topic</label>
+                <input id="helpTopic" maxlength="120" required placeholder="For example, printing shipping labels">
+                <label class="help-label" for="helpMessage">What do you need help with?</label>
+                <textarea id="helpMessage" maxlength="5000" required aria-describedby="helpCharacters" placeholder="Tell us a little more so we can help…"></textarea>
+                <div id="helpCharacters" class="help-counter">0 / 5,000</div>
+                <button id="sendHelp" class="help-button primary" type="submit" disabled>Send help request</button>
+                <p id="helpResult" class="help-status" role="status" aria-live="polite"></p>
+            </form>
+        </section>
+        <section class="help-panel">
+            <h2>Your recent requests</h2>
+            <p class="help-copy">Requests from your account in this workspace. Select a request to read it and check its progress.</p>
+            <div class="help-actions"><button class="help-button" id="refreshHelpHistory" type="button">Refresh requests</button></div>
+            <div id="helpHistory" class="help-list"></div>
+        </section>
+    </div>
 </div>
 
 </div>
@@ -1160,7 +1191,7 @@ document.querySelectorAll("[data-settings-tab]").forEach(tab=>{
 });
 
 const savedSettingsView = localStorage.getItem("inventoryos_settings_view");
-if(savedSettingsView === "guidePanel"){
+if(["guidePanel","helpPanel"].includes(savedSettingsView)){
     showSettingsView(savedSettingsView);
 }
 
@@ -1176,6 +1207,7 @@ showAdminCard();
 <script src="js/inventoryGuide.js?v=manufacturing-1"></script>
 
 <script src="js/inboundEmail.js?v=4"></script>
+<script src="js/help.js?v=1"></script>
 </body>
 </html>
 
