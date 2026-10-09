@@ -241,7 +241,7 @@ button:disabled{opacity:0.55;cursor:not-allowed;}
 </div>
 
 <script src="js/theme.js"></script>
-<script src="js/api.js"></script>
+<script src="js/api.js?v=manufacturing-1"></script>
 <script>
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -293,7 +293,7 @@ function planDescription(key){
     if(key === "free") return "For trying InventoryOS, tracking stock and seeing your first sales numbers.";
     if(key === "starter") return "For casual sellers ready to add receipts, labels and dispatch workflows.";
     if(key === "pro") return "For serious resellers managing more stock, labels and multiple inventories.";
-    if(key === "business") return "For teams running inventory together across shared workspaces.";
+    if(key === "business") return "For teams and small manufacturers managing shared inventory, materials and production.";
     return "InventoryOS plan.";
 }
 
@@ -484,3 +484,4 @@ loadBilling();
 </script>
 </body>
 </html>
+
