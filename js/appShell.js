@@ -42,6 +42,7 @@ const InventoryOSAppShell = (function(){
         "stale.html":{
             key:"stale"
         },
+        "manufacturing.html":{key:"manufacturing"},
         "settings.html":{
             key:"settings"
         },
@@ -1154,3 +1155,4 @@ window.InventoryOSAppShell =
     InventoryOSAppShell;
 
 InventoryOSAppShell.start();
+
