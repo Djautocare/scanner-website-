@@ -1,0 +1,12 @@
+.business-trial-request{margin-top:14px}
+.business-trial-request .link-btn{display:block;text-align:center}
+.business-trial-request p{font-size:13px;line-height:1.5;color:var(--muted,#b8b8c0)}
+.business-trial-info{border:1px solid rgba(var(--accent-rgb,69,211,106),.4);background:var(--panel,#17171f);border-radius:16px;padding:20px;margin:18px 0;line-height:1.6}
+.business-trial-info[hidden]{display:none}
+.business-trial-info h2{margin:0;font-size:21px}
+#businessTrialCountdown{font-size:20px;font-weight:700;color:var(--accent,#45d36a);font-variant-numeric:tabular-nums}
+.business-trial-admin .check-row{align-items:center;margin:14px 0}
+.business-trial-admin .check-row input{width:auto;flex:none}
+.business-trial-admin [hidden]{display:none!important}
+.business-trial-admin button:disabled{opacity:.5;cursor:not-allowed}
+.business-trial-admin .helper{line-height:1.6;overflow-wrap:anywhere}
