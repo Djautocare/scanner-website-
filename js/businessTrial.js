@@ -83,8 +83,8 @@ function admin(data,callbacks){
 }
 window.InventoryBusinessTrial={requestMarkup,billing,admin,stopAdmin};
 // Keep the trial label and timer compact inside the scrolling controls row.
-let noticeGeneration=0,noticeTimer=null;
-function clearNotice(){clearInterval(noticeTimer);$('businessTrialNotice')?.remove();}
+let noticeGeneration=0,noticeTimer=null,noticeObserver=null;
+function clearNotice(){clearInterval(noticeTimer);noticeObserver?.disconnect();noticeObserver=null;$('businessTrialNotice')?.remove();}
 function noticeHost(){return $('iosShellTopbarHost')||$('inventory-topbar');}
 async function refreshNotice(){
  if(/\/(admin|billing)\.html$/i.test(location.pathname)||typeof InventoryAPI==='undefined'||!InventoryAPI.isLoggedIn?.()||!noticeHost())return;
@@ -97,8 +97,16 @@ async function refreshNotice(){
   if(!document.querySelector('link[href*="css/businessTrial.css"]')){const css=document.createElement('link');css.rel='stylesheet';css.href='css/businessTrial.css?v=2';document.head.append(css);}
   clearNotice();const panel=document.createElement('section');panel.id='businessTrialNotice';panel.className='business-trial-topbar';panel.setAttribute('aria-label','Business trial');
   panel.innerHTML='<a class="business-trial-pill" href="billing.html" title="'+esc(expiryText(data.billing.business_trial))+'">Free Business trial</a><a class="business-trial-pill business-trial-timer" href="billing.html" title="'+esc(expiryText(data.billing.business_trial))+'"><span data-trial-remaining role="timer" aria-label="Business trial time remaining"></span></a>';
-  const controls=noticeHost().querySelector('.inventory-topbar-right');
-  if(controls)controls.append(panel);else noticeHost().after(panel);
+  // Billing can finish before the asynchronous topbar renders. Never place
+  // the trial beside the host: that squeezes the mobile scrolling controls.
+  const host=noticeHost();
+  const mount=()=>{
+   if(g!==noticeGeneration||workspace!==localStorage.getItem('inventoryos_selected_workspace_id'))return;
+   const controls=host.querySelector('.inventory-topbar-right');
+   if(controls&&!controls.contains(panel))controls.append(panel);
+  };
+  // Keep the same notice/timer attached if topbar.init rebuilds the controls.
+  noticeObserver=new MutationObserver(mount);noticeObserver.observe(host,{childList:true,subtree:true});mount();
   const offset=clockOffset(data),trial=data.billing.business_trial;let expired=false;
   const tick=()=>{panel.querySelector('[data-trial-remaining]').textContent=remaining(trial.ends_at,offset);if(!expired&&Date.parse(trial.ends_at)<=Date.now()+offset){expired=true;clearInterval(noticeTimer);refreshNotice();}};
   tick();if(!expired)noticeTimer=setInterval(tick,1000);
@@ -111,4 +119,5 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNot
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refreshNotice,{once:true});else refreshNotice();
 if(!/\/(admin|billing)\.html$/i.test(location.pathname))setInterval(()=>{if(!document.hidden)refreshNotice();},60000);
 })();
+
 
