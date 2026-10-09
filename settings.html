@@ -485,6 +485,24 @@ button{
     <button class="settings-tab active" type="button" role="tab" aria-selected="true" aria-controls="settingsPanel" data-settings-tab="settingsPanel">⚙ Settings</button>
     <button class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="guidePanel" data-settings-tab="guidePanel">▣ Inventory Guide</button>
     <button class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="helpPanel" data-settings-tab="helpPanel">Help</button>
+    <button class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="stackPanel" data-settings-tab="stackPanel">Stack order</button>
+</div>
+
+<div id="stackPanel" class="settings-view" hidden data-location-wording-ignore>
+    <div class="card">
+        <h1>Stack order</h1>
+        <p id="stackOrderIntro" class="helper">Arrange your storage locations from top to bottom.</p>
+        <p class="helper">Picking uses the fewest locations first, then prefers those with fewer locations above them. You can still choose a different location after consolidation. Blank positions are treated as empty space.</p>
+        <div class="stack-order-tools">
+            <label for="stackDefaultHeight"><span id="stackDefaultHeightLabel">Default stack height</span><input id="stackDefaultHeight" type="number" min="1" max="100" step="1" value="4" disabled></label>
+            <button id="stackAdd" type="button" disabled>Add stack</button>
+            <button id="stackReload" type="button">Reload layout</button>
+            <button id="stackSave" type="button" disabled>Save stack order</button>
+        </div>
+        <p id="stackOrderStatus" role="status" aria-live="polite">Select one inventory in the header, then open Stack order.</p>
+        <div id="stackOrderEditor"></div>
+        <p id="stackUnassigned" class="stack-order-muted"></p>
+    </div>
 </div>
 
 <div id="settingsPanel" class="settings-view">
@@ -1191,7 +1209,7 @@ document.querySelectorAll("[data-settings-tab]").forEach(tab=>{
 });
 
 const savedSettingsView = localStorage.getItem("inventoryos_settings_view");
-if(["guidePanel","helpPanel"].includes(savedSettingsView)){
+if(["guidePanel","helpPanel","stackPanel"].includes(savedSettingsView)){
     showSettingsView(savedSettingsView);
 }
 
@@ -1208,7 +1226,10 @@ showAdminCard();
 
 <script src="js/inboundEmail.js?v=4"></script>
 <script src="js/help.js?v=1"></script>
+<link rel="stylesheet" href="css/stackOrder.css?v=1">
+<script src="js/stackOrder.js?v=1"></script>
 </body>
 </html>
+
 
 
