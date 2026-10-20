@@ -1,7 +1,7 @@
 {
-  "check-retail.cjs": "67721d8ba36fae179a9ebba92c187620ce67e4dd89e7cf436db5bd1bdfd38eda",
+  "check-retail.cjs": "fbe29fe6eaceaea6bd092be35caf07359bf3ce950e2a170fa0a54e50690bfc1f",
   "routes/retailRoutes.js": "9f94d7d1bd0aeb10f26e94f29c595095708960e7d7337acdf6f5aae267efd29b",
-  "sql/retail.sql": "d0fd3dba59721d273495fa147d5b6d09795c621da24e75821481a476d8b5389c",
-  "utils/retail.js": "00c3e8cba5eb0b27df9927e3afd761b8c7b87515fd69df93572b7010628ebe49",
+  "sql/retail.sql": "77d05b742ae7d3deb256b11cb017f804173e0a6cb35e7558b20c6e0a7c4af6a2",
+  "utils/retail.js": "3e3f8605a5f2cf181630bbf3d38da4872be3e4f7df3a895d8031ed4b7e277ce5",
   "utils/retailCatalogue.js": "2e60c29323f6cb81efed4ab695ca6875f248bf6415405fcfab14e49fb48912a3"
 }

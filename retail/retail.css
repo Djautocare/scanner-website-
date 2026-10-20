@@ -8,3 +8,24 @@
 .retail-receipt p{color:#111}.retail-receipt h4{font-size:12px;margin:12px 0}.retail-form-actions{flex-wrap:wrap}
 .retail-nav-button.active:hover{color:var(--accent)}
 .retail-form-grid>label{align-content:start}
+
+/* A focused till stays usable on browsers without the Fullscreen API. */
+.retail-till-mode .retail-sidebar,.retail-till-mode .retail-header,.retail-till-mode .retail-topbar,.retail-till-mode .retail-footnote { display:none!important; }
+.retail-till-mode .retail-layout { display:block; }
+.retail-till-mode .retail-main { margin:0; width:100%; padding:12px; min-height:100dvh; }
+.retail-till-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.retail-till-toolbar button { margin-left:auto; font-size:13px; padding:8px 12px; }
+.retail-till-mode .retail-checkout { min-height:calc(100dvh - 100px); }
+.retail-sync-status { padding:10px 14px; border:1px solid var(--accent); border-radius:12px; margin-bottom:12px; color:var(--text); background:var(--panel); overflow-wrap:anywhere; }
+.retail-sync-status[hidden] { display:none; }
+.retail-sync-status button { padding:5px 9px; font-size:13px; }
+@media(max-width:760px) {
+  html:has(.retail-body),.retail-body { touch-action:pan-y; }
+  .retail-body input,.retail-body select,.retail-body textarea { font-size:16px; }
+  .retail-table-wrap,.retail-topbar,.retail-topbar * { touch-action:pan-x pan-y; }
+}
+.retail-checkout #retailSearch { width:100%; }
+.retail-till-toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 10px; }
+.retail-till-toolbar strong { grid-column:1; }
+.retail-till-toolbar span { grid-column:1; grid-row:2; font-size:12px; overflow-wrap:anywhere; }
+.retail-till-toolbar button { grid-column:2; grid-row:1/3; margin-left:0; }

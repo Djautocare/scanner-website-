@@ -84,7 +84,36 @@ function catalogueDetails(body, barcode, old = {}) {
   return { source, code };
 }
 
-function createService({ pool, calculateAccess, ensureBillingSchema = async () => {}, now = () => new Date() }) {
+function createService({ pool, calculateAccess, ensureBillingSchema = async () => {}, now = () => new Date(), offlineSecret = process.env.JWT_SECRET }) {
+  // Offline receipts use authenticated server-issued prices, never client-supplied prices.
+  const offlineKey = offlineSecret ? crypto.createHmac('sha256', offlineSecret).update('InventoryOS Retail offline v1').digest() : null;
+  function signOffline(value) {
+    const payload = Buffer.from(JSON.stringify(value)).toString('base64url');
+    return payload + '.' + crypto.createHmac('sha256', offlineKey).update(payload).digest('base64url');
+  }
+  function readOffline(token) {
+    if (!offlineKey || typeof token !== 'string' || token.length > 12000) throw fail('Offline authorisation is unavailable. Reconnect and prepare this device again', 409);
+    const parts = token.split('.');
+    if (parts.length !== 2) throw fail('Invalid offline authorisation', 403);
+    const actual = Buffer.from(parts[1], 'base64url'), expected = crypto.createHmac('sha256', offlineKey).update(parts[0]).digest();
+    if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) throw fail('Invalid offline authorisation', 403);
+    try { return JSON.parse(Buffer.from(parts[0], 'base64url').toString()); } catch { throw fail('Invalid offline authorisation', 403); }
+  }
+  function offlineSnapshot(s, products, t, device) {
+    if (!offlineKey || s.role === 'viewer' || !t || !device) return null;
+    id(device);
+    const issued = now().getTime(), contextId = uuid();
+    const context = { version: 1, context_id: contextId, device_id: device, workspace_id: s.workspace_id, inventory_id: s.inventory_id, actor_id: s.actor_id, till_id: t.id, issued_at: issued, expires_at: issued + 24 * 3600000, upload_until: issued + 7 * 86400000, settings: s.settings };
+    return { context: signOffline(context), expires_at: context.expires_at, issued_at: issued, device_id: device, quotes: Object.fromEntries(products.filter(p => !p.archived).map(p => [p.id, signOffline({ context_id: contextId, product: { id: p.id, name: p.name, barcode: p.barcode, price_pence: p.price_pence, cost_pence: p.cost_pence, vat_treatment: p.vat_treatment, vat_rate: p.vat_rate } })])) };
+  }
+  function offlineSale(s, b, t) {
+    if (!b.offline) return null;
+    const x = readOffline(b.offline.context), occurred = Date.parse(b.offline.occurred_at);
+    if (x.version !== 1 || x.workspace_id !== s.workspace_id || x.inventory_id !== s.inventory_id || x.actor_id !== s.actor_id || x.device_id !== b.offline.device_id) throw fail('Offline sale belongs to a different account, device or inventory', 403);
+    if (x.till_id !== t.id) throw fail('The original till was closed or replaced. Keep this sale in the sync queue and contact the workspace owner to reconcile it', 409);
+    if (!Number.isFinite(occurred) || occurred < x.issued_at - 120000 || occurred > x.expires_at || occurred > now().getTime() + 120000 || now().getTime() > x.upload_until) throw fail('Offline sale is outside its authorised time window. Keep the saved sale and contact the workspace owner', 409);
+    return { ...x, occurred_at: new Date(occurred).toISOString() };
+  }
   let ready, worker;
   async function ensureSchema() {
     if (!ready) ready = (async () => {
@@ -198,7 +227,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   async function status(req) {
     await ensureSchema();
     const s = await scope(pool, req, { inventory: false, entitled: false, enabled: false });
-    return { success: true, vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, role: s.role, allowed: s.access.allowed, enabled: s.settings.enabled, active: s.access.allowed && s.settings.enabled, settings: s.settings, plan: s.access.plan_key };
+    return { success: true, offline_supported: Boolean(offlineKey), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, role: s.role, allowed: s.access.allowed, enabled: s.settings.enabled, active: s.access.allowed && s.settings.enabled, settings: s.settings, plan: s.access.plan_key };
   }
   async function settings(c, s, b) {
     if (typeof b.enabled !== 'boolean') throw fail('Choose enabled or disabled');
@@ -312,17 +341,23 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     return { variance_pence: variance, expected_pence: t.expected_pence, counted_pence: counted, till: await till(c, s) };
   }
   async function checkout(c, s, b) {
-    const t = await till(c, s, true);
+    const t = await till(c, s, true), offline = offlineSale(s, b, t);
+    const saleSettings = offline?.settings || s.settings;
     if (b.payment_method !== 'cash') throw fail('Automatic card payments are not connected. Use cash checkout only');
     if (!Array.isArray(b.items) || !b.items.length || b.items.length > 100) throw fail('Add between 1 and 100 different products');
-    if (s.settings.vat_receipts && b.vat_version !== s.settings.vat_version) throw fail('VAT receipt settings changed. Refresh the website and review the basket before taking payment', 409);
+    if (saleSettings.vat_receipts && b.vat_version !== saleSettings.vat_version) throw fail('VAT receipt settings changed. Refresh the website and review the basket before taking payment', 409);
     const seen = new Set(), items = []; let total = 0;
     for (const item of b.items) {
-      const p = await product(c, s, item.product_id);
+      let p = await product(c, s, item.product_id);
+      if (offline) {
+        const quote = readOffline(item.offline_quote);
+        if (quote.context_id !== offline.context_id || quote.product?.id !== p.id) throw fail('Offline product price could not be verified', 403);
+        p = { ...p, ...quote.product, archived: false };
+      }
       if (p.archived || seen.has(p.id)) throw fail('Each active product must appear only once');
       seen.add(p.id);
       if (integer(item.unit_price_pence, 'Reviewed price', 0, 100000000) !== p.price_pence) throw fail(`${p.name} has a new selling price. Refresh and review the basket`, 409);
-      if (s.settings.vat_receipts && (item.vat_treatment !== p.vat_treatment || item.vat_rate !== p.vat_rate)) throw fail(`${p.name} has different VAT details. Refresh and review the basket`, 409);
+      if (saleSettings.vat_receipts && (item.vat_treatment !== p.vat_treatment || item.vat_rate !== p.vat_rate)) throw fail(`${p.name} has different VAT details. Refresh and review the basket`, 409);
       const qty = integer(item.qty, 'Sale quantity', 1);
       total += qty * p.price_pence; integer(total, 'Sale total', 0, 100000000);
       items.push({ product: p, qty });
@@ -330,10 +365,11 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     const tendered = money(b.tendered, 'Cash received');
     if (tendered < total) throw fail('Cash received is less than the sale total');
     if (t.expected_pence + total > 100000000) throw fail('Cash limit reached. Balance and close this till first');
-    const saleId = uuid(), reference = `RT-${now().toISOString().slice(0, 10).replace(/-/g, '')}-${saleId.slice(0, 8).toUpperCase()}`;
-    const vat = vatSnapshot(s.settings, items);
-    const business = { name: s.settings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail', address: s.settings.receipt_business_address || '' };
-    const sale = (await c.query('INSERT INTO retail_sales(id,workspace_id,inventory_id,reference,total_pence,tendered_pence,change_pence,payment_method,actor_id,vat_receipt,receipt_business) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *', [saleId, ...args(s), reference, total, tendered, tendered - total, 'cash', s.actor_id, vat ? JSON.stringify(vat) : null, JSON.stringify(business)])).rows[0];
+    const saleId = offline ? id(b.request_id) : uuid(), soldAt = offline?.occurred_at || now().toISOString();
+    const reference = `RT-${soldAt.slice(0, 10).replace(/-/g, '')}-${saleId.slice(0, 8).toUpperCase()}`;
+    const vat = vatSnapshot(saleSettings, items);
+    const business = { name: saleSettings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail', address: saleSettings.receipt_business_address || '' };
+    const sale = (await c.query('INSERT INTO retail_sales(id,workspace_id,inventory_id,reference,total_pence,tendered_pence,change_pence,payment_method,actor_id,vat_receipt,receipt_business,created_at,offline_device_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *', [saleId, ...args(s), reference, total, tendered, tendered - total, 'cash', s.actor_id, vat ? JSON.stringify(vat) : null, JSON.stringify(business), soldAt, offline?.device_id || null])).rows[0];
     for (const { product: p, qty } of items) {
       await c.query('INSERT INTO retail_sale_items(id,workspace_id,inventory_id,sale_id,product_id,name,barcode,qty,unit_price_pence,unit_cost_pence) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [uuid(), ...args(s), saleId, p.id, p.name, p.barcode, qty, p.price_pence, p.cost_pence]);
       await stock(c, s, p, -qty, 'sale', saleId);
@@ -431,7 +467,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const t = await till(c, s), reorder = await reorders(c, s);
       const reports = (await c.query('SELECT *,report_date::text AS report_date FROM retail_reports WHERE workspace_id=$1 AND inventory_id=$2 ORDER BY retail_reports.report_date DESC LIMIT 31', args(s))).rows;
       await c.query('COMMIT');
-      return { success: true, vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
+      return { success: true, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
     } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
   }
   async function history(req) {

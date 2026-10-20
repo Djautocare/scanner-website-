@@ -114,3 +114,7 @@ ALTER TABLE retail_sales ADD COLUMN IF NOT EXISTS vat_receipt jsonb;
 ALTER TABLE retail_sales ADD COLUMN IF NOT EXISTS receipt_business jsonb;
 ALTER TABLE retail_products ADD COLUMN IF NOT EXISTS catalogue_source text NOT NULL DEFAULT '' CHECK(catalogue_source IN('','openfoodfacts'));
 ALTER TABLE retail_products ADD COLUMN IF NOT EXISTS catalogue_code text NOT NULL DEFAULT '';
+
+-- Time of sale remains separate from the time a delayed device uploads it.
+ALTER TABLE retail_sales ADD COLUMN IF NOT EXISTS recorded_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE retail_sales ADD COLUMN IF NOT EXISTS offline_device_id uuid;

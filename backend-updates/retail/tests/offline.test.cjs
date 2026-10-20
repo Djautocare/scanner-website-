@@ -1,0 +1,68 @@
+'use strict';
+// Run with RETAIL_TEST_MODULES pointing to a directory containing @electric-sql/pglite.
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { randomUUID: uuid } = require('node:crypto');
+const { PGlite } = require(path.join(process.env.RETAIL_TEST_MODULES || '..', '@electric-sql/pglite'));
+const { createService, money, dayAndTime } = require('../files/utils/retail');
+
+(async () => {
+  const db = new PGlite(); await db.waitReady;
+  const query = async (q, v) => q.includes('CREATE TABLE IF NOT EXISTS') ? (await db.exec(q)).at(-1) : db.query(q, v);
+  const pool = { query, connect: async () => ({ query, release() {} }) };
+  await db.exec(`
+    CREATE TABLE users(id uuid PRIMARY KEY,admin_plan_override text);
+    CREATE TABLE workspaces(id uuid PRIMARY KEY,owner_user_id uuid REFERENCES users(id),name text,plan_key text,plan_allowed boolean DEFAULT true);
+    CREATE TABLE workspace_members(workspace_id uuid REFERENCES workspaces(id),user_id uuid REFERENCES users(id),role text,status text);
+    CREATE TABLE inventories(id uuid PRIMARY KEY,workspace_id uuid REFERENCES workspaces(id),name text);
+    CREATE TABLE products(id uuid PRIMARY KEY,workspace_id uuid REFERENCES workspaces(id));
+  `);
+  const owner = uuid(), viewer = uuid(), cashier = uuid(), stranger = uuid(), workspace = uuid(), other = uuid(), inventory = uuid(), second = uuid(), foreign = uuid();
+  for (const u of [owner, viewer, cashier, stranger]) await db.query('INSERT INTO users(id) VALUES($1)', [u]);
+  for (const w of [workspace, other]) await db.query("INSERT INTO workspaces(id,owner_user_id,name,plan_key) VALUES($1,$2,'Test shop','business')", [w, owner]);
+  for (const [i, w] of [[inventory, workspace], [second, workspace], [foreign, other]]) await db.query("INSERT INTO inventories VALUES($1,$2,'Main')", [i, w]);
+  for (const [u, r] of [[viewer, 'viewer'], [cashier, 'member']]) await db.query("INSERT INTO workspace_members VALUES($1,$2,$3,'active')", [workspace, u, r]);
+
+  let clock = new Date('2026-10-20T10:00:00Z');
+  const R=createService({pool,offlineSecret:'TEST-ONLY-OFFLINE-KEY',calculateAccess:w=>({allowed:w.plan_allowed,plan_key:'business'}),now:()=>clock});
+  const device=uuid();
+  const request=(route,body={},options={})=>({user:{id:options.actor||owner},workspace:{id:options.workspace||workspace},headers:{'x-workspace-id':options.workspace||workspace,'x-inventory-ids':options.inventory||inventory},originalUrl:'/retail'+route,body:{request_id:uuid(),...body},query:{offline_device_id:device}});
+  const run=(route,body,fn,options)=>R.transaction(request(route,body),fn,options);
+  await R.ensureSchema();
+  await run('/settings',{enabled:true,vat_receipts:true,receipt_business_name:'Original shop',receipt_business_address:'Test Street',vat_number:'GB123456789'},R.settings,{inventory:false,enabled:false,admin:true});
+  const p=(await run('/products',{name:'Original product',barcode:'3017620422003',price:'2.00',cost:'0.50',opening_qty:10,minimum_qty:5,target_qty:20,vat_treatment:'taxable',vat_rate:20},R.saveProduct,{admin:true})).product;
+  await run('/till/open',{amount:'50.00'},R.openTill,{admin:true});
+  const snapshot=await R.overview(request('/overview'));
+  assert.ok(snapshot.offline.context);assert.equal(snapshot.offline.device_id,device);
+  assert.equal((await R.overview(request('/overview',{}, {actor:viewer}))).offline,null);
+  const body={payment_method:'cash',tendered:'10.00',vat_version:snapshot.settings.vat_version,items:[{product_id:p.id,qty:2,unit_price_pence:200,vat_treatment:'taxable',vat_rate:20,offline_quote:snapshot.offline.quotes[p.id]}],offline:{context:snapshot.offline.context,device_id:device,occurred_at:'2026-10-20T10:30:00Z'}};
+  clock=new Date('2026-10-20T11:00:00Z');
+  await run('/products/'+p.id,{name:'New name',archived:false,barcode:p.barcode,price:'3.00',cost:'0.70',minimum_qty:5,target_qty:20,vat_treatment:'taxable',vat_rate:5,edit_version:p.edit_version},(c,s,b)=>R.saveProduct(c,s,b,p.id),{admin:true});
+  await run('/stock-in',{product_id:p.id,qty:7,reason:'Other device delivery'},R.receiveStock);
+  await run('/settings',{enabled:true,vat_receipts:false,receipt_business_name:'New business'},R.settings,{inventory:false,enabled:false,admin:true});
+  const req=request('/checkout',body), first=await R.transaction(req,R.checkout);
+  assert.equal(first.sale.total_pence,400);assert.equal(first.sale.receipt_business.name,'Original shop');assert.equal(first.sale.items[0].name,'Original product');assert.equal(first.sale.vat_receipt.vat_pence,67);
+  assert.equal(new Date(first.sale.created_at).toISOString(),'2026-10-20T10:30:00.000Z');assert.equal(first.sale.offline_device_id,device);
+  assert.equal((await R.transaction(req,R.checkout)).replayed,true);
+  let overview=await R.overview(request('/overview'));assert.equal(overview.products[0].stock_qty,15);assert.equal(overview.products[0].price_pence,300);assert.equal(overview.till.expected_pence,5400);assert.equal(overview.sales.length,1);
+  await assert.rejects(()=>run('/checkout',{...body,items:[{...body.items[0],unit_price_pence:1}]},R.checkout),/selling price/);
+  await assert.rejects(()=>run('/checkout',{...body,items:[{...body.items[0],offline_quote:snapshot.offline.quotes[p.id].slice(0,-8)+'BAD'}]},R.checkout),/authorisation/);
+  await assert.rejects(()=>run('/checkout',{...body,offline:{...body.offline,device_id:uuid()}},R.checkout),/different account/);
+  await assert.rejects(()=>R.transaction(request('/checkout',body,{actor:cashier}),R.checkout),/different account/);
+  await assert.rejects(()=>R.transaction(request('/checkout',body,{actor:viewer}),R.checkout),/Viewers/);
+  await db.query('UPDATE workspaces SET plan_allowed=false WHERE id=$1',[workspace]);
+  await assert.rejects(()=>run('/checkout',body,R.checkout),/active InventoryOS plan/);
+  await db.query('UPDATE workspaces SET plan_allowed=true WHERE id=$1',[workspace]);
+  await assert.rejects(()=>run('/checkout',{...body,offline:{...body.offline,occurred_at:'2026-10-22T10:00:00Z'}},R.checkout),/time window/);
+  clock=new Date('2026-10-28T10:00:00Z');
+  await assert.rejects(()=>run('/checkout',body,R.checkout),/time window/);
+  // Already committed requests remain recoverable even after an offline ticket expires.
+  assert.equal((await R.transaction(req,R.checkout)).replayed,true);
+  clock=new Date('2026-10-20T11:00:00Z');
+  await run('/till/balance',{amount:'54.00',close:true},R.balance,{admin:true});
+  await run('/till/open',{amount:'50.00'},R.openTill,{admin:true});
+  await assert.rejects(()=>run('/checkout',body,R.checkout),/original till/);
+  overview=await R.overview(request('/overview'));assert.equal(overview.sales.length,1);assert.equal(overview.products[0].stock_qty,15);
+  console.log('PASS: signed offline prices/VAT/name snapshots, additive stock sync, original sale time, duplicate recovery, tamper/account/device/role/plan checks, expiry and changed-till conflicts.');
+  await db.close();
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -15,7 +15,7 @@ The backend source and installer are in `backend-updates/retail/`. Run the insta
 - The dashboard shows expected/incoming deliveries, due/upcoming tasks, counts, cash controls and seven-day net sales.
 - Daily in-app reorder snapshots default to 17:00 Europe/London. The backend worker must be running. Missed days are not reconstructed and no report email is sent by this module.
 
-Card/contactless terminal payments, drawer hardware, offline trading, VAT returns and external POS synchronisation are not connected. The checkout accepts cash only. Do not mark card payments as automatically processed.
+Card/contactless terminal payments, drawer hardware, VAT returns and external POS synchronisation are not connected. The checkout accepts cash only. Do not mark card payments as automatically processed.
 
 ## Access and requests
 
@@ -48,3 +48,16 @@ Saved lookup products retain their source code/attribution. Open Food Facts data
 References: [HMRC VAT Notice 700](https://www.gov.uk/guidance/vat-guide-notice-700), [Open Food Facts API](https://openfoodfacts.github.io/openfoodfacts-server/api/), and the local scanner licences in `retail/vendor/`. The scanner bundle is @zxing/browser 0.1.5, unmodified, SHA-256 `b5ad3df920738ca7adcb74508d7e6b6a5b9024993fb9a0c702da1ad8964eca07`; MIT browser layer plus Apache-2.0 ZXing core licences are retained.
 
 Run `vat-catalogue.test.cjs` alongside the base regression suite using the same `RETAIL_TEST_MODULES` test dependency path. It tests upgrading populated v1 tables, VAT-off sales, shop-name preservation, mixed VAT rates/rounding, stale baskets, refunds, exact-barcode lookup, cache, limits, malformed/oversized responses, and provider errors without contacting the live provider. Browser tests also exercised scan/accept/save-next with simulated camera output and real EAN image decoding through the fallback.
+
+
+## Focused till, USB scanners and offline cash (v3)
+
+Checkout > Full-screen till provides a focused responsive layout with a small Exit to dashboard button. The Fullscreen API is optional; the layout remains usable without it. USB/Bluetooth keyboard-wedge scanners with Enter/Tab suffix are routed to product setup or checkout, including rapid scans when another field has focus. Product setup validates an EAN/UPC before requesting a match, preserves manual entry, and explains missing backend responses. Retail mobile fields use 16px text and a fixed viewport scale.
+
+`GET /overview?offline_device_id=<UUID>` returns per-device signed checkout context and product quotes when a non-viewer has an open till. These use a purpose-derived HMAC key from the existing JWT_SECRET. Offline cash sales carry these signed financial snapshots, the original till ID and their original sale time. Current membership, role, plan and mode are checked again at upload. Prices/cost/tax/seller details are preserved from the approved snapshot; stock deltas are applied to current server stock. `created_at` records the sale time; `recorded_at` records ingestion. Historical daily reorder snapshots are not reconstructed for late uploads. Changing JWT_SECRET invalidates unsynced authorisations; reconcile devices before rotating it.
+
+The service worker has scope `/retail/` and caches an explicit public app shell only. Account records live in IndexedDB partitioned by user/workspace/inventory. A read-write transaction saves each sale before receipt display. Web Locks serialize queue sync across tabs. Uncertain results retain identical request IDs/payloads. The snapshot stays frozen until all sent writes are acknowledged and a fresh server overview is obtained, preventing double application after a lost response. Original scoped headers are sent directly, independently of the currently patched topbar request wrapper. An acknowledged operation remains saved until its refreshed snapshot is persisted.
+
+Preparation permits cash sales for 24 hours with a seven-day upload window. A new login, product editing, new name lookups, deliveries, counts, refunds, settings and till cash management require a connection. A closed/replaced till or revoked access blocks sync and keeps the sale visible; no automatic retargeting or deletion occurs. A JSON backup is available for reconciliation, not automatic re-import. Reopen Retail to sync if all tabs were closed. Do not clear site storage while sales are pending; persistent storage is requested but eviction remains browser-controlled. Service-worker updates do not take over an active till.
+
+Run `offline.test.cjs` with the same test dependency path. It covers signed quotes, original financial/time snapshots, additive stock updates, replay after a lost confirmation, tampering, scope/device/actor/role/plan checks, expiry and closed-till conflicts. Browser integration also checks offline reload, queued receipt durability, reconnect after another device adds stock and two-tab queue sync. Physical scanner/printer/mobile-device smoke tests remain necessary.

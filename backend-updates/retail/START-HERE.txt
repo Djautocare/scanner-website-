@@ -1,109 +1,107 @@
-INVENTORYOS RETAIL UPDATE - VAT, RECEIPT NAME AND PHONE BARCODE SETUP
+INVENTORYOS RETAIL - SCANNER, FOCUSED TILL AND OFFLINE CASH UPDATE
 
-This upgrades the Retail version you already installed. Existing stock, sales,
-settings and old receipts are kept. No new npm packages, API key or .env changes.
+Existing Retail stock, sales, VAT settings and receipts are kept.
+No new npm packages, API keys or .env changes are required.
+
+INSTALL ON YOUR BACKEND PC
 
 1. Make your normal PostgreSQL backup and stop InventoryOS Backend.
 
-2. Extract the ZIP. Put the complete InventoryOS-retail-vat-barcode-update
-   folder inside your usual backend folder, next to server.js.
-   Do not manually copy the individual files over your backend.
+2. Extract the ZIP. Put the WHOLE InventoryOS-retail-offline-update folder
+   inside your usual backend folder, beside server.js.
+   Do not copy the individual files over your backend manually.
 
-3. Open PowerShell in your BACKEND folder. Run:
+3. Open PowerShell in your BACKEND folder and run:
 
-   node .\InventoryOS-retail-vat-barcode-update\install.cjs
+   node .\InventoryOS-retail-offline-update\install.cjs
    node .\check-retail.cjs
 
-   The installer backs up the files it changes. It recognises your previous
-   installation, keeps the existing server mount/start lines, and adds the new
-   lookup helper. The check adds the required database columns automatically.
+   The installer makes a backup of changed code. The database check adds the
+   required Retail columns automatically. You do not need to add tables by hand.
 
 4. If the check says PASS, restart your existing InventoryOS Backend task.
-   If either command fails, send the error text before continuing. Keep your
-   .env, passwords and database credentials private.
+   If it fails, send the error text; keep .env and credentials private.
 
-5. Refresh the website. If it looks unchanged, press Ctrl+F5 on PC or reload
-   the page on your phone after the website deployment has finished.
+5. Reload the website after deployment. On PC use Ctrl+F5. On mobile close old
+   Retail tabs and reopen Retail. Finish syncing saved sales before later updates.
 
-RECEIPT NAME AND VAT
+USB SCANNER AND PRODUCT LOOKUP
 
-- Open Retail > Retail settings > Receipt details.
-- Enter Business name on receipts. It prints at the top of new receipts even
-  with VAT turned off. You may also enter the business address.
-- Only VAT-registered shops should turn on VAT receipt. Enter the registered
-  business name, address and VAT registration number, then save settings.
-- Edit existing products and choose their VAT treatment. New products have a
-  VAT applicable checkbox for 20% or 5%; when unticked, choose zero-rated,
-  exempt or outside VAT scope as appropriate. Lookup does not determine tax.
-- Prices ALREADY INCLUDE VAT. A GBP 1.20 item at 20% stays GBP 1.20: GBP 1.00
-  net plus GBP 0.20 VAT. It does not become GBP 1.44.
-- The server calculates VAT on each sale line, rounds to the nearest penny
-  with halves up, and sums those amounts into the rate breakdown.
-- VAT must be classified before a product can be sold while VAT receipts are
-  enabled. Existing products are not automatically assigned a tax rate.
-- Receipts save their original seller details and tax breakdown. Editing the
-  settings or product afterwards does not rewrite old receipts. Sales from
-  before this update are not retrospectively assigned VAT or a new shop name.
-- This is a UK domestic sales receipt with a VAT breakdown. Full VAT invoices,
-  credit notes, VAT returns, margin schemes and other special VAT schemes are
-  not generated. Provide a full VAT invoice separately when required, including
-  transactions above GBP 250 or when requested. Check the applicable tax
-  treatment for the actual products your customer sells.
+- Set the scanner to USB Keyboard / HID mode, with an Enter or Tab suffix.
+  A keyboard-wedge scanner types into the page like a keyboard. Device drivers
+  or serial-only scanner modes may need changing in the scanner's own manual.
+- Products & stock > Add product: scan the pack. Barcode fills automatically
+  and a valid EAN/UPC is looked up. Or type the number then Look up barcode.
+- Check the match and press Use these details. Set the shop's price, opening
+  stock and VAT treatment, then Save product / Save and scan next.
+- Lookup requires internet and the latest backend. Not all products are listed
+  in Open Food Facts. Unlisted/custom products can still be entered manually.
+- Lookup no longer sends a request for an empty or invalid barcode. A failed
+  backend response now explains how to update instead of losing the number.
+- Checkout: scan a SAVED product to add it to the current sale. Scanning it
+  again adds another unit. The scanner can work when another till field has
+  focus; normal keyboard typing is preserved.
 
-WALK AROUND A SHOP ADDING PRODUCTS
+FOCUSED TILL AND MOBILE
 
-1. Sign into the customer's authorised workspace on your PHONE. Pick the exact
-   Retail inventory being set up; only the workspace owner/admin can add items.
-2. Open Retail > Products & stock > Scan to add product.
-3. Allow camera permission. Point the rear camera at the full EAN barcode and
-   hold still in good light. It needs two matching valid reads.
-4. If Open Food Facts has it, check the name and pack size, then tap
-   Use these details. This fills the name and keeps the EAN.
-5. Enter that shop's selling price, cost, opening stock, minimum and reorder
-   target. Set the correct VAT treatment if the shop uses VAT receipts.
-6. Tap Save and scan next to move straight to the next item.
+- Retail > Checkout > Full-screen till.
+- Sidebar and dashboard header are hidden so the till has the screen space.
+- Exit to dashboard is always available at the top.
+- Browser fullscreen is used where supported. The focused layout also works
+  on mobile browsers that do not provide browser fullscreen.
+- Mobile Retail uses a fixed page scale with 16px inputs to avoid field zoom.
+  The page scrolls vertically; wide tables scroll within their own area.
+  The browser/OS can still provide its own accessibility zoom controls.
 
-You can also type a barcode and tap Look up barcode, or use Add product and
-enter the name manually if no match exists. Duplicate barcodes are flagged;
-stock in or edit the existing product instead of creating another copy.
+PREPARE OFFLINE CASH CHECKOUT ON EACH DEVICE
 
-Open Food Facts identifies groceries by exact barcode, normally returning one
-product match rather than a list of different products. A barcode can identify
-a particular pack size/flavour, so confirm it against the packaging. Coverage
-is incomplete, and it does not provide your customer's selling prices or
-reliable UK VAT classifications. Non-food items may need manual entry.
+1. Sign in while connected. Pick exactly one workspace/inventory.
+2. Add the products and prices you need, then open the till with a counted float.
+3. Open Offline & sync > Prepare / refresh device. Allow persistent device
+   storage if the browser asks. Wait for the screen to confirm saved Retail
+   screens and checkout authorisation. Check it before trading offline.
+4. Checkout works with saved products for up to 24 hours after preparation.
+   Cash sales are durably saved to this device BEFORE the receipt appears.
+   Receipts identify sales awaiting server confirmation.
+5. Keep using the same browser/account/device. When internet/backend returns,
+   the current inventory's queue retries automatically. Offline & sync > Sync
+   now also retries. Check that no sales remain awaiting sync before closing
+   the till, changing device, clearing browser data or updating the app.
+6. Download saved sales backup if a sale needs attention. A backup preserves
+   the original details for reconciliation; it is not a second checkout and
+   should not be manually submitted under a new request ID.
 
-The phone decodes video locally. Camera frames are not uploaded. Only the
-barcode goes to your backend and Open Food Facts. Scanner code is served from
-InventoryOS, including a local ZXing fallback for browsers without the native
-barcode detector. The camera stops on a match, close, page hide or timeout.
+OFFLINE BOUNDARIES
 
-Lookup results are public product data, briefly cached in backend memory.
-Each saved product stays in the customer's private workspace/inventory. This
-update does not publish a shared catalogue, share customer prices/stock, or
-upload changes to Open Food Facts.
+- This release supports OFFLINE CASH SALES and viewing saved Retail screens.
+  Product edits/new products, name lookups, deliveries, stock counts, refunds,
+  settings and till opening/cash management require a working connection.
+- The Retail page must have been prepared online. Other InventoryOS pages and
+  a new login are not available offline. External card payments are not added.
+- Pending sales belong to the account/workspace/inventory that saved them.
+  Sign in to that same account and select that inventory to sync its queue.
+- The backend rechecks current membership/role, plan and Retail enablement on
+  sync. It verifies signed price, tax, seller and till snapshots. Stock is
+  deducted from CURRENT stock, never replaced by an old device quantity.
+- The same request ID is retried after a lost response; no duplicate sale is
+  created. Sale time and upload time are retained separately.
+- A changed/closed till, removed access, expired authorisation or other conflict
+  stays in the queue for review. It is never silently dropped or attached to a
+  different till. Contact the workspace owner to reconcile a blocked sale.
+- Offline authorisation permits sales within 24 hours, with a seven-day upload
+  window. Reconnect promptly. An already-confirmed request can still be safely
+  recovered after expiry.
+- Private browsing and clearing/evicting site storage can lose device data.
+  Do not clear storage while sales are pending. Storage persistence is a
+  browser preference, not a guarantee. Download a backup if sync is blocked.
+- An open page syncs after reconnecting. If all tabs are closed, reopen Retail
+  in the same browser/account/inventory to resume; it is not a background server.
+- The backend remains required for reports, shared data and other devices.
+  Daily reorder snapshots are generated only while the backend is running.
 
-The upstream API has usage limits. The backend caches matches and limits
-requests; if it asks you to wait, continue manually or retry after a minute.
-Camera scanning needs HTTPS and a supported camera/browser. A real phone's
-camera quality/permissions should be checked during the first shop setup.
+ROLLBACK
 
-Open Food Facts data is under ODbL, with attribution and share-alike conditions.
-The app preserves its source attribution. Review those terms before exporting,
-redistributing or building a shared catalogue from that data.
-https://world.openfoodfacts.org
-https://opendatacommons.org/licenses/odbl/1-0/
-
-CODE RESTORE IF NEEDED
-
-Stop the backend. Use the exact retail-backup-... folder printed by the installer:
-
-   node .\InventoryOS-retail-vat-barcode-update\restore.cjs .\retail-backup-YOUR-FOLDER-NAME
-
-This restores only unchanged installer-managed code and installation metadata.
-It keeps PostgreSQL stock/sales and additive columns. Restart the backend.
-Keep the backup until you are happy with the update.
-
-Card/contactless terminals, cash-drawer hardware and external POS sync remain
-unconnected. Existing cash checkout, deliveries, stock counts and till controls
-continue to work as before.
+Keep the retail-backup-... folder printed by install.cjs. Code can be restored
+with the included restore.cjs and that backup path, provided those files have
+not since been changed. Saved database records are never deleted by restore.
+Sync all saved device sales before changing or restoring the installed version.

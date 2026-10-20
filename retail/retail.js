@@ -11,9 +11,32 @@
     const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(value)).map(x => [x.type, x.value]));
     return `${p.year}-${p.month}-${p.day}`;
   };
-  const nav = [['dashboard', '▦', 'Dashboard'], ['checkout', '▤', 'Checkout'], ['products', '□', 'Products & stock'], ['deliveries', '↓', 'Deliveries'], ['reorders', '↻', 'Reorder report'], ['counts', '✓', 'Stock counts'], ['tasks', '◷', 'Tasks'], ['cash', '£', 'Till & cash'], ['sales', '↗', 'Sales & receipts'], ['settings', '⚙', 'Retail settings']];
+  const nav = [['dashboard', '▦', 'Dashboard'], ['checkout', '▤', 'Checkout'], ['products', '□', 'Products & stock'], ['deliveries', '↓', 'Deliveries'], ['reorders', '↻', 'Reorder report'], ['counts', '✓', 'Stock counts'], ['tasks', '◷', 'Tasks'], ['cash', '£', 'Till & cash'], ['sales', '↗', 'Sales & receipts'], ['settings', '⚙', 'Retail settings'], ['offline', '⇅', 'Offline & sync']];
   let data = null, online = false, ready = false, generation = 0, currentScope = '', basket = [], search = '', checkoutBusy = false;
-  let view = location.hash.slice(1) || 'dashboard';
+  let tillMode = location.hash.slice(1) === 'till';
+  let view = tillMode ? 'checkout' : location.hash.slice(1) || 'dashboard';
+  let productBarcodeScan = null, offlineState = { operations: [] }, shellReady = false;
+  const offline = window.InventoryRetailOffline;
+  const checkoutWriter = () => writer() || (shellReady && offline.canSell(offlineState) && scopeKey() === currentScope);
+  function syncStatus() {
+    const count = offlineState.operations.filter(x => x.status !== 'applied').length;
+    const blocked = offlineState.operations.some(x => x.status === 'blocked');
+    const text = blocked ? 'Sync needs attention' : count ? count + ' sale' + (count === 1 ? '' : 's') + ' awaiting sync' : online ? (shellReady && offline.canSell(offlineState) ? 'Online · offline till ready' : 'Up to date') : 'Offline · saved data';
+    $('#retailConnection').textContent = text;
+    $('#retailConnection').classList.toggle('connected', online && !count);
+    const bar = $('#retailSyncStatus');
+    bar.hidden = !offlineState.operations.length && online;
+    bar.innerHTML = esc(text) + (offlineState.operations.length ? ' · <button type="button" data-view="offline">View saved sales</button>' : (!online ? ' · Cash checkout uses saved prices. Other changes and barcode name lookup need a connection.' : ''));
+    if ($('#retailTillStatus')) $('#retailTillStatus').textContent = text;
+  }
+  function scanCheckout(code) {
+    if (!checkoutWriter() || checkoutBusy) return;
+    const p = data.products.find(p => !p.archived && p.barcode.toLowerCase() === code.toLowerCase());
+    search = '';
+    if (p) handleAction({ dataset: { action: 'basket-add', id: p.id } });
+    else { render(); notice('Barcode ' + code + ' is not saved in this inventory. Add the product in Products & stock first.', true); }
+    $('#retailSearch')?.focus();
+  }
   const admin = () => online && ['owner', 'admin'].includes(data?.role);
   const writer = () => online && data?.role && data.role !== 'viewer';
   const selected = () => ({ workspace: localStorage.getItem('inventoryos_selected_workspace_id') || '', inventory: InventoryAPI.getSelectedInventoryHeader(), user: InventoryAPI.getUser()?.id || '' });
@@ -29,12 +52,15 @@
     }
   }
   async function api(path, options = {}) {
-    const result = await InventoryAPI.request('/retail' + path, options);
-    if (!result.success) throw Object.assign(new Error(result.error || 'Could not load Retail'), { result });
+    const response = await fetch(InventoryAPI.API_BASE + '/retail' + path, { ...options, cache: 'no-store', signal: AbortSignal.timeout(12000), headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + InventoryAPI.getToken(), 'X-Workspace-Id': selected().workspace, 'X-Inventory-Ids': selected().inventory, ...(options.headers || {}) } });
+    const result = await response.json().catch(() => ({ success: false, error: 'Invalid server response' }));
+    if (!response.ok || !result.success) throw Object.assign(new Error(response.status === 401 ? 'Sign in again to reconnect Retail. Saved sales stay on this device.' : result.error || 'Could not load Retail'), { result, status: response.status });
     return result;
   }
   async function mutate(path, body, method = 'POST', retry = false) {
     if (scopeKey() !== currentScope) throw new Error('Workspace changed. Refresh before continuing.');
+    if (offlineState.operations.length) throw new Error('Sync the saved cash sales before making other changes. Open Offline & sync for details.');
+    if (!online) throw new Error('Reconnect before making this change. Cash checkout remains available when this device is prepared.');
     const old = pending();
     if (old && !retry) throw new Error('Retry the pending action using the button above before making another change.');
     const operation = retry ? old : { path, method, body: { ...body, request_id: crypto.randomUUID() } };
@@ -91,7 +117,7 @@
   function checkoutView() {
     const products = data.products.filter(p => !p.archived && (p.name + ' ' + p.barcode).toLowerCase().includes(search.toLowerCase()));
     const total = basket.reduce((sum, line) => sum + line.qty * line.unit_price_pence, 0);
-    return `<div class="retail-checkout">${card(header('Checkout', 'Scan a barcode or tap a product') + `<input id="retailSearch" type="search" placeholder="Product name or barcode — press Enter to add" aria-label="Search or scan product" value="${esc(search)}"><div class="retail-product-grid">${products.slice(0, 60).map(p => `<button type="button" class="retail-product-button" data-action="basket-add" data-id="${p.id}" ${!writer() || checkoutBusy ? 'disabled' : ''}><strong>${esc(p.name)}</strong><span>${pounds(p.price_pence)}</span><small class="retail-muted">${p.stock_qty} in stock</small></button>`).join('')}</div>${products.length > 60 ? '<p class="retail-help">Showing the first 60 results. Search to find a specific product.</p>' : ''}`)}<section class="retail-card retail-basket">${header('Current sale', `${basket.reduce((n, x) => n + x.qty, 0)} units`)}${basket.length ? basket.map(line => `<div class="retail-basket-row"><div><strong>${esc(line.name)}</strong><small>${pounds(line.unit_price_pence)} each</small></div><strong>${pounds(line.unit_price_pence * line.qty)}</strong><div class="retail-quantity retail-full-width"><button type="button" data-action="basket-minus" data-id="${line.product_id}" aria-label="Remove one ${esc(line.name)}" ${checkoutBusy ? 'disabled' : ''}>−</button><label class="retail-basket-qty-label"><span class="retail-muted">Quantity</span><input type="number" min="1" max="1000000" step="1" data-basket-qty="${line.product_id}" value="${line.qty}" ${checkoutBusy ? 'disabled' : ''}></label><button type="button" data-action="basket-remove" data-id="${line.product_id}" ${checkoutBusy ? 'disabled' : ''}>Remove</button></div></div>`).join('') : empty('Your basket is empty.')}<div class="retail-checkout-total"><span>Total</span><span>${pounds(total)}</span></div><form id="retailCheckoutForm"><label>Cash received (£)<input name="tendered" inputmode="decimal" type="number" min="0" max="1000000" step="0.01" required ${checkoutBusy ? 'disabled' : ''}></label><div id="retailChange" class="retail-help" aria-live="polite"></div><button type="submit" class="retail-primary" ${!writer() || !basket.length || !data.till || checkoutBusy || pending() ? 'disabled' : ''}>${checkoutBusy ? 'Recording sale…' : 'Complete cash sale'}</button></form><p class="retail-help">${data.till ? 'Check the basket and cash before completing. Sales can take stock below zero; those products are flagged for counting.' : 'An owner or admin must open the till before checkout.'}</p><p class="retail-note">Card terminal payments are not connected yet. This checkout records cash payments only.</p></section></div>`;
+    return `${tillMode ? '<div class="retail-till-toolbar"><strong>Till mode</strong><span id="retailTillStatus"></span><button type="button" data-view="dashboard">Exit to dashboard</button></div>' : '<div class="retail-action-row">' + button('Full-screen till', 'till-screen') + '</div>'}<div class="retail-checkout">${card(header('Checkout', 'Scan a barcode with your USB scanner or tap a product') + `<input id="retailSearch" type="search" placeholder="Product name or barcode — press Enter to add" aria-label="Search or scan product" value="${esc(search)}"><div class="retail-product-grid">${products.slice(0, 60).map(p => `<button type="button" class="retail-product-button" data-action="basket-add" data-id="${p.id}" ${!checkoutWriter() || checkoutBusy ? 'disabled' : ''}><strong>${esc(p.name)}</strong><span>${pounds(p.price_pence)}</span><small class="retail-muted">${p.stock_qty} in stock</small></button>`).join('')}</div>${products.length > 60 ? '<p class="retail-help">Showing the first 60 results. Search to find a specific product.</p>' : ''}`)}<section class="retail-card retail-basket">${header('Current sale', `${basket.reduce((n, x) => n + x.qty, 0)} units`)}${basket.length ? basket.map(line => `<div class="retail-basket-row"><div><strong>${esc(line.name)}</strong><small>${pounds(line.unit_price_pence)} each</small></div><strong>${pounds(line.unit_price_pence * line.qty)}</strong><div class="retail-quantity retail-full-width"><button type="button" data-action="basket-minus" data-id="${line.product_id}" aria-label="Remove one ${esc(line.name)}" ${checkoutBusy ? 'disabled' : ''}>−</button><label class="retail-basket-qty-label"><span class="retail-muted">Quantity</span><input type="number" min="1" max="1000000" step="1" data-basket-qty="${line.product_id}" value="${line.qty}" ${checkoutBusy ? 'disabled' : ''}></label><button type="button" data-action="basket-remove" data-id="${line.product_id}" ${checkoutBusy ? 'disabled' : ''}>Remove</button></div></div>`).join('') : empty('Your basket is empty.')}<div class="retail-checkout-total"><span>Total</span><span>${pounds(total)}</span></div><form id="retailCheckoutForm"><label>Cash received (£)<input name="tendered" inputmode="decimal" type="number" min="0" max="1000000" step="0.01" required ${checkoutBusy ? 'disabled' : ''}></label><div id="retailChange" class="retail-help" aria-live="polite"></div><button type="submit" class="retail-primary" ${!checkoutWriter() || !basket.length || !data.till || checkoutBusy || pending() ? 'disabled' : ''}>${checkoutBusy ? 'Recording sale…' : 'Complete cash sale'}</button></form><p class="retail-help">${data.till ? 'Check the basket and cash before completing. Sales can take stock below zero; those products are flagged for counting.' : 'An owner or admin must open the till before checkout.'}</p><p class="retail-note">Card terminal payments are not connected yet. This checkout records cash payments only.</p></section></div>`;
   }
   function deliveryView() {
     return card(header('Deliveries', 'Expected orders, incoming deliveries and partial receipts', button('Create delivery / order', 'delivery-new', '', !admin(), true)) + data.deliveries.map(d => row(d.supplier || 'Delivery', `${d.reference || 'No reference'} · ${dateOnly(d.expected_on)} · ${d.items.map(i => i.name).join(', ')}`, badge(d.status) + button('View', 'delivery-view', `data-id="${d.id}"`))).join('') + (data.deliveries.length ? '<p class="retail-help">Showing the latest 200 deliveries. Receiving adds only the quantities you confirm to Retail stock.</p>' : empty('No deliveries yet. Create an order here or from the reorder report.')));
@@ -118,21 +144,32 @@
     const s = data.settings, canEdit = admin() && data.vat_supported;
     return card(header('Retail settings', 'Shared by this workspace') + `<form id="retailSettingsForm" class="retail-form"><label class="retail-check-label"><input type="checkbox" name="enabled" ${s.enabled ? 'checked' : ''} ${!admin() ? 'disabled' : ''}> Enable Retail mode</label><div class="retail-form-grid"><label>Daily reorder report time<input type="time" name="report_time" value="${esc(s.report_time)}" required ${!admin() ? 'disabled' : ''}></label><label>Timezone<input name="timezone" value="${esc(s.timezone)}" required list="retailTimezones" ${!admin() ? 'disabled' : ''}><datalist id="retailTimezones"><option value="Europe/London"><option value="Europe/Dublin"><option value="America/New_York"><option value="UTC"></datalist></label></div><fieldset class="retail-receipt-settings"><legend>Receipt details</legend><label>Business name on receipts<input name="receipt_business_name" value="${esc(s.receipt_business_name)}" maxlength="160" ${!canEdit ? 'disabled' : ''}><small>Printed at the top of new receipts, with or without VAT. For VAT receipts, enter the registered business name.</small></label><label>Business address<textarea name="receipt_business_address" maxlength="500" ${!canEdit ? 'disabled' : ''}>${esc(s.receipt_business_address)}</textarea></label><label class="retail-check-label"><input type="checkbox" name="vat_receipts" id="retailVatReceipts" ${s.vat_receipts ? 'checked' : ''} ${!canEdit ? 'disabled' : ''}> VAT receipt — show VAT breakdown</label><label>VAT registration number<input name="vat_number" value="${esc(s.vat_number)}" maxlength="20" placeholder="GB123456789" ${!canEdit ? 'disabled' : ''}></label><p class="retail-help">Enable VAT only for a VAT-registered business. Selling prices include VAT already; this separates it out without increasing the total. Set each product’s correct VAT treatment before using this option. Your business details and tax breakdown are saved with each sale; older receipts are not changed.</p><p class="retail-help">Adds a UK domestic sales receipt with a VAT breakdown. Full VAT invoices and credit notes are not generated here; provide a full invoice separately when required.</p>${!data.vat_supported ? '<p class="retail-note">Install the latest Retail VAT backend update to edit receipt details and enable VAT.</p>' : ''}</fieldset><p class="retail-help">The closing report is saved once per local calendar day while the backend is running. Retail stock is recorded separately from your reseller and manufacturing stock. Turning Retail off keeps its saved records.</p><p class="retail-help">Cash checkout and browser receipt printing are available. Automatic card-reader payments, cash-drawer hardware and external POS sync require a separate integration.</p><button type="submit" class="retail-primary" ${!admin() ? 'disabled' : ''}>Save Retail settings</button><p class="retail-form-error" role="status"></p></form>`);
   }
+  function offlineView() {
+    const prepared = offlineState.snapshot?.offline;
+    return card(header('Offline cash till', shellReady ? 'Retail screens are saved on this device.' : 'Retail screens are not confirmed ready for offline reopening.', button('Prepare / refresh device', 'offline-prepare')) +
+      `<p>Open the till while connected, then prepare this browser. Cash sales use saved products, prices and VAT details for up to 24 hours. Keep this browser and device until every sale has synced. Login, new product lookups, product edits, deliveries, counts, refunds and till opening/balancing require a connection.</p><p>${prepared ? 'Saved checkout authorisation expires ' + esc(when(prepared.expires_at)) + '.' : 'Connect and open a till to prepare cash checkout.'}</p><p class="retail-help">Do not clear browser data or use private browsing for offline trading. Browser storage can be removed by the device; download a backup of unsynced sales before changing devices. Other tills may change stock while this one is offline; syncing applies sale quantities to current stock rather than replacing it.</p><div class="retail-action-row">${button('Sync now', 'offline-sync')}${button('Download saved sales backup', 'offline-backup', '', !offlineState.operations.length)}</div>` +
+      table(['Sale', 'Amount', 'Sync status'], offlineState.operations.map(o => `<tr><td>${esc(o.sale.reference)}<small>${when(o.sale.created_at)}</small>${button('Receipt', 'offline-receipt', 'data-id="' + o.id + '"')}</td><td>${pounds(o.sale.total_pence)}</td><td>${esc(o.status === 'applied' ? 'Confirmed; refreshing stock' : o.status)}${o.error ? '<small>' + esc(o.error) + '</small>' : ''}</td></tr>`), 'No cash sales awaiting sync.'));
+  }
   function render() {
-    const names = { dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Sales & receipts', settings: 'Retail settings' };
+    const tenderedBefore = $('#retailCheckoutForm input[name=tendered]')?.value;
+    document.body.classList.toggle('retail-till-mode', tillMode);
+    if (!tillMode && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    const names = { dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Sales & receipts', settings: 'Retail settings', offline: 'Offline & sync' };
     if (!names[view]) view = 'dashboard';
     $('#retailTitle').textContent = names[view];
     $('#retailNav').innerHTML = '<div class="retail-nav-label">YOUR SHOP</div>' + nav.map(n => `<button type="button" class="retail-nav-button ${view === n[0] ? 'active' : ''}" data-view="${n[0]}" ${view === n[0] ? 'aria-current="page"' : ''}><span aria-hidden="true">${n[1]}</span><span>${n[2]}</span></button>`).join('');
     if (!data) return;
     $('#retailRole').textContent = `${data.role} · Retail`;
-    $('#retailView').innerHTML = ({ dashboard, products: productView, checkout: checkoutView, deliveries: deliveryView, reorders: reordersView, counts: countsView, tasks: tasksView, cash: cashView, sales: salesView, settings: settingsView })[view]();
+    $('#retailView').innerHTML = ({ dashboard, products: productView, checkout: checkoutView, deliveries: deliveryView, reorders: reordersView, counts: countsView, tasks: tasksView, cash: cashView, sales: salesView, settings: settingsView, offline: offlineView })[view]();
+    if (view === 'checkout' && basket.length && tenderedBefore != null) { const cash = $('#retailCheckoutForm input[name=tendered]'); cash.value = tenderedBefore; cash.dispatchEvent(new Event('input', { bubbles: true })); }
+    syncStatus();
   }
   function switchView(next) {
     if (checkoutBusy) return;
     window.InventoryRetailScanner?.stop();
-    view = next; search = ''; history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(view)); render();
+    tillMode = next === 'till'; view = tillMode ? 'checkout' : next; search = ''; history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(tillMode ? 'till' : view)); render();
     setMenu(false);
-    $('#main').focus({ preventScroll: true });
+    if (view === 'checkout') $('#retailSearch')?.focus(); else $('#main').focus({ preventScroll: true });
   }
   function setMenu(open) {
     const mobile = matchMedia('(max-width:760px)').matches;
@@ -154,15 +191,26 @@
     try {
       const selection = selected();
       if (!selection.inventory || selection.inventory.includes(',')) throw new Error('Use the inventory selector above to choose exactly one inventory for Retail.');
+      offlineState = await offline.read(context);
+      if (offlineState.operations.length) {
+        if (navigator.onLine) await offline.sync(context);
+        if (g !== generation || scopeKey() !== context) return;
+        offlineState = await offline.read(context);
+        if (offlineState.operations.length) { data = offline.project(offlineState); online = false; render(); notice('Saved sales remain on this device until confirmed. Check Offline & sync for progress or errors.'); return; }
+      }
+      if (!navigator.onLine && offlineState.snapshot) throw new Error('Working from the saved Retail data.');
       const status = await api('/status'); if (g !== generation) return;
       if (!status.active) {
+        await offline.lock(context, 'Retail is off or no longer entitled.');
         online = false; data = null; render();
         $('#retailView').innerHTML = card(header('Retail is switched off', 'Enable it for this workspace in Settings.') + '<a href="settings.html">Open account settings</a>');
         notice(status.allowed ? 'Retail is off for this workspace.' : 'Select an active InventoryOS plan before enabling Retail.'); return;
       }
-      const r = await api('/overview'); if (g !== generation || scopeKey() !== context) return;
+      const r = await api('/overview?offline_device_id=' + encodeURIComponent(offline.device())); if (g !== generation || scopeKey() !== context) return;
       if (r.workspace_id !== selected().workspace || r.inventory_id !== selected().inventory) throw new Error('Workspace selection changed. Refresh to load the correct inventory.');
-      data = r; online = true;
+      await offline.save(context, r); offlineState = await offline.read(context);
+      if (g !== generation || scopeKey() !== context) return;
+      data = offline.project(offlineState); online = !offlineState.operations.length;
       let basketChanged = false;
       basket = basket.filter(line => {
         const p = data.products.find(p => p.id === line.product_id && !p.archived);
@@ -177,8 +225,10 @@
     } catch (e) {
       if (g !== generation) return;
       online = false; $('#retailConnection').textContent = 'Needs refresh'; $('#retailConnection').classList.remove('connected');
+      if (e.status && e.status < 500) { await offline.lock(context, e.message); offlineState = { ...offlineState, snapshot: null }; }
+      else if (offlineState.snapshot) data = offline.project(offlineState);
       if (data) render(); else $('#retailView').innerHTML = empty('Retail could not be loaded. Install the backend update if you have not done so yet, then refresh.');
-      notice(e.message, true);
+      notice(e.message, true); syncStatus();
     }
   }
   const input = (label, name, value = '', extra = '', helper = '') => `<label>${esc(label)}<input name="${name}" value="${esc(value)}" ${extra}>${helper ? `<small>${esc(helper)}</small>` : ''}</label>`;
@@ -240,6 +290,9 @@
     async function lookup() {
       const barcode = form.elements.barcode.value.trim(), g = ++lookupGeneration;
       const result = form.querySelector('#retailLookupResult');
+      if (!barcode) { result.textContent = 'Scan a barcode with your USB scanner, use Scan EAN with camera, or type the number into Barcode first.'; form.elements.barcode.focus(); return; }
+      if (!window.InventoryRetailScanner.valid(barcode)) { result.textContent = 'Enter a valid EAN or UPC number (8, 12, 13 or 14 digits). Custom barcodes can still be saved manually.'; form.elements.barcode.focus(); return; }
+      if (!navigator.onLine) { result.textContent = 'Product name lookup needs internet access. Keep the scanned barcode and enter the name manually, or reconnect and try again.'; return; }
       const existing = data.products.find(x => x.barcode === barcode && x.id !== p?.id);
       if (existing) { result.textContent = `This barcode is already saved as ${existing.name}. Close this form and edit or stock in that product instead.`; return; }
       result.textContent = 'Looking up barcode in Open Food Facts…';
@@ -256,8 +309,11 @@
           form.elements.name.value = (x.name + quantity).slice(0, 160); source = 'openfoodfacts'; sourceCode = x.barcode;
           attribution(); result.textContent = 'Product details filled in. Add the shop’s price, stock and reorder levels before saving.'; form.elements.price.focus();
         };
-      } catch (e) { if (g === lookupGeneration && form.isConnected) result.textContent = e.message; }
+      } catch (e) { if (g === lookupGeneration && form.isConnected) result.textContent = /invalid server response/i.test(e.message) ? 'Barcode lookup did not receive a valid backend response. Install the latest Retail backend update, restart InventoryOS Backend, and try again. Your barcode is kept for manual entry.' : e.message; }
     }
+    productBarcodeScan = code => { if (!form.isConnected) return; window.InventoryRetailScanner?.stop(); form.elements.barcode.value = code; form.elements.barcode.dispatchEvent(new Event('input', { bubbles: true })); if (data.catalogue_supported) lookup(); };
+    form.elements.barcode.autocomplete = 'off';
+    form.elements.barcode.focus();
     if (data.catalogue_supported) {
       form.querySelector('#retailLookupEan').onclick = lookup;
       const start = () => InventoryRetailScanner.start(form.querySelector('#retailCamera'), (code, error) => {
@@ -314,7 +370,7 @@
   function receipt(sale) {
     const vat = sale.vat_receipt, business = sale.receipt_business || { name: vat?.business_name || 'InventoryOS · Retail', address: vat?.business_address || '' };
     const breakdown = vat ? `<section class="retail-receipt-vat"><hr><h4>VAT breakdown — included in prices</h4><table class="retail-tax-table"><thead><tr><th>Rate / treatment</th><th>Net</th><th>VAT</th><th>Total</th></tr></thead><tbody>${vat.groups.map(g => `<tr><td>${esc(vatLabel(g.vat_treatment, g.vat_rate))}</td><td>${pounds(g.net_pence)}</td><td>${pounds(g.vat_pence)}</td><td>${pounds(g.gross_pence)}</td></tr>`).join('')}</tbody></table><p>Net total: ${pounds(vat.net_pence)}<br>VAT included: ${pounds(vat.vat_pence)}<br><strong>Total paid: ${pounds(vat.gross_pence)}</strong></p>${sale.total_pence > 25000 || vat.groups.some(g => ['exempt', 'outside_scope'].includes(g.vat_treatment)) ? '<p>This is a sales receipt with a VAT breakdown, not a full VAT invoice. Request a full VAT invoice separately if needed.</p>' : ''}</section>` : '';
-    dialog('Sale receipt', `<div class="retail-receipt"><h3>${esc(business.name)}</h3>${business.address ? `<p class="retail-receipt-address">${esc(business.address).replace(/\n/g, '<br>')}</p>` : ''}${vat ? `<p>VAT registration: ${esc(vat.vat_number)}</p>` : ''}<p>${esc(sale.reference)}<br>${esc(when(sale.created_at))}</p><table>${sale.items.map(i => { const line = vat?.lines.find(x => x.product_id === i.product_id); return `<tr><td>${esc(i.name)}<br>${i.qty} × ${pounds(i.unit_price_pence)}${line ? '<br><small>' + esc(vatLabel(line.vat_treatment, line.vat_rate)) + '</small>' : ''}</td><td>${pounds(i.qty * i.unit_price_pence)}</td></tr>`; }).join('')}</table><hr><p><strong>Total ${pounds(sale.total_pence)}</strong><br>Cash ${pounds(sale.tendered_pence)}<br>Change ${pounds(sale.change_pence)}${sale.status === 'refunded' ? '<br>REFUNDED — original sale receipt' : ''}</p>${breakdown}<p>Thank you for shopping with us.</p></div><div class="retail-action-row">${button('Print / save receipt', 'print')}</div><p class="retail-help">Uses your browser’s print menu. A connected printer is required for paper receipts.</p>`);
+    dialog('Sale receipt', `${sale.pending_sync ? '<p class="retail-note">Cash sale saved on this device. Awaiting server confirmation; keep this browser data until synced.</p>' : ''}<div class="retail-receipt"> <h3>${esc(business.name)}</h3>${business.address ? `<p class="retail-receipt-address">${esc(business.address).replace(/\n/g, '<br>')}</p>` : ''}${vat ? `<p>VAT registration: ${esc(vat.vat_number)}</p>` : ''}<p>${esc(sale.reference)}<br>${esc(when(sale.created_at))}</p><table>${sale.items.map(i => { const line = vat?.lines.find(x => x.product_id === i.product_id); return `<tr><td>${esc(i.name)}<br>${i.qty} × ${pounds(i.unit_price_pence)}${line ? '<br><small>' + esc(vatLabel(line.vat_treatment, line.vat_rate)) + '</small>' : ''}</td><td>${pounds(i.qty * i.unit_price_pence)}</td></tr>`; }).join('')}</table><hr><p><strong>Total ${pounds(sale.total_pence)}</strong><br>Cash ${pounds(sale.tendered_pence)}<br>Change ${pounds(sale.change_pence)}${sale.status === 'refunded' ? '<br>REFUNDED — original sale receipt' : ''}</p>${breakdown}<p>Thank you for shopping with us.</p></div><div class="retail-action-row">${button('Print / save receipt', 'print')}</div><p class="retail-help">Uses your browser’s print menu. A connected printer is required for paper receipts.</p>`);
   }
   function refundForm(saleId) {
     const s = data.sales.find(s => s.id === saleId);
@@ -324,6 +380,11 @@
     if (!data && !['refresh', 'retry'].includes(el.dataset.action)) return;
     const { action, id: recordId, kind } = el.dataset;
     if (action === 'refresh') return refresh();
+    if (action === 'offline-sync') { await offline.sync(currentScope, true); await refresh(); return; }
+    if (action === 'offline-prepare') { if (!navigator.onLine) throw new Error('Reconnect to prepare this device.'); shellReady = await offline.shell(); await navigator.storage?.persist?.(); await refresh(); return; }
+    if (action === 'offline-backup') return offline.backup(currentScope);
+    if (action === 'offline-receipt') return receipt(offlineState.operations.find(x => x.id === recordId).sale);
+    if (action === 'till-screen') { switchView('till'); if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); return; }
     if (action === 'retry') {
       el.disabled = true;
       try { const r = await mutate(null, null, null, true); if (r) { basket = []; $('#retailDialog').close(); await refresh(); notice('Pending action confirmed.'); if (r.sale) receipt(r.sale); } } finally { el.disabled = false; }
@@ -348,7 +409,7 @@
     if (action === 'report-view') { const r = data.reports[Number(el.dataset.index)]; return dialog('Reorder snapshot · ' + dateOnly(r.report_date), `<p>Saved ${when(r.created_at)}. These are historical quantities; use the live report to place new orders.</p>` + reorderTable(r.data.items, false) + button('Print snapshot', 'print')); }
     if (action === 'report-print') return dialog('Current reorder report', reorderTable(data.reorders, false) + `<p>Generated ${when(data.server_now)} · ${esc(data.settings.timezone)}</p>` + button('Print / save report', 'print'));
     if (action.startsWith('basket-')) {
-      if (checkoutBusy) return;
+      if (checkoutBusy || !checkoutWriter()) return;
       const p = data.products.find(p => p.id === recordId), item = basket.find(i => i.product_id === recordId);
       if (action === 'basket-add') {
         if (item) item.qty = Math.min(1000000, item.qty + 1);
@@ -395,12 +456,9 @@
     if (item && Number.isInteger(value) && value >= 1 && value <= 1000000) item.qty = value;
     render();
   });
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Enter' && event.target.id === 'retailSearch' && view === 'checkout') {
-      event.preventDefault(); const p = data.products.find(p => !p.archived && p.barcode.toLowerCase() === search.trim().toLowerCase());
-      if (!writer()) return;
-      if (p) { search = ''; handleAction({ dataset: { action: 'basket-add', id: p.id } }); $('#retailSearch')?.focus(); } else notice('No exact barcode match. Choose a result or add the product first.');
-    }
+  window.InventoryRetailKeyboard.attach({
+    context: () => $('#retailDialog').open ? ($('#retailModalForm input[name=barcode]') ? 'product' : null) : (view === 'checkout' && data ? 'checkout' : null),
+    scan: (code, mode) => { if (mode === 'product') productBarcodeScan?.(code); else scanCheckout(code); }
   });
   document.addEventListener('submit', async event => {
     if (!['retailCheckoutForm', 'retailSettingsForm'].includes(event.target.id)) return;
@@ -409,8 +467,19 @@
       if (checkoutBusy || !basket.length || pending()) return;
       const tendered = new FormData(form).get('tendered'); checkoutBusy = true; render();
       try {
-        const result = await mutate('/checkout', { items: basket.map(({ product_id, qty, unit_price_pence, vat_treatment, vat_rate }) => ({ product_id, qty, unit_price_pence, vat_treatment, vat_rate })), payment_method: 'cash', tendered, vat_version: data.settings.vat_version ?? 0 });
-        if (result) { basket = []; checkoutBusy = false; await refresh(); receipt(result.sale); }
+        const body = { items: basket.map(({ product_id, qty, unit_price_pence, vat_treatment, vat_rate }) => ({ product_id, qty, unit_price_pence, vat_treatment, vat_rate })), payment_method: 'cash', tendered, vat_version: data.settings.vat_version ?? 0 };
+        let result;
+        if (offline.canSell(offlineState) && (online || shellReady)) {
+          result = await offline.enqueue(currentScope, body);
+          offlineState = await offline.read(currentScope); data = offline.project(offlineState);
+          basket = []; checkoutBusy = false; render(); receipt(result.sale);
+          // Receipt is already durable. Sync can continue while the next basket is built.
+          offline.sync(currentScope).then(async () => { offlineState = await offline.read(currentScope); syncStatus(); if (!$('#retailDialog').open && !basket.length) refresh({ quiet: true }); }).catch(e => notice(e.message, true));
+        } else {
+          if (!online) throw new Error('Reconnect and prepare this device before taking an offline sale.');
+          result = await mutate('/checkout', body);
+          if (result) { basket = []; checkoutBusy = false; await refresh(); receipt(result.sale); }
+        }
       } catch (e) { notice(e.message, true); }
       finally { checkoutBusy = false; render(); }
     } else {
@@ -426,18 +495,25 @@
     const user = InventoryAPI.getUser();
     $('#retailPersonName').textContent = user?.name || 'Your account';
     $('#retailAvatar').textContent = (user?.name || 'Inventory OS').split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
-    $('#retailLogout').onclick = () => InventoryAPI.logout();
+    $('#retailLogout').onclick = () => { if (offlineState.operations.length && !confirm('There are saved sales awaiting sync on this device. They will remain here, but you must sign in to the same account to sync them. Log out?')) return; InventoryAPI.logout(); };
     $('#retailMenu').onclick = () => setMenu(!$('#retailSidebar').classList.contains('open'));
     setMenu(false);
     $('#retailDialogClose').onclick = () => { window.InventoryRetailScanner?.stop(); $('#retailDialog').close(); };
-    $('#retailDialog').addEventListener('close', () => { if (!$('#retailDialog').open) window.InventoryRetailScanner?.stop(); });
-    render(); await InventoryTopbar.init(); ready = true; await refresh();
+    $('#retailDialog').addEventListener('close', () => { if (!$('#retailDialog').open) { window.InventoryRetailScanner?.stop(); productBarcodeScan = null; if (view === 'checkout') $('#retailSearch')?.focus(); } });
+    render();
+    offline.shell().then(ok => { shellReady = ok; syncStatus(); }).catch(() => { shellReady = false; });
+    if (navigator.onLine) await Promise.race([InventoryTopbar.init(), new Promise(resolve => setTimeout(resolve, 12000))]);
+    ready = true; await refresh();
   }
+  window.addEventListener('retail-offline-change', async () => { if (!currentScope) return; offlineState = await offline.read(currentScope); syncStatus(); if (view === 'offline' && !$('#retailDialog').open) render(); });
+  window.addEventListener('online', () => { if (ready && !checkoutBusy) refresh({ quiet: true }); });
+  window.addEventListener('offline', () => { online = false; syncStatus(); if (ready && !checkoutBusy && !$('#retailDialog').open) render(); });
   window.addEventListener('inventory-selection-changed', () => { if (ready) refresh(); });
   window.addEventListener('hashchange', () => switchView(location.hash.slice(1)));
   window.addEventListener('resize', () => setMenu(false));
   document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && ready && !$('#retailDialog').open && view !== 'checkout') refresh({ quiet: true }); });
+  setInterval(() => { if (ready && currentScope && navigator.onLine && offlineState.operations.length) offline.sync(currentScope).then(async () => { offlineState = await offline.read(currentScope); syncStatus(); }).catch(e => notice(e.message, true)); }, 15000);
   setInterval(() => { if (ready && !document.hidden && !$('#retailDialog').open && view !== 'checkout') refresh({ quiet: true }); }, 60000);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
 })();
