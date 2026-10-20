@@ -1,10 +1,10 @@
 (function(){'use strict';
 window.InventoryRetailCounter={create(H){
  const {esc,pounds,when,button,card,header,table,input,moneyInput,qtyInput,formDialog,dialog}=H,$=s=>document.querySelector(s),D=()=>H.getData(),ops=()=>D()?.operations||{},supported=()=>Boolean(ops().supported),ssKey=()=> 'inventoryos_retail_cashier:'+H.scope();
- let category='',age=new Map(),scope='',transfer=null;
+ let requestHeadersReady=false,category='',age=new Map(),scope='',transfer=null;
  let device=localStorage.getItem('inventoryos_retail_device');if(!device){device=crypto.randomUUID();localStorage.setItem('inventoryos_retail_device',device);}
  function token(){try{return sessionStorage.getItem(ssKey())||'';}catch{return '';}}
- function headers(){return {'X-Retail-Device-Id':device,...(token()?{'X-Retail-Staff-Token':token()}:{})};}
+ function headers(){if(!requestHeadersReady)return {};return {'X-Retail-Device-Id':device,...(token()?{'X-Retail-Staff-Token':token()}:{})};}
  function staff(){return ops().staff_session;}
  function needsLogin(){return supported()&&(ops().config.staff_login_required||ops().till_assignment?.owner_staff_id)&&!staff();}
  function canSell(){return !needsLogin()&&(!staff()||H.online());}
@@ -54,6 +54,6 @@ window.InventoryRetailCounter={create(H){
  document.addEventListener('click',e=>{const el=e.target.closest('[data-counter]');if(!el||el.disabled)return;e.preventDefault();Promise.resolve(action(el)).catch(e=>H.notice(e.message,true));});
  document.addEventListener('submit',e=>{if(!['counterAccess','counterImport','counterLabels'].includes(e.target.id))return;e.preventDefault();const form=e.target,btn=form.querySelector('button[type=submit]');if(btn.disabled)return;btn.disabled=true;Promise.resolve(form.id==='counterAccess'?H.mutate('/operations/settings',{staff_login_required:new FormData(form).has('required')},'PATCH').then(()=>H.refresh()):form.id==='counterImport'?previewImport(form):labelPdf(form)).catch(e=>H.notice(e.message,true)).finally(()=>btn.disabled=false);});
  document.addEventListener('change',e=>{if(e.target.closest('#counterLabels')&&e.target.name==='filter'){const value=e.target.value;document.querySelectorAll('[data-label-category]').forEach(l=>{l.hidden=value==='favourites'?l.dataset.labelFavourite!=='true':value!=='all'&&l.dataset.labelCategory!==value;if(l.hidden)l.querySelector('input').checked=false;});}});
- return {headers,staff,needsLogin,canSell,reset,filter,tabs,nav,toolbar,ageGate,confirmAges,ageChecks,action,returns,showReturn:r=>returnReceipt(r,true),appearance,needsOnline:()=>Boolean(staff())||needsLogin(),views:{'staff-access':staffView,transfer:transferView,'shelf-labels':labelsView}};
+ return {headers,enableHeaders:flag=>{requestHeadersReady=Boolean(flag);},staff,needsLogin,canSell,reset,filter,tabs,nav,toolbar,ageGate,confirmAges,ageChecks,action,returns,showReturn:r=>returnReceipt(r,true),appearance,needsOnline:()=>Boolean(staff())||needsLogin(),views:{'staff-access':staffView,transfer:transferView,'shelf-labels':labelsView}};
 }};
 })();

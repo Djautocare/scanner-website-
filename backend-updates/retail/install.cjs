@@ -46,6 +46,15 @@ try {
     if ([...server.matchAll(anchor)].length !== 1) throw new Error('Could not identify the backend startup point. Nothing was changed.');
     server = server.replace(anchor, '$&\n' + start);
   }
+  // The deployed API uses an explicit CORS allowlist. Staff credentials remain
+  // in headers, never URL query strings or the pending-action body store.
+  if (!server.includes('"X-Retail-Staff-Token"') || !server.includes('"X-Retail-Device-Id"')) {
+    const blocks = [...server.matchAll(/allowedHeaders\s*:\s*\[[\s\S]*?\]/g)];
+    if (blocks.length !== 1 || !blocks[0][0].includes('"Authorization"') || !blocks[0][0].includes('"X-Workspace-Id"')) throw new Error('Could not safely update the API header allowlist. Nothing was changed.');
+    const block=blocks[0][0], extras=['X-Retail-Staff-Token','X-Retail-Device-Id'].filter(name=>!block.includes('"'+name+'"'));
+    const updated=block.replace(/,?\s*\]$/,',\n'+extras.map(name=>'        "'+name+'"').join(',\n')+'\n    ]');
+    server=server.replace(block,updated);
+  }
   if (server !== before) writes.push({ name: 'server.js', bytes: Buffer.from(server), old: Buffer.from(before) });
   const stateBytes = Buffer.from(JSON.stringify({ version: 5, files: manifest }, null, 2));
   const stateOld = fs.existsSync(stateFile) ? fs.readFileSync(stateFile) : null;

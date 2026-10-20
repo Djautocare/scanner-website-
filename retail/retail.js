@@ -56,6 +56,7 @@
     const response = await fetch(InventoryAPI.API_BASE + '/retail' + path, { ...options, cache: 'no-store', signal: AbortSignal.timeout(path.startsWith('/operations/import') ? 90000 : 12000), headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + InventoryAPI.getToken(), 'X-Workspace-Id': selected().workspace, 'X-Inventory-Ids': selected().inventory, ...counterUI.headers(), ...(options.headers || {}) } });
     const result = await response.json().catch(() => ({ success: false, error: 'Invalid server response' }));
     if (!response.ok || !result.success) throw Object.assign(new Error(response.status === 401 ? 'Sign in again to reconnect Retail. Saved sales stay on this device.' : result.error || 'Could not load Retail'), { result, status: response.status });
+    if(path==='/status')counterUI.enableHeaders(result.counter_supported);
     return result;
   }
   async function mutate(path, body, method = 'POST', retry = false) {

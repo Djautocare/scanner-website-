@@ -1,6 +1,6 @@
 'use strict';
-const CACHE='inventoryos-retail-shell-v5';
-const assets=['index.html','counter.js?v=5','counter.css?v=5','labels.js?v=5','vendor/jsbarcode-3.11.6.min.js','pricing.js?v=5','business.js?v=5','business.css?v=5','display.html','display.js?v=5','display.css?v=5','retail.css?v=5','retail.js?v=5','scanner.js?v=5','keyboard-scanner.js?v=3','offline.js?v=5','shared.js?v=1','vendor/zxing-browser-0.1.5.min.js','../css/theme.css?v=5','../css/inventoryTopbar.css?v=6','../js/theme.js?v=5','../js/api.js?v=retail-1','../js/inventoryTopbar.js?v=6'].map(p=>new URL(p,self.location.href).href);
+const CACHE='inventoryos-retail-shell-v5.1';
+const assets=['index.html','counter.js?v=5.1','counter.css?v=5','labels.js?v=5','vendor/jsbarcode-3.11.6.min.js','pricing.js?v=5','business.js?v=5','business.css?v=5','display.html','display.js?v=5','display.css?v=5','retail.css?v=5','retail.js?v=5.1','scanner.js?v=5','keyboard-scanner.js?v=3','offline.js?v=5','shared.js?v=1','vendor/zxing-browser-0.1.5.min.js','../css/theme.css?v=5','../css/inventoryTopbar.css?v=6','../js/theme.js?v=5','../js/api.js?v=retail-1','../js/inventoryTopbar.js?v=6'].map(p=>new URL(p,self.location.href).href);
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(assets))));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('inventoryos-retail-shell-')&&k!==CACHE).map(k=>caches.delete(k))))));
 self.addEventListener('fetch',e=>{

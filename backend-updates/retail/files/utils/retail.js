@@ -234,7 +234,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   async function status(req) {
     await ensureSchema();
     const s = await scope(pool, req, { inventory: false, entitled: false, enabled: false });
-    return { success: true, offline_supported: Boolean(offlineKey), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, role: s.role, allowed: s.access.allowed, enabled: s.settings.enabled, active: s.access.allowed && s.settings.enabled, settings: s.settings, plan: s.access.plan_key };
+    return { success: true, counter_supported: true, offline_supported: Boolean(offlineKey), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, role: s.role, allowed: s.access.allowed, enabled: s.settings.enabled, active: s.access.allowed && s.settings.enabled, settings: s.settings, plan: s.access.plan_key };
   }
   async function settings(c, s, b) {
     if (typeof b.enabled !== 'boolean') throw fail('Choose enabled or disabled');
