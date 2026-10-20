@@ -33,4 +33,14 @@ const InventoryAPI=(function(){function detectApiBase(){const saved=localStorage
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadBusinessTrial,{once:true});else loadBusinessTrial();
 })();
 
+// Add Retail navigation/settings only after the existing account is authenticated.
+(function(){
+ function loadRetail(){
+  if(!InventoryAPI.isLoggedIn()||window.InventoryRetail||document.getElementById('inventoryos-retail-script'))return;
+  const script=document.createElement('script');script.id='inventoryos-retail-script';script.src='retail/shared.js?v=1';script.async=true;document.head.append(script);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadRetail,{once:true});else loadRetail();
+})();
+
+
 

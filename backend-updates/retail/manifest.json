@@ -1,0 +1,6 @@
+{
+  "check-retail.cjs": "91ab71066cd0680c8c2752a31c6ac332720530d916b2e3b59fde24c98637dcea",
+  "routes/retailRoutes.js": "b1c2cf61371fddc6369c731bfab00a930c8fbfda33c5b538437e9318b8427c21",
+  "sql/retail.sql": "b2a5c5e130afcfd1919b5985fbfa8d507ff64ddf7ef9f3d9f494c09138c40b50",
+  "utils/retail.js": "575b31b87adfcb262be00f117d65356e98f3eb968431300104d0fffcf8f27e13"
+}

@@ -1,0 +1,97 @@
+INVENTORYOS RETAIL - SIMPLE INSTALLATION
+
+Your controllers folder can stay empty. These routes handle the requests.
+
+1. Make a normal PostgreSQL backup before installing a backend update.
+
+2. Stop your existing "InventoryOS Backend" task using your usual stop method.
+
+3. Extract this ZIP. Put the complete InventoryOS-retail-update folder inside:
+   your usual InventoryOS backend folder (the one containing server.js)
+
+   You should have:
+   backend\InventoryOS-retail-update\install.cjs
+   backend\InventoryOS-retail-update\files\...
+
+   Do not move the individual files yourself. Do not replace your whole backend.
+
+4. Open PowerShell inside your backend folder. Run:
+
+   node .\InventoryOS-retail-update\install.cjs
+
+   It checks every file before applying changes, makes a backup, copies the new
+   Retail files, and adds two lines to YOUR current server.js. Your other routes,
+   admin restrictions, .env and existing files are preserved.
+
+5. Run:
+
+   node .\check-retail.cjs
+
+   This creates the new Retail tables automatically. You do not need to create
+   tables manually or paste SQL into PostgreSQL. No new npm packages or .env
+   settings are needed. If this prints an error, keep the backend stopped and
+   send the error text. Do not post database credentials or your .env.
+
+6. If the check says PASS, start your existing InventoryOS Backend task again.
+
+7. Refresh the website. Open Settings > Retail mode and enable it for the
+   workspace you want to use. Then select Open Retail. Retail is off by default.
+   The workspace owner or an admin controls this setting.
+
+8. In Retail, select exactly ONE inventory at the top. Add products with their
+   actual opening quantities, selling prices, costs, minimums and reorder targets.
+   Retail stock is SEPARATE from reseller/manufacturing stock. Nothing is copied
+   or deducted from those areas automatically. Avoid counting the same physical
+   units in both systems.
+
+9. Count the drawer and use Open till & set float. Test one CASH sale, its
+   receipt and a stock count before using this for normal trading. Negative
+   stock creates a count request automatically. Incoming deliveries are received
+   only when you confirm the units that actually arrived.
+
+10. Daily reorder snapshots default to 17:00 Europe/London. Change this in Retail
+    settings. The backend must be running. The report is available in the app;
+    automatic report emails are not part of this update. Missed days are not
+    reconstructed after downtime.
+
+WHAT IS INCLUDED
+- Separate Retail dashboard/sidebar with expected and incoming deliveries,
+  due/upcoming tasks, stock alerts, till controls and sales along the bottom.
+- Fixed GBP selling prices, unit costs, min/target quantities and supplier links.
+- Cash checkout, browser receipt printing, full cash refunds with optional stock
+  return, negative-stock flags and audited physical counts.
+- Cash lifts (out), change handouts (INTO the drawer), float adjustments and
+  balances with persistent short/over differences. Each balance establishes
+  a new counted baseline; it does not erase the previous variance.
+- Orders, partial deliveries, live reorder quantities that subtract on-order
+  stock, and daily closing snapshots.
+- Workspace/inventory access checks, viewer restrictions and duplicate-request
+  protection. Existing selected-plan product limits are respected.
+
+IMPORTANT LIMITS
+- Card/contactless reader payments, cash-drawer hardware and external POS sync
+  are NOT connected. The card-payment option cannot record a fake paid sale.
+- Browser printing requires your phone/PC to have a compatible print route.
+- One open till per inventory; one currency (GBP); whole-unit quantities.
+- This is an initial cash-retail module, not an offline till. It needs access to
+  your running backend. It does not calculate VAT or produce VAT invoices.
+- Product lists support up to 5,000 Retail products per inventory. Orders and
+  baskets support 100 different products each. The screens show recent history:
+  100 sales/cash events, 200 deliveries, 500 tasks/counts, and 31 daily reports.
+  Older database records are retained.
+- A live card-terminal integration needs a separate provider/merchant setup;
+  no customer's card details are entered or stored by this update.
+
+IF YOU NEED TO UNDO THE BACKEND CODE CHANGE
+Stop the backend. The installer printed a retail-backup-... folder name.
+Use the exact folder name from your PC in this command:
+
+   node .\InventoryOS-retail-update\restore.cjs .\retail-backup-YOUR-FOLDER-NAME
+
+This restores code only if it has not been changed since installation. It keeps
+Retail data in PostgreSQL. Restart the backend afterwards. Turn Retail off in
+Settings before restoring if possible. The frontend safely shows Retail as
+unavailable if the backend module is removed.
+
+Do not delete your active server.js, routes, utils, middleware, database.js,
+package files, .env or uploads. Keep the installer backup until you are happy.

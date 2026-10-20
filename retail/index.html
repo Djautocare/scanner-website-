@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../">
+<title>Retail · InventoryOS</title>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/inventoryTopbar.css?v=6">
+<link rel="stylesheet" href="retail/retail.css?v=1">
+<script src="js/theme.js"></script>
+</head>
+<body class="retail-body">
+<a class="retail-skip" href="retail/index.html#main">Skip to content</a>
+<div class="retail-layout">
+  <aside class="retail-sidebar" id="retailSidebar">
+    <a class="retail-brand" href="retail/index.html"><span>Inventory<span class="retail-brand-os">OS</span></span><small>RETAIL WORKSPACE</small></a>
+    <nav id="retailNav" aria-label="Retail navigation"></nav>
+    <div class="retail-sidebar-bottom">
+      <a href="settings.html">Account settings</a>
+      <a href="index.html">Reseller / manufacturing area</a>
+      <div class="retail-person"><span id="retailAvatar" aria-hidden="true">IO</span><div><strong id="retailPersonName">Your account</strong><small id="retailRole"></small></div></div>
+      <button type="button" id="retailLogout">Log out</button>
+    </div>
+  </aside>
+  <div class="retail-main">
+    <header class="retail-header">
+      <div class="retail-heading"><button type="button" class="retail-menu" id="retailMenu" aria-label="Toggle navigation" aria-controls="retailSidebar" aria-expanded="false">☰</button><div><p class="retail-eyebrow" id="retailGreeting">YOUR SHOP, AT A GLANCE</p><h1 id="retailTitle">Retail dashboard</h1></div></div>
+      <div class="retail-header-actions"><span class="retail-live" id="retailConnection">Connecting</span><button type="button" data-action="refresh" aria-label="Refresh retail data">Refresh</button><button type="button" class="retail-primary" data-view="checkout">Open till</button></div>
+    </header>
+    <div id="inventory-topbar" class="retail-topbar"></div>
+    <div id="retailNotice" class="retail-notice" role="status">Loading your retail workspace…</div>
+    <main id="main" tabindex="-1"><section id="retailView" aria-live="polite"></section></main>
+    <footer class="retail-footnote">InventoryOS Retail <span id="retailUpdated"></span></footer>
+  </div>
+</div>
+<dialog id="retailDialog" class="retail-dialog"><div class="retail-dialog-header"><h2 id="retailDialogTitle"></h2><button id="retailDialogClose" type="button" aria-label="Close dialog">Close</button></div><div id="retailDialogBody"></div></dialog>
+<script src="js/api.js?v=retail-1"></script>
+<script src="js/inventoryTopbar.js?v=6"></script>
+<script src="retail/shared.js?v=1"></script>
+<script src="retail/retail.js?v=1"></script>
+</body>
+</html>
