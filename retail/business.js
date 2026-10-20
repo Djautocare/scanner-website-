@@ -105,7 +105,7 @@ window.InventoryRetailBusiness={create(H){
   if(a==='display')return display();
   if(a==='production-list')return productionList();
   if(a==='production-calculate'){const rows=tools().preorders.filter(p=>p.fulfilment==='make'&&['ordered','in_production'].includes(p.status)).flatMap(p=>p.items),combined=new Map();for(const i of rows)if(i.recipe_id)combined.set(i.recipe_id,(combined.get(i.recipe_id)||0)+i.qty);localStorage.setItem('inventoryos_recipe_draft:'+data().workspace_id+'|'+data().inventory_id,JSON.stringify([...combined].map(([recipe_id,qty])=>({recipe_id,qty}))));location.href=new URL('manufacturing/index.html#calculate',document.baseURI).href;return;}
-  if(a==='print')return window.print();
+  if(a==='print')return window.InventoryRetailPrint.print();
  }
  document.addEventListener('click',e=>{const el=e.target.closest('[data-business-action]');if(!el||el.disabled)return;e.preventDefault();Promise.resolve(action(el)).catch(error=>H.notice(error.message,true));});
  document.addEventListener('change',e=>{const f=e.target.closest('#retailBusinessSettings');if(f)f.dataset.dirty='true';if(e.target.id==='businessBookingDay'){bookingDay=e.target.value;H.render();}if(e.target.name==='booking_filter'){bookingStaff=e.target.value;H.render();}const map={checkout_staff:'staff_id',checkout_customer:'customer_id',checkout_tip:'tip',checkout_reward:'redeem_reward'};if(map[e.target.name]){extras()[map[e.target.name]]=e.target.type==='checkbox'?e.target.checked:e.target.value;if(e.target.name==='checkout_customer')extra.redeem_reward=false;H.render();}});

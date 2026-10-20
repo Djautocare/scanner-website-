@@ -427,7 +427,7 @@
     if (action === 'task-new') return taskForm();
     if (action === 'receipt') return receipt(data.sales.find(s => s.id === recordId));
     if (action === 'refund') return data.operations?.supported ? counterUI.returns(recordId) : refundForm(recordId);
-    if (action === 'print') return window.print();
+    if (action === 'print') return window.InventoryRetailPrint.print();
     if (action === 'report-view') { const r = data.reports[Number(el.dataset.index)]; return dialog('Reorder snapshot · ' + dateOnly(r.report_date), `<p>Saved ${when(r.created_at)}. These are historical quantities; use the live report to place new orders.</p>` + reorderTable(r.data.items, false) + button('Print snapshot', 'print')); }
     if (action === 'report-print') return dialog('Current reorder report', reorderTable(data.reorders, false) + `<p>Generated ${when(data.server_now)} · ${esc(data.settings.timezone)}</p>` + button('Print / save report', 'print'));
     if (action.startsWith('basket-')) {
