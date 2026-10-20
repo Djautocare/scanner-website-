@@ -1,0 +1,86 @@
+'use strict';
+// Run with RETAIL_TEST_MODULES pointing to a directory containing @electric-sql/pglite.
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { randomUUID: uuid } = require('node:crypto');
+const { PGlite } = require(path.join(process.env.RETAIL_TEST_MODULES || '..', '@electric-sql/pglite'));
+const { createService, money, dayAndTime } = require('../files/utils/retail');
+
+(async () => {
+  const db = new PGlite(); await db.waitReady;
+  const query = async (q, v) => q.includes('CREATE TABLE IF NOT EXISTS') ? (await db.exec(q)).at(-1) : db.query(q, v);
+  const pool = { query, connect: async () => ({ query, release() {} }) };
+  await db.exec(`
+    CREATE TABLE users(id uuid PRIMARY KEY,admin_plan_override text);
+    CREATE TABLE workspaces(id uuid PRIMARY KEY,owner_user_id uuid REFERENCES users(id),name text,plan_key text,plan_allowed boolean DEFAULT true);
+    CREATE TABLE workspace_members(workspace_id uuid REFERENCES workspaces(id),user_id uuid REFERENCES users(id),role text,status text);
+    CREATE TABLE inventories(id uuid PRIMARY KEY,workspace_id uuid REFERENCES workspaces(id),name text);
+    CREATE TABLE products(id uuid PRIMARY KEY,workspace_id uuid REFERENCES workspaces(id));
+  `);
+  const owner = uuid(), viewer = uuid(), cashier = uuid(), stranger = uuid(), workspace = uuid(), other = uuid(), inventory = uuid(), second = uuid(), foreign = uuid();
+  for (const u of [owner, viewer, cashier, stranger]) await db.query('INSERT INTO users(id) VALUES($1)', [u]);
+  for (const w of [workspace, other]) await db.query("INSERT INTO workspaces(id,owner_user_id,name,plan_key) VALUES($1,$2,'Test shop','business')", [w, owner]);
+  for (const [i, w] of [[inventory, workspace], [second, workspace], [foreign, other]]) await db.query("INSERT INTO inventories VALUES($1,$2,'Main')", [i, w]);
+  for (const [u, r] of [[viewer, 'viewer'], [cashier, 'member']]) await db.query("INSERT INTO workspace_members VALUES($1,$2,$3,'active')", [workspace, u, r]);
+  await db.exec('ALTER TABLE users ADD COLUMN email_verified boolean DEFAULT true; ALTER TABLE users ADD COLUMN is_suspended boolean DEFAULT false;');
+  let clock=new Date(),sent=[];
+  let staffToken='',deviceId=uuid();
+  const R=createService({pool,offlineSecret:'BUSINESS-TEST-ONLY',calculateAccess:(w,plan)=>({allowed:w.plan_allowed&&(plan!=='business'||w.plan_key==='business'),active_item_limit:null,plan_key:w.plan_key}),now:()=>clock,sendEmail:async m=>{sent.push(m);}}),B=R.business;
+  const request=(route,body={},o={})=>({user:{id:o.actor||owner},workspace:{id:workspace},headers:{'x-workspace-id':workspace,'x-inventory-ids':o.inventory||inventory,'x-retail-device-id':deviceId,...(staffToken?{'x-retail-staff-token':staffToken}:{})},originalUrl:'/retail'+route,body:{request_id:uuid(),...body},query:{}});
+  const run=(route,body,fn,options={},o={})=>R.transaction(request(route,body,o),fn,options);
+  const edit=(route,body,fn,recordId,admin=true)=>run(route,body,(c,s,b)=>fn(c,s,b,recordId),admin?{admin:true}:{});
+  const overview=()=>R.overview(request('/overview'));
+  const O=R.operations;
+  await R.ensureSchema();await run('/settings',{enabled:true},R.settings,{inventory:false,enabled:false,admin:true});
+  await run('/business/settings',{business_type:'general',features:Object.fromEntries(B.features.map(k=>[k,true])),loyalty_target:2,loyalty_minimum:'1.00',loyalty_reward_product_id:null,reminder_hours:24,version:0},B.saveSettings,{admin:true});
+  const make=async body=>(await run('/products',{name:'Test product',price:'1.00',cost:'0.20',barcode:uuid(),minimum_qty:1,target_qty:10,opening_qty:20,item_kind:'product',category:'Drinks',favourite:true,...body},R.saveProduct,{admin:true})).product;
+  const p=await make({name:'Age restricted',minimum_age:18}),q=await make({name:'Replacement',price:'2.00'});
+  const a=(await run('/operations/staff',{name:'Alex',commission_percent:'25'},O.saveStaff,{admin:true})).staff,b=(await run('/operations/staff',{name:'Sam',commission_percent:'10'},O.saveStaff,{admin:true})).staff;
+  async function pin(staff,number,value,version=0){const req=request('/operations/staff/'+staff.id+'/credentials',{staff_number:number,pin:value,version});req.params={id:staff.id};return O.credentials(req);}
+  await pin(a,'100','1234');await pin(b,'200','5678');
+  assert.notEqual((await db.query('SELECT pin_hash FROM retail_staff_credentials WHERE staff_id=$1',[a.id])).rows[0].pin_hash,'1234');
+  await assert.rejects(()=>O.credentials({...request('/credentials',{staff_number:'300',pin:'1111'}),params:{id:a.id},user:{id:cashier}}),/owner or an admin/);
+  for(let i=0;i<5;i++)await assert.rejects(()=>O.login(request('/operations/login',{device_id:deviceId,staff_number:'100',pin:'9999'})),/incorrect/);
+  await assert.rejects(()=>O.login(request('/operations/login',{device_id:deviceId,staff_number:'100',pin:'1234'})),/Too many/);clock=new Date(clock.getTime()+16*60000);
+  staffToken=(await O.login(request('/operations/login',{device_id:deviceId,staff_number:'100',pin:'1234'}))).token;
+  await run('/operations/settings',{staff_login_required:true},O.settings,{admin:true});await run('/till/open',{amount:'20.00'},R.openTill,{admin:true});
+  assert.equal((await overview()).operations.staff_session.id,a.id);assert.ok(!JSON.stringify(await overview()).includes('pin_hash'));
+  const body=(product,qty,more={})=>({payment_method:'cash',tendered:'10',items:[{product_id:product.id,qty,unit_price_pence:product.price_pence,vat_treatment:product.vat_treatment,vat_rate:product.vat_rate}],...more});
+  await assert.rejects(()=>run('/checkout',body(p,1),R.checkout),/age check/);
+  const sold=(await run('/checkout',body(p,1,{staff_id:b.id,age_checks:[{product_id:p.id,minimum_age:18}]}),R.checkout)).sale;
+  assert.equal(sold.cashier_snapshot.id,a.id);assert.equal(sold.staff_snapshot.id,a.id);
+  const snapshot=await overview();assert.equal(snapshot.offline,null);
+  await run('/operations/parked',{label:'Park test',items:[{product_id:q.id,qty:2}]},O.park);const parked=(await overview()).operations.parked[0];
+  assert.equal((await overview()).till.expected_pence,snapshot.till.expected_pence);assert.equal((await overview()).products.find(x=>x.id===q.id).stock_qty,20);
+  const recalled=await run('/operations/parked/'+parked.id,{action:'recall'},(c,s,b)=>O.recall(c,s,b,parked.id));assert.equal(recalled.items[0].qty,2);
+  await assert.rejects(()=>run('/operations/parked/'+parked.id,{action:'recall'},(c,s,b)=>O.recall(c,s,b,parked.id)),/already/);
+  await run('/operations/device',{action:'assign',device_id:deviceId},O.device);await run('/operations/device',{action:'logout',device_id:deviceId},O.device);staffToken='';
+  await assert.rejects(()=>run('/checkout',body(q,1),R.checkout),/Log in/);await assert.rejects(()=>O.login(request('/operations/login',{device_id:deviceId,staff_number:'200',pin:'5678'})),/assigned/);
+  staffToken=(await O.login(request('/operations/login',{device_id:deviceId,staff_number:'100',pin:'1234'}))).token;
+  await pin(a,'100','4321',1);await assert.rejects(()=>run('/checkout',body(q,1),R.checkout),/expired/);staffToken=(await O.login(request('/operations/login',{device_id:deviceId,staff_number:'100',pin:'4321'}))).token;
+  const offer=await run('/offers',{name:'Three for one',kind:'multi_buy',rule:{product_id:q.id,buy_qty:3,bundle_price:'1.00'},active:true,priority:1},B.saveOffer,{admin:true});
+  const original=(await run('/checkout',body(q,3,{tendered:'1',reviewed_total_pence:100}),R.checkout)).sale;assert.equal(original.total_pence,100);
+  const before=(await overview()).till.expected_pence;
+  let total=0;for(let i=0;i<3;i++){const req=request('/sales/'+original.id+'/refund',{items:[{product_id:q.id,qty:1,restock:i!==1}],reason:'Partial return'});const r=await R.transaction(req,(c,s,b)=>R.refund(c,s,b,original.id),{admin:true});total+=r.refunded_pence;assert.equal((await R.transaction(req,(c,s,b)=>R.refund(c,s,b,original.id),{admin:true})).replayed,true);}
+  assert.equal(total,100);assert.equal((await overview()).till.expected_pence,before-100);await assert.rejects(()=>run('/refund',{items:[{product_id:q.id,qty:1,restock:true}],reason:'Duplicate'},(c,s,b)=>R.refund(c,s,b,original.id),{admin:true}),/already/);
+  const exchangeFrom=(await run('/checkout',body(q,1,{tendered:'2'}),R.checkout)).sale;
+  const exBefore=(await overview()).till.expected_pence;
+  const exchanged=await run('/refund',{items:[{product_id:q.id,qty:1,restock:true}],reason:'Exchange',exchange:{items:body(p,1).items,age_checks:[{product_id:p.id,minimum_age:18}],reviewed_total_pence:100,cash_received:'0',vat_version:0}},(c,s,b)=>R.refund(c,s,b,exchangeFrom.id),{admin:true});
+  assert.equal(exchanged.exchange_sale.change_pence,100);assert.equal((await overview()).till.expected_pence,exBefore-100);
+  const csv='name,barcode,price,cost,opening_qty,category,favourite,minimum_age\r\n"Soap, large",SOAP001,1.50,0.50,5,Toiletries,true,0\r\n';
+  const req=request('/operations/import/preview',{csv}),preview=await R.catalogueTransfer.preview(req);assert.equal(preview.created,1);assert.ok(!(await overview()).products.some(p=>p.barcode==='SOAP001'));
+  await run('/operations/import',{csv,preview_digest:preview.preview_digest},R.catalogueTransfer.importCatalogue,{admin:true});assert.equal((await overview()).products.find(p=>p.barcode==='SOAP001').stock_qty,5);
+  const edited=csv.replace('1.50','2.00').replace(',5,',',99,');const preview2=await R.catalogueTransfer.preview(request('/preview',{csv:edited}));await run('/import',{csv:edited,preview_digest:preview2.preview_digest},R.catalogueTransfer.importCatalogue,{admin:true});assert.equal((await overview()).products.find(p=>p.barcode==='SOAP001').stock_qty,5);
+  assert.match((await R.catalogueTransfer.exportCatalogue(request('/export'))).csv,/Soap, large/);
+  await assert.rejects(()=>R.catalogueTransfer.preview(request('/preview',{csv},{actor:cashier})),/owner or an admin/);
+  const {encode,parse}=require('../files/utils/retailTransfer');assert.equal(parse(encode([{name:'=SUM(1)',barcode:'X',price:'1',cost:'0'}]))[0].name,'=SUM(1)');
+  await run('/settings',{enabled:true,vat_receipts:true,receipt_business_name:'Test shop',receipt_business_address:'Test Street',vat_number:'GB123456789'},R.settings,{inventory:false,enabled:false,admin:true});
+  const taxed=await make({name:'VAT product',price:'1.00',cost:'0.01',vat_treatment:'taxable',vat_rate:20});
+  await run('/offers',{name:'VAT bundle',kind:'multi_buy',rule:{product_id:taxed.id,buy_qty:3,bundle_price:'1.00'},active:true,priority:1},B.saveOffer,{admin:true});
+  const vatVersion=(await overview()).settings.vat_version;clock=new Date(clock.getTime()+1000);const profitBefore=await B.profit(request('/profit'));
+  const taxSale=(await run('/checkout',body(taxed,3,{tendered:'1',reviewed_total_pence:100,vat_version:vatVersion}),R.checkout)).sale;
+  let refundedNet=0,refundedVat=0;for(let i=0;i<3;i++){const r=await run('/refund',{items:[{product_id:taxed.id,qty:1,restock:i!==1}],reason:'VAT partial'},(c,s,b)=>R.refund(c,s,b,taxSale.id),{admin:true});refundedNet+=r.return_receipt.net_pence;refundedVat+=r.return_receipt.vat_pence;}
+  assert.equal(refundedNet,taxSale.vat_receipt.net_pence);assert.equal(refundedVat,taxSale.vat_receipt.vat_pence);
+  clock=new Date(clock.getTime()+1000);const profitAfter=await B.profit(request('/profit'));assert.equal(profitAfter.revenue_pence,profitBefore.revenue_pence);assert.equal(profitAfter.cost_pence,profitBefore.cost_pence+1);assert.equal(profitAfter.commission_pence,profitBefore.commission_pence);
+  console.log('PASS: salted staff PINs, rate limits, login/expiry/reset and forced cashier attribution, assigned till lock, parked baskets without stock/cash changes, age checks, penny-exact partial returns/exchange cash, safe import preview/update and CSV export.');await db.close();
+})().catch(e=>{console.error(e);process.exit(1);});

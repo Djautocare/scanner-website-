@@ -1,33 +1,114 @@
-INVENTORYOS - RETAIL BUSINESS TOOLS & MANUFACTURING WORKSPACE
+INVENTORYOS - RETAIL COUNTER & APPEARANCE UPDATE (v5)
 
-Existing Retail stock, sales, VAT settings, receipts and other app records are kept.
-The new business tools are OFF until you choose them in Retail settings.
-No new npm packages are required. Database changes are added by the check script.
+Includes the previous Retail releases. Existing data is retained.
+No new npm packages, credentials or .env changes are required.
 
 INSTALL ON YOUR BACKEND PC
 
-1. Make your normal PostgreSQL backup. Sync any saved offline till sales.
-   Stop your existing InventoryOS Backend task before installing.
+1. Sync saved offline sales on ALL till devices. Back up PostgreSQL, then stop
+   the InventoryOS Backend task.
+2. Extract the ZIP. Put the WHOLE InventoryOS-retail-counter-update folder
+   inside your backend folder, beside server.js.
+3. Open PowerShell in that BACKEND folder and run:
 
-2. Extract the ZIP. Put the WHOLE InventoryOS-retail-business-update folder
-   inside your usual backend folder, beside server.js. Do not manually replace
-   individual backend files or your server.js.
-
-3. Open PowerShell in your BACKEND folder and run these two lines:
-
-   node .\InventoryOS-retail-business-update\install.cjs
+   node .\InventoryOS-retail-counter-update\install.cjs
    node .\check-retail.cjs
 
-   The installer backs up changed code and preserves .env and admin routes.
-   The check adds the new tables/columns automatically: no manual SQL is needed.
+4. If the check says PASS, restart your existing backend task. If it fails,
+   keep the backend stopped and send the error text, without passwords or .env.
+5. Refresh the website (Ctrl+F5 on PC). Prepare offline devices again before
+   offline trading. The check creates the extra tables automatically.
 
-4. If the check says PASS, restart your existing InventoryOS Backend task.
-   If it fails, keep the backend stopped and send the error text.
-   Never send .env, API keys or database passwords.
+THE NEW MENU
 
-5. Reload the updated website. On PC use Ctrl+F5. On mobile close old Retail
-   tabs and reopen Retail after syncing pending sales. Prepare offline again
-   after applying new prices, promotions or business settings.
+Products: Products & stock, Deliveries, Offers, Reductions & waste,
+          Shelf labels, Import & export (as applicable to enabled tools).
+Customers: Customers & loyalty, Preorders & collections.
+Reports: Sales & receipts, Reorder report, Gross profit/staff reports.
+Admin: Staff & access, Stock counts (with a due badge), Retail settings,
+       Offline & sync.
+Dashboard, Checkout, Services, Appointments, Tasks and Till & cash remain
+quick links. Physical products and Services have separate lists and forms.
+Services only appear when enabled in Retail business settings.
+
+STAFF NUMBER / PIN SETUP
+
+1. Admin > Staff & access > Add staff. Save their name and optional commission.
+2. Set number / PIN. Give them a unique number and a 4-8 digit PIN.
+3. After setting up staff, tick Require staff PIN login at checkout and Save.
+   This starts OFF to preserve existing tills. Sync all offline sales first.
+4. Checkout > Staff log in. Each completed sale saves the logged-in cashier,
+   even if another staff ID is supplied by an older client. The receipt and
+   sales history show the saved cashier. PINs are not recoverable; reset one
+   from Staff & access if forgotten. Resetting or disabling staff revokes access.
+5. Lock / log out immediately revokes that session; the unpaid basket stays.
+   Assign till to me reserves THIS browser's till for that member of staff.
+   They can unlock it with their PIN. An owner/admin can Release till.
+
+Staff sessions last up to 12 hours and remain in this tab's session storage.
+Five wrong attempts lock PIN login for that app account/inventory for 15 minutes.
+Login, assigned-till checkout and staff-attributed sales require a connection.
+Existing ordinary offline cash checkout remains available when PIN login is
+optional and no staff PIN session is in use.
+
+IMPORTANT: PINs are Retail cashier identities, not new website accounts.
+Website/workspace roles still control admin access. On a shared staff till,
+use a workspace MEMBER account, not the owner's InventoryOS account. Staff
+cannot gain owner/admin permissions merely by entering a PIN. The original
+site admin portal and its account restrictions are not changed.
+
+COUNTER TOOLS
+
+- Categories & favourites: edit a product/service, set its category and tick
+  Favourite on till. Checkout has category and favourite buttons. Barcode
+  scanning still searches the saved catalogue regardless of the selected tab.
+- Park a sale: ordinary baskets only. Give it a name, then serve the next
+  customer. Parked sales > Recall brings it back at CURRENT prices. Parking
+  does not reserve or deduct stock, take cash, or hold an old offer price.
+  Linked bookings/preorders/customer rewards should be completed or detached
+  first. Another device can recall a parked basket once.
+- Age checks: set Minimum age on a product (0 = unrestricted). Adding it asks
+  staff to complete the age check or refuse the sale. Recalled baskets require
+  fresh confirmation. This records the staff acknowledgement; the shop still
+  decides which products need checks and how staff verify age.
+- Partial returns: Reports > Sales & receipts > Return / exchange. Choose only
+  returned quantities, and tick which are saleable to put back into stock.
+  Discounts and VAT use the original sale values, with cumulative penny
+  allocation. The original receipt remains intact. Each return gets a receipt.
+- Exchanges: add replacement items in that same return screen. The preview
+  shows return credit, new total, additional cash due and change. Cash, stock
+  and both records commit together. Only completed original quantities can be
+  returned. Refunds/exchanges are owner/admin actions and currently cash only.
+  Loyalty earned on the original sale is reversed at the first return; spent
+  stamps are restored once all its goods are returned. Tips are optional.
+- Import & export: download the CSV template, fill it, then Preview import.
+  Nothing is saved until Confirm import. A matching barcode updates product
+  details without replacing existing stock. Opening quantities apply only to
+  NEW products. Up to 2,000 rows / 1 MB, physical products only. Services have
+  their own creation screen. Exported formula-like text is escaped for safety.
+- Shelf labels: select products and 2 x 1 or 4 x 6 inch paper. Create labels,
+  Download PDF / Mobile share, or open the PDF to print. Labels include name,
+  current selling price and a scannable Code 128 barcode. Print at 100% / actual
+  size with the matching thermal label size. Up to 50 labels per PDF.
+
+LIGHT / DARK MODE
+
+Use Account settings > Appearance, or Retail settings > Appearance.
+Light has a white background; Dark keeps the black background. Your accent
+colour remains selected, with a darker shade in Light for readable text.
+Appearance persists across application pages and tabs on this browser/device.
+Accent colour continues to use the existing account setting. Other devices
+can choose their own light/dark appearance.
+
+ROLLBACK
+
+Keep the retail-backup-... folder printed by the installer. The included
+restore.cjs can restore unchanged code from that backup; it does not delete
+new database records or reverse completed sales. Sync device queues first.
+If rolling back after partial returns have been recorded, keep the v5 backend
+for financial reporting: older versions do not understand partial returns.
+
+PREVIOUS BUSINESS TOOLS / MANUFACTURING / OFFLINE REFERENCE
 
 SWITCH ON THE TOOLS YOU NEED
 

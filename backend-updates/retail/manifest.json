@@ -1,10 +1,13 @@
 {
-  "routes/retailRoutes.js": "7dcd3e8ce629c63fc5154cb3a25b1a51f2c4aa81d06c8cf2515f45e7c69e3cdb",
-  "utils/retail.js": "03b819d7d4f896c98de7382f911407784556d3151282a19ec21c3205f0981e14",
+  "routes/retailRoutes.js": "edf196b70c091a7c60fe67ce26374d8eaedd981a23d900a168eb45819d6f2774",
+  "utils/retail.js": "3b1d1c7710bd455aad557cae05dfb47525f5ebdaa7e976c70d9ed73103d9491e",
   "utils/retailCatalogue.js": "810e1926ac5388474d7311fc3373179e18672ff573fc82472f759690bbf071e5",
-  "utils/retailBusiness.js": "7188c6fbbd4d58dae96384c6eb15ec200945cbb0102ef2cea92df281ea329f11",
+  "utils/retailBusiness.js": "13ecd1b774f58a708d387e96df3f397a5abb0b2bf5cb6f3026cbfe6ca6304d43",
   "utils/retailPricing.js": "d0a376c8032470a689962a47b01d44f6481850ee6864a60ce2ef0781517435b8",
+  "utils/retailOperations.js": "03c5130daba217b0ad37734ccd2a6df06dcc9c812a3f500bc09c00fff94bd73e",
+  "utils/retailTransfer.js": "0670b6f686a7250c4cc974199ea8999ad32e4363ef34ae574af85519a0015073",
   "sql/retail.sql": "77d05b742ae7d3deb256b11cb017f804173e0a6cb35e7558b20c6e0a7c4af6a2",
   "sql/retail-business.sql": "af2cc464b7962e9a6477a9a1755432110d38a245b1b082eda2b13dfb2847c033",
-  "check-retail.cjs": "bff259715778144a11596e96412094419a58d6af065324b1684aee3cddc4ebbf"
+  "sql/retail-operations.sql": "9f2e2c459fa4b720ca64092d1412650e16f25cb7f580a945ecada483879c9976",
+  "check-retail.cjs": "9607096131472d8d7c1fc6a1a684c4ae18eed81aca1d68c1e48364d83f5df85b"
 }

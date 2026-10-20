@@ -82,3 +82,18 @@ The server requests Open Facts v3 `product_type=all`, allowing exact GTIN matche
 ### Verification
 
 Backend suites in `backend-updates/retail/tests` cover prior-data migrations, cash/till balances, roles/isolation, VAT/refunds, signed offline sync/idempotency, all business workflows, promotion allocation and universal catalogue redirects. Tests require a disposable PGlite dependency via `RETAIL_TEST_MODULES`. Browser integration additionally exercised the real Retail backend, QR decoding, deposits/collection, second display, mobile overflow and all eight Manufacturing views/Business gate. No production customer data or real reminder emails were used.
+
+
+## Counter and appearance tools (v5)
+
+Retail navigation now groups Products, Customers, Reports and Admin. Stock-count due badges appear on Admin and Stock counts. Products and Services have separate creation/list screens. Product metadata adds category, favourite and optional minimum age; checkout records explicit age-check acknowledgements and a saved cashier snapshot.
+
+Opt-in staff PIN login remains separate from InventoryOS account/workspace roles. Credentials use salted scrypt, sessions use random hashed bearer tokens scoped to account/workspace/inventory/device, PIN changes/deactivation revoke sessions, and repeated failures cause a persisted 15-minute lockout. PINs are never included in the normal pending-mutation queue or request-result store. Shared till devices should use a workspace member account. Staff login and assigned/attributed checkout require a connection; mandatory PIN mode disables issuing ordinary offline authorisation. Sync device queues before enabling it.
+
+Server-side parked baskets can be recalled once and use current prices; parking does not touch stock or cash. Partial returns allocate the original discounted gross/net amounts cumulatively across units, avoiding penny drift, and record immutable return lines, stock/cash effects, loyalty reversal and commission adjustments. Exchanges run the return and replacement sale in one transaction with explicit return credit/new cash. Daily totals and gross-profit reports understand new returns as well as legacy full refunds. Older backends must not be used for financial reporting after recording v5 returns.
+
+CSV imports have a transactional dry-run preview, bounded RFC-style parsing, version/digest validation and atomic confirmation. Matching barcodes update product details while preserving current stock; opening quantities apply only to newly created physical products. Export escapes formula-like cells. Services remain separate.
+
+Shelf labels are generated locally as 2×1 or 4×6 inch PDF pages with current name/price and Code 128 bars, using the pinned MIT-licensed JsBarcode 3.11.6 asset. Download/mobile file share and browser PDF printing are available; real printer/phone compatibility still needs testing on the customer's hardware.
+
+The shared theme engine independently stores light/dark appearance in this browser, synchronises open tabs, preserves the account accent, and adapts older fixed dark surfaces. Light uses darker accent shades for legibility. No authentication routes or site administrator restrictions were changed. The customer display and standalone Manufacturing workspace also load the shared appearance engine.

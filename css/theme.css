@@ -195,3 +195,30 @@ h1,
     border-radius:999px;
     display:inline-block;
 }
+
+
+/* Appearance is independent of the account accent colour. */
+html[data-appearance="dark"]{color-scheme:dark;--accent-contrast:#080909}
+html[data-appearance="light"]{color-scheme:light;--bg:#fff;--panel:#fff;--panel-2:#f3f5f7;--card:#fff;--input:#fff;--border:rgba(22,32,48,.18);--text:#172033;--muted:#536174;--shadow:0 12px 36px rgba(20,30,50,.12);--accent-contrast:#fff;--danger:#ba243b;--danger-rgb:186,36,59;--warning:#946200;--warning-rgb:148,98,0}
+html[data-appearance="light"][data-theme="green"]{--accent:#16823b;--accent-rgb:22,130,59;--accent-2:#176bc2;--accent-2-rgb:23,107,194}
+html[data-appearance="light"][data-theme="purple"]{--accent:#7d32c2;--accent-rgb:125,50,194;--accent-2:#16823b;--accent-2-rgb:22,130,59}
+html[data-appearance="light"][data-theme="blue"]{--accent:#176bc2;--accent-rgb:23,107,194;--accent-2:#007d75;--accent-2-rgb:0,125,117}
+html[data-appearance="light"][data-theme="gold"]{--accent:#8b6200;--accent-rgb:139,98,0;--accent-2:#b04c12;--accent-2-rgb:176,76,18}
+html[data-appearance="light"][data-theme="red"]{--accent:#bb263b;--accent-rgb:187,38,59;--accent-2:#8b6200;--accent-2-rgb:139,98,0}
+html[data-appearance="light"][data-theme="cyan"]{--accent:#007d75;--accent-rgb:0,125,117;--accent-2:#176bc2;--accent-2-rgb:23,107,194}
+html[data-appearance="light"] body,html[data-appearance="light"] body.inventoryos-shell-active{background:#fff!important;color:var(--text)!important}
+html[data-appearance="light"] :is(.panel,.card,.form-card,.summary-card,.item-card,.preview-card,.empty-state,.stat-card,.accordion-section,.result,.helper,.modal-content,.inventory-topbar,.inventory-switcher-menu,.inventory-menu-row,.ios-shell-sidebar,.ios-shell-user,.ios-shell-header-avatar,.retail-sidebar,.retail-card,.retail-metric,.mfg-card,.mfg-notice,.theme-swatch){background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important}
+html[data-appearance="light"] :is(.ios-shell-brand-name,.ios-shell-user-copy strong,.ios-shell-heading h1,.ios-shell-nav-link,.ios-shell-header-avatar,.retail-brand,.retail-nav-button,.card-title,.summary-value,.stat-value,.item-name,.product-name){color:var(--text)!important}
+html[data-appearance="light"] :is(.ios-shell-nav-label,.ios-shell-user-copy span,.ios-shell-heading .subtitle,.helper,.subtitle,.muted,.result){color:var(--muted)!important}
+html[data-appearance="light"] :is(.ios-shell-nav-link.active,.retail-nav-button.active){color:var(--accent)!important;background:rgba(var(--accent-rgb),.1)!important}
+html[data-appearance="light"] :is(.ios-shell-mobile-menu,.inventory-menu-row button,.inventory-switcher-btn,.topbar-settings){color:var(--accent)!important;background:var(--panel-2)!important}
+html[data-appearance="light"] :is(.retail-primary,.mfg-primary,.counter-categories button[aria-pressed=true],.appearance-options button[aria-pressed=true]){background:var(--accent)!important;color:#fff!important}
+html[data-appearance="light"] :is(dialog,.dialog,.modal,.modal-card,.popup,.dropdown-menu){background:var(--panel)!important;color:var(--text)!important}
+html[data-appearance="light"] .ios-shell-content :is(.card,.summary-card,.stat-card,.item-card,.form-card,.preview-card,.empty-state,.accordion-section){background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important}
+.appearance-options{display:flex;gap:12px;margin:16px 0}.appearance-options button{padding:12px 24px;border:1px solid var(--border);border-radius:10px;background:var(--panel-2);color:var(--text);cursor:pointer}.appearance-options button[aria-pressed=true]{background:var(--accent);color:var(--accent-contrast,#080909);border-color:var(--accent)}
+html[data-appearance="light"] [data-light-surface]{background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important}
+html[data-appearance="light"] [data-light-ink]{color:var(--text)!important}
+html[data-appearance="light"] summary{background:var(--panel-2)!important;color:var(--text)!important}
+html[data-appearance="light"] .link-card{background:var(--panel-2)!important;color:var(--accent)!important}
+html[data-appearance="light"] .ios-shell-content .input-label{color:var(--text)!important}
+html[data-appearance="light"] .ios-shell-content :is(input,select,textarea){background:var(--input)!important;color:var(--text)!important;border-color:var(--border)!important}
