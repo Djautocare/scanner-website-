@@ -100,3 +100,17 @@ CREATE INDEX IF NOT EXISTS retail_stock_history ON retail_stock_events(workspace
 CREATE INDEX IF NOT EXISTS retail_cash_scope ON retail_cash_events(workspace_id,inventory_id,session_id);
 CREATE INDEX IF NOT EXISTS retail_delivery_scope ON retail_deliveries(workspace_id,inventory_id,status);
 CREATE INDEX IF NOT EXISTS retail_tasks_scope ON retail_tasks(workspace_id,inventory_id,status,due_at);
+
+-- v2: additive migration for existing Retail installations. Historical receipts
+-- remain NULL; VAT must never be inferred retrospectively from current products.
+ALTER TABLE retail_settings ADD COLUMN IF NOT EXISTS vat_receipts boolean NOT NULL DEFAULT false;
+ALTER TABLE retail_settings ADD COLUMN IF NOT EXISTS vat_number text NOT NULL DEFAULT '';
+ALTER TABLE retail_settings ADD COLUMN IF NOT EXISTS receipt_business_name text NOT NULL DEFAULT '';
+ALTER TABLE retail_settings ADD COLUMN IF NOT EXISTS receipt_business_address text NOT NULL DEFAULT '';
+ALTER TABLE retail_settings ADD COLUMN IF NOT EXISTS vat_version integer NOT NULL DEFAULT 0;
+ALTER TABLE retail_products ADD COLUMN IF NOT EXISTS vat_treatment text CHECK(vat_treatment IN('taxable','zero_rated','exempt','outside_scope'));
+ALTER TABLE retail_products ADD COLUMN IF NOT EXISTS vat_rate smallint NOT NULL DEFAULT 0 CHECK(vat_rate IN(0,5,20));
+ALTER TABLE retail_sales ADD COLUMN IF NOT EXISTS vat_receipt jsonb;
+ALTER TABLE retail_sales ADD COLUMN IF NOT EXISTS receipt_business jsonb;
+ALTER TABLE retail_products ADD COLUMN IF NOT EXISTS catalogue_source text NOT NULL DEFAULT '' CHECK(catalogue_source IN('','openfoodfacts'));
+ALTER TABLE retail_products ADD COLUMN IF NOT EXISTS catalogue_code text NOT NULL DEFAULT '';

@@ -8,7 +8,7 @@ try {
   const backup = path.resolve(input);
   if (path.dirname(backup) !== root || !path.basename(backup).startsWith('retail-backup-')) throw new Error('Choose a Retail backup folder inside this backend folder');
   const manifest = JSON.parse(fs.readFileSync(path.join(backup, 'restore.json'), 'utf8'));
-  const allowed = ['server.js', 'routes/retailRoutes.js', 'utils/retail.js', 'sql/retail.sql', 'check-retail.cjs'];
+  const allowed = ['server.js', 'routes/retailRoutes.js', 'utils/retail.js', 'utils/retailCatalogue.js', 'sql/retail.sql', 'check-retail.cjs', '.retail-installed.json'];
   for (const entry of manifest.files) {
     if (!allowed.includes(entry.path)) throw new Error('Unexpected backup entry');
     const p = path.join(root, entry.path);

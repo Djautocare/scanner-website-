@@ -6,6 +6,7 @@
   const decimal = pence => (Number(pence || 0) / 100).toFixed(2);
   const when = value => value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'No date set';
   const dateOnly = value => value ? new Date(value + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Date not set';
+  const vatLabel = (treatment, rate) => ({ taxable: `VAT ${rate}%`, zero_rated: 'Zero-rated 0%', exempt: 'VAT exempt', outside_scope: 'Outside VAT scope' })[treatment] || 'VAT not set';
   const localDay = (value, zone) => {
     const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(value)).map(x => [x.type, x.value]));
     return `${p.year}-${p.month}-${p.day}`;
@@ -85,7 +86,7 @@
   }
   function productView() {
     const filter = search.toLowerCase(), products = data.products.filter(p => (p.name + ' ' + p.barcode).toLowerCase().includes(filter));
-    return card(header('Products & stock', 'Fixed selling prices, minimum quantities and reorder targets', button('Add product', 'product-new', '', !admin(), true)) + `<div class="retail-toolbar"><input id="retailSearch" type="search" aria-label="Search products or barcodes" placeholder="Search products or scan a barcode" value="${esc(search)}"></div>` + table(['Product', 'Price', 'Stock', 'Minimum / target', 'Actions'], products.map(p => `<tr><td><strong>${esc(p.name)} ${p.archived ? badge('Archived') : ''}</strong><small>${esc(p.barcode)}</small></td><td>${pounds(p.price_pence)}<small>Cost ${pounds(p.cost_pence)}</small></td><td class="${p.stock_qty < 0 ? 'retail-negative' : ''}">${p.stock_qty}</td><td>${p.minimum_qty} / ${p.target_qty}</td><td>${button('Edit', 'product-edit', `data-id="${p.id}"`, !admin())} ${button('Stock in', 'stock-in', `data-id="${p.id}"`, !writer() || p.archived)} ${button('Count', 'request-count', `data-id="${p.id}"`, !writer() || p.archived)} ${button('History', 'stock-history', `data-id="${p.id}"`)}</td></tr>`), 'No matching products. Add your first Retail product to get started.'));
+    return card(header('Products & stock', 'Fixed selling prices, minimum quantities and reorder targets', '<div class="retail-action-row" style="margin:0">' + button('Scan to add product', 'product-scan', '', !admin() || !data.catalogue_supported) + button('Add product', 'product-new', '', !admin(), true) + '</div>') + `<div class="retail-toolbar"><input id="retailSearch" type="search" aria-label="Search products or barcodes" placeholder="Search products or scan a barcode" value="${esc(search)}"></div>` + table(['Product', 'Price', 'Stock', 'Minimum / target', 'Actions'], products.map(p => `<tr><td><strong>${esc(p.name)} ${p.archived ? badge('Archived') : ''}</strong><small>${esc(p.barcode)}</small>${data.vat_supported ? `<small>${esc(vatLabel(p.vat_treatment, p.vat_rate))}</small>` : ''}</td><td>${pounds(p.price_pence)}<small>Cost ${pounds(p.cost_pence)}</small></td><td class="${p.stock_qty < 0 ? 'retail-negative' : ''}">${p.stock_qty}</td><td>${p.minimum_qty} / ${p.target_qty}</td><td>${button('Edit', 'product-edit', `data-id="${p.id}"`, !admin())} ${button('Stock in', 'stock-in', `data-id="${p.id}"`, !writer() || p.archived)} ${button('Count', 'request-count', `data-id="${p.id}"`, !writer() || p.archived)} ${button('History', 'stock-history', `data-id="${p.id}"`)}</td></tr>`), 'No matching products. Add your first Retail product to get started.') + '<p class="retail-catalogue-credit">Barcode identification uses <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer">Open Food Facts</a> (<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>). Confirm the product and pack size before saving. Your shop sets its own price and VAT treatment.</p>');
   }
   function checkoutView() {
     const products = data.products.filter(p => !p.archived && (p.name + ' ' + p.barcode).toLowerCase().includes(search.toLowerCase()));
@@ -114,7 +115,8 @@
     return card(header('Sales & receipts', 'Latest 100 Retail sales. Refunds keep the original sale record.') + table(['Sale', 'Total', 'Status', 'Actions'], data.sales.map(s => `<tr><td><strong>${esc(s.reference)}</strong><small>${when(s.created_at)}</small><small>${esc(s.items.map(i => `${i.qty} × ${i.name}`).join(', '))}</small></td><td>${pounds(s.total_pence)}</td><td>${badge(s.status, s.status === 'refunded' ? 'warning' : '')}</td><td>${button('Receipt', 'receipt', `data-id="${s.id}"`)} ${s.status === 'completed' ? button('Refund', 'refund', `data-id="${s.id}"`, !admin()) : ''}</td></tr>`), 'No Retail sales yet.'));
   }
   function settingsView() {
-    return card(header('Retail settings', 'Shared by this workspace') + `<form id="retailSettingsForm" class="retail-form"><label class="retail-check-label"><input type="checkbox" name="enabled" ${data.settings.enabled ? 'checked' : ''} ${!admin() ? 'disabled' : ''}> Enable Retail mode</label><div class="retail-form-grid"><label>Daily reorder report time<input type="time" name="report_time" value="${esc(data.settings.report_time)}" required ${!admin() ? 'disabled' : ''}></label><label>Timezone<input name="timezone" value="${esc(data.settings.timezone)}" required list="retailTimezones" ${!admin() ? 'disabled' : ''}><datalist id="retailTimezones"><option value="Europe/London"><option value="Europe/Dublin"><option value="America/New_York"><option value="UTC"></datalist></label></div><p class="retail-help">The closing report is saved once per local calendar day while the backend is running. Retail stock is recorded separately from your reseller and manufacturing stock. Turning Retail off keeps its saved records.</p><p class="retail-help">Cash checkout and browser receipt printing are available. Automatic card-reader payments, cash-drawer hardware and external POS sync require a separate integration.</p><button type="submit" class="retail-primary" ${!admin() ? 'disabled' : ''}>Save Retail settings</button><p class="retail-form-error" role="status"></p></form>`);
+    const s = data.settings, canEdit = admin() && data.vat_supported;
+    return card(header('Retail settings', 'Shared by this workspace') + `<form id="retailSettingsForm" class="retail-form"><label class="retail-check-label"><input type="checkbox" name="enabled" ${s.enabled ? 'checked' : ''} ${!admin() ? 'disabled' : ''}> Enable Retail mode</label><div class="retail-form-grid"><label>Daily reorder report time<input type="time" name="report_time" value="${esc(s.report_time)}" required ${!admin() ? 'disabled' : ''}></label><label>Timezone<input name="timezone" value="${esc(s.timezone)}" required list="retailTimezones" ${!admin() ? 'disabled' : ''}><datalist id="retailTimezones"><option value="Europe/London"><option value="Europe/Dublin"><option value="America/New_York"><option value="UTC"></datalist></label></div><fieldset class="retail-receipt-settings"><legend>Receipt details</legend><label>Business name on receipts<input name="receipt_business_name" value="${esc(s.receipt_business_name)}" maxlength="160" ${!canEdit ? 'disabled' : ''}><small>Printed at the top of new receipts, with or without VAT. For VAT receipts, enter the registered business name.</small></label><label>Business address<textarea name="receipt_business_address" maxlength="500" ${!canEdit ? 'disabled' : ''}>${esc(s.receipt_business_address)}</textarea></label><label class="retail-check-label"><input type="checkbox" name="vat_receipts" id="retailVatReceipts" ${s.vat_receipts ? 'checked' : ''} ${!canEdit ? 'disabled' : ''}> VAT receipt — show VAT breakdown</label><label>VAT registration number<input name="vat_number" value="${esc(s.vat_number)}" maxlength="20" placeholder="GB123456789" ${!canEdit ? 'disabled' : ''}></label><p class="retail-help">Enable VAT only for a VAT-registered business. Selling prices include VAT already; this separates it out without increasing the total. Set each product’s correct VAT treatment before using this option. Your business details and tax breakdown are saved with each sale; older receipts are not changed.</p><p class="retail-help">Adds a UK domestic sales receipt with a VAT breakdown. Full VAT invoices and credit notes are not generated here; provide a full invoice separately when required.</p>${!data.vat_supported ? '<p class="retail-note">Install the latest Retail VAT backend update to edit receipt details and enable VAT.</p>' : ''}</fieldset><p class="retail-help">The closing report is saved once per local calendar day while the backend is running. Retail stock is recorded separately from your reseller and manufacturing stock. Turning Retail off keeps its saved records.</p><p class="retail-help">Cash checkout and browser receipt printing are available. Automatic card-reader payments, cash-drawer hardware and external POS sync require a separate integration.</p><button type="submit" class="retail-primary" ${!admin() ? 'disabled' : ''}>Save Retail settings</button><p class="retail-form-error" role="status"></p></form>`);
   }
   function render() {
     const names = { dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Sales & receipts', settings: 'Retail settings' };
@@ -127,6 +129,7 @@
   }
   function switchView(next) {
     if (checkoutBusy) return;
+    window.InventoryRetailScanner?.stop();
     view = next; search = ''; history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(view)); render();
     setMenu(false);
     $('#main').focus({ preventScroll: true });
@@ -141,6 +144,7 @@
   }
   async function refresh({ quiet = false } = {}) {
     if (!ready || checkoutBusy) return;
+    if (quiet && view === 'settings' && $('#retailSettingsForm')?.dataset.dirty === 'true') return;
     const context = scopeKey(), g = ++generation;
     if (currentScope !== context) {
       if (basket.length) notice('Basket cleared because the workspace or inventory changed. No sale was recorded.');
@@ -163,13 +167,13 @@
       basket = basket.filter(line => {
         const p = data.products.find(p => p.id === line.product_id && !p.archived);
         if (!p) { basketChanged = true; return false; }
-        if (p.price_pence !== line.unit_price_pence || p.name !== line.name) { line.unit_price_pence = p.price_pence; line.name = p.name; basketChanged = true; }
+        if (p.price_pence !== line.unit_price_pence || p.name !== line.name || p.vat_treatment !== line.vat_treatment || p.vat_rate !== line.vat_rate) { line.unit_price_pence = p.price_pence; line.name = p.name; line.vat_treatment = p.vat_treatment; line.vat_rate = p.vat_rate; basketChanged = true; }
         return true;
       });
       $('#retailConnection').textContent = 'Up to date'; $('#retailConnection').classList.add('connected');
       $('#retailUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
       if (!quiet || !$('#retailDialog').open) render();
-      notice(basketChanged ? 'Product details changed. The basket now uses the current prices and active products; please review it before taking payment.' : '');
+      notice(basketChanged ? 'Product details changed. The basket now uses the current prices, VAT details and active products; please review it before taking payment.' : '');
     } catch (e) {
       if (g !== generation) return;
       online = false; $('#retailConnection').textContent = 'Needs refresh'; $('#retailConnection').classList.remove('connected');
@@ -181,6 +185,7 @@
   const qtyInput = (label, name, value, max = 1000000, min = 0) => input(label, name, value, `type="number" min="${min}" max="${max}" step="1" required inputmode="numeric"`);
   const moneyInput = (label, name, value = '') => input(label, name, value, 'type="number" min="0" max="1000000" step="0.01" required inputmode="decimal"');
   function dialog(title, content) {
+    window.InventoryRetailScanner?.stop();
     const d = $('#retailDialog'); d.close(); $('#retailDialogTitle').textContent = title; $('#retailDialogBody').innerHTML = content; d.showModal();
   }
   function formDialog(title, content, submitLabel, action) {
@@ -189,20 +194,80 @@
     const form = $('#retailModalForm');
     form.addEventListener('submit', async event => {
       event.preventDefault(); if (context !== currentScope) return;
-      const submit = form.querySelector('[type="submit"]'); if (submit.disabled) return;
-      submit.disabled = true; form.querySelector('.retail-form-error').textContent = '';
+      const submits = [...form.querySelectorAll('[type="submit"]')]; if (submits.some(s => s.disabled)) return;
+      submits.forEach(s => { s.disabled = true; }); window.InventoryRetailScanner?.stop(); form.querySelector('.retail-form-error').textContent = '';
       try {
-        const result = await action(new FormData(form), form);
+        const result = await action(new FormData(form), form, event.submitter);
         if (!result || context !== currentScope) return;
         $('#retailDialog').close(); await refresh();
         if (result.variance_pence != null) notice(result.variance_pence === 0 ? 'Till balanced exactly.' : `${pounds(Math.abs(result.variance_pence))} ${result.variance_pence < 0 ? 'short' : 'over'} recorded. The counted cash is the new baseline.`);
+        if (result.scan_next && context === currentScope) productForm(undefined, true);
       } catch (e) { form.querySelector('.retail-form-error').textContent = e.message + (pending() ? ' Close this dialog and use Retry pending action above to confirm the result safely.' : ''); }
-      finally { submit.disabled = false; }
+      finally { submits.forEach(s => { s.disabled = false; }); }
     });
   }
-  function productForm(productId) {
-    const p = data.products.find(p => p.id === productId);
-    formDialog(p ? 'Edit product' : 'New Retail product', `<div class="retail-form-grid">${input('Product name', 'name', p?.name, 'required maxlength="160"')}${input('Barcode', 'barcode', p?.barcode, 'maxlength="100"', 'Leave blank to generate a Retail barcode.')}${moneyInput('Selling price per unit (£)', 'price', decimal(p?.price_pence))}${moneyInput('Cost per unit (£)', 'cost', decimal(p?.cost_pence))}${qtyInput('Minimum stock', 'minimum_qty', p?.minimum_qty ?? 0)}${qtyInput('Reorder up to', 'target_qty', p?.target_qty ?? 0)}${!p ? qtyInput('Opening stock', 'opening_qty', 0) : ''}${input('Supplier', 'supplier', p?.supplier, 'maxlength="160"')}${input('Supplier / product link', 'supplier_url', p?.supplier_url, 'type="url" maxlength="1000"')}</div>${p ? `<label class="retail-check-label"><input type="checkbox" name="archived" ${p.archived ? 'checked' : ''}> Archived (stock must be zero and deliveries cleared)</label>` : '<p class="retail-help">Enter actual opening Retail stock. This will not copy or deduct stock from the reseller area.</p>'}`, 'Save product', (f) => mutate('/products' + (p ? '/' + p.id : ''), { ...Object.fromEntries(f), ...(p ? { archived: f.has('archived'), edit_version: p.edit_version } : {}) }, p ? 'PATCH' : 'POST'));
+  function productForm(productId, scanAfterOpen = false) {
+    const p = data.products.find(p => p.id === productId), supported = data.vat_supported;
+    let source = p?.catalogue_source || '', sourceCode = p?.catalogue_code || '', lookupGeneration = 0;
+    const tax = supported ? `<div class="retail-tax-fields retail-full-width"><label class="retail-check-label"><input type="checkbox" name="vat_applicable" id="retailProductVat" ${p?.vat_treatment === 'taxable' ? 'checked' : ''}> VAT applicable</label><label id="retailVatRateField">VAT rate<select name="vat_rate"><option value="20" ${p?.vat_rate === 20 ? 'selected' : ''}>20% — standard rate</option><option value="5" ${p?.vat_rate === 5 ? 'selected' : ''}>5% — reduced rate</option></select></label><label id="retailVatNoChargeField">When VAT is not charged<select name="vat_no_charge"><option value="">Choose treatment</option><option value="zero_rated" ${p?.vat_treatment === 'zero_rated' ? 'selected' : ''}>Zero-rated — 0% VAT</option><option value="exempt" ${p?.vat_treatment === 'exempt' ? 'selected' : ''}>VAT exempt</option><option value="outside_scope" ${p?.vat_treatment === 'outside_scope' ? 'selected' : ''}>Outside the scope of VAT</option></select></label><small class="retail-muted">Selling prices are VAT-inclusive. Tick for 20% or 5%, or choose the correct no-charge treatment. Barcode lookup does not determine VAT.</small></div>` : '';
+    const scan = data.catalogue_supported ? `<div class="retail-action-row" style="margin:0"><button type="button" id="retailScanEan">Scan EAN with camera</button><button type="button" id="retailLookupEan">Look up barcode</button></div><div id="retailCamera" class="retail-camera" hidden><video playsinline muted autoplay></video><p data-camera-status role="status"></p><button type="button" data-stop-camera>Stop camera</button></div><div id="retailLookupResult" role="status"></div>` : '<p class="retail-help">Install the latest Retail backend update to look up product names by barcode.</p>';
+    const fields = `<div class="retail-form-grid">${input('Product name', 'name', p?.name, 'required maxlength="160"')}${input('Barcode', 'barcode', p?.barcode, 'maxlength="100"', 'Scan or type the retail barcode. Leave blank to generate one for a custom product.')}</div>${scan}<div class="retail-form-grid">${moneyInput('Selling price per unit (£)', 'price', decimal(p?.price_pence))}${moneyInput('Cost per unit (£)', 'cost', decimal(p?.cost_pence))}${tax}${qtyInput('Minimum stock', 'minimum_qty', p?.minimum_qty ?? 0)}${qtyInput('Reorder up to', 'target_qty', p?.target_qty ?? 0)}${!p ? qtyInput('Opening stock', 'opening_qty', 0) : ''}${input('Supplier', 'supplier', p?.supplier, 'maxlength="160"')}${input('Supplier / product link', 'supplier_url', p?.supplier_url, 'type="url" maxlength="1000"')}</div>${p ? `<label class="retail-check-label"><input type="checkbox" name="archived" ${p.archived ? 'checked' : ''}> Archived (stock must be zero and deliveries cleared)</label>` : '<p class="retail-help">Enter actual opening Retail stock. This will not copy or deduct stock from the reseller area.</p>'}<p id="retailProductSource" class="retail-catalogue-credit"></p>`;
+    formDialog(p ? 'Edit product' : 'New Retail product', fields, 'Save product', async (f, form, submitter) => {
+      const vat = !supported ? {} : { vat_treatment: f.has('vat_applicable') ? 'taxable' : f.get('vat_no_charge') || null, vat_rate: f.has('vat_applicable') ? Number(f.get('vat_rate')) : 0 };
+      const barcode = String(f.get('barcode') || '').trim();
+      const catalogue = data.catalogue_supported ? { catalogue_source: sourceCode === barcode ? source : '', catalogue_code: sourceCode === barcode ? sourceCode : '' } : {};
+      const r = await mutate('/products' + (p ? '/' + p.id : ''), { ...Object.fromEntries(f), ...vat, ...catalogue, ...(p ? { archived: f.has('archived'), edit_version: p.edit_version } : {}) }, p ? 'PATCH' : 'POST');
+      return r ? { ...r, scan_next: submitter?.dataset.scanNext === 'true' } : r;
+    });
+    const form = $('#retailModalForm'), context = currentScope;
+    if (!p && data.catalogue_supported) form.querySelector('.retail-form-actions').insertAdjacentHTML('afterbegin', '<button type="submit" data-scan-next="true">Save and scan next</button>');
+    function attribution() {
+      const el = form.querySelector('#retailProductSource');
+      el.innerHTML = source === 'openfoodfacts' ? `Product identification from <a href="https://world.openfoodfacts.org/product/${esc(sourceCode)}" target="_blank" rel="noopener noreferrer">Open Food Facts</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>. Details are editable; check the product and pack size.` : '';
+    }
+    attribution();
+    form.elements.barcode.addEventListener('input', () => { lookupGeneration++; source = ''; sourceCode = ''; attribution(); if ($('#retailLookupResult')) $('#retailLookupResult').replaceChildren(); });
+    if (supported) {
+      const toggle = form.elements.vat_applicable;
+      const updateTax = () => {
+        const checked = toggle.checked;
+        form.querySelector('#retailVatRateField').hidden = !checked; form.elements.vat_rate.disabled = !checked;
+        form.querySelector('#retailVatNoChargeField').hidden = checked; form.elements.vat_no_charge.disabled = checked;
+        form.elements.vat_no_charge.required = !checked && Boolean(data.settings.vat_receipts);
+      };
+      toggle.addEventListener('change', updateTax); updateTax();
+    }
+    async function lookup() {
+      const barcode = form.elements.barcode.value.trim(), g = ++lookupGeneration;
+      const result = form.querySelector('#retailLookupResult');
+      const existing = data.products.find(x => x.barcode === barcode && x.id !== p?.id);
+      if (existing) { result.textContent = `This barcode is already saved as ${existing.name}. Close this form and edit or stock in that product instead.`; return; }
+      result.textContent = 'Looking up barcode in Open Food Facts…';
+      try {
+        const r = await api('/catalogue/' + encodeURIComponent(barcode));
+        if (g !== lookupGeneration || !form.isConnected || currentScope !== context || !$('#retailDialog').open) return;
+        if (!r.found) { result.textContent = 'No named match was found in Open Food Facts. The barcode is kept; type the product name and continue manually.'; form.elements.name.focus(); return; }
+        const x = r.product;
+        result.innerHTML = `<div class="retail-catalogue-match"><strong>${esc(x.name)}</strong><p>${esc([x.brand, x.quantity, x.barcode].filter(Boolean).join(' · '))}</p><p class="retail-help">Check the flavour, size and multipack count match the pack in your hand.</p><button type="button" id="retailAcceptMatch">Use these details</button><p class="retail-catalogue-credit"><a href="${esc(x.source_url)}" target="_blank" rel="noopener noreferrer">Open Food Facts</a> · ODbL</p></div>`;
+        result.querySelector('#retailAcceptMatch').onclick = () => {
+          const current = form.elements.name.value.trim();
+          if (current && current !== p?.name && !window.confirm('Replace the product name with this matched name?')) return;
+          const quantity = x.quantity && !x.name.toLowerCase().includes(x.quantity.toLowerCase()) ? ' · ' + x.quantity : '';
+          form.elements.name.value = (x.name + quantity).slice(0, 160); source = 'openfoodfacts'; sourceCode = x.barcode;
+          attribution(); result.textContent = 'Product details filled in. Add the shop’s price, stock and reorder levels before saving.'; form.elements.price.focus();
+        };
+      } catch (e) { if (g === lookupGeneration && form.isConnected) result.textContent = e.message; }
+    }
+    if (data.catalogue_supported) {
+      form.querySelector('#retailLookupEan').onclick = lookup;
+      const start = () => InventoryRetailScanner.start(form.querySelector('#retailCamera'), (code, error) => {
+        if (!form.isConnected || currentScope !== context || !$('#retailDialog').open) return;
+        if (error) { form.querySelector('#retailLookupResult').textContent = error; return; }
+        form.elements.barcode.value = code; source = ''; sourceCode = ''; attribution(); lookup();
+      });
+      form.querySelector('#retailScanEan').onclick = start;
+      if (scanAfterOpen) start();
+    }
   }
   function stockIn(productId) {
     const p = data.products.find(p => p.id === productId);
@@ -247,7 +312,9 @@
   }
   function taskForm() { formDialog('Add shop task', input('Task', 'title', '', 'required maxlength="240"') + input('Deadline (your device’s local time)', 'due_at', '', 'type="datetime-local"'), 'Add task', f => mutate('/tasks', { title: f.get('title'), due_at: f.get('due_at') ? new Date(f.get('due_at')).toISOString() : null })); }
   function receipt(sale) {
-    dialog('Sale receipt', `<div class="retail-receipt"><h3>InventoryOS · Retail</h3><p>${esc(sale.reference)}<br>${esc(when(sale.created_at))}</p><table>${sale.items.map(i => `<tr><td>${esc(i.name)}<br>${i.qty} × ${pounds(i.unit_price_pence)}</td><td>${pounds(i.qty * i.unit_price_pence)}</td></tr>`).join('')}</table><hr><p><strong>Total ${pounds(sale.total_pence)}</strong><br>Cash ${pounds(sale.tendered_pence)}<br>Change ${pounds(sale.change_pence)}${sale.status === 'refunded' ? '<br>REFUNDED' : ''}</p><p>Thank you for shopping with us.</p></div><div class="retail-action-row">${button('Print / save receipt', 'print')}</div><p class="retail-help">Uses your browser’s print menu. A connected printer is required for paper receipts.</p>`);
+    const vat = sale.vat_receipt, business = sale.receipt_business || { name: vat?.business_name || 'InventoryOS · Retail', address: vat?.business_address || '' };
+    const breakdown = vat ? `<section class="retail-receipt-vat"><hr><h4>VAT breakdown — included in prices</h4><table class="retail-tax-table"><thead><tr><th>Rate / treatment</th><th>Net</th><th>VAT</th><th>Total</th></tr></thead><tbody>${vat.groups.map(g => `<tr><td>${esc(vatLabel(g.vat_treatment, g.vat_rate))}</td><td>${pounds(g.net_pence)}</td><td>${pounds(g.vat_pence)}</td><td>${pounds(g.gross_pence)}</td></tr>`).join('')}</tbody></table><p>Net total: ${pounds(vat.net_pence)}<br>VAT included: ${pounds(vat.vat_pence)}<br><strong>Total paid: ${pounds(vat.gross_pence)}</strong></p>${sale.total_pence > 25000 || vat.groups.some(g => ['exempt', 'outside_scope'].includes(g.vat_treatment)) ? '<p>This is a sales receipt with a VAT breakdown, not a full VAT invoice. Request a full VAT invoice separately if needed.</p>' : ''}</section>` : '';
+    dialog('Sale receipt', `<div class="retail-receipt"><h3>${esc(business.name)}</h3>${business.address ? `<p class="retail-receipt-address">${esc(business.address).replace(/\n/g, '<br>')}</p>` : ''}${vat ? `<p>VAT registration: ${esc(vat.vat_number)}</p>` : ''}<p>${esc(sale.reference)}<br>${esc(when(sale.created_at))}</p><table>${sale.items.map(i => { const line = vat?.lines.find(x => x.product_id === i.product_id); return `<tr><td>${esc(i.name)}<br>${i.qty} × ${pounds(i.unit_price_pence)}${line ? '<br><small>' + esc(vatLabel(line.vat_treatment, line.vat_rate)) + '</small>' : ''}</td><td>${pounds(i.qty * i.unit_price_pence)}</td></tr>`; }).join('')}</table><hr><p><strong>Total ${pounds(sale.total_pence)}</strong><br>Cash ${pounds(sale.tendered_pence)}<br>Change ${pounds(sale.change_pence)}${sale.status === 'refunded' ? '<br>REFUNDED — original sale receipt' : ''}</p>${breakdown}<p>Thank you for shopping with us.</p></div><div class="retail-action-row">${button('Print / save receipt', 'print')}</div><p class="retail-help">Uses your browser’s print menu. A connected printer is required for paper receipts.</p>`);
   }
   function refundForm(saleId) {
     const s = data.sales.find(s => s.id === saleId);
@@ -263,6 +330,7 @@
       return;
     }
     if (action === 'product-new') return productForm();
+    if (action === 'product-scan') return productForm(undefined, true);
     if (action === 'product-edit') return productForm(recordId);
     if (action === 'stock-in') return stockIn(recordId);
     if (action === 'count') return countForm(recordId);
@@ -284,7 +352,7 @@
       const p = data.products.find(p => p.id === recordId), item = basket.find(i => i.product_id === recordId);
       if (action === 'basket-add') {
         if (item) item.qty = Math.min(1000000, item.qty + 1);
-        else if (basket.length < 100) basket.push({ product_id: p.id, name: p.name, qty: 1, unit_price_pence: p.price_pence });
+        else if (basket.length < 100) basket.push({ product_id: p.id, name: p.name, qty: 1, unit_price_pence: p.price_pence, vat_treatment: p.vat_treatment, vat_rate: p.vat_rate });
       }
       if (action === 'basket-minus' && item) item.qty--;
       if (action === 'basket-remove' && item) item.qty = 0;
@@ -311,6 +379,7 @@
     const action = event.target.closest('[data-action]'); if (action && !action.disabled) { event.preventDefault(); Promise.resolve(handleAction(action)).catch(e => notice(e.message, true)); }
   });
   document.addEventListener('input', event => {
+    if (event.target.closest('#retailSettingsForm')) event.target.closest('form').dataset.dirty = 'true';
     if (event.target.id === 'retailSearch') {
       const caret = event.target.selectionStart; search = event.target.value; render(); const field = $('#retailSearch'); field?.focus(); if (field?.type === 'search') field.setSelectionRange(caret, caret);
     }
@@ -340,14 +409,14 @@
       if (checkoutBusy || !basket.length || pending()) return;
       const tendered = new FormData(form).get('tendered'); checkoutBusy = true; render();
       try {
-        const result = await mutate('/checkout', { items: basket.map(({ product_id, qty, unit_price_pence }) => ({ product_id, qty, unit_price_pence })), payment_method: 'cash', tendered });
+        const result = await mutate('/checkout', { items: basket.map(({ product_id, qty, unit_price_pence, vat_treatment, vat_rate }) => ({ product_id, qty, unit_price_pence, vat_treatment, vat_rate })), payment_method: 'cash', tendered, vat_version: data.settings.vat_version ?? 0 });
         if (result) { basket = []; checkoutBusy = false; await refresh(); receipt(result.sale); }
       } catch (e) { notice(e.message, true); }
       finally { checkoutBusy = false; render(); }
     } else {
       const submit = form.querySelector('[type="submit"]'); if (submit.disabled) return; submit.disabled = true;
       const f = new FormData(form);
-      try { await mutate('/settings', { enabled: f.has('enabled'), report_time: f.get('report_time'), timezone: f.get('timezone') }, 'PATCH'); await refresh(); InventoryRetail.refresh(); }
+      try { await mutate('/settings', { enabled: f.has('enabled'), report_time: f.get('report_time'), timezone: f.get('timezone'), ...(data.vat_supported ? { vat_receipts: f.has('vat_receipts'), receipt_business_name: f.get('receipt_business_name'), receipt_business_address: f.get('receipt_business_address'), vat_number: f.get('vat_number') } : {}) }, 'PATCH'); await refresh(); InventoryRetail.refresh(); }
       catch (e) { form.querySelector('.retail-form-error').textContent = e.message; }
       finally { submit.disabled = false; }
     }
@@ -360,7 +429,8 @@
     $('#retailLogout').onclick = () => InventoryAPI.logout();
     $('#retailMenu').onclick = () => setMenu(!$('#retailSidebar').classList.contains('open'));
     setMenu(false);
-    $('#retailDialogClose').onclick = () => $('#retailDialog').close();
+    $('#retailDialogClose').onclick = () => { window.InventoryRetailScanner?.stop(); $('#retailDialog').close(); };
+    $('#retailDialog').addEventListener('close', () => { if (!$('#retailDialog').open) window.InventoryRetailScanner?.stop(); });
     render(); await InventoryTopbar.init(); ready = true; await refresh();
   }
   window.addEventListener('inventory-selection-changed', () => { if (ready) refresh(); });

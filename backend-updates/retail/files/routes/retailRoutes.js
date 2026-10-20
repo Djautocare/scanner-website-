@@ -3,6 +3,7 @@ const express = require('express');
 const auth = require('../middleware/authMiddleware');
 const { workspaceMiddleware } = require('../middleware/workspaceMiddleware');
 const R = require('../utils/retail').service();
+const catalogue = require('../utils/retailCatalogue').createLookup();
 const router = express.Router();
 router.use(auth, workspaceMiddleware);
 const handle = fn => async (req, res) => {
@@ -10,12 +11,17 @@ const handle = fn => async (req, res) => {
   catch (e) {
     const status = e.statusCode || 500;
     if (status === 500) console.error('Retail request failed:', e.code || e.name);
-    res.status(status).json({ success: false, error: status === 500 ? 'Retail could not complete this request. Please retry; completed requests are protected from duplication.' : e.message, upgrade_required: status === 402, retryable: status >= 500 });
+    res.status(status).json({ success: false, error: status === 500 ? 'Retail could not complete this request. Please retry; completed requests are protected from duplication.' : e.message, upgrade_required: status === 402, retryable: status >= 500, retry_after_seconds: e.retry_after_seconds });
   }
 };
 router.get('/status', handle(R.status));
 router.get('/overview', handle(R.overview));
 router.get('/products/:id/history', handle(R.history));
+router.get('/catalogue/:barcode', handle(async req => {
+  await R.ensureSchema();
+  const s = await R.scope(require('../database'), req, { admin: true });
+  return catalogue.lookup(req.params.barcode, s.actor_id);
+}));
 function mutate(method, route, fn, options) {
   router[method](route, handle(req => R.transaction(req, (c, s, b) => fn(c, s, b, req.params.id), options)));
 }

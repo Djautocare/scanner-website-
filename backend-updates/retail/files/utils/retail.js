@@ -46,6 +46,43 @@ function dayAndTime(now, timezone) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).filter(p => p.type !== 'literal').map(p => [p.type, p.value]));
   return { day: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
 }
+function taxDetails(treatment, rate) {
+  if (treatment == null || treatment === '') return { vat_treatment: null, vat_rate: 0 };
+  if (!['taxable', 'zero_rated', 'exempt', 'outside_scope'].includes(treatment)) throw fail('Choose a valid VAT treatment');
+  const n = integer(rate, 'VAT rate', 0, 20);
+  if ((treatment === 'taxable' && ![5, 20].includes(n)) || (treatment !== 'taxable' && n !== 0)) throw fail('Choose 20% or 5% for VAT applicable items, or 0 for items without VAT charged');
+  return { vat_treatment: treatment, vat_rate: n };
+}
+function vatSnapshot(settings, items) {
+  if (!settings.vat_receipts) return null;
+  const groups = new Map(), lines = [];
+  for (const { product: p, qty } of items) {
+    const t = taxDetails(p.vat_treatment, p.vat_rate);
+    if (!t.vat_treatment) throw fail(`Set the VAT treatment for ${p.name} in Products & stock before taking a VAT-enabled sale`, 409);
+    const gross = integer(qty * p.price_pence, 'Line total', 0, 100000000), denominator = 100 + t.vat_rate;
+    // Extract VAT already included in each line. Round half-pennies up using
+    // integer arithmetic, then sum those exact line amounts into the rate groups.
+    const vat = Math.floor((2 * gross * t.vat_rate + denominator) / (2 * denominator));
+    const line = { product_id: p.id, ...t, gross_pence: gross, net_pence: gross - vat, vat_pence: vat };
+    lines.push(line);
+    const key = `${t.vat_treatment}:${t.vat_rate}`;
+    if (!groups.has(key)) groups.set(key, { ...t, gross_pence: 0, net_pence: 0, vat_pence: 0 });
+    const group = groups.get(key);
+    for (const k of ['gross_pence', 'net_pence', 'vat_pence']) group[k] += line[k];
+  }
+  const result = { version: 1, prices_include_vat: true, currency: 'GBP', business_name: settings.receipt_business_name, business_address: settings.receipt_business_address, vat_number: settings.vat_number, groups: [...groups.values()].sort((a, b) => b.vat_rate - a.vat_rate || a.vat_treatment.localeCompare(b.vat_treatment)), lines };
+  for (const k of ['gross_pence', 'net_pence', 'vat_pence']) result[k] = lines.reduce((n, x) => n + x[k], 0);
+  return result;
+}
+function catalogueDetails(body, barcode, old = {}) {
+  const source = body.catalogue_source ?? old.catalogue_source ?? '';
+  if (!['', 'openfoodfacts'].includes(source)) throw fail('Unsupported product catalogue');
+  if (!source) return { source: '', code: '' };
+  const code = String(body.catalogue_code ?? old.catalogue_code ?? '');
+  if (code !== barcode && body.catalogue_source === undefined) return { source: '', code: '' };
+  if (require('./retailCatalogue').gtin(code) !== barcode) throw fail('Catalogue barcode changed. Look up the new barcode before accepting its details');
+  return { source, code };
+}
 
 function createService({ pool, calculateAccess, ensureBillingSchema = async () => {}, now = () => new Date() }) {
   let ready, worker;
@@ -84,7 +121,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       inventoryId = id(selection[0]);
       if (!(await c.query(`SELECT id FROM inventories WHERE id=$1 AND workspace_id=$2 ${write ? 'FOR SHARE' : ''}`, [inventoryId, workspace])).rows.length) throw fail('Inventory unavailable in this workspace', 403);
     }
-    return { workspace_id: workspace, inventory_id: inventoryId, actor_id: actor, role, settings: setting, access };
+    return { workspace_id: workspace, workspace_name: w.name, inventory_id: inventoryId, actor_id: actor, role, settings: setting, access };
   }
   const args = s => [s.workspace_id, s.inventory_id];
   async function audit(c, s, kind, data) {
@@ -161,7 +198,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   async function status(req) {
     await ensureSchema();
     const s = await scope(pool, req, { inventory: false, entitled: false, enabled: false });
-    return { success: true, workspace_id: s.workspace_id, role: s.role, allowed: s.access.allowed, enabled: s.settings.enabled, active: s.access.allowed && s.settings.enabled, settings: s.settings, plan: s.access.plan_key };
+    return { success: true, vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, role: s.role, allowed: s.access.allowed, enabled: s.settings.enabled, active: s.access.allowed && s.settings.enabled, settings: s.settings, plan: s.access.plan_key };
   }
   async function settings(c, s, b) {
     if (typeof b.enabled !== 'boolean') throw fail('Choose enabled or disabled');
@@ -170,8 +207,19 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw fail('Choose the daily report time');
     const timezone = text(b.timezone ?? s.settings.timezone, 'Timezone', 80);
     try { new Intl.DateTimeFormat('en-GB', { timeZone: timezone }).format(); } catch { throw fail('Choose a valid timezone'); }
-    await c.query('INSERT INTO retail_settings(workspace_id,enabled,report_time,timezone) VALUES($1,$2,$3,$4) ON CONFLICT(workspace_id) DO UPDATE SET enabled=EXCLUDED.enabled,report_time=EXCLUDED.report_time,timezone=EXCLUDED.timezone,updated_at=now()', [s.workspace_id, b.enabled, time, timezone]);
-    await audit(c, s, 'settings_changed', { enabled: b.enabled, report_time: time, timezone });
+    const old = s.settings;
+    const vatEnabled = b.vat_receipts === undefined ? Boolean(old.vat_receipts) : b.vat_receipts;
+    if (typeof vatEnabled !== 'boolean') throw fail('Choose whether VAT receipts are enabled');
+    const number = String(b.vat_number ?? old.vat_number ?? '').toUpperCase().replace(/[\s-]/g, '');
+    if (number && !/^(GB|XI)?(\d{9}|\d{12})$/.test(number)) throw fail('Enter a UK VAT number with 9 or 12 digits, optionally starting GB or XI');
+    const business = text(b.receipt_business_name ?? old.receipt_business_name, 'Receipt business name', 160, true);
+    const address = String(b.receipt_business_address ?? old.receipt_business_address ?? '').trim().replace(/\r\n?/g, '\n');
+    if (address.length > 500 || /[\x00-\x09\x0b-\x1f\x7f]/.test(address)) throw fail('Receipt address must be at most 500 characters');
+    if (vatEnabled && (!number || !business || !address)) throw fail('Add the VAT-registered business name, address and VAT registration number before enabling VAT receipts');
+    const changed = Boolean(old.vat_receipts) !== vatEnabled || (old.vat_number || '') !== number || (old.receipt_business_name || '') !== business || (old.receipt_business_address || '') !== address;
+    const version = (old.vat_version || 0) + (changed ? 1 : 0);
+    await c.query('INSERT INTO retail_settings(workspace_id,enabled,report_time,timezone,vat_receipts,vat_number,receipt_business_name,receipt_business_address,vat_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(workspace_id) DO UPDATE SET enabled=EXCLUDED.enabled,report_time=EXCLUDED.report_time,timezone=EXCLUDED.timezone,vat_receipts=EXCLUDED.vat_receipts,vat_number=EXCLUDED.vat_number,receipt_business_name=EXCLUDED.receipt_business_name,receipt_business_address=EXCLUDED.receipt_business_address,vat_version=EXCLUDED.vat_version,updated_at=now()', [s.workspace_id, b.enabled, time, timezone, vatEnabled, number, business, address, version]);
+    await audit(c, s, 'settings_changed', { enabled: b.enabled, report_time: time, timezone, vat_receipts: vatEnabled, vat_version: version });
     return { enabled: b.enabled };
   }
   async function saveProduct(c, s, b, productId) {
@@ -180,9 +228,14 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     const price = money(b.price, 'Selling price'), cost = money(b.cost, 'Cost per unit');
     const minimum = integer(b.minimum_qty, 'Minimum stock'), target = integer(b.target_qty, 'Reorder target', minimum);
     const supplier = text(b.supplier, 'Supplier', 160, true), url = web(b.supplier_url);
+    let tax = taxDetails(b.vat_treatment, b.vat_rate ?? 0);
     let p;
     if (productId) {
       const old = await product(c, s, productId);
+      // Older clients may omit tax fields. Preserve saved classifications.
+      if (b.vat_treatment === undefined) tax = taxDetails(old.vat_treatment, old.vat_rate);
+      if (s.settings.vat_receipts && !tax.vat_treatment) throw fail('Choose this product’s VAT treatment before saving');
+      const catalogue = catalogueDetails(b, barcode, old);
       if (integer(b.edit_version, 'Product version', 0, 2147483647) !== old.edit_version) throw fail('Product changed since you opened it. Refresh before saving', 409);
       if (typeof b.archived !== 'boolean') throw fail('Choose whether the product is archived');
       if (old.archived && !b.archived && s.access.active_item_limit != null) {
@@ -195,17 +248,19 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         const outstanding = (await c.query("SELECT li.id FROM retail_delivery_items li JOIN retail_deliveries d ON d.id=li.delivery_id WHERE li.workspace_id=$1 AND li.inventory_id=$2 AND li.product_id=$3 AND d.status IN('expected','incoming','partial') AND li.received_qty<li.ordered_qty", [...args(s), old.id])).rows;
         if (outstanding.length) throw fail('Complete or cancel this product’s outstanding deliveries first');
       }
-      p = (await c.query('UPDATE retail_products SET name=$4,barcode=$5,price_pence=$6,cost_pence=$7,minimum_qty=$8,target_qty=$9,supplier=$10,supplier_url=$11,archived=$12,edit_version=edit_version+1,updated_at=now() WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 RETURNING *', [...args(s), old.id, name, barcode, price, cost, minimum, target, supplier, url, b.archived])).rows[0];
+      p = (await c.query('UPDATE retail_products SET name=$4,barcode=$5,price_pence=$6,cost_pence=$7,minimum_qty=$8,target_qty=$9,supplier=$10,supplier_url=$11,archived=$12,vat_treatment=$13,vat_rate=$14,catalogue_source=$15,catalogue_code=$16,edit_version=edit_version+1,updated_at=now() WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 RETURNING *', [...args(s), old.id, name, barcode, price, cost, minimum, target, supplier, url, b.archived, tax.vat_treatment, tax.vat_rate, catalogue.source, catalogue.code])).rows[0];
     } else {
+      if (s.settings.vat_receipts && !tax.vat_treatment) throw fail('Choose this product’s VAT treatment before saving');
+      const catalogue = catalogueDetails(b, barcode);
       const count = Number((await c.query('SELECT COUNT(*)::text AS n FROM retail_products WHERE workspace_id=$1 AND NOT archived', [s.workspace_id])).rows[0].n);
       const legacy = Number((await c.query('SELECT COUNT(*)::text AS n FROM products WHERE workspace_id=$1', [s.workspace_id])).rows[0].n);
       if (s.access.active_item_limit != null && count + legacy >= s.access.active_item_limit) throw fail('Your plan’s product limit has been reached', 402);
       if (Number((await c.query('SELECT COUNT(*)::text AS n FROM retail_products WHERE workspace_id=$1 AND inventory_id=$2', args(s))).rows[0].n) >= 5000) throw fail('This inventory has reached the Retail limit of 5,000 products');
-      p = (await c.query('INSERT INTO retail_products(id,workspace_id,inventory_id,name,barcode,price_pence,cost_pence,minimum_qty,target_qty,supplier,supplier_url) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *', [uuid(), ...args(s), name, barcode, price, cost, minimum, target, supplier, url])).rows[0];
+      p = (await c.query('INSERT INTO retail_products(id,workspace_id,inventory_id,name,barcode,price_pence,cost_pence,minimum_qty,target_qty,supplier,supplier_url,vat_treatment,vat_rate,catalogue_source,catalogue_code) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *', [uuid(), ...args(s), name, barcode, price, cost, minimum, target, supplier, url, tax.vat_treatment, tax.vat_rate, catalogue.source, catalogue.code])).rows[0];
       const opening = integer(b.opening_qty ?? 0, 'Opening quantity');
       if (opening) p = await stock(c, s, p, opening, 'opening', null, 'Opening Retail stock');
     }
-    await audit(c, s, productId ? 'product_updated' : 'product_created', { product_id: p.id, name, barcode, price_pence: price, cost_pence: cost });
+    await audit(c, s, productId ? 'product_updated' : 'product_created', { product_id: p.id, name, barcode, price_pence: price, cost_pence: cost, ...tax });
     return { product: p };
   }
   async function receiveStock(c, s, b) {
@@ -260,12 +315,14 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     const t = await till(c, s, true);
     if (b.payment_method !== 'cash') throw fail('Automatic card payments are not connected. Use cash checkout only');
     if (!Array.isArray(b.items) || !b.items.length || b.items.length > 100) throw fail('Add between 1 and 100 different products');
+    if (s.settings.vat_receipts && b.vat_version !== s.settings.vat_version) throw fail('VAT receipt settings changed. Refresh the website and review the basket before taking payment', 409);
     const seen = new Set(), items = []; let total = 0;
     for (const item of b.items) {
       const p = await product(c, s, item.product_id);
       if (p.archived || seen.has(p.id)) throw fail('Each active product must appear only once');
       seen.add(p.id);
       if (integer(item.unit_price_pence, 'Reviewed price', 0, 100000000) !== p.price_pence) throw fail(`${p.name} has a new selling price. Refresh and review the basket`, 409);
+      if (s.settings.vat_receipts && (item.vat_treatment !== p.vat_treatment || item.vat_rate !== p.vat_rate)) throw fail(`${p.name} has different VAT details. Refresh and review the basket`, 409);
       const qty = integer(item.qty, 'Sale quantity', 1);
       total += qty * p.price_pence; integer(total, 'Sale total', 0, 100000000);
       items.push({ product: p, qty });
@@ -274,13 +331,15 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     if (tendered < total) throw fail('Cash received is less than the sale total');
     if (t.expected_pence + total > 100000000) throw fail('Cash limit reached. Balance and close this till first');
     const saleId = uuid(), reference = `RT-${now().toISOString().slice(0, 10).replace(/-/g, '')}-${saleId.slice(0, 8).toUpperCase()}`;
-    const sale = (await c.query('INSERT INTO retail_sales(id,workspace_id,inventory_id,reference,total_pence,tendered_pence,change_pence,payment_method,actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *', [saleId, ...args(s), reference, total, tendered, tendered - total, 'cash', s.actor_id])).rows[0];
+    const vat = vatSnapshot(s.settings, items);
+    const business = { name: s.settings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail', address: s.settings.receipt_business_address || '' };
+    const sale = (await c.query('INSERT INTO retail_sales(id,workspace_id,inventory_id,reference,total_pence,tendered_pence,change_pence,payment_method,actor_id,vat_receipt,receipt_business) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *', [saleId, ...args(s), reference, total, tendered, tendered - total, 'cash', s.actor_id, vat ? JSON.stringify(vat) : null, JSON.stringify(business)])).rows[0];
     for (const { product: p, qty } of items) {
       await c.query('INSERT INTO retail_sale_items(id,workspace_id,inventory_id,sale_id,product_id,name,barcode,qty,unit_price_pence,unit_cost_pence) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [uuid(), ...args(s), saleId, p.id, p.name, p.barcode, qty, p.price_pence, p.cost_pence]);
       await stock(c, s, p, -qty, 'sale', saleId);
     }
     await cash(c, s, t, 'sale', total, { sale: saleId, note: reference });
-    return { sale: { ...sale, items: items.map(({ product: p, qty }) => ({ name: p.name, barcode: p.barcode, qty, unit_price_pence: p.price_pence })) } };
+    return { sale: { ...sale, items: items.map(({ product: p, qty }) => ({ product_id: p.id, name: p.name, barcode: p.barcode, qty, unit_price_pence: p.price_pence })) } };
   }
   async function refund(c, s, b, saleId) {
     const sale = (await c.query('SELECT * FROM retail_sales WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 FOR UPDATE', [...args(s), id(saleId)])).rows[0];
@@ -363,7 +422,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const deliveries = (await c.query(`SELECT d.*,d.expected_on::text AS expected_on,COALESCE(jsonb_agg(jsonb_build_object('id',li.id,'product_id',li.product_id,'name',p.name,'ordered_qty',li.ordered_qty,'received_qty',li.received_qty,'unit_cost_pence',li.unit_cost_pence) ORDER BY p.name) FILTER(WHERE li.id IS NOT NULL),'[]') AS items FROM retail_deliveries d LEFT JOIN retail_delivery_items li ON li.delivery_id=d.id LEFT JOIN retail_products p ON p.id=li.product_id WHERE d.workspace_id=$1 AND d.inventory_id=$2 GROUP BY d.id ORDER BY d.created_at DESC LIMIT 200`, args(s))).rows;
       const tasks = (await c.query("SELECT * FROM retail_tasks WHERE workspace_id=$1 AND inventory_id=$2 ORDER BY (status='pending') DESC,due_at NULLS LAST,created_at DESC LIMIT 500", args(s))).rows;
       const counts = (await c.query("SELECT c.*,p.name,p.barcode,p.stock_qty,p.stock_version FROM retail_counts c JOIN retail_products p ON p.id=c.product_id WHERE c.workspace_id=$1 AND c.inventory_id=$2 ORDER BY (c.status='pending') DESC,c.created_at DESC LIMIT 500", args(s))).rows;
-      const sales = (await c.query(`SELECT s.*,COALESCE((SELECT jsonb_agg(jsonb_build_object('name',li.name,'qty',li.qty,'unit_price_pence',li.unit_price_pence,'barcode',li.barcode) ORDER BY li.name) FROM retail_sale_items li WHERE li.sale_id=s.id),'[]') AS items FROM retail_sales s WHERE s.workspace_id=$1 AND s.inventory_id=$2 ORDER BY s.created_at DESC LIMIT 100`, args(s))).rows;
+      const sales = (await c.query(`SELECT s.*,COALESCE((SELECT jsonb_agg(jsonb_build_object('product_id',li.product_id,'name',li.name,'qty',li.qty,'unit_price_pence',li.unit_price_pence,'barcode',li.barcode) ORDER BY li.name) FROM retail_sale_items li WHERE li.sale_id=s.id),'[]') AS items FROM retail_sales s WHERE s.workspace_id=$1 AND s.inventory_id=$2 ORDER BY s.created_at DESC LIMIT 100`, args(s))).rows;
       const daily = (await c.query(`SELECT (occurred_at AT TIME ZONE $3)::date::text AS day,SUM(amount)::text AS net_pence FROM (
         SELECT created_at AS occurred_at,total_pence AS amount FROM retail_sales WHERE workspace_id=$1 AND inventory_id=$2 AND created_at>=now()-interval '8 days'
         UNION ALL SELECT refunded_at AS occurred_at,-total_pence AS amount FROM retail_sales WHERE workspace_id=$1 AND inventory_id=$2 AND refunded_at>=now()-interval '8 days'
@@ -372,7 +431,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const t = await till(c, s), reorder = await reorders(c, s);
       const reports = (await c.query('SELECT *,report_date::text AS report_date FROM retail_reports WHERE workspace_id=$1 AND inventory_id=$2 ORDER BY retail_reports.report_date DESC LIMIT 31', args(s))).rows;
       await c.query('COMMIT');
-      return { success: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
+      return { success: true, vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
     } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
   }
   async function history(req) {
@@ -409,4 +468,4 @@ function service() {
   if (!live) { const billing = require('./billing'); live = createService({ pool: require('../database'), calculateAccess: billing.calculateAccess, ensureBillingSchema: billing.ensureBillingSchema }); }
   return live;
 }
-module.exports = { createService, service, money, integer, dayAndTime, fail };
+module.exports = { createService, service, money, integer, dayAndTime, fail, vatSnapshot, taxDetails };

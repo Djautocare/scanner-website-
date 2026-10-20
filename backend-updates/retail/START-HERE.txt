@@ -1,97 +1,109 @@
-INVENTORYOS RETAIL - SIMPLE INSTALLATION
+INVENTORYOS RETAIL UPDATE - VAT, RECEIPT NAME AND PHONE BARCODE SETUP
 
-Your controllers folder can stay empty. These routes handle the requests.
+This upgrades the Retail version you already installed. Existing stock, sales,
+settings and old receipts are kept. No new npm packages, API key or .env changes.
 
-1. Make a normal PostgreSQL backup before installing a backend update.
+1. Make your normal PostgreSQL backup and stop InventoryOS Backend.
 
-2. Stop your existing "InventoryOS Backend" task using your usual stop method.
+2. Extract the ZIP. Put the complete InventoryOS-retail-vat-barcode-update
+   folder inside your usual backend folder, next to server.js.
+   Do not manually copy the individual files over your backend.
 
-3. Extract this ZIP. Put the complete InventoryOS-retail-update folder inside:
-   your usual InventoryOS backend folder (the one containing server.js)
+3. Open PowerShell in your BACKEND folder. Run:
 
-   You should have:
-   backend\InventoryOS-retail-update\install.cjs
-   backend\InventoryOS-retail-update\files\...
-
-   Do not move the individual files yourself. Do not replace your whole backend.
-
-4. Open PowerShell inside your backend folder. Run:
-
-   node .\InventoryOS-retail-update\install.cjs
-
-   It checks every file before applying changes, makes a backup, copies the new
-   Retail files, and adds two lines to YOUR current server.js. Your other routes,
-   admin restrictions, .env and existing files are preserved.
-
-5. Run:
-
+   node .\InventoryOS-retail-vat-barcode-update\install.cjs
    node .\check-retail.cjs
 
-   This creates the new Retail tables automatically. You do not need to create
-   tables manually or paste SQL into PostgreSQL. No new npm packages or .env
-   settings are needed. If this prints an error, keep the backend stopped and
-   send the error text. Do not post database credentials or your .env.
+   The installer backs up the files it changes. It recognises your previous
+   installation, keeps the existing server mount/start lines, and adds the new
+   lookup helper. The check adds the required database columns automatically.
 
-6. If the check says PASS, start your existing InventoryOS Backend task again.
+4. If the check says PASS, restart your existing InventoryOS Backend task.
+   If either command fails, send the error text before continuing. Keep your
+   .env, passwords and database credentials private.
 
-7. Refresh the website. Open Settings > Retail mode and enable it for the
-   workspace you want to use. Then select Open Retail. Retail is off by default.
-   The workspace owner or an admin controls this setting.
+5. Refresh the website. If it looks unchanged, press Ctrl+F5 on PC or reload
+   the page on your phone after the website deployment has finished.
 
-8. In Retail, select exactly ONE inventory at the top. Add products with their
-   actual opening quantities, selling prices, costs, minimums and reorder targets.
-   Retail stock is SEPARATE from reseller/manufacturing stock. Nothing is copied
-   or deducted from those areas automatically. Avoid counting the same physical
-   units in both systems.
+RECEIPT NAME AND VAT
 
-9. Count the drawer and use Open till & set float. Test one CASH sale, its
-   receipt and a stock count before using this for normal trading. Negative
-   stock creates a count request automatically. Incoming deliveries are received
-   only when you confirm the units that actually arrived.
+- Open Retail > Retail settings > Receipt details.
+- Enter Business name on receipts. It prints at the top of new receipts even
+  with VAT turned off. You may also enter the business address.
+- Only VAT-registered shops should turn on VAT receipt. Enter the registered
+  business name, address and VAT registration number, then save settings.
+- Edit existing products and choose their VAT treatment. New products have a
+  VAT applicable checkbox for 20% or 5%; when unticked, choose zero-rated,
+  exempt or outside VAT scope as appropriate. Lookup does not determine tax.
+- Prices ALREADY INCLUDE VAT. A GBP 1.20 item at 20% stays GBP 1.20: GBP 1.00
+  net plus GBP 0.20 VAT. It does not become GBP 1.44.
+- The server calculates VAT on each sale line, rounds to the nearest penny
+  with halves up, and sums those amounts into the rate breakdown.
+- VAT must be classified before a product can be sold while VAT receipts are
+  enabled. Existing products are not automatically assigned a tax rate.
+- Receipts save their original seller details and tax breakdown. Editing the
+  settings or product afterwards does not rewrite old receipts. Sales from
+  before this update are not retrospectively assigned VAT or a new shop name.
+- This is a UK domestic sales receipt with a VAT breakdown. Full VAT invoices,
+  credit notes, VAT returns, margin schemes and other special VAT schemes are
+  not generated. Provide a full VAT invoice separately when required, including
+  transactions above GBP 250 or when requested. Check the applicable tax
+  treatment for the actual products your customer sells.
 
-10. Daily reorder snapshots default to 17:00 Europe/London. Change this in Retail
-    settings. The backend must be running. The report is available in the app;
-    automatic report emails are not part of this update. Missed days are not
-    reconstructed after downtime.
+WALK AROUND A SHOP ADDING PRODUCTS
 
-WHAT IS INCLUDED
-- Separate Retail dashboard/sidebar with expected and incoming deliveries,
-  due/upcoming tasks, stock alerts, till controls and sales along the bottom.
-- Fixed GBP selling prices, unit costs, min/target quantities and supplier links.
-- Cash checkout, browser receipt printing, full cash refunds with optional stock
-  return, negative-stock flags and audited physical counts.
-- Cash lifts (out), change handouts (INTO the drawer), float adjustments and
-  balances with persistent short/over differences. Each balance establishes
-  a new counted baseline; it does not erase the previous variance.
-- Orders, partial deliveries, live reorder quantities that subtract on-order
-  stock, and daily closing snapshots.
-- Workspace/inventory access checks, viewer restrictions and duplicate-request
-  protection. Existing selected-plan product limits are respected.
+1. Sign into the customer's authorised workspace on your PHONE. Pick the exact
+   Retail inventory being set up; only the workspace owner/admin can add items.
+2. Open Retail > Products & stock > Scan to add product.
+3. Allow camera permission. Point the rear camera at the full EAN barcode and
+   hold still in good light. It needs two matching valid reads.
+4. If Open Food Facts has it, check the name and pack size, then tap
+   Use these details. This fills the name and keeps the EAN.
+5. Enter that shop's selling price, cost, opening stock, minimum and reorder
+   target. Set the correct VAT treatment if the shop uses VAT receipts.
+6. Tap Save and scan next to move straight to the next item.
 
-IMPORTANT LIMITS
-- Card/contactless reader payments, cash-drawer hardware and external POS sync
-  are NOT connected. The card-payment option cannot record a fake paid sale.
-- Browser printing requires your phone/PC to have a compatible print route.
-- One open till per inventory; one currency (GBP); whole-unit quantities.
-- This is an initial cash-retail module, not an offline till. It needs access to
-  your running backend. It does not calculate VAT or produce VAT invoices.
-- Product lists support up to 5,000 Retail products per inventory. Orders and
-  baskets support 100 different products each. The screens show recent history:
-  100 sales/cash events, 200 deliveries, 500 tasks/counts, and 31 daily reports.
-  Older database records are retained.
-- A live card-terminal integration needs a separate provider/merchant setup;
-  no customer's card details are entered or stored by this update.
+You can also type a barcode and tap Look up barcode, or use Add product and
+enter the name manually if no match exists. Duplicate barcodes are flagged;
+stock in or edit the existing product instead of creating another copy.
 
-IF YOU NEED TO UNDO THE BACKEND CODE CHANGE
-Stop the backend. The installer printed a retail-backup-... folder name.
-Use the exact folder name from your PC in this command:
+Open Food Facts identifies groceries by exact barcode, normally returning one
+product match rather than a list of different products. A barcode can identify
+a particular pack size/flavour, so confirm it against the packaging. Coverage
+is incomplete, and it does not provide your customer's selling prices or
+reliable UK VAT classifications. Non-food items may need manual entry.
 
-   node .\InventoryOS-retail-update\restore.cjs .\retail-backup-YOUR-FOLDER-NAME
+The phone decodes video locally. Camera frames are not uploaded. Only the
+barcode goes to your backend and Open Food Facts. Scanner code is served from
+InventoryOS, including a local ZXing fallback for browsers without the native
+barcode detector. The camera stops on a match, close, page hide or timeout.
 
-This restores code only if it has not been changed since installation. It keeps
-Retail data in PostgreSQL. Restart the backend afterwards. Turn Retail off in
-Settings before restoring if possible. The frontend safely shows Retail as
-unavailable if the backend module is removed.
+Lookup results are public product data, briefly cached in backend memory.
+Each saved product stays in the customer's private workspace/inventory. This
+update does not publish a shared catalogue, share customer prices/stock, or
+upload changes to Open Food Facts.
 
-Do not delete your active server.js, routes, utils, middleware, database.js,
-package files, .env or uploads. Keep the installer backup until you are happy.
+The upstream API has usage limits. The backend caches matches and limits
+requests; if it asks you to wait, continue manually or retry after a minute.
+Camera scanning needs HTTPS and a supported camera/browser. A real phone's
+camera quality/permissions should be checked during the first shop setup.
+
+Open Food Facts data is under ODbL, with attribution and share-alike conditions.
+The app preserves its source attribution. Review those terms before exporting,
+redistributing or building a shared catalogue from that data.
+https://world.openfoodfacts.org
+https://opendatacommons.org/licenses/odbl/1-0/
+
+CODE RESTORE IF NEEDED
+
+Stop the backend. Use the exact retail-backup-... folder printed by the installer:
+
+   node .\InventoryOS-retail-vat-barcode-update\restore.cjs .\retail-backup-YOUR-FOLDER-NAME
+
+This restores only unchanged installer-managed code and installation metadata.
+It keeps PostgreSQL stock/sales and additive columns. Restart the backend.
+Keep the backup until you are happy with the update.
+
+Card/contactless terminals, cash-drawer hardware and external POS sync remain
+unconnected. Existing cash checkout, deliveries, stock counts and till controls
+continue to work as before.

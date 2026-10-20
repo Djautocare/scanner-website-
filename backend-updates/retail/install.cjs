@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const hash = b => crypto.createHash('sha256').update(b).digest('hex');
 const root = process.cwd();
-const names = ['routes/retailRoutes.js', 'utils/retail.js', 'sql/retail.sql', 'check-retail.cjs'];
+const names = ['routes/retailRoutes.js', 'utils/retail.js', 'utils/retailCatalogue.js', 'sql/retail.sql', 'check-retail.cjs'];
 function checked(relative) {
   const p = path.join(root, relative);
   if (fs.existsSync(p) && fs.lstatSync(p).isSymbolicLink()) throw new Error('Refusing a symbolic link: ' + relative);
@@ -47,6 +47,9 @@ try {
     server = server.replace(anchor, '$&\n' + start);
   }
   if (server !== before) writes.push({ name: 'server.js', bytes: Buffer.from(server), old: Buffer.from(before) });
+  const stateBytes = Buffer.from(JSON.stringify({ version: 2, files: manifest }, null, 2));
+  const stateOld = fs.existsSync(stateFile) ? fs.readFileSync(stateFile) : null;
+  if (!stateOld || hash(stateOld) !== hash(stateBytes)) writes.push({ name: '.retail-installed.json', bytes: stateBytes, old: stateOld });
   if (!writes.length) { console.log('Retail update is already installed. Next: node .\\check-retail.cjs'); process.exit(0); }
   const backup = path.join(root, 'retail-backup-' + new Date().toISOString().replace(/[:.]/g, '-'));
   fs.mkdirSync(backup);
@@ -58,12 +61,11 @@ try {
     for (const w of writes) { fs.mkdirSync(path.dirname(checked(w.name)), { recursive: true }); fs.writeFileSync(checked(w.name), w.bytes); changed.push(w); }
     const check = spawnSync(process.execPath, ['--check', checked('server.js')], { shell: false, windowsHide: true });
     if (check.status !== 0) throw new Error('Patched server.js did not pass syntax validation');
-    fs.writeFileSync(stateFile, JSON.stringify({ version: 1, files: manifest }, null, 2));
   } catch (e) {
     for (const w of changed.reverse()) { if (w.old) fs.writeFileSync(checked(w.name), w.old); else fs.rmSync(checked(w.name)); }
     throw e;
   }
-  console.log('Installed Retail files and added two lines to your current server.js.');
+  console.log('Installed Retail update. Existing server mount/start lines were kept or added as needed.');
   console.log('Backup: ' + backup);
   console.log('Next: node .\\check-retail.cjs. If it passes, restart InventoryOS Backend.');
   console.log('No .env changes or new npm packages are required.');
