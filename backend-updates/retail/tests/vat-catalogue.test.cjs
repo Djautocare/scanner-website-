@@ -64,6 +64,10 @@ const { createLookup, gtin } = require('../files/utils/retailCatalogue');
   const looked = await run('/products', { name: 'Accepted product', barcode: '3017620422003', price: '3.00', cost: '1.00', minimum_qty: 1, target_qty: 3, opening_qty: 1, catalogue_source: 'openfoodfacts', catalogue_code: '3017620422003' }, R.saveProduct, { admin: true });
   assert.equal(looked.product.catalogue_source, 'openfoodfacts');
   await assert.rejects(() => run('/products', { name: 'Bad source', barcode: '3017620422003', price: '3.00', cost: '1.00', minimum_qty: 1, target_qty: 3, catalogue_source: 'openfoodfacts', catalogue_code: '5012345678900' }, R.saveProduct, { admin: true }), /barcode|Barcode/);
+  for(const [source,barcode] of [['openbeautyfacts','3560070791460'],['openproductsfacts','3760044183738'],['openpetfoodfacts','012345678905']]) {
+    const saved=await run('/products',{name:'Cross-catalogue product',barcode,price:'1.00',cost:'0.10',minimum_qty:0,target_qty:0,catalogue_source:source,catalogue_code:barcode},R.saveProduct,{admin:true});
+    assert.equal(saved.product.catalogue_source,source);
+  }
   // Repeat the additive migration on populated Retail data; snapshots must survive.
   await db.exec(fs.readFileSync(path.join(__dirname, '../files/sql/retail.sql'), 'utf8'));
   assert.equal((await R.overview(request('/overview'))).sales.find(s => s.id === sale.id).vat_receipt.vat_pence, 25);

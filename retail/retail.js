@@ -15,9 +15,9 @@
   let data = null, online = false, ready = false, generation = 0, currentScope = '', basket = [], search = '', checkoutBusy = false;
   let tillMode = location.hash.slice(1) === 'till';
   let view = tillMode ? 'checkout' : location.hash.slice(1) || 'dashboard';
-  let productBarcodeScan = null, offlineState = { operations: [] }, shellReady = false;
+  let productBarcodeScan = null, retailClockOffset = 0, checkoutQuote = null, offlineState = { operations: [] }, shellReady = false;
   const offline = window.InventoryRetailOffline;
-  const checkoutWriter = () => writer() || (shellReady && offline.canSell(offlineState) && scopeKey() === currentScope);
+  const checkoutWriter = () => (!businessUI.needsOnline() || online) && (writer() || (shellReady && offline.canSell(offlineState) && scopeKey() === currentScope));
   function syncStatus() {
     const count = offlineState.operations.filter(x => x.status !== 'applied').length;
     const blocked = offlineState.operations.some(x => x.status === 'blocked');
@@ -30,6 +30,7 @@
     if ($('#retailTillStatus')) $('#retailTillStatus').textContent = text;
   }
   function scanCheckout(code) {
+    if (/^IO-LC-/i.test(code)) { businessUI.cardFromScan(code).catch(e => notice(e.message, true)); return; }
     if (!checkoutWriter() || checkoutBusy) return;
     const p = data.products.find(p => !p.archived && p.barcode.toLowerCase() === code.toLowerCase());
     search = '';
@@ -100,7 +101,7 @@
     const due = data.tasks.filter(x => x.status === 'pending' && (!x.due_at || Date.parse(x.due_at) <= now));
     const upcoming = data.tasks.filter(x => x.status === 'pending' && x.due_at && Date.parse(x.due_at) > now);
     const today = localDay(data.server_now, data.settings.timezone), todayNet = data.daily_sales.find(x => x.day === today)?.net_pence || 0;
-    const metrics = [['Today’s net sales', pounds(todayNet), 'Cash sales less refunds', '£'], ['Stock on hand', data.products.filter(p => !p.archived).reduce((n, p) => n + p.stock_qty, 0), 'Retail units, including negatives', '□'], ['Needs reordering', data.reorders.filter(x => x.order_qty > 0).length, 'Products after incoming stock', '↻'], ['Stock counts due', pendingCounts.length, 'Check and correct actual stock', '✓']];
+    const metrics = [['Today’s net sales', pounds(todayNet), 'Cash sales less refunds', '£'], ['Stock on hand', data.products.filter(p => !p.archived && p.item_kind !== 'service').reduce((n, p) => n + p.stock_qty, 0), 'Retail units, including negatives', '□'], ['Needs reordering', data.reorders.filter(x => x.order_qty > 0).length, 'Products after incoming stock', '↻'], ['Stock counts due', pendingCounts.length, 'Check and correct actual stock', '✓']];
     const deliveryRows = list => list.slice(0, 4).map(d => row(d.supplier || 'Delivery', `${d.reference || 'No reference'} · ${dateOnly(d.expected_on)} · ${d.items.reduce((n, i) => n + i.ordered_qty - i.received_qty, 0)} units outstanding`, button('View', 'delivery-view', `data-id="${d.id}"`))).join('');
     return `<div class="retail-metrics">${metrics.map(m => `<section class="retail-metric"><div class="retail-metric-label">${m[0]}<span aria-hidden="true">${m[3]}</span></div><div class="retail-metric-value">${esc(m[1])}</div><div class="retail-muted">${m[2]}</div></section>`).join('')}</div><div class="retail-grid">${card(header('Expected deliveries', `${expected.length} orders awaiting dispatch`, go('All deliveries', 'deliveries')) + (deliveryRows(expected) || empty('No expected deliveries.')))}${tillPanel()}${card(header('Incoming deliveries', 'On their way or partly received') + (deliveryRows(incoming) || empty('No incoming deliveries.')))}${card(header('Tasks to complete', `${due.length} due now or without a date`, button('Add task', 'task-new', '', !writer())) + (due.slice(0, 4).map(t => row(t.title, t.due_at ? when(t.due_at) : 'Ready when you are', button('Complete', 'task-complete', `data-id="${t.id}"`, !writer()))).join('') || empty('You’re up to date.')))}${card(header('Upcoming tasks', 'What’s next', go('View tasks', 'tasks')) + (upcoming.slice(0, 4).map(t => row(t.title, when(t.due_at), badge('Upcoming'))).join('') || empty('No upcoming tasks.')))}${card(header('Stock that needs attention', 'Negative stock stays sellable and is flagged for counting', go('Stock counts', 'counts')) + (pendingCounts.slice(0, 4).map(c => row(c.name, `Recorded stock: ${c.stock_qty}`, button('Count', 'count', `data-id="${c.id}"`, !writer()))).join('') || empty('No outstanding stock counts.')))}</div>${salesChart()}`;
   }
@@ -112,12 +113,13 @@
   }
   function productView() {
     const filter = search.toLowerCase(), products = data.products.filter(p => (p.name + ' ' + p.barcode).toLowerCase().includes(filter));
-    return card(header('Products & stock', 'Fixed selling prices, minimum quantities and reorder targets', '<div class="retail-action-row" style="margin:0">' + button('Scan to add product', 'product-scan', '', !admin() || !data.catalogue_supported) + button('Add product', 'product-new', '', !admin(), true) + '</div>') + `<div class="retail-toolbar"><input id="retailSearch" type="search" aria-label="Search products or barcodes" placeholder="Search products or scan a barcode" value="${esc(search)}"></div>` + table(['Product', 'Price', 'Stock', 'Minimum / target', 'Actions'], products.map(p => `<tr><td><strong>${esc(p.name)} ${p.archived ? badge('Archived') : ''}</strong><small>${esc(p.barcode)}</small>${data.vat_supported ? `<small>${esc(vatLabel(p.vat_treatment, p.vat_rate))}</small>` : ''}</td><td>${pounds(p.price_pence)}<small>Cost ${pounds(p.cost_pence)}</small></td><td class="${p.stock_qty < 0 ? 'retail-negative' : ''}">${p.stock_qty}</td><td>${p.minimum_qty} / ${p.target_qty}</td><td>${button('Edit', 'product-edit', `data-id="${p.id}"`, !admin())} ${button('Stock in', 'stock-in', `data-id="${p.id}"`, !writer() || p.archived)} ${button('Count', 'request-count', `data-id="${p.id}"`, !writer() || p.archived)} ${button('History', 'stock-history', `data-id="${p.id}"`)}</td></tr>`), 'No matching products. Add your first Retail product to get started.') + '<p class="retail-catalogue-credit">Barcode identification uses <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer">Open Food Facts</a> (<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>). Confirm the product and pack size before saving. Your shop sets its own price and VAT treatment.</p>');
+    return card(header('Products & stock', 'Fixed selling prices, minimum quantities and reorder targets', '<div class="retail-action-row" style="margin:0">' + button('Scan to add product', 'product-scan', '', !admin() || !data.catalogue_supported) + button('Add product', 'product-new', '', !admin(), true) + '</div>') + `<div class="retail-toolbar"><input id="retailSearch" type="search" aria-label="Search products or barcodes" placeholder="Search products or scan a barcode" value="${esc(search)}"></div>` + table(['Product', 'Price', 'Stock', 'Minimum / target', 'Actions'], products.map(p => `<tr><td><strong>${esc(p.name)} ${p.archived ? badge('Archived') : ''}</strong><small>${esc(p.barcode)}</small>${data.vat_supported ? `<small>${esc(vatLabel(p.vat_treatment, p.vat_rate))}</small>` : ''}</td><td>${pounds(p.price_pence)}<small>Cost ${pounds(p.cost_pence)}</small></td><td class="${p.stock_qty < 0 ? 'retail-negative' : ''}">${p.item_kind === 'service' ? 'Service · ' + p.duration_minutes + ' min' : p.stock_qty + (p.reserved_qty ? '<small>' + p.reserved_qty + ' reserved</small>' : '')}</td><td>${p.minimum_qty} / ${p.target_qty}</td><td>${button('Edit', 'product-edit', `data-id="${p.id}"`, !admin())} ${button('Stock in', 'stock-in', `data-id="${p.id}"`, !writer() || p.archived || p.item_kind === 'service')} ${button('Count', 'request-count', `data-id="${p.id}"`, !writer() || p.archived || p.item_kind === 'service')} ${button('History', 'stock-history', `data-id="${p.id}"`)}</td></tr>`), 'No matching products. Add your first Retail product to get started.') + '<p class="retail-catalogue-credit">Barcode identification searches Open Food Facts, Open Beauty Facts, Open Products Facts and Open Pet Food Facts (<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>). Confirm the product and pack size before saving. Your shop sets its own price and VAT treatment.</p>');
   }
   function checkoutView() {
-    const products = data.products.filter(p => !p.archived && (p.name + ' ' + p.barcode).toLowerCase().includes(search.toLowerCase()));
-    const total = basket.reduce((sum, line) => sum + line.qty * line.unit_price_pence, 0);
-    return `${tillMode ? '<div class="retail-till-toolbar"><strong>Till mode</strong><span id="retailTillStatus"></span><button type="button" data-view="dashboard">Exit to dashboard</button></div>' : '<div class="retail-action-row">' + button('Full-screen till', 'till-screen') + '</div>'}<div class="retail-checkout">${card(header('Checkout', 'Scan a barcode with your USB scanner or tap a product') + `<input id="retailSearch" type="search" placeholder="Product name or barcode — press Enter to add" aria-label="Search or scan product" value="${esc(search)}"><div class="retail-product-grid">${products.slice(0, 60).map(p => `<button type="button" class="retail-product-button" data-action="basket-add" data-id="${p.id}" ${!checkoutWriter() || checkoutBusy ? 'disabled' : ''}><strong>${esc(p.name)}</strong><span>${pounds(p.price_pence)}</span><small class="retail-muted">${p.stock_qty} in stock</small></button>`).join('')}</div>${products.length > 60 ? '<p class="retail-help">Showing the first 60 results. Search to find a specific product.</p>' : ''}`)}<section class="retail-card retail-basket">${header('Current sale', `${basket.reduce((n, x) => n + x.qty, 0)} units`)}${basket.length ? basket.map(line => `<div class="retail-basket-row"><div><strong>${esc(line.name)}</strong><small>${pounds(line.unit_price_pence)} each</small></div><strong>${pounds(line.unit_price_pence * line.qty)}</strong><div class="retail-quantity retail-full-width"><button type="button" data-action="basket-minus" data-id="${line.product_id}" aria-label="Remove one ${esc(line.name)}" ${checkoutBusy ? 'disabled' : ''}>−</button><label class="retail-basket-qty-label"><span class="retail-muted">Quantity</span><input type="number" min="1" max="1000000" step="1" data-basket-qty="${line.product_id}" value="${line.qty}" ${checkoutBusy ? 'disabled' : ''}></label><button type="button" data-action="basket-remove" data-id="${line.product_id}" ${checkoutBusy ? 'disabled' : ''}>Remove</button></div></div>`).join('') : empty('Your basket is empty.')}<div class="retail-checkout-total"><span>Total</span><span>${pounds(total)}</span></div><form id="retailCheckoutForm"><label>Cash received (£)<input name="tendered" inputmode="decimal" type="number" min="0" max="1000000" step="0.01" required ${checkoutBusy ? 'disabled' : ''}></label><div id="retailChange" class="retail-help" aria-live="polite"></div><button type="submit" class="retail-primary" ${!checkoutWriter() || !basket.length || !data.till || checkoutBusy || pending() ? 'disabled' : ''}>${checkoutBusy ? 'Recording sale…' : 'Complete cash sale'}</button></form><p class="retail-help">${data.till ? 'Check the basket and cash before completing. Sales can take stock below zero; those products are flagged for counting.' : 'An owner or admin must open the till before checkout.'}</p><p class="retail-note">Card terminal payments are not connected yet. This checkout records cash payments only.</p></section></div>`;
+    const products = data.products.filter(p => !p.archived && (p.item_kind !== 'service' || data.business?.config.features.services) && (p.name + ' ' + p.barcode).toLowerCase().includes(search.toLowerCase()));
+    const priced = checkoutBusy && checkoutQuote ? checkoutQuote : businessUI.pricing(basket); checkoutQuote = priced;
+    const total = priced.total_pence + Math.round(Number(businessUI.extras().tip || 0) * 100), deposit = businessUI.depositTotal();
+    return `${tillMode ? '<div class="retail-till-toolbar"><strong>Till mode</strong><span id="retailTillStatus"></span><button type="button" data-view="dashboard">Exit to dashboard</button></div>' : '<div class="retail-action-row">' + button('Full-screen till', 'till-screen') + '</div>'}<div class="retail-checkout">${card(header('Checkout', 'Scan a barcode with your USB scanner or tap a product') + `<input id="retailSearch" type="search" placeholder="Product name or barcode — press Enter to add" aria-label="Search or scan product" value="${esc(search)}"><div class="retail-product-grid">${products.slice(0, 60).map(p => `<button type="button" class="retail-product-button" data-action="basket-add" data-id="${p.id}" ${!checkoutWriter() || checkoutBusy || businessUI.extras().preorder_id || (businessUI.extras().booking_id && basket.some(i=>i.product_id===p.id) && businessUI.lockedLine(p.id)) ? 'disabled' : ''}><strong>${esc(p.name)}</strong><span>${pounds(p.price_pence)}</span><small class="retail-muted">${p.item_kind === 'service' ? p.duration_minutes + ' minute service' : p.stock_qty + ' in stock'}</small></button>`).join('')}</div>${products.length > 60 ? '<p class="retail-help">Showing the first 60 results. Search to find a specific product.</p>' : ''}`)}<section class="retail-card retail-basket">${header('Current sale', `${basket.reduce((n, x) => n + x.qty, 0)} units`)}${basket.length ? basket.map(line => `<div class="retail-basket-row"><div><strong>${esc(line.name)}</strong><small>${pounds(line.unit_price_pence)} each</small>${priced.lines.find(x => x.product_id === line.product_id)?.line_discount_pence ? '<small class="business-saving">Saving ' + pounds(priced.lines.find(x => x.product_id === line.product_id).line_discount_pence) + '</small>' : ''}</div><strong>${pounds(priced.lines.find(x => x.product_id === line.product_id)?.line_total_pence ?? line.unit_price_pence * line.qty)}</strong><div class="retail-quantity retail-full-width"><button type="button" data-action="basket-minus" data-id="${line.product_id}" aria-label="Remove one ${esc(line.name)}" ${checkoutBusy || businessUI.lockedLine(line.product_id) ? 'disabled' : ''}>−</button><label class="retail-basket-qty-label"><span class="retail-muted">Quantity</span><input type="number" min="1" max="1000000" step="1" data-basket-qty="${line.product_id}" value="${line.qty}" ${checkoutBusy || businessUI.lockedLine(line.product_id) ? 'disabled' : ''}></label><button type="button" data-action="basket-remove" data-id="${line.product_id}" ${checkoutBusy || businessUI.lockedLine(line.product_id) ? 'disabled' : ''}>Remove</button></div></div>`).join('') : empty('Your basket is empty.')}${businessUI.checkoutControls()}<div class="retail-checkout-total"><span>Total</span><span>${pounds(total)}</span></div>${deposit ? '<p>Deposit applied: ' + pounds(deposit) + '<br><strong>Cash due: ' + pounds(total - deposit) + '</strong></p>' : ''}<form id="retailCheckoutForm"><label>Cash received (£)<input name="tendered" inputmode="decimal" type="number" min="0" max="1000000" step="0.01" required ${checkoutBusy ? 'disabled' : ''}></label><div id="retailChange" class="retail-help" aria-live="polite"></div><button type="submit" class="retail-primary" ${!checkoutWriter() || !basket.length || !data.till || checkoutBusy || pending() ? 'disabled' : ''}>${checkoutBusy ? 'Recording sale…' : 'Complete cash sale'}</button></form><p class="retail-help">${data.till ? 'Check the basket and cash before completing. Sales can take stock below zero; those products are flagged for counting.' : 'An owner or admin must open the till before checkout.'}</p><p class="retail-note">Card terminal payments are not connected yet. This checkout records cash payments only.</p></section></div>`;
   }
   function deliveryView() {
     return card(header('Deliveries', 'Expected orders, incoming deliveries and partial receipts', button('Create delivery / order', 'delivery-new', '', !admin(), true)) + data.deliveries.map(d => row(d.supplier || 'Delivery', `${d.reference || 'No reference'} · ${dateOnly(d.expected_on)} · ${d.items.map(i => i.name).join(', ')}`, badge(d.status) + button('View', 'delivery-view', `data-id="${d.id}"`))).join('') + (data.deliveries.length ? '<p class="retail-help">Showing the latest 200 deliveries. Receiving adds only the quantities you confirm to Retail stock.</p>' : empty('No deliveries yet. Create an order here or from the reorder report.')));
@@ -154,15 +156,15 @@
     const tenderedBefore = $('#retailCheckoutForm input[name=tendered]')?.value;
     document.body.classList.toggle('retail-till-mode', tillMode);
     if (!tillMode && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-    const names = { dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Sales & receipts', settings: 'Retail settings', offline: 'Offline & sync' };
+    const names = { ...Object.fromEntries(businessUI.nav().map(n => [n[0],n[2]])), dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Sales & receipts', settings: 'Retail settings', offline: 'Offline & sync' };
     if (!names[view]) view = 'dashboard';
     $('#retailTitle').textContent = names[view];
-    $('#retailNav').innerHTML = '<div class="retail-nav-label">YOUR SHOP</div>' + nav.map(n => `<button type="button" class="retail-nav-button ${view === n[0] ? 'active' : ''}" data-view="${n[0]}" ${view === n[0] ? 'aria-current="page"' : ''}><span aria-hidden="true">${n[1]}</span><span>${n[2]}</span></button>`).join('');
+    $('#retailNav').innerHTML = '<div class="retail-nav-label">YOUR SHOP</div>' + [...nav,...businessUI.nav()].map(n => `<button type="button" class="retail-nav-button ${view === n[0] ? 'active' : ''}" data-view="${n[0]}" ${view === n[0] ? 'aria-current="page"' : ''}><span aria-hidden="true">${n[1]}</span><span>${n[2]}</span></button>`).join('');
     if (!data) return;
     $('#retailRole').textContent = `${data.role} · Retail`;
-    $('#retailView').innerHTML = ({ dashboard, products: productView, checkout: checkoutView, deliveries: deliveryView, reorders: reordersView, counts: countsView, tasks: tasksView, cash: cashView, sales: salesView, settings: settingsView, offline: offlineView })[view]();
+    $('#retailView').innerHTML = ({ dashboard, products: productView, checkout: checkoutView, deliveries: deliveryView, reorders: reordersView, counts: countsView, tasks: tasksView, cash: cashView, sales: salesView, settings: () => settingsView() + (data.business_supported ? businessUI.settings() : ''), offline: offlineView, ...businessUI.views })[view]();
     if (view === 'checkout' && basket.length && tenderedBefore != null) { const cash = $('#retailCheckoutForm input[name=tendered]'); cash.value = tenderedBefore; cash.dispatchEvent(new Event('input', { bubbles: true })); }
-    syncStatus();
+    syncStatus(); businessUI.broadcast();
   }
   function switchView(next) {
     if (checkoutBusy) return;
@@ -181,11 +183,11 @@
   }
   async function refresh({ quiet = false } = {}) {
     if (!ready || checkoutBusy) return;
-    if (quiet && view === 'settings' && $('#retailSettingsForm')?.dataset.dirty === 'true') return;
+    if (quiet && view === 'settings' && ($('#retailSettingsForm')?.dataset.dirty === 'true' || $('#retailBusinessSettings')?.dataset.dirty === 'true')) return;
     const context = scopeKey(), g = ++generation;
     if (currentScope !== context) {
       if (basket.length) notice('Basket cleared because the workspace or inventory changed. No sale was recorded.');
-      basket = []; data = null; search = ''; currentScope = context; $('#retailDialog').close();
+      basket = []; data = null; search = ''; currentScope = context; businessUI.reset(); $('#retailDialog').close();
       $('#retailView').innerHTML = empty('Loading this Retail inventory…');
     }
     try {
@@ -196,7 +198,7 @@
         if (navigator.onLine) await offline.sync(context);
         if (g !== generation || scopeKey() !== context) return;
         offlineState = await offline.read(context);
-        if (offlineState.operations.length) { data = offline.project(offlineState); online = false; render(); notice('Saved sales remain on this device until confirmed. Check Offline & sync for progress or errors.'); return; }
+        if (offlineState.operations.length) { data = offline.project(offlineState); retailClockOffset = Date.parse(data.server_now) - Date.now(); online = false; render(); notice('Saved sales remain on this device until confirmed. Check Offline & sync for progress or errors.'); return; }
       }
       if (!navigator.onLine && offlineState.snapshot) throw new Error('Working from the saved Retail data.');
       const status = await api('/status'); if (g !== generation) return;
@@ -210,12 +212,13 @@
       if (r.workspace_id !== selected().workspace || r.inventory_id !== selected().inventory) throw new Error('Workspace selection changed. Refresh to load the correct inventory.');
       await offline.save(context, r); offlineState = await offline.read(context);
       if (g !== generation || scopeKey() !== context) return;
-      data = offline.project(offlineState); online = !offlineState.operations.length;
+      data = offline.project(offlineState); retailClockOffset = Date.parse(data.server_now) - Date.now(); online = !offlineState.operations.length;
+      for (const p of data.products) p.reserved_qty = data.business?.reservations.find(r => r.product_id === p.id)?.reserved_qty || 0;
       let basketChanged = false;
       basket = basket.filter(line => {
         const p = data.products.find(p => p.id === line.product_id && !p.archived);
         if (!p) { basketChanged = true; return false; }
-        if (p.price_pence !== line.unit_price_pence || p.name !== line.name || p.vat_treatment !== line.vat_treatment || p.vat_rate !== line.vat_rate) { line.unit_price_pence = p.price_pence; line.name = p.name; line.vat_treatment = p.vat_treatment; line.vat_rate = p.vat_rate; basketChanged = true; }
+        if (!businessUI.extras().booking_id && !businessUI.extras().preorder_id && (p.price_pence !== line.unit_price_pence || p.name !== line.name || p.vat_treatment !== line.vat_treatment || p.vat_rate !== line.vat_rate)) { line.unit_price_pence = p.price_pence; line.name = p.name; line.vat_treatment = p.vat_treatment; line.vat_rate = p.vat_rate; basketChanged = true; }
         return true;
       });
       $('#retailConnection').textContent = 'Up to date'; $('#retailConnection').classList.add('connected');
@@ -251,6 +254,8 @@
         if (!result || context !== currentScope) return;
         $('#retailDialog').close(); await refresh();
         if (result.variance_pence != null) notice(result.variance_pence === 0 ? 'Till balanced exactly.' : `${pounds(Math.abs(result.variance_pence))} ${result.variance_pence < 0 ? 'short' : 'over'} recorded. The counted cash is the new baseline.`);
+        if (result.deposit) businessUI.depositReceipt(result.deposit);
+        if (result.customer) businessUI.savedCustomer(result.customer);
         if (result.scan_next && context === currentScope) productForm(undefined, true);
       } catch (e) { form.querySelector('.retail-form-error').textContent = e.message + (pending() ? ' Close this dialog and use Retry pending action above to confirm the result safely.' : ''); }
       finally { submits.forEach(s => { s.disabled = false; }); }
@@ -258,22 +263,27 @@
   }
   function productForm(productId, scanAfterOpen = false) {
     const p = data.products.find(p => p.id === productId), supported = data.vat_supported;
+    const catalogueSources = { openfoodfacts: {host:'world.openfoodfacts.org',label:'Open Food Facts'}, openbeautyfacts:{host:'world.openbeautyfacts.org',label:'Open Beauty Facts'}, openproductsfacts:{host:'world.openproductsfacts.org',label:'Open Products Facts'}, openpetfoodfacts:{host:'world.openpetfoodfacts.org',label:'Open Pet Food Facts'} };
     let source = p?.catalogue_source || '', sourceCode = p?.catalogue_code || '', lookupGeneration = 0;
     const tax = supported ? `<div class="retail-tax-fields retail-full-width"><label class="retail-check-label"><input type="checkbox" name="vat_applicable" id="retailProductVat" ${p?.vat_treatment === 'taxable' ? 'checked' : ''}> VAT applicable</label><label id="retailVatRateField">VAT rate<select name="vat_rate"><option value="20" ${p?.vat_rate === 20 ? 'selected' : ''}>20% — standard rate</option><option value="5" ${p?.vat_rate === 5 ? 'selected' : ''}>5% — reduced rate</option></select></label><label id="retailVatNoChargeField">When VAT is not charged<select name="vat_no_charge"><option value="">Choose treatment</option><option value="zero_rated" ${p?.vat_treatment === 'zero_rated' ? 'selected' : ''}>Zero-rated — 0% VAT</option><option value="exempt" ${p?.vat_treatment === 'exempt' ? 'selected' : ''}>VAT exempt</option><option value="outside_scope" ${p?.vat_treatment === 'outside_scope' ? 'selected' : ''}>Outside the scope of VAT</option></select></label><small class="retail-muted">Selling prices are VAT-inclusive. Tick for 20% or 5%, or choose the correct no-charge treatment. Barcode lookup does not determine VAT.</small></div>` : '';
     const scan = data.catalogue_supported ? `<div class="retail-action-row" style="margin:0"><button type="button" id="retailScanEan">Scan EAN with camera</button><button type="button" id="retailLookupEan">Look up barcode</button></div><div id="retailCamera" class="retail-camera" hidden><video playsinline muted autoplay></video><p data-camera-status role="status"></p><button type="button" data-stop-camera>Stop camera</button></div><div id="retailLookupResult" role="status"></div>` : '<p class="retail-help">Install the latest Retail backend update to look up product names by barcode.</p>';
-    const fields = `<div class="retail-form-grid">${input('Product name', 'name', p?.name, 'required maxlength="160"')}${input('Barcode', 'barcode', p?.barcode, 'maxlength="100"', 'Scan or type the retail barcode. Leave blank to generate one for a custom product.')}</div>${scan}<div class="retail-form-grid">${moneyInput('Selling price per unit (£)', 'price', decimal(p?.price_pence))}${moneyInput('Cost per unit (£)', 'cost', decimal(p?.cost_pence))}${tax}${qtyInput('Minimum stock', 'minimum_qty', p?.minimum_qty ?? 0)}${qtyInput('Reorder up to', 'target_qty', p?.target_qty ?? 0)}${!p ? qtyInput('Opening stock', 'opening_qty', 0) : ''}${input('Supplier', 'supplier', p?.supplier, 'maxlength="160"')}${input('Supplier / product link', 'supplier_url', p?.supplier_url, 'type="url" maxlength="1000"')}</div>${p ? `<label class="retail-check-label"><input type="checkbox" name="archived" ${p.archived ? 'checked' : ''}> Archived (stock must be zero and deliveries cleared)</label>` : '<p class="retail-help">Enter actual opening Retail stock. This will not copy or deduct stock from the reseller area.</p>'}<p id="retailProductSource" class="retail-catalogue-credit"></p>`;
+    const extraFields = data.business_supported ? `<div class="retail-form-grid">${data.business.config.features.services || p?.item_kind === 'service' ? '<label>Item type<select aria-label="Item type" name="item_kind" ' + (p ? 'disabled' : '') + '><option value="product" ' + (p?.item_kind !== 'service' ? 'selected' : '') + '>Stock product</option><option value="service" ' + (p?.item_kind === 'service' ? 'selected' : '') + '>Service — no stock deduction</option></select></label>' : ''}${data.business.config.features.services ? qtyInput('Service duration (minutes)', 'duration_minutes', p?.duration_minutes || 30, 1440, 1) : ''}${data.business.config.features.packs ? qtyInput('Units in one case / pack', 'pack_size', p?.pack_size || 1, 1000000, 1) : ''}${data.business.manufacturing_allowed ? '<label>Linked Manufacturing recipe (optional)<select name="manufacturing_recipe_id"><option value="">None</option>' + data.business.recipes.map(r => '<option value="' + r.id + '" ' + (p?.manufacturing_recipe_id === r.id ? 'selected' : '') + '>' + esc(r.name) + '</option>').join('') + '</select></label>' : ''}</div>` : '';
+    const fields = extraFields + `<div class="retail-form-grid">${input('Product name', 'name', p?.name, 'required maxlength="160"')}${input('Barcode', 'barcode', p?.barcode, 'maxlength="100"', 'Scan or type the retail barcode. Leave blank to generate one for a custom product.')}</div>${scan}<div class="retail-form-grid">${moneyInput('Selling price per unit (£)', 'price', decimal(p?.price_pence))}${moneyInput('Cost per unit (£)', 'cost', decimal(p?.cost_pence))}${tax}${qtyInput('Minimum stock', 'minimum_qty', p?.minimum_qty ?? 0)}${qtyInput('Reorder up to', 'target_qty', p?.target_qty ?? 0)}${!p ? qtyInput('Opening stock', 'opening_qty', 0) : ''}${input('Supplier', 'supplier', p?.supplier, 'maxlength="160"')}${input('Supplier / product link', 'supplier_url', p?.supplier_url, 'type="url" maxlength="1000"')}</div>${p ? `<label class="retail-check-label"><input type="checkbox" name="archived" ${p.archived ? 'checked' : ''}> Archived (stock must be zero and deliveries cleared)</label>` : '<p class="retail-help">Enter actual opening Retail stock. This will not copy or deduct stock from the reseller area.</p>'}<p id="retailProductSource" class="retail-catalogue-credit"></p>`;
     formDialog(p ? 'Edit product' : 'New Retail product', fields, 'Save product', async (f, form, submitter) => {
       const vat = !supported ? {} : { vat_treatment: f.has('vat_applicable') ? 'taxable' : f.get('vat_no_charge') || null, vat_rate: f.has('vat_applicable') ? Number(f.get('vat_rate')) : 0 };
       const barcode = String(f.get('barcode') || '').trim();
       const catalogue = data.catalogue_supported ? { catalogue_source: sourceCode === barcode ? source : '', catalogue_code: sourceCode === barcode ? sourceCode : '' } : {};
-      const r = await mutate('/products' + (p ? '/' + p.id : ''), { ...Object.fromEntries(f), ...vat, ...catalogue, ...(p ? { archived: f.has('archived'), edit_version: p.edit_version } : {}) }, p ? 'PATCH' : 'POST');
+      const r = await mutate('/products' + (p ? '/' + p.id : ''), { ...Object.fromEntries(f), ...vat, ...catalogue, ...(p && data.business_supported ? { item_kind: p.item_kind } : {}), ...(p ? { archived: f.has('archived'), edit_version: p.edit_version } : {}) }, p ? 'PATCH' : 'POST');
       return r ? { ...r, scan_next: submitter?.dataset.scanNext === 'true' } : r;
     });
     const form = $('#retailModalForm'), context = currentScope;
+    const kind = form.elements.item_kind;
+    const updateKind = () => { const service = (p?.item_kind || kind?.value) === 'service'; for (const name of ['minimum_qty','target_qty','opening_qty']) { const el = form.elements[name]; if (el) { el.closest('label').hidden = service; if (service) el.value = 0; } } };
+    kind?.addEventListener('change', updateKind); updateKind();
     if (!p && data.catalogue_supported) form.querySelector('.retail-form-actions').insertAdjacentHTML('afterbegin', '<button type="submit" data-scan-next="true">Save and scan next</button>');
     function attribution() {
       const el = form.querySelector('#retailProductSource');
-      el.innerHTML = source === 'openfoodfacts' ? `Product identification from <a href="https://world.openfoodfacts.org/product/${esc(sourceCode)}" target="_blank" rel="noopener noreferrer">Open Food Facts</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>. Details are editable; check the product and pack size.` : '';
+      el.innerHTML = source && catalogueSources[source] ? `Product identification from <a href="https://${catalogueSources[source].host}/product/${esc(sourceCode)}" target="_blank" rel="noopener noreferrer">${esc(catalogueSources[source].label)}</a> · <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>. Details are editable; check the product and pack size.` : '';
     }
     attribution();
     form.elements.barcode.addEventListener('input', () => { lookupGeneration++; source = ''; sourceCode = ''; attribution(); if ($('#retailLookupResult')) $('#retailLookupResult').replaceChildren(); });
@@ -295,18 +305,18 @@
       if (!navigator.onLine) { result.textContent = 'Product name lookup needs internet access. Keep the scanned barcode and enter the name manually, or reconnect and try again.'; return; }
       const existing = data.products.find(x => x.barcode === barcode && x.id !== p?.id);
       if (existing) { result.textContent = `This barcode is already saved as ${existing.name}. Close this form and edit or stock in that product instead.`; return; }
-      result.textContent = 'Looking up barcode in Open Food Facts…';
+      result.textContent = 'Looking up food, toiletries, household and pet products…';
       try {
         const r = await api('/catalogue/' + encodeURIComponent(barcode));
         if (g !== lookupGeneration || !form.isConnected || currentScope !== context || !$('#retailDialog').open) return;
-        if (!r.found) { result.textContent = 'No named match was found in Open Food Facts. The barcode is kept; type the product name and continue manually.'; form.elements.name.focus(); return; }
+        if (!r.found) { result.textContent = 'No named match was found in the public product databases. The barcode is kept; enter its name once and it will be recognised in this shop next time.'; form.elements.name.focus(); return; }
         const x = r.product;
-        result.innerHTML = `<div class="retail-catalogue-match"><strong>${esc(x.name)}</strong><p>${esc([x.brand, x.quantity, x.barcode].filter(Boolean).join(' · '))}</p><p class="retail-help">Check the flavour, size and multipack count match the pack in your hand.</p><button type="button" id="retailAcceptMatch">Use these details</button><p class="retail-catalogue-credit"><a href="${esc(x.source_url)}" target="_blank" rel="noopener noreferrer">Open Food Facts</a> · ODbL</p></div>`;
+        result.innerHTML = `<div class="retail-catalogue-match"><strong>${esc(x.name)}</strong><p>${esc([x.brand, x.quantity, x.barcode].filter(Boolean).join(' · '))}</p><p class="retail-help">Check the flavour, size and multipack count match the pack in your hand.</p><button type="button" id="retailAcceptMatch">Use these details</button><p class="retail-catalogue-credit"><a href="${esc(x.source_url)}" target="_blank" rel="noopener noreferrer">${esc(x.source_name || catalogueSources[x.source]?.label || 'Product database')}</a> · ODbL</p></div>`;
         result.querySelector('#retailAcceptMatch').onclick = () => {
           const current = form.elements.name.value.trim();
           if (current && current !== p?.name && !window.confirm('Replace the product name with this matched name?')) return;
           const quantity = x.quantity && !x.name.toLowerCase().includes(x.quantity.toLowerCase()) ? ' · ' + x.quantity : '';
-          form.elements.name.value = (x.name + quantity).slice(0, 160); source = 'openfoodfacts'; sourceCode = x.barcode;
+          form.elements.name.value = (x.name + quantity).slice(0, 160); source = Object.hasOwn(catalogueSources,x.source) ? x.source : 'openfoodfacts'; sourceCode = x.barcode;
           attribution(); result.textContent = 'Product details filled in. Add the shop’s price, stock and reorder levels before saving.'; form.elements.price.focus();
         };
       } catch (e) { if (g === lookupGeneration && form.isConnected) result.textContent = /invalid server response/i.test(e.message) ? 'Barcode lookup did not receive a valid backend response. Install the latest Retail backend update, restart InventoryOS Backend, and try again. Your barcode is kept for manual entry.' : e.message; }
@@ -327,7 +337,8 @@
   }
   function stockIn(productId) {
     const p = data.products.find(p => p.id === productId);
-    formDialog('Stock in: ' + p.name, `<p>Current stock: ${p.stock_qty}. For an existing order, receive it from Deliveries so it is not added twice.</p>${qtyInput('Quantity received', 'qty', 1, 1000000, 1)}${input('Reason / reference', 'reason', '', 'required maxlength="300"')}`, 'Add to Retail stock', f => mutate('/stock-in', { product_id: p.id, qty: f.get('qty'), reason: f.get('reason') }));
+    const packs = data.business?.config.features.packs;
+    formDialog('Stock in: ' + p.name, `<p>Current stock: ${p.stock_qty}. Receive an existing order from Deliveries to avoid adding it twice.</p>${packs ? '<label>Quantity entered as<select name="received_as"><option value="units">Individual units</option><option value="cases">Cases / packs (' + p.pack_size + ' units each)</option></select></label>' : ''}${qtyInput('Quantity received', 'qty', 1, 1000000, 1)}${packs ? input('Cost per case (£, optional)', 'case_cost', '', 'type="number" min="0" step="0.01"', 'Used only when receiving cases. Unit cost is rounded to the nearest penny.') : ''}${input('Reason / reference', 'reason', '', 'required maxlength="300"')}`, 'Add to Retail stock', f => mutate('/stock-in', { ...Object.fromEntries(f), product_id: p.id }));
   }
   function countForm(countId) {
     const c = data.counts.find(c => c.id === countId);
@@ -342,18 +353,18 @@
     formDialog('Balance the till', `<div class="retail-count-preview">Expected cash<strong>${pounds(data.till.expected_pence)}</strong></div><p>Count the full drawer, including the float. The difference is recorded and retained. A shortage does not prove why money is missing.</p>${moneyInput('Actual counted cash (£)', 'amount')}${input('Balance note', 'note', '', 'maxlength="300"')}<label class="retail-check-label"><input type="checkbox" name="close"> Close the till after balancing</label>`, 'Confirm counted cash', f => mutate('/till/balance', { amount: f.get('amount'), note: f.get('note'), close: f.has('close') }));
   }
   function deliveryForm(initial = []) {
-    const products = data.products.filter(p => !p.archived);
+    const products = data.products.filter(p => !p.archived && p.item_kind !== 'service');
     if (!products.length) { notice('Create a product before creating a delivery.'); return; }
     if (initial.length > 100) { notice('A combined delivery supports up to 100 products. Create smaller orders from the individual reorder buttons.'); return; }
     const defaults = initial.length ? initial : [{ id: products[0].id, qty: 1, cost_pence: products[0].cost_pence }];
-    const line = x => `<div class="retail-delivery-line"><label>Product<select data-product>${products.map(p => `<option value="${p.id}" ${p.id === x.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label><div class="retail-form-grid"><label>Quantity ordered<input data-qty type="number" min="1" max="1000000" step="1" value="${x.qty}" required></label><label>Cost per unit (£)<input data-cost type="number" min="0" max="1000000" step="0.01" value="${decimal(x.cost_pence)}" required></label></div><button type="button" data-remove-line>Remove line</button></div>`;
+    const line = x => `<div class="retail-delivery-line"><label>Product<select data-product>${products.map(p => `<option value="${p.id}" ${p.id === x.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label><div class="retail-form-grid"><label>Quantity ordered<input data-qty type="number" min="1" max="1000000" step="1" value="${x.qty}" required></label><label>Cost per selected unit (£)<input data-cost type="number" min="0" max="1000000" step="0.01" value="${decimal(x.cost_pence)}" required></label>${data.business?.config.features.packs ? '<label>Order as<select data-order-unit><option value="units">Individual units</option><option value="cases">Cases / packs</option></select></label>' : ''}</div><button type="button" data-remove-line>Remove line</button></div>`;
     formDialog('Create delivery / order', `${input('Supplier', 'supplier', initial.length === 1 ? products.find(p => p.id === initial[0].id)?.supplier : '', 'maxlength="160"')}${input('Order reference', 'reference', '', 'maxlength="160"')}${input('Expected delivery date', 'expected_on', '', 'type="date"')}<div id="retailDeliveryLines" class="retail-form">${defaults.map(line).join('')}</div><button type="button" id="retailAddDeliveryLine">Add another product</button><p class="retail-help">This records an order you place with your supplier. It does not send the order or make a payment.</p>`, 'Save expected delivery', (f, form) => {
-      const items = [...form.querySelectorAll('.retail-delivery-line')].map(el => ({ product_id: el.querySelector('[data-product]').value, qty: el.querySelector('[data-qty]').value, cost: el.querySelector('[data-cost]').value }));
+      const items = [...form.querySelectorAll('.retail-delivery-line')].map(el => ({ product_id: el.querySelector('[data-product]').value, qty: el.querySelector('[data-qty]').value, cost: el.querySelector('[data-cost]').value, unit: el.querySelector('[data-order-unit]')?.value || 'units' }));
       return mutate('/deliveries', { ...Object.fromEntries(f), items });
     });
     $('#retailAddDeliveryLine').onclick = () => { if ($$('#retailDeliveryLines .retail-delivery-line').length < 100) $('#retailDeliveryLines').insertAdjacentHTML('beforeend', line({ id: products[0].id, qty: 1, cost_pence: products[0].cost_pence })); };
     $('#retailDeliveryLines').addEventListener('click', e => { if (e.target.closest('[data-remove-line]')) e.target.closest('.retail-delivery-line').remove(); });
-    $('#retailDeliveryLines').addEventListener('change', e => { if (e.target.matches('[data-product]')) e.target.closest('.retail-delivery-line').querySelector('[data-cost]').value = decimal(products.find(p => p.id === e.target.value).cost_pence); });
+    $('#retailDeliveryLines').addEventListener('change', e => { if (e.target.matches('[data-product],[data-order-unit]')) { const line = e.target.closest('.retail-delivery-line'), p = products.find(p => p.id === line.querySelector('[data-product]').value); line.querySelector('[data-cost]').value = decimal(p.cost_pence * (line.querySelector('[data-order-unit]')?.value === 'cases' ? p.pack_size : 1)); } });
   }
   function $$(selector) { return [...document.querySelectorAll(selector)]; }
   function deliveryDetails(deliveryId) {
@@ -368,9 +379,10 @@
   }
   function taskForm() { formDialog('Add shop task', input('Task', 'title', '', 'required maxlength="240"') + input('Deadline (your device’s local time)', 'due_at', '', 'type="datetime-local"'), 'Add task', f => mutate('/tasks', { title: f.get('title'), due_at: f.get('due_at') ? new Date(f.get('due_at')).toISOString() : null })); }
   function receipt(sale) {
+    businessUI.broadcast(sale);
     const vat = sale.vat_receipt, business = sale.receipt_business || { name: vat?.business_name || 'InventoryOS · Retail', address: vat?.business_address || '' };
     const breakdown = vat ? `<section class="retail-receipt-vat"><hr><h4>VAT breakdown — included in prices</h4><table class="retail-tax-table"><thead><tr><th>Rate / treatment</th><th>Net</th><th>VAT</th><th>Total</th></tr></thead><tbody>${vat.groups.map(g => `<tr><td>${esc(vatLabel(g.vat_treatment, g.vat_rate))}</td><td>${pounds(g.net_pence)}</td><td>${pounds(g.vat_pence)}</td><td>${pounds(g.gross_pence)}</td></tr>`).join('')}</tbody></table><p>Net total: ${pounds(vat.net_pence)}<br>VAT included: ${pounds(vat.vat_pence)}<br><strong>Total paid: ${pounds(vat.gross_pence)}</strong></p>${sale.total_pence > 25000 || vat.groups.some(g => ['exempt', 'outside_scope'].includes(g.vat_treatment)) ? '<p>This is a sales receipt with a VAT breakdown, not a full VAT invoice. Request a full VAT invoice separately if needed.</p>' : ''}</section>` : '';
-    dialog('Sale receipt', `${sale.pending_sync ? '<p class="retail-note">Cash sale saved on this device. Awaiting server confirmation; keep this browser data until synced.</p>' : ''}<div class="retail-receipt"> <h3>${esc(business.name)}</h3>${business.address ? `<p class="retail-receipt-address">${esc(business.address).replace(/\n/g, '<br>')}</p>` : ''}${vat ? `<p>VAT registration: ${esc(vat.vat_number)}</p>` : ''}<p>${esc(sale.reference)}<br>${esc(when(sale.created_at))}</p><table>${sale.items.map(i => { const line = vat?.lines.find(x => x.product_id === i.product_id); return `<tr><td>${esc(i.name)}<br>${i.qty} × ${pounds(i.unit_price_pence)}${line ? '<br><small>' + esc(vatLabel(line.vat_treatment, line.vat_rate)) + '</small>' : ''}</td><td>${pounds(i.qty * i.unit_price_pence)}</td></tr>`; }).join('')}</table><hr><p><strong>Total ${pounds(sale.total_pence)}</strong><br>Cash ${pounds(sale.tendered_pence)}<br>Change ${pounds(sale.change_pence)}${sale.status === 'refunded' ? '<br>REFUNDED — original sale receipt' : ''}</p>${breakdown}<p>Thank you for shopping with us.</p></div><div class="retail-action-row">${button('Print / save receipt', 'print')}</div><p class="retail-help">Uses your browser’s print menu. A connected printer is required for paper receipts.</p>`);
+    dialog('Sale receipt', `${sale.pending_sync ? '<p class="retail-note">Cash sale saved on this device. Awaiting server confirmation; keep this browser data until synced.</p>' : ''}<div class="retail-receipt"> <h3>${esc(business.name)}</h3>${business.address ? `<p class="retail-receipt-address">${esc(business.address).replace(/\n/g, '<br>')}</p>` : ''}${vat ? `<p>VAT registration: ${esc(vat.vat_number)}</p>` : ''}<p>${esc(sale.reference)}<br>${esc(when(sale.created_at))}</p><table>${sale.items.map(i => { const line = vat?.lines.find(x => x.product_id === i.product_id); return `<tr><td>${esc(i.name)}<br>${i.qty} × ${pounds(i.unit_price_pence)}${line ? '<br><small>' + esc(vatLabel(line.vat_treatment, line.vat_rate)) + '</small>' : ''}</td><td>${pounds(i.line_total_pence ?? i.qty * i.unit_price_pence)}${i.line_discount_pence ? '<br><small>Saved ' + pounds(i.line_discount_pence) + '</small>' : ''}</td></tr>`; }).join('')}</table><hr><p><strong>Total ${pounds(sale.total_pence)}</strong>${sale.tip_pence ? '<br>Tip ' + pounds(sale.tip_pence) : ''}${sale.deposit_applied_pence ? '<br>Deposit applied ' + pounds(sale.deposit_applied_pence) : ''}<br>Cash now ${pounds(sale.cash_tendered_pence ?? sale.tendered_pence)}<br>Change ${pounds(sale.change_pence)}${sale.status === 'refunded' ? '<br>REFUNDED — original sale receipt' : ''}</p>${breakdown}${sale.deposit_vat_pence ? '<p>VAT already included in deposits: ' + pounds(sale.deposit_vat_pence) + '</p>' : ''}${sale.loyalty_snapshot ? '<p>Loyalty: ' + sale.loyalty_snapshot.earned + ' earned · ' + Math.max(0, sale.loyalty_snapshot.balance) + ' / ' + sale.loyalty_snapshot.target + ' stamps</p>' : ''}<p>Thank you for shopping with us.</p></div><div class="retail-action-row">${button('Print / save receipt', 'print')}</div><p class="retail-help">Uses your browser’s print menu. A connected printer is required for paper receipts.</p>`);
   }
   function refundForm(saleId) {
     const s = data.sales.find(s => s.id === saleId);
@@ -387,7 +399,7 @@
     if (action === 'till-screen') { switchView('till'); if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); return; }
     if (action === 'retry') {
       el.disabled = true;
-      try { const r = await mutate(null, null, null, true); if (r) { basket = []; $('#retailDialog').close(); await refresh(); notice('Pending action confirmed.'); if (r.sale) receipt(r.sale); } } finally { el.disabled = false; }
+      try { const r = await mutate(null, null, null, true); if (r) { basket = []; businessUI.reset(); $('#retailDialog').close(); await refresh(); notice('Pending action confirmed.'); if (r.sale) receipt(r.sale); } } finally { el.disabled = false; }
       return;
     }
     if (action === 'product-new') return productForm();
@@ -410,6 +422,7 @@
     if (action === 'report-print') return dialog('Current reorder report', reorderTable(data.reorders, false) + `<p>Generated ${when(data.server_now)} · ${esc(data.settings.timezone)}</p>` + button('Print / save report', 'print'));
     if (action.startsWith('basket-')) {
       if (checkoutBusy || !checkoutWriter()) return;
+      if (businessUI.lockedLine(recordId)) { notice('This item belongs to the linked booking/preorder. Detach it to start a separate sale.'); return; }
       const p = data.products.find(p => p.id === recordId), item = basket.find(i => i.product_id === recordId);
       if (action === 'basket-add') {
         if (item) item.qty = Math.min(1000000, item.qty + 1);
@@ -445,7 +458,7 @@
       const caret = event.target.selectionStart; search = event.target.value; render(); const field = $('#retailSearch'); field?.focus(); if (field?.type === 'search') field.setSelectionRange(caret, caret);
     }
     if (event.target.name === 'tendered' && $('#retailChange')) {
-      const raw = event.target.value, total = basket.reduce((n, i) => n + i.qty * i.unit_price_pence, 0);
+      const raw = event.target.value, total = (checkoutQuote?.total_pence ?? basket.reduce((n, i) => n + i.qty * i.unit_price_pence, 0)) + Math.round(Number(businessUI.extras().tip || 0) * 100) - businessUI.depositTotal();
       const amount = /^\d+(\.\d{0,2})?$/.test(raw) ? Math.round(Number(raw) * 100) : NaN;
       $('#retailChange').textContent = Number.isFinite(amount) ? (amount >= total ? 'Change to give: ' + pounds(amount - total) : 'Still to receive: ' + pounds(total - amount)) : '';
     }
@@ -467,18 +480,18 @@
       if (checkoutBusy || !basket.length || pending()) return;
       const tendered = new FormData(form).get('tendered'); checkoutBusy = true; render();
       try {
-        const body = { items: basket.map(({ product_id, qty, unit_price_pence, vat_treatment, vat_rate }) => ({ product_id, qty, unit_price_pence, vat_treatment, vat_rate })), payment_method: 'cash', tendered, vat_version: data.settings.vat_version ?? 0 };
+        const body = { ...businessUI.extras(), reviewed_total_pence: checkoutQuote?.total_pence, items: basket.map(({ product_id, qty, unit_price_pence, vat_treatment, vat_rate }) => ({ product_id, qty, unit_price_pence, vat_treatment, vat_rate })), payment_method: 'cash', tendered, vat_version: data.settings.vat_version ?? 0 };
         let result;
-        if (offline.canSell(offlineState) && (online || shellReady)) {
+        if (!businessUI.needsOnline() && offline.canSell(offlineState) && (online || shellReady)) {
           result = await offline.enqueue(currentScope, body);
           offlineState = await offline.read(currentScope); data = offline.project(offlineState);
-          basket = []; checkoutBusy = false; render(); receipt(result.sale);
+          basket = []; businessUI.reset(); checkoutBusy = false; render(); receipt(result.sale);
           // Receipt is already durable. Sync can continue while the next basket is built.
           offline.sync(currentScope).then(async () => { offlineState = await offline.read(currentScope); syncStatus(); if (!$('#retailDialog').open && !basket.length) refresh({ quiet: true }); }).catch(e => notice(e.message, true));
         } else {
           if (!online) throw new Error('Reconnect and prepare this device before taking an offline sale.');
           result = await mutate('/checkout', body);
-          if (result) { basket = []; checkoutBusy = false; await refresh(); receipt(result.sale); }
+          if (result) { basket = []; businessUI.reset(); checkoutBusy = false; await refresh(); receipt(result.sale); }
         }
       } catch (e) { notice(e.message, true); }
       finally { checkoutBusy = false; render(); }
@@ -490,6 +503,7 @@
       finally { submit.disabled = false; }
     }
   });
+  const businessUI = window.InventoryRetailBusiness.create({ getData: () => data, api, mutate, refresh, render, esc, pounds, when, input, moneyInput, qtyInput, button, card, header, row, table, empty, dialog, formDialog, basket: () => basket, setBasket: value => { basket = value; }, switchView, online: () => online, admin, writer, scope: () => currentScope, notice, now: () => Date.now() + retailClockOffset });
   async function boot() {
     if (!InventoryAPI.requireLogin()) return;
     const user = InventoryAPI.getUser();

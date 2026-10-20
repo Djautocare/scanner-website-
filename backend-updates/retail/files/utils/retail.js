@@ -56,10 +56,10 @@ function taxDetails(treatment, rate) {
 function vatSnapshot(settings, items) {
   if (!settings.vat_receipts) return null;
   const groups = new Map(), lines = [];
-  for (const { product: p, qty } of items) {
+  for (const { product: p, qty, gross_pence } of items) {
     const t = taxDetails(p.vat_treatment, p.vat_rate);
     if (!t.vat_treatment) throw fail(`Set the VAT treatment for ${p.name} in Products & stock before taking a VAT-enabled sale`, 409);
-    const gross = integer(qty * p.price_pence, 'Line total', 0, 100000000), denominator = 100 + t.vat_rate;
+    const gross = integer(gross_pence ?? qty * p.price_pence, 'Line total', 0, 100000000), denominator = 100 + t.vat_rate;
     // Extract VAT already included in each line. Round half-pennies up using
     // integer arithmetic, then sum those exact line amounts into the rate groups.
     const vat = Math.floor((2 * gross * t.vat_rate + denominator) / (2 * denominator));
@@ -76,7 +76,7 @@ function vatSnapshot(settings, items) {
 }
 function catalogueDetails(body, barcode, old = {}) {
   const source = body.catalogue_source ?? old.catalogue_source ?? '';
-  if (!['', 'openfoodfacts'].includes(source)) throw fail('Unsupported product catalogue');
+  if (source !== '' && !Object.hasOwn(require('./retailCatalogue').SOURCES, source)) throw fail('Unsupported product catalogue');
   if (!source) return { source: '', code: '' };
   const code = String(body.catalogue_code ?? old.catalogue_code ?? '');
   if (code !== barcode && body.catalogue_source === undefined) return { source: '', code: '' };
@@ -84,7 +84,7 @@ function catalogueDetails(body, barcode, old = {}) {
   return { source, code };
 }
 
-function createService({ pool, calculateAccess, ensureBillingSchema = async () => {}, now = () => new Date(), offlineSecret = process.env.JWT_SECRET }) {
+function createService({ pool, calculateAccess, ensureBillingSchema = async () => {}, now = () => new Date(), offlineSecret = process.env.JWT_SECRET, sendEmail }) {
   // Offline receipts use authenticated server-issued prices, never client-supplied prices.
   const offlineKey = offlineSecret ? crypto.createHmac('sha256', offlineSecret).update('InventoryOS Retail offline v1').digest() : null;
   function signOffline(value) {
@@ -92,19 +92,19 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     return payload + '.' + crypto.createHmac('sha256', offlineKey).update(payload).digest('base64url');
   }
   function readOffline(token) {
-    if (!offlineKey || typeof token !== 'string' || token.length > 12000) throw fail('Offline authorisation is unavailable. Reconnect and prepare this device again', 409);
+    if (!offlineKey || typeof token !== 'string' || token.length > 2000000) throw fail('Offline authorisation is unavailable. Reconnect and prepare this device again', 409);
     const parts = token.split('.');
     if (parts.length !== 2) throw fail('Invalid offline authorisation', 403);
     const actual = Buffer.from(parts[1], 'base64url'), expected = crypto.createHmac('sha256', offlineKey).update(parts[0]).digest();
     if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) throw fail('Invalid offline authorisation', 403);
     try { return JSON.parse(Buffer.from(parts[0], 'base64url').toString()); } catch { throw fail('Invalid offline authorisation', 403); }
   }
-  function offlineSnapshot(s, products, t, device) {
+  function offlineSnapshot(s, products, t, device, tools) {
     if (!offlineKey || s.role === 'viewer' || !t || !device) return null;
     id(device);
     const issued = now().getTime(), contextId = uuid();
-    const context = { version: 1, context_id: contextId, device_id: device, workspace_id: s.workspace_id, inventory_id: s.inventory_id, actor_id: s.actor_id, till_id: t.id, issued_at: issued, expires_at: issued + 24 * 3600000, upload_until: issued + 7 * 86400000, settings: s.settings };
-    return { context: signOffline(context), expires_at: context.expires_at, issued_at: issued, device_id: device, quotes: Object.fromEntries(products.filter(p => !p.archived).map(p => [p.id, signOffline({ context_id: contextId, product: { id: p.id, name: p.name, barcode: p.barcode, price_pence: p.price_pence, cost_pence: p.cost_pence, vat_treatment: p.vat_treatment, vat_rate: p.vat_rate } })])) };
+    const context = { version: 1, context_id: contextId, device_id: device, workspace_id: s.workspace_id, inventory_id: s.inventory_id, actor_id: s.actor_id, till_id: t.id, issued_at: issued, expires_at: issued + 24 * 3600000, upload_until: issued + 7 * 86400000, settings: s.settings, business: s.business, pricing: tools?.pricing || { offers: [], reductions: [] } };
+    return { context: signOffline(context), expires_at: context.expires_at, issued_at: issued, device_id: device, business: s.business, pricing: tools?.pricing || { offers: [], reductions: [] }, quotes: Object.fromEntries(products.filter(p => !p.archived).map(p => [p.id, signOffline({ context_id: contextId, product: { id: p.id, name: p.name, barcode: p.barcode, price_pence: p.price_pence, cost_pence: p.cost_pence, vat_treatment: p.vat_treatment, vat_rate: p.vat_rate, item_kind: p.item_kind } })])) };
   }
   function offlineSale(s, b, t) {
     if (!b.offline) return null;
@@ -123,6 +123,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         await c.query('BEGIN');
         await c.query("SELECT pg_advisory_xact_lock(hashtextextended('inventoryos-retail-schema-v1',0))");
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail.sql'), 'utf8'));
+        await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-business.sql'), 'utf8'));
         await c.query('COMMIT');
       } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
     })().catch(e => { ready = null; throw e; });
@@ -150,7 +151,9 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       inventoryId = id(selection[0]);
       if (!(await c.query(`SELECT id FROM inventories WHERE id=$1 AND workspace_id=$2 ${write ? 'FOR SHARE' : ''}`, [inventoryId, workspace])).rows.length) throw fail('Inventory unavailable in this workspace', 403);
     }
-    return { workspace_id: workspace, workspace_name: w.name, inventory_id: inventoryId, actor_id: actor, role, settings: setting, access };
+    const result = { workspace_id: workspace, workspace_name: w.name, inventory_id: inventoryId, actor_id: actor, role, settings: setting, access };
+    if (inventoryId) result.business = await business.config(c, result);
+    return result;
   }
   const args = s => [s.workspace_id, s.inventory_id];
   async function audit(c, s, kind, data) {
@@ -204,13 +207,16 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     return event;
   }
   async function reorders(c, s) {
-    return (await c.query(`SELECT p.*,COALESCE(o.on_order,0)::integer AS on_order,
-      GREATEST(p.target_qty-p.stock_qty-COALESCE(o.on_order,0),0)::integer AS order_qty
+    return (await c.query(`SELECT p.*,COALESCE(o.on_order,0)::integer AS on_order,COALESCE(r.reserved_qty,0)::integer AS reserved_qty,
+      GREATEST(p.target_qty-p.stock_qty+COALESCE(r.reserved_qty,0)-COALESCE(o.on_order,0),0)::integer AS order_qty
       FROM retail_products p LEFT JOIN (
         SELECT li.product_id,SUM(li.ordered_qty-li.received_qty) AS on_order FROM retail_delivery_items li
         JOIN retail_deliveries d ON d.id=li.delivery_id AND d.workspace_id=li.workspace_id AND d.inventory_id=li.inventory_id
         WHERE li.workspace_id=$1 AND li.inventory_id=$2 AND d.status IN('expected','incoming','partial') GROUP BY li.product_id
-      ) o ON o.product_id=p.id WHERE p.workspace_id=$1 AND p.inventory_id=$2 AND NOT p.archived AND p.stock_qty<=p.minimum_qty
+      ) o ON o.product_id=p.id LEFT JOIN (
+        SELECT li.product_id,SUM(li.qty) AS reserved_qty FROM retail_preorder_items li JOIN retail_preorders po ON po.id=li.preorder_id
+        WHERE po.workspace_id=$1 AND po.inventory_id=$2 AND po.status NOT IN('collected','cancelled') AND (po.fulfilment='stock' OR po.status='ready') GROUP BY li.product_id
+      ) r ON r.product_id=p.id WHERE p.workspace_id=$1 AND p.inventory_id=$2 AND NOT p.archived AND p.item_kind='product' AND p.stock_qty-COALESCE(r.reserved_qty,0)<=p.minimum_qty
       ORDER BY p.stock_qty,p.name`, args(s))).rows;
   }
   async function report(c, s, manual = false) {
@@ -253,6 +259,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   }
   async function saveProduct(c, s, b, productId) {
     const name = text(b.name, 'Product name');
+    if (b.item_kind === 'service' && Number(b.opening_qty || 0)) throw fail('Services do not have opening stock');
     const barcode = text(b.barcode || `RT-${uuid().slice(0, 12).toUpperCase()}`, 'Barcode', 100);
     const price = money(b.price, 'Selling price'), cost = money(b.cost, 'Cost per unit');
     const minimum = integer(b.minimum_qty, 'Minimum stock'), target = integer(b.target_qty, 'Reorder target', minimum);
@@ -273,6 +280,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         if (active + legacy >= s.access.active_item_limit) throw fail('Your plan’s product limit has been reached', 402);
       }
       if (b.archived && !old.archived) {
+        await business.archiveCheck(c, s, old);
         if (old.stock_qty !== 0 || (await c.query("SELECT id FROM retail_counts WHERE workspace_id=$1 AND inventory_id=$2 AND product_id=$3 AND status='pending'", [...args(s), old.id])).rows.length || (await reorders(c, s)).some(x => x.id === old.id && x.on_order > 0)) throw fail('Clear stock, counts and outstanding deliveries before archiving');
         const outstanding = (await c.query("SELECT li.id FROM retail_delivery_items li JOIN retail_deliveries d ON d.id=li.delivery_id WHERE li.workspace_id=$1 AND li.inventory_id=$2 AND li.product_id=$3 AND d.status IN('expected','incoming','partial') AND li.received_qty<li.ordered_qty", [...args(s), old.id])).rows;
         if (outstanding.length) throw fail('Complete or cancel this product’s outstanding deliveries first');
@@ -289,13 +297,16 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const opening = integer(b.opening_qty ?? 0, 'Opening quantity');
       if (opening) p = await stock(c, s, p, opening, 'opening', null, 'Opening Retail stock');
     }
+    p = await business.productMeta(c, s, b, { ...p, item_kind: productId ? p.item_kind : null });
     await audit(c, s, productId ? 'product_updated' : 'product_created', { product_id: p.id, name, barcode, price_pence: price, cost_pence: cost, ...tax });
     return { product: p };
   }
   async function receiveStock(c, s, b) {
     const p = await product(c, s, b.product_id); if (p.archived) throw fail('This product is archived');
-    const reason = text(b.reason, 'Stock-in reason', 300);
-    return { product: await stock(c, s, p, integer(b.qty, 'Quantity received', 1), 'stock_in', null, reason) };
+    const received = business.receiveQuantity(s, p, b), reason = received.description + text(b.reason, 'Stock-in reason', 300);
+    const updated = await stock(c, s, p, received.qty, 'stock_in', null, reason);
+    if (received.cost != null) return { product: (await c.query('UPDATE retail_products SET cost_pence=$4,edit_version=edit_version+1 WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 RETURNING *', [...args(s),p.id,received.cost])).rows[0] };
+    return { product: updated };
   }
   async function countStock(c, s, b, countId) {
     const row = (await c.query('SELECT * FROM retail_counts WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 FOR UPDATE', [...args(s), id(countId)])).rows[0];
@@ -309,6 +320,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   }
   async function requestCount(c, s, b) {
     const p = await product(c, s, b.product_id);
+    if (p.item_kind === 'service') throw fail('Services do not have stock counts');
     if (p.archived) throw fail('This product is archived');
     await c.query("INSERT INTO retail_counts(id,workspace_id,inventory_id,product_id) VALUES($1,$2,$3,$4) ON CONFLICT(workspace_id,inventory_id,product_id) WHERE status='pending' DO NOTHING", [uuid(), ...args(s), p.id]);
     return {};
@@ -343,6 +355,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   async function checkout(c, s, b) {
     const t = await till(c, s, true), offline = offlineSale(s, b, t);
     const saleSettings = offline?.settings || s.settings;
+    const context = await business.checkoutContext(c, s, b, offline);
     if (b.payment_method !== 'cash') throw fail('Automatic card payments are not connected. Use cash checkout only');
     if (!Array.isArray(b.items) || !b.items.length || b.items.length > 100) throw fail('Add between 1 and 100 different products');
     if (saleSettings.vat_receipts && b.vat_version !== saleSettings.vat_version) throw fail('VAT receipt settings changed. Refresh the website and review the basket before taking payment', 409);
@@ -354,6 +367,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         if (quote.context_id !== offline.context_id || quote.product?.id !== p.id) throw fail('Offline product price could not be verified', 403);
         p = { ...p, ...quote.product, archived: false };
       }
+      p = business.reviewedProduct(context, p, item);
       if (p.archived || seen.has(p.id)) throw fail('Each active product must appear only once');
       seen.add(p.id);
       if (integer(item.unit_price_pence, 'Reviewed price', 0, 100000000) !== p.price_pence) throw fail(`${p.name} has a new selling price. Refresh and review the basket`, 409);
@@ -362,20 +376,26 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       total += qty * p.price_pence; integer(total, 'Sale total', 0, 100000000);
       items.push({ product: p, qty });
     }
-    const tendered = money(b.tendered, 'Cash received');
+    const priced = business.priced(context, items, b, offline ? Date.parse(offline.occurred_at) : now().getTime());
+    const deposits = context.deposits.reduce((n,d) => n + d.amount_pence, 0);
+    if (deposits > priced.total_pence) throw fail('Held deposits exceed this sale. Refund the excess before completing checkout',409);
+    total = integer(priced.total_pence + context.tip, 'Sale total', 0, 100000000);
+    const tendered = money(b.tendered, 'Cash received') + deposits;
+    integer(tendered,'Cash and deposit',0,100000000);
     if (tendered < total) throw fail('Cash received is less than the sale total');
-    if (t.expected_pence + total > 100000000) throw fail('Cash limit reached. Balance and close this till first');
+    if (t.expected_pence + total - deposits > 100000000) throw fail('Cash limit reached. Balance and close this till first');
     const saleId = offline ? id(b.request_id) : uuid(), soldAt = offline?.occurred_at || now().toISOString();
     const reference = `RT-${soldAt.slice(0, 10).replace(/-/g, '')}-${saleId.slice(0, 8).toUpperCase()}`;
     const vat = vatSnapshot(saleSettings, items);
-    const business = { name: saleSettings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail', address: saleSettings.receipt_business_address || '' };
-    const sale = (await c.query('INSERT INTO retail_sales(id,workspace_id,inventory_id,reference,total_pence,tendered_pence,change_pence,payment_method,actor_id,vat_receipt,receipt_business,created_at,offline_device_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *', [saleId, ...args(s), reference, total, tendered, tendered - total, 'cash', s.actor_id, vat ? JSON.stringify(vat) : null, JSON.stringify(business), soldAt, offline?.device_id || null])).rows[0];
+    const receiptBusiness = { name: saleSettings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail', address: saleSettings.receipt_business_address || '' };
+    const sale = (await c.query('INSERT INTO retail_sales(id,workspace_id,inventory_id,reference,total_pence,tendered_pence,change_pence,payment_method,actor_id,vat_receipt,receipt_business,created_at,offline_device_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *', [saleId, ...args(s), reference, total, tendered, tendered - total, 'cash', s.actor_id, vat ? JSON.stringify(vat) : null, JSON.stringify(receiptBusiness), soldAt, offline?.device_id || null])).rows[0];
     for (const { product: p, qty } of items) {
       await c.query('INSERT INTO retail_sale_items(id,workspace_id,inventory_id,sale_id,product_id,name,barcode,qty,unit_price_pence,unit_cost_pence) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [uuid(), ...args(s), saleId, p.id, p.name, p.barcode, qty, p.price_pence, p.cost_pence]);
-      await stock(c, s, p, -qty, 'sale', saleId);
+      if (p.item_kind !== 'service') await stock(c, s, p, -qty, 'sale', saleId);
     }
-    await cash(c, s, t, 'sale', total, { sale: saleId, note: reference });
-    return { sale: { ...sale, items: items.map(({ product: p, qty }) => ({ product_id: p.id, name: p.name, barcode: p.barcode, qty, unit_price_pence: p.price_pence })) } };
+    const extras = await business.finaliseSale(c, s, b, context, sale, items, priced, vat);
+    await cash(c, s, t, 'sale', total - deposits, { sale: saleId, note: reference });
+    return { sale: { ...sale, ...extras, items: items.map(({ product: p, qty, gross_pence, discount_pence }) => ({ product_id: p.id, name: p.name, barcode: p.barcode, qty, unit_price_pence: p.price_pence, line_total_pence: gross_pence, line_discount_pence: discount_pence, item_kind: p.item_kind })) } };
   }
   async function refund(c, s, b, saleId) {
     const sale = (await c.query('SELECT * FROM retail_sales WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 FOR UPDATE', [...args(s), id(saleId)])).rows[0];
@@ -385,10 +405,12 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     if (t.expected_pence < sale.total_pence) throw fail('Not enough expected cash in the till to record this refund');
     const lines = (await c.query('SELECT * FROM retail_sale_items WHERE workspace_id=$1 AND inventory_id=$2 AND sale_id=$3', [...args(s), sale.id])).rows;
     if (b.restock) for (const line of lines) {
+      if (line.item_kind === 'service') continue;
       const p = await product(c, s, line.product_id);
       if (p.archived) throw fail('Unarchive returned products before putting them back into stock');
       await stock(c, s, p, line.qty, 'refund', sale.id, reason);
     }
+    await business.refundLoyalty(c, s, sale);
     await cash(c, s, t, 'refund', -sale.total_pence, { sale: sale.id, note: reason });
     await c.query("UPDATE retail_sales SET status='refunded',refunded_at=now(),refund_reason=$4,refund_restocked=$5,refund_actor_id=$6 WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3", [...args(s), sale.id, reason, b.restock, s.actor_id]);
     await audit(c, s, 'sale_refunded', { sale_id: sale.id, amount_pence: sale.total_pence, restocked: b.restock, reason });
@@ -400,9 +422,11 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     await c.query('INSERT INTO retail_deliveries(id,workspace_id,inventory_id,supplier,reference,expected_on,actor_id) VALUES($1,$2,$3,$4,$5,$6,$7)', [delivery, ...args(s), text(b.supplier, 'Supplier', 160, true), text(b.reference, 'Order reference', 160, true), date(b.expected_on), s.actor_id]);
     for (const line of b.items) {
       const p = await product(c, s, line.product_id);
-      if (p.archived || seen.has(p.id)) throw fail('Each active product must appear once per delivery');
+      if (p.archived || p.item_kind === 'service' || seen.has(p.id)) throw fail('Each active stock product must appear once per delivery');
       seen.add(p.id);
-      await c.query('INSERT INTO retail_delivery_items(id,workspace_id,inventory_id,delivery_id,product_id,ordered_qty,unit_cost_pence) VALUES($1,$2,$3,$4,$5,$6,$7)', [uuid(), ...args(s), delivery, p.id, integer(line.qty, 'Order quantity', 1), money(line.cost, 'Cost per unit')]);
+      let quantity = integer(line.qty, 'Order quantity', 1), unitCost = money(line.cost, 'Cost per unit');
+      if (line.unit === 'cases') { if (!s.business.features.packs) throw fail('Enable case-to-unit stock first'); quantity = integer(quantity * p.pack_size, 'Units ordered', 1); unitCost = Math.round(unitCost / p.pack_size); }
+      await c.query('INSERT INTO retail_delivery_items(id,workspace_id,inventory_id,delivery_id,product_id,ordered_qty,unit_cost_pence) VALUES($1,$2,$3,$4,$5,$6,$7)', [uuid(), ...args(s), delivery, p.id, quantity, unitCost]);
     }
     await audit(c, s, 'delivery_created', { delivery_id: delivery }); return { delivery_id: delivery };
   }
@@ -458,16 +482,17 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const deliveries = (await c.query(`SELECT d.*,d.expected_on::text AS expected_on,COALESCE(jsonb_agg(jsonb_build_object('id',li.id,'product_id',li.product_id,'name',p.name,'ordered_qty',li.ordered_qty,'received_qty',li.received_qty,'unit_cost_pence',li.unit_cost_pence) ORDER BY p.name) FILTER(WHERE li.id IS NOT NULL),'[]') AS items FROM retail_deliveries d LEFT JOIN retail_delivery_items li ON li.delivery_id=d.id LEFT JOIN retail_products p ON p.id=li.product_id WHERE d.workspace_id=$1 AND d.inventory_id=$2 GROUP BY d.id ORDER BY d.created_at DESC LIMIT 200`, args(s))).rows;
       const tasks = (await c.query("SELECT * FROM retail_tasks WHERE workspace_id=$1 AND inventory_id=$2 ORDER BY (status='pending') DESC,due_at NULLS LAST,created_at DESC LIMIT 500", args(s))).rows;
       const counts = (await c.query("SELECT c.*,p.name,p.barcode,p.stock_qty,p.stock_version FROM retail_counts c JOIN retail_products p ON p.id=c.product_id WHERE c.workspace_id=$1 AND c.inventory_id=$2 ORDER BY (c.status='pending') DESC,c.created_at DESC LIMIT 500", args(s))).rows;
-      const sales = (await c.query(`SELECT s.*,COALESCE((SELECT jsonb_agg(jsonb_build_object('product_id',li.product_id,'name',li.name,'qty',li.qty,'unit_price_pence',li.unit_price_pence,'barcode',li.barcode) ORDER BY li.name) FROM retail_sale_items li WHERE li.sale_id=s.id),'[]') AS items FROM retail_sales s WHERE s.workspace_id=$1 AND s.inventory_id=$2 ORDER BY s.created_at DESC LIMIT 100`, args(s))).rows;
+      const sales = (await c.query(`SELECT s.*,COALESCE((SELECT jsonb_agg(jsonb_build_object('product_id',li.product_id,'name',li.name,'qty',li.qty,'unit_price_pence',li.unit_price_pence,'barcode',li.barcode,'line_total_pence',li.line_total_pence,'line_discount_pence',li.line_discount_pence,'item_kind',li.item_kind) ORDER BY li.name) FROM retail_sale_items li WHERE li.sale_id=s.id),'[]') AS items FROM retail_sales s WHERE s.workspace_id=$1 AND s.inventory_id=$2 ORDER BY s.created_at DESC LIMIT 100`, args(s))).rows;
       const daily = (await c.query(`SELECT (occurred_at AT TIME ZONE $3)::date::text AS day,SUM(amount)::text AS net_pence FROM (
-        SELECT created_at AS occurred_at,total_pence AS amount FROM retail_sales WHERE workspace_id=$1 AND inventory_id=$2 AND created_at>=now()-interval '8 days'
-        UNION ALL SELECT refunded_at AS occurred_at,-total_pence AS amount FROM retail_sales WHERE workspace_id=$1 AND inventory_id=$2 AND refunded_at>=now()-interval '8 days'
+        SELECT created_at AS occurred_at,total_pence-tip_pence AS amount FROM retail_sales WHERE workspace_id=$1 AND inventory_id=$2 AND created_at>=now()-interval '8 days'
+        UNION ALL SELECT refunded_at AS occurred_at,-(total_pence-tip_pence) AS amount FROM retail_sales WHERE workspace_id=$1 AND inventory_id=$2 AND refunded_at>=now()-interval '8 days'
       ) entries GROUP BY (occurred_at AT TIME ZONE $3)::date ORDER BY day`, [...args(s), s.settings.timezone])).rows;
       const cashHistory = (await c.query('SELECT * FROM retail_cash_events WHERE workspace_id=$1 AND inventory_id=$2 ORDER BY created_at DESC LIMIT 100', args(s))).rows;
       const t = await till(c, s), reorder = await reorders(c, s);
       const reports = (await c.query('SELECT *,report_date::text AS report_date FROM retail_reports WHERE workspace_id=$1 AND inventory_id=$2 ORDER BY retail_reports.report_date DESC LIMIT 31', args(s))).rows;
+      const tools = await business.overview(c, s);
       await c.query('COMMIT');
-      return { success: true, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
+      return { success: true, business_supported: true, business: tools, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id, tools), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
     } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
   }
   async function history(req) {
@@ -493,10 +518,11 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   function start() {
     if (worker) return;
     let running = false;
-    const run = async () => { if (running) return; running = true; try { await tick(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
+    const run = async () => { if (running) return; running = true; try { await tick(); await business.reminderTick(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
     run(); worker = setInterval(run, 60000); worker.unref?.();
   }
-  return { ensureSchema, scope, status, transaction, settings, saveProduct, receiveStock, countStock, requestCount, openTill, movement, balance, checkout, refund, createDelivery, deliveryStatus, receiveDelivery, createTask, taskStatus, overview, history, report, reorders, tick, start };
+  const business = require('./retailBusiness').createBusiness({ pool, now, calculateAccess, sendEmail, args, id, fail, text, integer, money, timestamp, product, stock, till, cash, audit, vatSnapshot, ensureSchema, scope });
+  return { business, ensureSchema, scope, status, transaction, settings, saveProduct, receiveStock, countStock, requestCount, openTill, movement, balance, checkout, refund, createDelivery, deliveryStatus, receiveDelivery, createTask, taskStatus, overview, history, report, reorders, tick, start };
 }
 
 let live;

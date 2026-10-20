@@ -1,57 +1,109 @@
-INVENTORYOS RETAIL - SCANNER, FOCUSED TILL AND OFFLINE CASH UPDATE
+INVENTORYOS - RETAIL BUSINESS TOOLS & MANUFACTURING WORKSPACE
 
-Existing Retail stock, sales, VAT settings and receipts are kept.
-No new npm packages, API keys or .env changes are required.
+Existing Retail stock, sales, VAT settings, receipts and other app records are kept.
+The new business tools are OFF until you choose them in Retail settings.
+No new npm packages are required. Database changes are added by the check script.
 
 INSTALL ON YOUR BACKEND PC
 
-1. Make your normal PostgreSQL backup and stop InventoryOS Backend.
+1. Make your normal PostgreSQL backup. Sync any saved offline till sales.
+   Stop your existing InventoryOS Backend task before installing.
 
-2. Extract the ZIP. Put the WHOLE InventoryOS-retail-offline-update folder
-   inside your usual backend folder, beside server.js.
-   Do not copy the individual files over your backend manually.
+2. Extract the ZIP. Put the WHOLE InventoryOS-retail-business-update folder
+   inside your usual backend folder, beside server.js. Do not manually replace
+   individual backend files or your server.js.
 
-3. Open PowerShell in your BACKEND folder and run:
+3. Open PowerShell in your BACKEND folder and run these two lines:
 
-   node .\InventoryOS-retail-offline-update\install.cjs
+   node .\InventoryOS-retail-business-update\install.cjs
    node .\check-retail.cjs
 
-   The installer makes a backup of changed code. The database check adds the
-   required Retail columns automatically. You do not need to add tables by hand.
+   The installer backs up changed code and preserves .env and admin routes.
+   The check adds the new tables/columns automatically: no manual SQL is needed.
 
 4. If the check says PASS, restart your existing InventoryOS Backend task.
-   If it fails, send the error text; keep .env and credentials private.
+   If it fails, keep the backend stopped and send the error text.
+   Never send .env, API keys or database passwords.
 
-5. Reload the website after deployment. On PC use Ctrl+F5. On mobile close old
-   Retail tabs and reopen Retail. Finish syncing saved sales before later updates.
+5. Reload the updated website. On PC use Ctrl+F5. On mobile close old Retail
+   tabs and reopen Retail after syncing pending sales. Prepare offline again
+   after applying new prices, promotions or business settings.
 
-USB SCANNER AND PRODUCT LOOKUP
+SWITCH ON THE TOOLS YOU NEED
 
-- Set the scanner to USB Keyboard / HID mode, with an Enter or Tab suffix.
-  A keyboard-wedge scanner types into the page like a keyboard. Device drivers
-  or serial-only scanner modes may need changing in the scanner's own manual.
-- Products & stock > Add product: scan the pack. Barcode fills automatically
-  and a valid EAN/UPC is looked up. Or type the number then Look up barcode.
-- Check the match and press Use these details. Set the shop's price, opening
-  stock and VAT treatment, then Save product / Save and scan next.
-- Lookup requires internet and the latest backend. Not all products are listed
-  in Open Food Facts. Unlisted/custom products can still be entered manually.
-- Lookup no longer sends a request for an empty or invalid barcode. A failed
-  backend response now explains how to update instead of losing the number.
-- Checkout: scan a SAVED product to add it to the current sale. Scanning it
-  again adds another unit. The scanner can work when another till field has
-  focus; normal keyboard typing is preserved.
+Retail > Retail settings > Business type & tools.
+Choose General shop, Corner shop, Barber / salon or Bakery. Press Apply
+recommended tools, adjust the individual switches, then Save business tools.
+These choices belong to the selected Retail inventory. Turning a tool off
+retains its records. VAT and receipt business details stay workspace-wide.
 
-FOCUSED TILL AND MOBILE
+- Services: add an item with Item type = Service. It has a price, estimated cost
+  and duration, but does not receive stock or deduct stock when sold.
+- Appointments: book a service or add a walk-in, optionally choose a customer
+  and staff member. Start the service, then Take payment to complete it.
+  Record a cash deposit with an open till if required. Deposits are applied
+  once at checkout; cancelled bookings require an explicit deposit refund.
+- Email reminders: only sent when requested for a booking. Existing backend
+  RESEND_API_KEY and EMAIL_FROM settings are used; no new key is needed if
+  your existing app emails work. The backend must be running. Reminders are
+  service messages, not mailing-list signups. Use real times and consent.
+- Staff: add staff and optional commission percentage, choose staff and tips
+  at checkout. Commission is a reporting estimate; it is not payroll.
+- Cases: set a product's units per case. Stock in Cases or use Cases on a
+  delivery line; the system converts them to individual sellable units.
+- Offers: create percentage discounts, same-product multibuys or meal deals.
+  Priority decides which deal uses a unit first; one unit cannot be used by
+  two offers. Timed reductions set the starting price before offers.
+- Preorders: reserve current stock or add a Make / production order. Take an
+  optional cash deposit, mark it ready when finished stock is available, then
+  Collect & pay. Collection deducts stock and applies the deposit once.
+  Agreed preorder prices are preserved; new offers are not applied to them.
+- Production list: linked recipes can be opened in Manufacturing Calculate.
+  This is a planning handoff. Manufacturing and Retail stock remain separate:
+  receive finished products into Retail once before marking a make order ready.
+  It does not automatically transfer or duplicate finished stock.
+- Customers & loyalty: save a customer and show/print their QR card. Set the
+  stamp target, minimum spend and free reward in Retail settings. Select/scan
+  the customer at checkout, and select Redeem when their balance qualifies.
+  Refunds reverse stamps; a previously spent stamp may leave a negative balance.
+- Reductions & waste: schedule reduced prices and record unsold, expired or
+  damaged units. Waste removes available stock with an audit record and cost.
+- Gross profit: owner/admin reports compare actual discounted revenue after
+  VAT with saved costs. Tips are separate; overheads and payroll are excluded.
+- Customer display: Checkout > Open customer display. Move that second tab to
+  another screen connected to the SAME browser on the SAME device. It shows
+  basket, total and change only; customer contact details are never broadcast.
+  It is not a remote screen link for a separate phone/tablet/browser.
 
-- Retail > Checkout > Full-screen till.
-- Sidebar and dashboard header are hidden so the till has the screen space.
-- Exit to dashboard is always available at the top.
-- Browser fullscreen is used where supported. The focused layout also works
-  on mobile browsers that do not provide browser fullscreen.
-- Mobile Retail uses a fixed page scale with 16px inputs to avoid field zoom.
-  The page scrolls vertically; wide tables scroll within their own area.
-  The browser/OS can still provide its own accessibility zoom controls.
+MANUFACTURING
+
+Manufacturing now opens in its own workspace with Retail-style navigation,
+colours and cards, on desktop and mobile. Existing links redirect there.
+Existing Business-plan checks and the Manufacturing setting still apply.
+Your original materials, recipes, production, batches, equipment and timers
+use the same APIs and data. This installer does not replace those modules.
+
+BARCODE LOOKUP FOR THE WHOLE SHOP
+
+Scan or type an EAN/UPC in Add product, then Look up barcode. Searches route
+across Open Food Facts (including alcohol), Open Beauty Facts (toiletries),
+Open Products Facts (household/general goods) and Open Pet Food Facts.
+Check the name, brand and pack size before accepting; set your own price,
+cost, stock and VAT treatment. These are public catalogues, not a complete
+list of every product. If no match exists, enter the name once and save it
+against its barcode; your shop will recognise that saved item next time.
+Public lookup requires internet. Checkout scans your saved shop products.
+USB scanners should use Keyboard / HID mode with an Enter or Tab suffix.
+
+ONLINE / OFFLINE
+
+Ordinary cash sales of saved stock products and services can queue offline
+using the prepared, signed prices/promotions. Staff attribution, tips,
+customer loyalty, bookings, preorders and deposits need a working connection.
+Cash deposits increase till cash when taken but are not sales revenue until
+collection. Held deposits need an explicit refund with an open till.
+No integrated card payments, cash-drawer hardware or external POS sync are
+included. Use your existing external card system separately.
 
 PREPARE OFFLINE CASH CHECKOUT ON EACH DEVICE
 

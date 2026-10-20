@@ -61,3 +61,24 @@ The service worker has scope `/retail/` and caches an explicit public app shell 
 Preparation permits cash sales for 24 hours with a seven-day upload window. A new login, product editing, new name lookups, deliveries, counts, refunds, settings and till cash management require a connection. A closed/replaced till or revoked access blocks sync and keeps the sale visible; no automatic retargeting or deletion occurs. A JSON backup is available for reconciliation, not automatic re-import. Reopen Retail to sync if all tabs were closed. Do not clear site storage while sales are pending; persistent storage is requested but eviction remains browser-controlled. Service-worker updates do not take over an active till.
 
 Run `offline.test.cjs` with the same test dependency path. It covers signed quotes, original financial/time snapshots, additive stock updates, replay after a lost confirmation, tampering, scope/device/actor/role/plan checks, expiry and closed-till conflicts. Browser integration also checks offline reload, queued receipt durability, reconnect after another device adds stock and two-tab queue sync. Physical scanner/printer/mobile-device smoke tests remain necessary.
+
+
+## Business tools (v4)
+
+Opt-in settings per Retail inventory provide General, Corner shop, Barber/salon and Bakery presets plus ten independent tools: services; appointments/walk-ins with requested reminders; staff/tips/commission; case conversions; offers/meal deals; preorders and cash deposits; loyalty QR cards; reductions/waste; gross contribution reports; and a same-browser second display. Existing inventories start with the tools off. Membership, role, workspace/inventory and current subscription checks remain server-side. Mutations use existing transaction/idempotency handling. Admin-only financial reports and configuration preserve the existing account security model.
+
+Apply `backend-updates/retail` on the backend PC, run `check-retail.cjs`, then restart. `retail-business.sql` is additive and keeps historical receipt, VAT, cost, offer and deposit snapshots. Cash deposit liabilities and till movements are recorded separately from sales. Refunds reverse the original loyalty/commission effects. Reminders use the backend's existing Resend configuration with durable jobs, a short lease, bounded retries and an idempotency key.
+
+Signed offline snapshots now include approved promotions and service metadata. Ordinary product/service cash sales can queue; linked bookings/preorders, deposits, tips, staff attribution and loyalty require online transactions. Prepare the device again after changing settings/prices/deals. Promotion maths is shared with the backend.
+
+The customer display uses a random BroadcastChannel in the same browser/device. Only public basket/payment content crosses it. It is not a remote display service. Loyalty QR codes contain a random card token; the authenticated scoped API resolves a customer. Customer contact information is not put in the display or QR.
+
+Manufacturing has its own `manufacturing/index.html` workspace, and the old root URL redirects with its hash/query preserved. Original APIs, Business entitlement and enablement checks remain. Retail production orders open the existing recipe calculator for planning; Manufacturing stock is not silently transferred into Retail.
+
+### Universal public product lookup
+
+The server requests Open Facts v3 `product_type=all`, allowing exact GTIN matches from Open Food Facts (including alcoholic drinks), Open Beauty Facts, Open Products Facts and Open Pet Food Facts. Redirects are restricted to those four HTTPS hosts and the same GTIN; response sizes, timeouts and rate limits are bounded. Only the barcode is sent; no account, stock, prices or camera images are uploaded. Source attribution is saved for the matched catalogue and links to its product page under ODbL. Public data is incomplete; manually saved shop barcodes remain usable. Lookup does not infer prices, VAT classifications or age eligibility.
+
+### Verification
+
+Backend suites in `backend-updates/retail/tests` cover prior-data migrations, cash/till balances, roles/isolation, VAT/refunds, signed offline sync/idempotency, all business workflows, promotion allocation and universal catalogue redirects. Tests require a disposable PGlite dependency via `RETAIL_TEST_MODULES`. Browser integration additionally exercised the real Retail backend, QR decoding, deposits/collection, second display, mobile overflow and all eight Manufacturing views/Business gate. No production customer data or real reminder emails were used.

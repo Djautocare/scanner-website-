@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><base href="../">
+<title>Manufacturing · InventoryOS</title>
+<link rel="stylesheet" href="css/theme.css"><link rel="stylesheet" href="css/inventoryTopbar.css?v=6"><link rel="stylesheet" href="retail/retail.css?v=4"><link rel="stylesheet" href="css/manufacturing.css?v=2"><link rel="stylesheet" href="manufacturing/workspace.css?v=1">
+<script src="js/theme.js"></script>
+</head><body class="retail-body mfg-workspace-body">
+<a class="retail-skip" href="manufacturing/index.html#main">Skip to content</a>
+<div class="retail-layout">
+<aside class="retail-sidebar" id="mfgSidebar"><a class="retail-brand" href="manufacturing/index.html"><span>Inventory<span class="retail-brand-os">OS</span></span><small>MANUFACTURING WORKSPACE</small></a><div class="retail-nav-label">YOUR WORKSHOP</div><nav id="mfgTabs" aria-label="Manufacturing navigation"></nav><div class="retail-sidebar-bottom"><a href="retail/index.html">Open Retail</a><a href="index.html">Reseller area</a><a href="settings.html">Account settings</a><div class="retail-person"><span id="mfgAvatar">IO</span><div><strong id="mfgPersonName">Your account</strong><small>Manufacturing · Business</small></div></div><button type="button" id="mfgLogout">Log out</button></div></aside>
+<div class="retail-main" data-location-wording-ignore>
+<header class="retail-header"><div class="retail-heading"><button type="button" id="mfgMenu" class="retail-menu" aria-label="Toggle navigation" aria-controls="mfgSidebar" aria-expanded="false">☰</button><div><p class="retail-eyebrow">YOUR WORKSHOP, AT A GLANCE</p><h1 id="mfgPageTitle">Manufacturing dashboard</h1></div></div><div class="retail-header-actions"><span class="retail-pill">Business</span><a href="settings.html#manufacturing">Settings</a></div></header>
+<div id="inventory-topbar" class="retail-topbar"></div><div id="mfgStatus" class="mfg-notice" role="status">Loading your manufacturing workspace…</div>
+<main id="main" tabindex="-1"><div id="mfgWorkspace" hidden><section id="mfgView" aria-live="polite"></section></div></main>
+<footer class="retail-footnote">InventoryOS Manufacturing <span>Materials · recipes · production</span></footer>
+</div></div>
+<dialog id="mfgDialog" class="mfg-dialog" data-location-wording-ignore><div class="mfg-dialog-head"><h2 id="mfgDialogTitle"></h2><button type="button" id="mfgCloseDialog" aria-label="Close dialog">Close</button></div><div id="mfgDialogBody"></div></dialog>
+<script src="js/api.js?v=manufacturing-1"></script><script src="js/inventoryTopbar.js?v=6"></script><script src="js/workspace.js?v=5"></script><script src="js/manufacturingShared.js?v=2"></script><script src="js/manufacturingCalculator.js?v=2"></script><script src="manufacturing/workspace.js?v=1"></script><script src="js/manufacturing.js?v=3"></script>
+</body></html>

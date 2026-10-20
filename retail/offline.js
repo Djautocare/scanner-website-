@@ -60,7 +60,7 @@
     const groups = new Map(), items = [];
     for (const i of lines) {
       if (!i.vat_treatment) throw new Error('Set every product’s VAT treatment online before taking this sale.');
-      const gross = i.qty * i.unit_price_pence, denominator = 100 + i.vat_rate;
+      const gross = i.line_total_pence ?? i.qty * i.unit_price_pence, denominator = 100 + i.vat_rate;
       const tax = Math.floor((2 * gross * i.vat_rate + denominator) / (2 * denominator));
       const line = { product_id: i.product_id, vat_treatment: i.vat_treatment, vat_rate: i.vat_rate, gross_pence: gross, net_pence: gross - tax, vat_pence: tax };
       items.push(line);
@@ -76,7 +76,11 @@
     return update(key, value => {
       if (!canSell(value)) throw new Error('Offline checkout is not ready or needs attention. Reconnect, sync saved sales and open the till before continuing.');
       if (value.operations.length >= 1000) throw new Error('Sync the 1,000 saved sales on this device before taking another sale.');
-      const { snapshot: s } = value, total = input.items.reduce((n,i) => n+i.qty*i.unit_price_pence,0);
+      const { snapshot: s } = value;
+      if (input.customer_id || input.staff_id || input.booking_id || input.preorder_id || input.redeem_reward || Number(input.tip || 0)) throw new Error('Customer, staff, tip and booking/preorder checkout require a connection.');
+      const priced = window.InventoryRetailPricing.price(input.items, s.offline.pricing || {}, clock(value));
+      if (input.reviewed_total_pence !== undefined && input.reviewed_total_pence !== priced.total_pence) throw new Error('An offer changed. Review the basket again before payment.');
+      const total = priced.total_pence;
       if (!input.items.length || input.items.length > 100 || !input.items.every(i => Number.isInteger(i.qty) && i.qty>0 && i.qty<=1000000)) throw new Error('Check the basket quantities.');
       if (!/^\d{1,7}(\.\d{1,2})?$/.test(String(input.tendered)) || !Number.isSafeInteger(total) || total > 100000000) throw new Error('Check the sale and cash amounts.');
       const tendered = Math.round(Number(input.tendered)*100);
@@ -85,10 +89,11 @@
       const items = input.items.map(i => {
         const p=s.products.find(p=>p.id===i.product_id && !p.archived);
         if (!p || p.price_pence!==i.unit_price_pence || p.vat_treatment!==i.vat_treatment || p.vat_rate!==i.vat_rate || !s.offline.quotes[p.id]) throw new Error('Basket prices changed. Refresh and review the sale before payment.');
-        return { ...i, name:p.name, offline_quote:s.offline.quotes[p.id] };
+        const l = priced.lines.find(l=>l.product_id===i.product_id);
+        return { ...i, name:p.name, item_kind:p.item_kind, line_total_pence:l.line_total_pence, line_discount_pence:l.line_discount_pence, offline_quote:s.offline.quotes[p.id] };
       });
       const request_id=crypto.randomUUID(), occurred_at=new Date(clock(value)).toISOString();
-      const sale={ id:request_id, reference:'RT-'+occurred_at.slice(0,10).replace(/-/g,'')+'-'+request_id.slice(0,8).toUpperCase(), created_at:occurred_at, total_pence:total, tendered_pence:tendered, change_pence:tendered-total, status:'completed', pending_sync:true, items:items.map(({offline_quote,...i})=>i), receipt_business:{name:s.settings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail',address:s.settings.receipt_business_address || ''}, vat_receipt:vat(s.settings,items) };
+      const sale={ id:request_id, reference:'RT-'+occurred_at.slice(0,10).replace(/-/g,'')+'-'+request_id.slice(0,8).toUpperCase(), created_at:occurred_at, total_pence:total, goods_total_pence:total, discount_pence:priced.discount_pence, promotion_snapshot:priced.applications, tendered_pence:tendered, change_pence:tendered-total, status:'completed', pending_sync:true, items:items.map(({offline_quote,...i})=>i), receipt_business:{name:s.settings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail',address:s.settings.receipt_business_address || ''}, vat_receipt:vat(s.settings,items) };
       const body={...input,request_id,items,vat_version:s.settings.vat_version??0,offline:{context:s.offline.context,device_id:s.offline.device_id,occurred_at}};
       value.operations.push({id:request_id,body,sale,status:'queued',created_at:Date.now()});
       return {success:true,sale,queued:true};
@@ -104,11 +109,12 @@
       if(d.till)d.till.expected_pence+=sale.total_pence;
       const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:d.settings.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(sale.created_at)).map(p=>[p.type,p.value]));
       const day=parts.year+'-'+parts.month+'-'+parts.day;
-      let daily=d.daily_sales.find(x=>x.day===day); if(!daily){daily={day,net_pence:0};d.daily_sales.push(daily);} daily.net_pence+=sale.total_pence;
-      for(const item of sale.items){const p=d.products.find(p=>p.id===item.product_id);if(p){p.stock_qty-=item.qty;p.stock_version++;if(p.stock_qty<0 && !d.counts.some(c=>c.product_id===p.id && c.status==='pending'))d.counts.unshift({id:'pending-'+p.id,product_id:p.id,name:p.name,barcode:p.barcode,stock_qty:p.stock_qty,status:'pending'});}}
+      let daily=d.daily_sales.find(x=>x.day===day); if(!daily){daily={day,net_pence:0};d.daily_sales.push(daily);} daily.net_pence+=sale.total_pence-(sale.tip_pence||0);
+      for(const item of sale.items){const p=d.products.find(p=>p.id===item.product_id);if(p && item.item_kind!=='service' && p.item_kind!=='service'){p.stock_qty-=item.qty;p.stock_version++;if(p.stock_qty<0 && !d.counts.some(c=>c.product_id===p.id && c.status==='pending'))d.counts.unshift({id:'pending-'+p.id,product_id:p.id,name:p.name,barcode:p.barcode,stock_qty:p.stock_qty,status:'pending'});}}
     }
     for(const c of d.counts){const p=d.products.find(p=>p.id===c.product_id);if(p){c.stock_qty=p.stock_qty;c.stock_version=p.stock_version;}}
-    d.reorders=d.products.filter(p=>!p.archived && p.stock_qty<=p.minimum_qty).map(p=>{const on_order=d.deliveries.filter(x=>!['received','cancelled'].includes(x.status)).reduce((n,x)=>n+x.items.filter(i=>i.product_id===p.id).reduce((sum,i)=>sum+i.ordered_qty-i.received_qty,0),0);return {...p,on_order,order_qty:Math.max(0,p.target_qty-p.stock_qty-on_order)};});
+    for(const p of d.products)p.reserved_qty=Number(d.business?.reservations?.find(r=>r.product_id===p.id)?.reserved_qty||0);
+    d.reorders=d.products.filter(p=>!p.archived && p.item_kind!=='service' && p.stock_qty-p.reserved_qty<=p.minimum_qty).map(p=>{const on_order=d.deliveries.filter(x=>!['received','cancelled'].includes(x.status)).reduce((n,x)=>n+x.items.filter(i=>i.product_id===p.id).reduce((sum,i)=>sum+i.ordered_qty-i.received_qty,0),0);return {...p,on_order,order_qty:Math.max(0,p.target_qty-p.stock_qty+p.reserved_qty-on_order)};});
     return d;
   }
   async function direct(path, options, key) {
