@@ -111,6 +111,6 @@ document.addEventListener('click',async e=>{const el=e.target.closest('[data-pla
  if(Object.hasOwn(forms,action)){modal(action.replaceAll('-',' ').replace(/^./,c=>c.toUpperCase()),`<form id="platformAction" data-action="${action}" data-id="${el.dataset.id||''}" class="retail-form">${forms[action]}<button class="retail-primary">Save</button></form>`);}
  }catch(error){setupError(error.message);}finally{el.disabled=false;}});
 if($('#platformInstall'))$('#platformInstall').onclick=()=>window.InventoryPWA?.install();
-window.InventoryRetailPlatform={mount(next,options={}){embedded=true;host=options;tab=next;selected=options.inventory||'';load();}};
+window.InventoryRetailPlatform={mount(next,options={}){embedded=true;host=options;tab=next;selected=options.inventory||'';if(!selected||selected.includes(',')){notice('Select one store using the inventory bar above to manage its tills and staff.');$('#platformMain').textContent='Choose one inventory to continue.';return;}load();}};
 if($('#platformMain')){window.addEventListener('inventory-selection-changed',load);if(InventoryAPI.requireLogin())InventoryTopbar.init().finally(load);}
 })();
