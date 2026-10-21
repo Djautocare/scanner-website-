@@ -60,3 +60,12 @@ Till staff enter their QR/number and PIN, choose a licensed drawer in the connec
 Connect to inventory is always available in the Till header, with transaction guards. Website owner sessions and restricted Till credentials remain separate. Install / reinstall captures the native browser install event early and provides manual instructions if unavailable. Refresh installation files resets only Till static caches and its scoped service worker, preserving credentials and pending records. Browser/OS reinstall state still belongs to the browser.
 
 Backend package: InventoryOS-drawer-update.zip. Read DRAWERS-AND-INSTALL.txt before installation; no new Stripe prices, npm dependencies or environment variables. Staff must log in again after installing v7.
+
+
+## Chrome does not offer the separate Till installation
+
+The main app has scope `/` and the Till has scope `/retail/till/`. Chrome can suppress the inner app’s install promotion when the outer app is already installed, despite their distinct manifest IDs. A normal shortcut or `--app` window does not install the Till PWA.
+
+Finish current transactions. Uninstall only the main InventoryOS app from `chrome://apps`, keeping the option to clear site data unticked. Open `/retail/till/index.html` in a normal browser tab, reload, then install **InventoryOS Till**. Once it appears separately in the app list, the main app can be installed again. No backend or database change is required. The install helper explains this order; refreshing static files or clearing cookies cannot fix overlapping app scopes.
+
+Chrome-team guidance: https://web.dev/articles/building-multiple-pwas-on-the-same-domain#additional_challenges_for_overlapping_and_nested_paths. A separate origin for the Till would avoid this overlap permanently, but requires a dedicated domain/hosting and backend CORS configuration; this release does not silently move paired devices or their credentials.
