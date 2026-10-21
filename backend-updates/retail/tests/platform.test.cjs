@@ -14,6 +14,7 @@ const {createService}=require('../files/utils/retail');
  await grant(inventory,'pro');await grant(second,'pro');
  await db.query('INSERT INTO retail_settings(workspace_id,enabled)VALUES($1,true) ON CONFLICT(workspace_id) DO UPDATE SET enabled=true',[workspace]);
  const run=(route,body,fn,options)=>R.transaction(req(route,body),fn,options);
+ await assert.rejects(()=>run('/till/open',{amount:'5'},R.openTill,{admin:true}),/licensed till/);
  const p=(await run('/products',{name:'Soap',barcode:'SOAP',price:'2',cost:'1',minimum_qty:2,target_qty:10,opening_qty:10,item_kind:'product'},R.saveProduct,{admin:true})).product;
  const cfg=await R.business.config(pool,{workspace_id:workspace,inventory_id:inventory});await run('/business/settings',{...cfg,features:{...cfg.features,staff:true,loyalty:true},loyalty_minimum:'1'},R.business.saveSettings,{admin:true});
  const st=(await run('/operations/staff',{name:'Alex',commission_percent:'0'},R.operations.saveStaff,{admin:true})).staff;

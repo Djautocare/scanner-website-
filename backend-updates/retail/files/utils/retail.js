@@ -331,6 +331,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     return {};
   }
   async function openTill(c, s, b) {
+    if(!s.registered_till_id)throw fail('Register and select a licensed till in Stores & tills before opening its float',409);
     if (await till(c, s)) throw fail('The till is already open', 409);
     const opening = money(b.amount, 'Opening float');
     const session = (await c.query('INSERT INTO retail_till_sessions(id,workspace_id,inventory_id,opening_pence,opened_by,registered_till_id) VALUES($1,$2,$3,$4,$5,$6) RETURNING *', [uuid(), ...args(s), opening, s.actor_id,s.registered_till_id||null])).rows[0];

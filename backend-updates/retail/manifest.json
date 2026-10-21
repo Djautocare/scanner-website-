@@ -6,7 +6,7 @@
   "sql/retail-operations.sql": "9f2e2c459fa4b720ca64092d1412650e16f25cb7f580a945ecada483879c9976",
   "sql/retail-platform.sql": "ebdc558e2815dc819597cd5f8ffb08b704ab3e621fcc1c6bcbaf5b40967be73b",
   "sql/retail.sql": "958dc23aa1d38f2093c627065bcfc9e9a184c0c800e9b23a43205c4a5f0132cb",
-  "utils/retail.js": "3190d7b930a9b593170706e955d4c7da3fd311ebb526e55939682fec9feb0fc1",
+  "utils/retail.js": "bfbb65a0c9c6396db421545a97b77eeb7c763afd25c09c13a065449b7cfb29ac",
   "utils/retailBusiness.js": "ccf88fa28a4e4c728728314bff9a3f7f6cd0534c83fd6237344737c1b68a310c",
   "utils/retailCatalogue.js": "810e1926ac5388474d7311fc3373179e18672ff573fc82472f759690bbf071e5",
   "utils/retailOperations.js": "36ac53f2b6b55364f38adeab54bc012255e543c2f07e721618a4e9246f05631f",
