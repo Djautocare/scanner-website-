@@ -181,7 +181,9 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         if (hash !== old.body_hash) throw fail('Request already used with different details', 409);
         await c.query('COMMIT'); return { ...old.result, replayed: true };
       }
+      await platform.drawers.beforeAction(c,s,req);
       const result = { success: true, ...await fn(c, s, req.body || {}) };
+      await platform.drawers.afterAction(c,s,req,result);
       await c.query('INSERT INTO retail_requests(workspace_id,request_id,body_hash,result) VALUES($1,$2,$3,$4)', [s.workspace_id, request, hash, JSON.stringify(result)]);
       await c.query('COMMIT'); return result;
     } catch (e) {

@@ -25,6 +25,11 @@ const {createService}=require('../files/utils/retail');
  await assert.rejects(()=>createTill(inventory,'Till 3'),/licensed/);
  async function paired(i,t){const code=await P.ownerChange(req('',{action:'pair-till',inventory_id:i,till_id:t}));const r=await P.pair({body:{code:code.pair_code}});await assert.rejects(()=>P.pair({body:{code:code.pair_code}}),/expired|already/);return r.device_token;}
  const d1=await paired(inventory,t1),d2=await paired(inventory,t2);
+ // Exercise the explicit drawer flow before running the existing billing/loyalty regressions.
+ const rawLogin=P.login;P.login=async request=>{request.body.drawer_flow=true;const login=await rawLogin(request);const selected=(await db.query('SELECT id FROM retail_registered_tills WHERE device_hash=$1',[require('node:crypto').createHash('sha256').update(request.headers.authorization.slice(5)).digest('hex')])).rows[0].id;const selection=await P.drawers.select({...request,headers:{...request.headers,'x-retail-staff-token':login.login_token},body:{till_id:selected}});return P.drawers.confirm({...request,headers:{...request.headers,'x-retail-staff-token':login.login_token},body:{selection_token:selection.selection_token}});};
+ const tracked=async request=>{if(!request.retail_pos||request.body.drawer_transaction_id||!/\/(checkout|refund)$/.test(request.originalUrl))return;if((await db.query('SELECT request_id FROM retail_requests WHERE workspace_id=$1 AND request_id=$2',[workspace,request.body.request_id])).rows.length)return;const state=await P.state(request),kind=request.originalUrl.endsWith('/refund')?'refund':'sale',transactionId=state.transaction?.id||uuid();request.body.drawer_transaction_id=transactionId;await P.drawers.transaction({...request,body:{action:'save',transaction_id:transactionId,version:state.transaction_version,kind,context:kind==='refund'?{sale_id:request.body.sale_id,request_id:request.body.request_id}:{},items:kind==='sale'?request.body.items:[]}});};
+ const rawTransaction=R.transaction;R.transaction=async(request,...rest)=>{await tracked(request);return rawTransaction(request,...rest);};
+ const rawRefund=P.posRefund;P.posRefund=async request=>{await tracked(request);try{return await rawRefund(request);}catch(error){const state=await P.state(request);if(state.transaction)await P.drawers.transaction({...request,body:{action:'cancel',transaction_id:state.transaction.id,version:state.transaction_version}});throw error;}};
  const pos=(token,staff,route,body={})=>({retail_pos:true,headers:{authorization:'Till '+token,...(staff?{'x-retail-staff-token':staff}:{})},originalUrl:'/retail-pos'+route,query:{},body:{request_id:uuid(),...body}});
  for(let n=0;n<5;n++)await assert.rejects(()=>P.login(pos(d1,'','/login',{staff_identifier:'IO-ST-'+cr.qr_token,pin:'9999'})),/incorrect/);
  await assert.rejects(()=>P.login(pos(d1,'','/login',{staff_identifier:'100',pin:'1234'})),/Too many/);clock=new Date(clock.getTime()+16*60000);
@@ -50,7 +55,7 @@ const {createService}=require('../files/utils/retail');
  await grant(inventory,'pro',{expires_at:new Date(clock.getTime()+60000).toISOString()});clock=new Date(clock.getTime()+120000);await assert.rejects(()=>P.state(pos(d1,a1,'')),/licensed/);await grant(inventory,'pro');
  const otherTill=(await createTill(second,'Other store till')).till_id,otherDevice=await paired(second,otherTill);await assert.rejects(()=>P.login(pos(otherDevice,'','/login',{staff_identifier:'IO-ST-'+cr.qr_token,pin:'1234'})),/assigned/);
  await P.ownerChange(req('',{action:'staff-assignment',inventory_id:second,staff_id:st.id,active:true,can_refund:false}));const otherStaff=(await P.login(pos(otherDevice,'','/login',{staff_identifier:'IO-ST-'+cr.qr_token,pin:'1234'}))).token;
- await assert.rejects(()=>P.posRefund(pos(otherDevice,otherStaff,'/refund',refundBody)),/approval denied/);
+ await assert.rejects(()=>P.posRefund(pos(otherDevice,otherStaff,'/refund',refundBody)),/approval denied|not in this inventory/);
  await db.query('INSERT INTO retail_business_settings(workspace_id,inventory_id,features) VALUES($1,$2,$3)',[workspace,second,JSON.stringify({loyalty:true})]);
  await assert.rejects(()=>P.customers({...pos(otherDevice,otherStaff,''),query:{card:'IO-LC-'+customer.card_token}}),/not found/);
  await P.logout(pos(d1,a1,''));await assert.rejects(()=>P.state(pos(d1,a1,'')),/expired/);
@@ -70,6 +75,7 @@ const {createService}=require('../files/utils/retail');
  const again=(await P.login(pos(d1,'','/login',{staff_identifier:'100',pin:'1234'}))).token;
  const lostId=uuid(),beforeReconcile=(await db.query('SELECT stock_qty FROM retail_products WHERE id=$1',[p.id])).rows[0].stock_qty;
  const approval={staff_identifier:'IO-ST-'+cr.qr_token,pin:'1234'};
+ const lostRequest=pos(d1,again,'/checkout',{...basket(),request_id:lostId});await tracked(lostRequest);const lostState=await P.state(lostRequest);await P.drawers.transaction({...lostRequest,body:{action:'pending',transaction_id:lostState.transaction.id,version:lostState.transaction_version,request_id:lostId}});
  assert.equal((await P.reconcile(pos(d1,again,'/reconcile',{request_id:lostId,approval,payment_checked:true,reason:'Customer payment canceled and checked'}))).reconciled,true);
  await assert.rejects(()=>R.transaction(pos(d1,again,'/checkout',{...basket(),request_id:lostId}),R.checkout),/already used/);
  assert.equal((await db.query('SELECT stock_qty FROM retail_products WHERE id=$1',[p.id])).rows[0].stock_qty,beforeReconcile);

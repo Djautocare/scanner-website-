@@ -5,3 +5,5 @@ body.retail-body{padding:18px;min-height:100dvh}.pos-header{display:flex;justify
 .pos-header>div,.pos-product,.pos-basket-line>div,.pos-customer,#retailDialogBody{min-width:0;overflow-wrap:anywhere}
 
 @media(max-width:600px){.pos-header{display:grid;grid-template-columns:minmax(0,1fr)}.pos-header strong{white-space:nowrap}.pos-header .retail-action-row{justify-content:flex-start;flex-wrap:wrap}}
+
+.pos-drawer-list{display:grid;gap:12px;margin:22px 0}.pos-drawer-list button{text-align:left;display:grid;gap:6px;padding:16px}.pos-drawer-list small{color:var(--muted)}.pos-drawer-name{font-size:26px!important;color:var(--text)!important;font-weight:750}

@@ -1,4 +1,6 @@
-INVENTORYOS RETAIL PLATFORM UPDATE (v6)
+READ DRAWERS-AND-INSTALL.txt FIRST FOR THE NEW DRAWER FLOW AND REINSTALL HELP.
+
+INVENTORYOS RETAIL DRAWER UPDATE (v7)
 
 1. BEFORE INSTALLING
 - Sync saved offline sales on every existing Retail device.
@@ -6,10 +8,10 @@ INVENTORYOS RETAIL PLATFORM UPDATE (v6)
 - Stop the InventoryOS Backend task.
 
 2. INSTALL ON YOUR BACKEND PC
-Extract the ZIP. Put the WHOLE InventoryOS-retail-platform-update folder
+Extract the ZIP. Put the WHOLE InventoryOS-drawer-update folder
 inside your backend folder, beside server.js. Open PowerShell in BACKEND:
 
-  node .\InventoryOS-retail-platform-update\install.cjs
+  node .\InventoryOS-drawer-update\install.cjs
   node .\check-retail.cjs
 
 If the check says PASS, restart your existing backend task.
@@ -147,7 +149,7 @@ existing email helper's idempotency support.
 ROLLBACK
 Keep the dated retail-backup-... folder. Stop the backend, close all registered
 tills and sync old offline sales first. Restore code with:
-  node .\InventoryOS-retail-platform-update\restore.cjs .\retail-backup-...
+  node .\InventoryOS-drawer-update\restore.cjs .\retail-backup-...
 The guarded restore refuses files edited after installation. It never deletes
 saved database records. After recording new card transactions, ask for a
 review before reverting to an older release that does not understand cards or

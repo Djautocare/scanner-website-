@@ -51,3 +51,12 @@ Backend setup is in `backend-updates/retail/START-HERE.txt` and
 `backend-updates/retail/STRIPE-SETUP.txt`. Initial existing Retail installations
 receive a one-time seven-day transition grant; subsequent restarts never extend
 it. New stores require a paid entitlement or explicit admin grant.
+
+
+## Inventory connections and drawer selection (v7)
+
+Till staff enter their QR/number and PIN, choose a licensed drawer in the connected inventory, then confirm its name. The server holds that drawer exclusively until staff log out or a manager unassigns it from the Retail dashboard or Admin > Tills. Unassignment, logout, staff login changes and connection replacement reject active transactions; finish, park, clear, recover or reconcile first. Server basket versions protect against stale tabs. Expired sessions can resume the same person's basket on the same connection.
+
+Connect to inventory is always available in the Till header, with transaction guards. Website owner sessions and restricted Till credentials remain separate. Install / reinstall captures the native browser install event early and provides manual instructions if unavailable. Refresh installation files resets only Till static caches and its scoped service worker, preserving credentials and pending records. Browser/OS reinstall state still belongs to the browser.
+
+Backend package: InventoryOS-drawer-update.zip. Read DRAWERS-AND-INSTALL.txt before installation; no new Stripe prices, npm dependencies or environment variables. Staff must log in again after installing v7.

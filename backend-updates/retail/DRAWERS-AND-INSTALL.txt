@@ -1,0 +1,60 @@
+INVENTORYOS DRAWER UPDATE (v7)
+
+INSTALL ON THE BACKEND PC
+1. Finish all sales/refunds on every Till. Sync any saved offline sales.
+2. Back up PostgreSQL and stop the InventoryOS Backend task.
+3. Extract this ZIP. Put the WHOLE InventoryOS-drawer-update folder inside
+   your backend folder, beside server.js. Do not replace the backend folder.
+4. In PowerShell opened in your BACKEND folder, run:
+
+   node .\InventoryOS-drawer-update\install.cjs
+   node .\check-retail.cjs
+
+5. If the check says PASS, restart your existing InventoryOS Backend task.
+   If it fails, keep it stopped and send the error text without secrets.
+
+No new .env values, npm packages or Stripe prices are required for this update.
+Existing .env, authentication and standard billing definitions are retained.
+The installer makes a dated code backup. The checker/startup adds the new
+PostgreSQL tables automatically. Code restore does not reverse database tables.
+Keep the v7 backend and frontend together after migration; an old backend does
+not enforce these drawer assignments. Existing staff logins must log in again.
+
+CONNECT TO INVENTORY
+Retail > Admin > Tills > existing till > Change device > Connect another device
+creates a ten-minute, one-use code. In the Till app, press Connect to inventory
+and enter it. You can also use Use this device during setup on the same browser.
+The connection remains with that inventory. Changing a connection replaces the
+old device connection associated with that registered till.
+
+STAFF AND DRAWERS
+1. Enter/scan the staff number or QR, then their own PIN.
+2. Choose an available drawer in this inventory.
+3. Check its name and press Confirm drawer.
+All registered active drawers within the store's licence allowance can be
+chosen from the connected device. Other people cannot claim an assigned drawer.
+Staff log out to release an idle drawer. The manager can press Unassign in
+Retail Dashboard > Drawer assignments, or Admin > Tills. Staff must log in
+again after that. Finish, park or clear the basket first. A pending payment or
+refund must be recovered/reconciled before the drawer can be released.
+The backend saves the active basket so refresh/relogin can recover it. Refund
+recovery asks for a fresh approving PIN; no PIN is stored in the pending record.
+Card payments still use a separate external reader. Do not charge/refund twice.
+The Till-only app requires an internet connection; existing owner Retail offline
+cash checkout remains separate.
+
+INSTALL / REINSTALL THE TILL APP
+Open https://app.inventoryos.co.uk/retail/till/index.html in a normal browser tab.
+Press Install / reinstall. If the browser provides its native prompt, it opens.
+Otherwise the help panel explains the browser's install menu and copies this URL.
+On iPhone use Safari > Share > Add to Home Screen.
+If the browser still lists an old installation, remove it from browser app
+settings first. Clearing website cookies does not uninstall the browser app.
+The browser controls whether/when it offers the native installation prompt;
+this update cannot override browser or operating-system installation settings.
+Refresh installation files only refreshes Till static caches and its scoped
+service worker. It keeps connection tokens, website login and pending payments,
+and cannot run during a transaction. It leaves the main website's caches alone.
+
+Full previous Retail setup and Stripe instructions remain in START-HERE.txt and
+STRIPE-SETUP.txt. Use the install command above for this package's folder name.

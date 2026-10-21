@@ -72,3 +72,28 @@ INSERT INTO retail_staff_assignments(staff_id,inventory_id,workspace_id)
 INSERT INTO retail_platform_schema(version) VALUES(6) ON CONFLICT DO NOTHING;
 CREATE INDEX IF NOT EXISTS retail_pos_sessions_till ON retail_pos_sessions(till_id,staff_id);
 CREATE INDEX IF NOT EXISTS retail_platform_events_store ON retail_platform_events(inventory_id,created_at);
+
+-- v7: a connected inventory may use any licensed drawer after staff confirmation.
+ALTER TABLE retail_pos_sessions ADD COLUMN IF NOT EXISTS connection_till_id uuid REFERENCES retail_registered_tills(id);
+ALTER TABLE retail_pos_sessions ADD COLUMN IF NOT EXISTS connection_generation integer;
+CREATE TABLE IF NOT EXISTS retail_drawer_logins(
+ token_hash text PRIMARY KEY,connection_till_id uuid NOT NULL REFERENCES retail_registered_tills(id) ON DELETE CASCADE,
+ connection_generation integer NOT NULL,staff_id uuid NOT NULL REFERENCES retail_team(id) ON DELETE CASCADE,
+ credential_version integer NOT NULL,expires_at timestamptz NOT NULL,
+ selected_till_id uuid REFERENCES retail_registered_tills(id),selection_hash text,selection_expires_at timestamptz,used boolean NOT NULL DEFAULT false
+);
+CREATE TABLE IF NOT EXISTS retail_drawer_assignments(
+ till_id uuid PRIMARY KEY REFERENCES retail_registered_tills(id) ON DELETE CASCADE,
+ assignment_id uuid NOT NULL UNIQUE,workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ inventory_id uuid NOT NULL REFERENCES retail_stores(inventory_id) ON DELETE CASCADE,
+ staff_id uuid NOT NULL REFERENCES retail_team(id),connection_till_id uuid NOT NULL REFERENCES retail_registered_tills(id),
+ session_hash text NOT NULL REFERENCES retail_pos_sessions(token_hash),assigned_at timestamptz NOT NULL,
+ transaction_id uuid,transaction_kind text CHECK(transaction_kind IN('sale','refund')),
+ phase text CHECK(phase IN('basket','pending')),items jsonb NOT NULL DEFAULT '[]',
+ transaction_version integer NOT NULL DEFAULT 0,pending_request_id uuid,
+ CHECK((transaction_id IS NULL AND transaction_kind IS NULL AND phase IS NULL) OR(transaction_id IS NOT NULL AND transaction_kind IS NOT NULL AND phase IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS retail_drawer_connections ON retail_drawer_assignments(connection_till_id);
+INSERT INTO retail_platform_schema(version) VALUES(7) ON CONFLICT DO NOTHING;
+
+ALTER TABLE retail_drawer_assignments ADD COLUMN IF NOT EXISTS transaction_context jsonb NOT NULL DEFAULT '{}';

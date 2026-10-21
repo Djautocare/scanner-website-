@@ -7,6 +7,10 @@ const handle=fn=>async(req,res)=>{res.set('Cache-Control','no-store');try{res.js
 router.use((req,res,next)=>{req.retail_pos=true;next();});
 router.post('/pair',handle(R.platform.pair));
 router.post('/login',handle(R.platform.login));
+router.get('/drawers',handle(R.platform.drawers.drawers));
+router.post('/select-drawer',handle(R.platform.drawers.select));
+router.post('/confirm-drawer',handle(R.platform.drawers.confirm));
+router.post('/transaction',handle(R.platform.drawers.transaction));
 router.post('/logout',handle(R.platform.logout));
 router.get('/state',handle(R.platform.state));
 router.get('/customers',handle(R.platform.customers));

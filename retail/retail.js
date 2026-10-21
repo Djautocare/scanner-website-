@@ -183,6 +183,9 @@
     if (!data) return;
     $('#retailRole').textContent = `${data.role} · Retail`;
     $('#retailView').innerHTML = ({ dashboard, products: () => productView(false), services: () => productView(true), checkout: checkoutView, deliveries: deliveryView, reorders: reordersView, counts: countsView, tasks: tasksView, cash: cashView, sales: salesView, settings: () => counterUI.appearance() + settingsView() + (data.business_supported ? businessUI.settings() : ''), offline: offlineView, ...businessUI.views, ...counterUI.views })[view]();
+    if(view==='dashboard'&&data.platform_supported&&admin()){
+      const root=document.createElement('section');root.id='retailDrawerAssignments';root.className='retail-card';$('#retailView .retail-metrics').after(root);window.InventoryRetailPlatform.dashboard(root,{inventory:selected().inventory});
+    }
     if (view === 'checkout' && basket.length && tenderedBefore != null) { const cash = $('#retailCheckoutForm input[name=tendered]'); if(cash){cash.value = tenderedBefore; cash.dispatchEvent(new Event('input', { bubbles: true }));} }
     syncStatus(); businessUI.broadcast(); if(counterUI.staff()){const field=document.querySelector('[name="checkout_staff"]');if(field){field.value=counterUI.staff().id;field.disabled=true;}}
   }
