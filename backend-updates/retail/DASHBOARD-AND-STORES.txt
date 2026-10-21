@@ -1,0 +1,50 @@
+INVENTORYOS RETAIL DASHBOARD & STORE LOCATION UPDATE (v8)
+
+1. Finish Till transactions and sync any saved offline sales.
+2. Back up PostgreSQL, then stop InventoryOS Backend.
+3. Extract the ZIP. Put the WHOLE InventoryOS-retail-dashboard-update folder
+   inside your backend folder, beside server.js. Do not replace the backend folder.
+4. Open PowerShell in your BACKEND folder and run:
+
+   node .\InventoryOS-retail-dashboard-update\install.cjs
+   node .\check-retail.cjs
+
+5. If the check says PASS, restart the existing backend task, then refresh Retail.
+
+No new environment variables, npm packages or Stripe prices are needed.
+Display names reuse the existing retail_stores.name field; no new database
+column or table is required for this feature. This cumulative package includes
+the previous drawer update, including its automatic migrations if not installed.
+The installer keeps .env, authentication and standard billing definitions and
+makes a dated code backup. If installation fails, keep the backend stopped and
+send the error text without secrets.
+
+STORE LOCATION
+Retail > Admin > Store location contains workspace/store selectors, original
+inventory name, your role, Retail plan and InventoryOS account plan. These plans
+are separate. Only one store is selected at a time. Finish or recover pending
+transactions, park/clear the basket and sync sales before changing store.
+
+The Retail display name can be the shop name or address. Owners/admins can save
+it; workspace members/viewers can read it and select available stores. The server
+checks workspace access and edit permissions. Leave the name blank to reset it
+to the original inventory name. Renaming does not move stock or rename the
+underlying inventory. Receipt business/legal details remain separately configured.
+
+RETAIL DASHBOARD PWA
+Open https://app.inventoryos.co.uk/retail/dashboard/index.html in a normal browser
+tab. Press Install Retail app, or use the browser's Install page as app menu.
+The app is named InventoryOS Retail and starts directly at the Retail dashboard.
+Your normal account login is required; after login it returns to the dashboard.
+It uses the existing Retail offline cash/sync controls; other changes need a
+connection. A PWA install does not make every feature work offline.
+
+The Till remains the separate restricted InventoryOS Till PWA. Dashboard and Till
+have non-overlapping app scopes. If the main InventoryOS PWA is already installed,
+Chrome can hide their install prompts because its root scope covers both. Finish
+transactions and sync sales, uninstall the MAIN app while leaving any option to
+clear site data unticked, install Till and Retail Dashboard first, then reinstall
+the main app if wanted. Do not clear saved sales or connection data.
+
+The workspace/inventory banner is removed ONLY from Retail. Other InventoryOS
+areas retain their existing controls. A small store-name link opens Store location.

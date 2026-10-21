@@ -167,15 +167,20 @@
     const tenderedBefore = $('#retailCheckoutForm input[name=tendered]')?.value;
     document.body.classList.toggle('retail-till-mode', tillMode);
     if (!tillMode && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-    const names = { ...Object.fromEntries(businessUI.nav().map(n => [n[0],n[2]])), dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Sales & receipts', settings: 'Retail settings', offline: 'Offline & sync', services:'Services', 'staff-access':'Staff access', tills:'Tills', 'retail-billing':'Stores & billing', transfer:'Import & export', 'shelf-labels':'Shelf labels' };
+    const names = { ...Object.fromEntries(businessUI.nav().map(n => [n[0],n[2]])), dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Sales & receipts', settings: 'Retail settings', offline: 'Offline & sync', services:'Services', 'staff-access':'Staff access', tills:'Tills', 'retail-billing':'Stores & billing', transfer:'Import & export', 'shelf-labels':'Shelf labels', 'store-location':'Store location' };
     if (!names[view]) view = 'dashboard';
     $('#retailTitle').textContent = names[view];
     const navKey=JSON.stringify([view,online,data?.role,data?.business?.config.features,data?.counts?.filter(c=>c.status==='pending').length,platformAdminScope]);
     if(navKey!==lastNavKey){$('#retailNav').innerHTML=counterUI.nav([...nav,...businessUI.nav()],view);lastNavKey=navKey;}
+    if(view==='store-location'){
+      $('#retailView').innerHTML='<div id="retailLocationView"></div>';InventoryRetailLocation.mount({refresh,notice,changeBlocked:()=>checkoutBusy||pending()?'Finish or recover the pending transaction before changing store.':basket.length?'Finish, park or clear the basket before changing store.':offlineState.operations.length?'Sync the saved sales before changing store.':''});$('#retailSyncStatus').hidden=true;return;
+    }
+    InventoryRetailLocation.identity(data?.retail_access?.display_name);
     if(platformView()){
       $('#retailView').innerHTML=platformContent();const context=scopeKey();
       window.InventoryRetailPlatform.mount(view==='staff-access'?'staff':view==='retail-billing'?'billing':'tills',{
        inventory:selected().inventory,
+       changeBlocked:()=>checkoutBusy||pending()?'Finish or recover the pending transaction before changing store.':basket.length?'Finish, park or clear the basket before changing store.':offlineState.operations.length?'Sync the saved sales before changing store.':'',
        authorized:()=>{if(context!==scopeKey())return;platformAdminScope=context;$('#retailConnection').textContent='Connected';$('#retailConnection').classList.add('connected');$('#retailNav').innerHTML=counterUI.nav([...nav,...businessUI.nav()],view);},
        storeChanged:async()=>{lastNavKey='';await InventoryTopbar.init();refresh();}
       });$('#retailSyncStatus').hidden=true;return;
@@ -206,6 +211,7 @@
   }
   async function refresh({ quiet = false } = {}) {
     if (!ready || checkoutBusy) return;
+    if(quiet&&view==='store-location')return;
     if (quiet && view === 'settings' && ($('#retailSettingsForm')?.dataset.dirty === 'true' || $('#retailBusinessSettings')?.dataset.dirty === 'true')) return;
     const context = scopeKey(), g = ++generation;
     if (currentScope !== context) {
@@ -215,7 +221,7 @@
     }
     try {
       const selection = selected();
-      if (!selection.inventory || selection.inventory.includes(',')) throw new Error('Use the inventory selector above to choose exactly one inventory for Retail.');
+      if (!selection.inventory || selection.inventory.includes(',')) throw new Error('Open Admin → Store location to choose one store for Retail.');
       offlineState = await offline.read(context);
       if(navigator.onLine&&offlineState.operations.length)await api('/status');
       if (offlineState.operations.length) {
@@ -230,7 +236,7 @@
       if (!status.active) {
         await offline.lock(context, 'Retail is off or no longer entitled.');
         online = false; data = null; render();
-        if(platformView())return;
+        if(platformView()||view==='store-location')return;
         $('#retailView').innerHTML = card(header('Retail is switched off', 'Enable it for this workspace in Settings.') + '<a href="settings.html">Open account settings</a>');
         notice(status.allowed ? 'Retail is off for this workspace.' : 'Activate a Retail subscription or trial in Stores & tills.'); return;
       }
@@ -257,7 +263,7 @@
       online = false; $('#retailConnection').textContent = 'Needs refresh'; $('#retailConnection').classList.remove('connected');
       if (e.status && e.status < 500) { await offline.lock(context, e.message); offlineState = { ...offlineState, snapshot: null }; }
       else if (offlineState.snapshot) data = offline.project(offlineState);
-      if (data||platformView()) render(); else $('#retailView').innerHTML = empty('Retail could not be loaded. Install the backend update if you have not done so yet, then refresh.');
+      if (data||platformView()||view==='store-location') render(); else $('#retailView').innerHTML = empty('Retail could not be loaded. Install the backend update if you have not done so yet, then refresh.');
       notice(e.message, true); syncStatus();
     }
   }
@@ -543,6 +549,7 @@
   });
   const businessUI = window.InventoryRetailBusiness.create({ getData: () => data, api, mutate, refresh, render, esc, pounds, when, input, moneyInput, qtyInput, button, card, header, row, table, empty, dialog, formDialog, basket: () => basket, setBasket: value => { basket = value; }, switchView, online: () => online, admin, writer, scope: () => currentScope, notice, now: () => Date.now() + retailClockOffset });
   const counterUI = window.InventoryRetailCounter.create({getData:()=>data,scope:()=>currentScope,api,mutate,refresh,render,esc,pounds,when,button,card,header,table,input,moneyInput,qtyInput,formDialog,dialog,admin,platformAdmin:()=>platformAdminScope===scopeKey(),online:()=>online,basket:()=>basket,setBasket:v=>{basket=v;},clear:()=>{basket=[];businessUI.reset();},linked:()=>Boolean(businessUI.extras().booking_id||businessUI.extras().preorder_id||businessUI.extras().customer_id||Number(businessUI.extras().tip||0)),switchView,notice,afterDialog:fn=>{afterDialog=fn;},now:()=>Date.now()+retailClockOffset,labels:window.InventoryRetailLabels.create({esc,pounds,dialog,button})});
+  window.InventoryRetailInstallGuard=()=>checkoutBusy||pending()?'Finish or recover the transaction before installing the Retail app.':basket.length?'Finish, park or clear the basket before installing the Retail app.':offlineState.operations.length?'Sync the saved sales before installing the Retail app.':'';
   async function boot() {
     if (!InventoryAPI.requireLogin()) return;
     const user = InventoryAPI.getUser();
@@ -556,7 +563,7 @@
     render();
     offline.shell().then(ok => { shellReady = ok; syncStatus(); }).catch(() => { shellReady = false; });
     if (navigator.onLine) await Promise.race([InventoryTopbar.init(), new Promise(resolve => setTimeout(resolve, 12000))]);
-    ready = true; await refresh();
+    ready = true; await refresh();window.InventoryRetailPWA?.ready();
   }
   window.addEventListener('retail-offline-change', async () => { if (!currentScope) return; offlineState = await offline.read(currentScope); syncStatus(); if (view === 'offline' && !$('#retailDialog').open) render(); });
   window.addEventListener('online', () => { if (ready && !checkoutBusy) refresh({ quiet: true }); });

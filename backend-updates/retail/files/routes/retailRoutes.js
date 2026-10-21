@@ -15,6 +15,7 @@ const handle = fn => async (req, res) => {
     res.status(status).json({ success: false, error: status === 500 ? 'Retail could not complete this request. Please retry; completed requests are protected from duplication.' : e.message, upgrade_required: status === 402, retryable: status >= 500, retry_after_seconds: e.retry_after_seconds });
   }
 };
+router.get('/locations',handle(R.platform.locations));
 router.get('/status', handle(R.status));
 router.get('/overview', handle(R.overview));
 router.get('/products/:id/history', handle(R.history));

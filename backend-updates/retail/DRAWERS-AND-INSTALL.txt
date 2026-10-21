@@ -3,11 +3,11 @@ INVENTORYOS DRAWER UPDATE (v7)
 INSTALL ON THE BACKEND PC
 1. Finish all sales/refunds on every Till. Sync any saved offline sales.
 2. Back up PostgreSQL and stop the InventoryOS Backend task.
-3. Extract this ZIP. Put the WHOLE InventoryOS-drawer-update folder inside
+3. Extract this ZIP. Put the WHOLE InventoryOS-retail-dashboard-update folder inside
    your backend folder, beside server.js. Do not replace the backend folder.
 4. In PowerShell opened in your BACKEND folder, run:
 
-   node .\InventoryOS-drawer-update\install.cjs
+   node .\InventoryOS-retail-dashboard-update\install.cjs
    node .\check-retail.cjs
 
 5. If the check says PASS, restart your existing InventoryOS Backend task.

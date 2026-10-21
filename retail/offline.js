@@ -153,7 +153,8 @@
   }
   async function shell() {
     if(!('serviceWorker' in navigator))return false;
-    await navigator.serviceWorker.register(new URL('retail/sw.js',document.baseURI),{scope:new URL('retail/',document.baseURI).pathname});
+    const dashboard=location.pathname.includes('/retail/dashboard/');const script=dashboard?'retail/dashboard/sw.js':'retail/sw.js',scope=dashboard?'retail/dashboard/':'retail/';
+    await navigator.serviceWorker.register(new URL(script,document.baseURI),{scope:new URL(scope,document.baseURI).pathname});
     await navigator.serviceWorker.ready;
     return true;
   }

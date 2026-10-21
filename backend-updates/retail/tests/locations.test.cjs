@@ -1,0 +1,42 @@
+'use strict';
+const assert=require('node:assert/strict'),path=require('node:path'),{randomUUID:uuid}=require('node:crypto');
+const {PGlite}=require(path.join(process.env.RETAIL_TEST_MODULES,'@electric-sql/pglite'));
+const {createService}=require('../files/utils/retail');
+(async()=>{
+ const db=new PGlite();await db.waitReady;const query=(q,v)=>q.includes('CREATE TABLE IF NOT EXISTS')?db.exec(q).then(x=>x.at(-1)):db.query(q,v),pool={query,connect:async()=>({query,release(){}})};
+ await db.exec(`CREATE TABLE users(id uuid PRIMARY KEY,admin_plan_override text,is_suspended boolean DEFAULT false,email text,email_verified boolean DEFAULT true);CREATE TABLE workspaces(id uuid PRIMARY KEY,owner_user_id uuid REFERENCES users(id),name text,stripe_customer_id text);CREATE TABLE inventories(id uuid PRIMARY KEY,workspace_id uuid REFERENCES workspaces(id),name text,is_default boolean DEFAULT false);CREATE TABLE workspace_members(workspace_id uuid,user_id uuid,role text,status text);CREATE TABLE products(id uuid PRIMARY KEY,workspace_id uuid);`);
+ const owner=uuid(),workspace=uuid(),inventory=uuid(),second=uuid();await db.query("INSERT INTO users(id,email)VALUES($1,'owner@example.test')",[owner]);await db.query("INSERT INTO workspaces(id,owner_user_id,name)VALUES($1,$2,'Shop')",[workspace,owner]);for(const i of [inventory,second])await db.query("INSERT INTO inventories(id,workspace_id,name)VALUES($1,$2,'Store')",[i,workspace]);
+ let clock=new Date(),sent=[];const R=createService({pool,calculateAccess:()=>({allowed:false,plan_key:'free'}),now:()=>clock,sendEmail:async m=>sent.push(m)}),P=R.platform;
+ const req=(route,body={})=>({workspace:{id:workspace},user:{id:owner},headers:{'x-workspace-id':workspace,'x-inventory-ids':inventory},originalUrl:'/retail'+route,body:{request_id:uuid(),...body},query:{}});
+ await R.ensureSchema();for(const i of [inventory,second])await P.ownerChange(req('/platform',{action:'create-store',inventory_id:i,name:i===inventory?'First shop':'Second shop'}));
+ assert.equal((await P.management(req(''))).stores[0].entitlement.allowed,false);
+ const grant=async(i,plan,more={})=>{const row=(await db.query('SELECT * FROM retail_stores WHERE inventory_id=$1',[i])).rows[0];return P.adminOverride({...req('',{inventory_id:i,version:row.override_version,plan,extra_pairs:0,features:{},reason:'Test access',...more}),params:{id:owner}});};
+ await grant(inventory,'pro');await grant(second,'pro');
+ await db.query('INSERT INTO retail_settings(workspace_id,enabled)VALUES($1,true) ON CONFLICT(workspace_id) DO UPDATE SET enabled=true',[workspace]);
+ const run=(route,body,fn,options)=>R.transaction(req(route,body),fn,options);
+ await assert.rejects(()=>run('/till/open',{amount:'5'},R.openTill,{admin:true}),/licensed till/);
+ const p=(await run('/products',{name:'Soap',barcode:'SOAP',price:'2',cost:'1',minimum_qty:2,target_qty:10,opening_qty:10,item_kind:'product'},R.saveProduct,{admin:true})).product;
+ const cfg=await R.business.config(pool,{workspace_id:workspace,inventory_id:inventory});await run('/business/settings',{...cfg,features:{...cfg.features,staff:true,loyalty:true},loyalty_minimum:'1'},R.business.saveSettings,{admin:true});
+ const st=(await run('/operations/staff',{name:'Alex',commission_percent:'0'},R.operations.saveStaff,{admin:true})).staff;
+ await R.operations.credentials({...req('',{staff_number:'100',pin:'1234'}),params:{id:st.id}});
+ await P.ownerChange(req('',{action:'staff-assignment',inventory_id:inventory,staff_id:st.id,active:true,can_refund:true}));
+ const cr=(await db.query('SELECT qr_token FROM retail_staff_credentials WHERE staff_id=$1',[st.id])).rows[0];
+ const createTill=async(i,name)=>P.ownerChange(req('',{action:'register-till',inventory_id:i,name}));const t1=(await createTill(inventory,'Till 1')).till_id,t2=(await createTill(inventory,'Till 2')).till_id;
+ await assert.rejects(()=>createTill(inventory,'Till 3'),/licensed/);
+ async function paired(i,t){const code=await P.ownerChange(req('',{action:'pair-till',inventory_id:i,till_id:t}));const r=await P.pair({body:{code:code.pair_code}});await assert.rejects(()=>P.pair({body:{code:code.pair_code}}),/expired|already/);return r.device_token;}
+ const d1=await paired(inventory,t1),d2=await paired(inventory,t2);
+ const pos=(token,staff,route,body={})=>({retail_pos:true,headers:{authorization:'Till '+token,...(staff?{'x-retail-staff-token':staff}:{})},originalUrl:'/retail-pos'+route,query:{},body:{request_id:uuid(),drawer_flow:true,...body}});
+
+ const receiptBefore=JSON.stringify((await P.management(req(''))).stores.find(s=>s.inventory_id===inventory).settings);
+ const before=(await db.query('SELECT name FROM inventories WHERE id=$1',[inventory])).rows[0].name;
+ const list=await P.locations(req(''));assert.equal(list.workspace.id,workspace);assert.equal(list.stores.length,2);assert.equal(list.stores.find(s=>s.id===inventory).inventory_name,before);
+ const rename=(name,previous='First shop')=>P.ownerChange(req('',{action:'store-display-name',inventory_id:inventory,display_name:name,previous_name:previous}));
+ await rename('Eccles — 12 High Street');assert.equal((await P.locations(req(''))).stores.find(s=>s.id===inventory).display_name,'Eccles — 12 High Street');assert.equal((await db.query('SELECT name FROM inventories WHERE id=$1',[inventory])).rows[0].name,before);assert.equal((await db.query('SELECT stock_qty FROM retail_products WHERE id=$1',[p.id])).rows[0].stock_qty,10);assert.equal((await P.access(pool,workspace,inventory)).display_name,'Eccles — 12 High Street');
+ await assert.rejects(()=>rename('Stale'),/changed/);await assert.rejects(()=>rename('x'.repeat(161),'Eccles — 12 High Street'),/160/);
+ const viewer=uuid();await db.query("INSERT INTO users(id,email)VALUES($1,'viewer@example.test')",[viewer]);await db.query("INSERT INTO workspace_members VALUES($1,$2,'viewer','active')",[workspace,viewer]);
+ const read={...req(''),user:{id:viewer}};assert.equal((await P.locations(read)).stores.length,2);await assert.rejects(()=>P.ownerChange({...req('',{action:'store-display-name',inventory_id:inventory,display_name:'No',previous_name:'Eccles — 12 High Street'}),user:{id:viewer}}),/owner or an admin/);
+ await assert.rejects(()=>P.locations({...req(''),headers:{'x-workspace-id':uuid()}}),/not available/);
+ await rename('', 'Eccles — 12 High Street');assert.equal((await P.locations(req(''))).stores.find(s=>s.id===inventory).display_name,before);assert.equal((await P.locations(req(''))).stores.find(s=>s.id===second).display_name,'Second shop');
+ assert.equal(JSON.stringify((await P.management(req(''))).stores.find(s=>s.inventory_id===inventory).settings),receiptBefore);
+ console.log('PASS: shared Retail display name, original inventory/stock/receipt details retained, reset, stale edit/length validation, role checks and workspace isolation. No new tables required.');await db.close();
+})().catch(e=>{console.error(e);process.exit(1)});

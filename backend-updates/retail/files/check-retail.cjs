@@ -11,6 +11,7 @@ const pool = require('./database');
   }
   const R = require('./utils/retail').service();
   await R.ensureSchema();
+  if(typeof R.platform.locations!=="function")throw new Error("Retail store location update is missing");
   const tables = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema=current_schema() AND table_name LIKE 'retail_%'");
   if (tables.rows.length < 14) throw new Error('Retail tables were not all created');
   for (const name of ['retail_drawer_logins','retail_drawer_assignments','retail_stores','retail_registered_tills','retail_pos_sessions','retail_pos_attempts','retail_staff_assignments','retail_platform_events','retail_reorder_emails','retail_business_settings','retail_team','retail_customers','retail_bookings','retail_offers','retail_reductions','retail_preorders','retail_preorder_items','retail_deposits','retail_loyalty_events','retail_waste','retail_reminders','retail_counter_settings','retail_staff_credentials','retail_staff_attempts','retail_till_devices','retail_staff_sessions','retail_parked_sales','retail_returns','retail_return_items']) if (!tables.rows.some(t=>t.table_name===name)) throw new Error('Retail business table missing: '+name);

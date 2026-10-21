@@ -43,3 +43,5 @@
   #retailPrintSheet .retail-receipt td:last-child{text-align:right}
   #retailPrintSheet .retail-receipt p{color:#111!important}
 }
+
+.retail-store-identity{color:var(--text);border:1px solid var(--border);border-radius:10px;padding:9px 12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none}.retail-location-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:24px;margin:24px 0 0}.retail-location-details dt{color:var(--muted);font-size:13px;margin-bottom:7px}.retail-location-details dd{margin:0;font-weight:650;overflow-wrap:anywhere}.retail-header-actions{flex-wrap:wrap}#retailLocationView{display:grid;gap:20px}#retailLocationView>p:empty{display:none}@media(max-width:600px){.retail-store-identity{max-width:100%}.retail-header-actions{justify-content:flex-start}.retail-location-details{grid-template-columns:1fr}}

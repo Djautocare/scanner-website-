@@ -24,7 +24,7 @@ function createPlatform(H){
   const allowed=row.enabled&&Boolean(PLANS[plan]);
   const features=Object.fromEntries(FEATURES.map(k=>[k,allowed&&(BASE_FEATURES.includes(k)||['pro','enterprise'].includes(plan))]));
   if(overrideActive)for(const [k,v]of Object.entries(row.feature_overrides||{}))if(FEATURES.includes(k)&&typeof v==='boolean')features[k]=allowed&&v;
-  return {allowed,plan,plan_name:PLANS[plan]?.name||'Retail inactive',paid_plan:paid,stripe_status:row.stripe_status,till_allowance:allowed?2+2*(Number(active?row.paid_pairs:0)+Number(overrideActive?row.override_extra_pairs:0)):0,paid_pairs:Number(row.paid_pairs),override_extra_pairs:overrideActive?row.override_extra_pairs:0,features,settings:row.settings||{},override_active:overrideActive&&Boolean(row.override_plan||row.override_extra_pairs||Object.keys(row.feature_overrides||{}).length),override_plan:row.override_plan,override_expires_at:row.override_expires_at,reverts_to:paid,reason:row.override_reason,period_end:row.period_end,cancel_at_period_end:row.cancel_at_period_end};
+  return {display_name:row.name,allowed,plan,plan_name:PLANS[plan]?.name||'Retail inactive',paid_plan:paid,stripe_status:row.stripe_status,till_allowance:allowed?2+2*(Number(active?row.paid_pairs:0)+Number(overrideActive?row.override_extra_pairs:0)):0,paid_pairs:Number(row.paid_pairs),override_extra_pairs:overrideActive?row.override_extra_pairs:0,features,settings:row.settings||{},override_active:overrideActive&&Boolean(row.override_plan||row.override_extra_pairs||Object.keys(row.feature_overrides||{}).length),override_plan:row.override_plan,override_expires_at:row.override_expires_at,reverts_to:paid,reason:row.override_reason,period_end:row.period_end,cancel_at_period_end:row.cancel_at_period_end};
  }
  async function access(c,w,inventory){
   if(inventory){const row=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2',[w,inventory])).rows[0];return entitlement(row);}
@@ -50,9 +50,15 @@ function createPlatform(H){
   const assignments=(await c.query('SELECT * FROM retail_staff_assignments WHERE workspace_id=$1',[s.workspace_id])).rows;
   const inventories=(await c.query('SELECT id,name FROM inventories WHERE workspace_id=$1 ORDER BY name',[s.workspace_id])).rows;
   return {success:true,stores:stores.map(publicStore),tills,staff,assignments,inventories,plans:PLANS,features:FEATURES,server_now:stamp()};});}
+ async function locations(req){return connect(async c=>{const s=await H.scope(c,req,{inventory:false,enabled:false,entitled:false});const rows=(await c.query('SELECT i.id,i.name AS inventory_name,r.name AS display_name,r.customer_number,r.inventory_id AS registered_inventory FROM inventories i LEFT JOIN retail_stores r ON r.inventory_id=i.id AND r.workspace_id=i.workspace_id WHERE i.workspace_id=$1 ORDER BY COALESCE(r.name,i.name),i.id',[s.workspace_id])).rows;const stores=[];for(const r of rows){const a=await access(c,s.workspace_id,r.id);stores.push({...r,display_name:r.display_name||r.inventory_name,registered:Boolean(r.registered_inventory),plan_name:a.plan_name||'Retail inactive',plan:a.plan,allowed:a.allowed,override_active:a.override_active,override_expires_at:a.override_expires_at,reverts_to:a.reverts_to});}return {success:true,locations_supported:true,workspace:{id:s.workspace_id,name:s.workspace_name,role:s.role},stores};});}
  async function ownerChange(req){return connect(async c=>{const s=await H.scope(c,req,{inventory:false,admin:true,enabled:false,entitled:false});await lock(c,s.workspace_id);const b=req.body||{};
   if(b.action==='create-store')return {success:true,...await createStore(c,s,b)};
   const inventory=id(b.inventory_id),store=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2 FOR UPDATE',[s.workspace_id,inventory])).rows[0];if(!store)throw fail('Store unavailable',404);s.inventory_id=inventory;const a=entitlement(store);
+  if(b.action==='store-display-name'){
+   if(typeof b.display_name!=='string')throw fail('Enter a Retail display name');if(typeof b.previous_name!=='string'||b.previous_name!==store.name)throw fail('Store details changed. Reload before saving',409);
+   const inv=(await c.query('SELECT name FROM inventories WHERE id=$1 AND workspace_id=$2',[inventory,s.workspace_id])).rows[0];if(!inv)throw fail('Inventory unavailable',403);
+   const name=text(b.display_name.trim()||inv.name,'Retail display name');await c.query('UPDATE retail_stores SET name=$2 WHERE inventory_id=$1 AND workspace_id=$3',[inventory,name,s.workspace_id]);await event(c,s,'store_display_name_changed',{previous:store.name,name});return {success:true,display_name:name,inventory_name:inv.name};
+  }
   if(b.action==='register-till'){
    if(!a.allowed)throw fail('Activate a Retail subscription or trial first',402);
    const used=(await c.query('SELECT slot FROM retail_registered_tills WHERE inventory_id=$1 AND active ORDER BY slot',[inventory])).rows.map(x=>x.slot);let slot=1;while(used.includes(slot))slot++;if(slot>a.till_allowance)throw fail('All licensed till positions are in use. Deactivate a spare till or add another pair',402);
@@ -266,6 +272,6 @@ function createPlatform(H){
   });}
  }
  const drawers=require('./retailDrawers').createDrawers({...H,connect,device,lock,access,event,posScope});
- return {drawers,access,entitlement,limitBusiness,management,ownerChange,validateTill,posScope,pair,login,logout,state,customers,refund,refundSale,posRefund,reconcile,authorizeAction,adminStores,adminOverride,billing,webhook,tick,features:FEATURES};
+ return {locations,drawers,access,entitlement,limitBusiness,management,ownerChange,validateTill,posScope,pair,login,logout,state,customers,refund,refundSale,posRefund,reconcile,authorizeAction,adminStores,adminOverride,billing,webhook,tick,features:FEATURES};
 }
 module.exports={createPlatform,PLANS,PRO_FEATURES,BASE_FEATURES};

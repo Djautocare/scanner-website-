@@ -79,7 +79,7 @@ try {
     server=server.replace(block,updated);
   }
   if (server !== before) writes.push({ name: 'server.js', bytes: Buffer.from(server), old: Buffer.from(before) });
-  const stateBytes = Buffer.from(JSON.stringify({ version: 7, files: manifest }, null, 2));
+  const stateBytes = Buffer.from(JSON.stringify({ version: 8, files: manifest }, null, 2));
   const stateOld = fs.existsSync(stateFile) ? fs.readFileSync(stateFile) : null;
   if (!stateOld || hash(stateOld) !== hash(stateBytes)) writes.push({ name: '.retail-installed.json', bytes: stateBytes, old: stateOld });
   if (!writes.length) { console.log('Retail update is already installed. Next: node .\\check-retail.cjs'); process.exit(0); }

@@ -469,7 +469,8 @@ async function redirectAfterLogin(){
             }
         }
 
-        window.location.href = "index.html";
+        const requested = new URLSearchParams(window.location.search).get("returnTo");
+        window.location.href = requested === "/retail/dashboard/index.html" ? requested : "index.html";
 
     }catch(error){
         console.error(error);

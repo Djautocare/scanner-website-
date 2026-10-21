@@ -1,7 +1,7 @@
 {
-  "check-retail.cjs": "78817be939e5f86179b2f9366a6878fcbc6f63c42b9f98b253e5e00fe39ab115",
+  "check-retail.cjs": "bcd90a9b93b9ff7f01f537d7cdb22b255f227972450bc377309334805302ff68",
   "routes/retailPosRoutes.js": "9fac6fbe391a98f47fee6fe3ed51b9bca34c5cb89b3461e4eef6b2c6c20a7f2d",
-  "routes/retailRoutes.js": "54a199f421761b5ab0715fef673e3864fe3804a9197a4b393024db38d51ae7f3",
+  "routes/retailRoutes.js": "47486d87b1d094bcbf746d6d14d5b59f365a403c7cf5fec7944d914fe57e2a40",
   "sql/retail-business.sql": "af2cc464b7962e9a6477a9a1755432110d38a245b1b082eda2b13dfb2847c033",
   "sql/retail-operations.sql": "9f2e2c459fa4b720ca64092d1412650e16f25cb7f580a945ecada483879c9976",
   "sql/retail-platform.sql": "e64ead3f911930bbe16cfc900924d840f21fd89c0c7921d2408f601b8a32112d",
@@ -11,7 +11,7 @@
   "utils/retailCatalogue.js": "810e1926ac5388474d7311fc3373179e18672ff573fc82472f759690bbf071e5",
   "utils/retailDrawers.js": "391a923eefe380eb9a7b91ca31e190e2514947a49a477930878c9f953400d947",
   "utils/retailOperations.js": "3f3a45db02102723782ce0648b4002a115a4214e6ad60c0bde188e089ce79c71",
-  "utils/retailPlatform.js": "1590ff31cf67735c5fec5b8ab83e1929527dc562a792503a712a09d42b8953a9",
+  "utils/retailPlatform.js": "1ff2fbc26fe9857dd547690b27841b76e64bf5adbde2b599a9993aefc63e571b",
   "utils/retailPlatformAdmin.js": "b579b7cc2c4d34b7d7e5eb406fe1131110ff4fd321dee282d34b1e2c6f4f5fa5",
   "utils/retailPricing.js": "d0a376c8032470a689962a47b01d44f6481850ee6864a60ce2ef0781517435b8",
   "utils/retailTransfer.js": "0670b6f686a7250c4cc974199ea8999ad32e4363ef34ae574af85519a0015073"

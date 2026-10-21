@@ -69,3 +69,12 @@ The main app has scope `/` and the Till has scope `/retail/till/`. Chrome can su
 Finish current transactions. Uninstall only the main InventoryOS app from `chrome://apps`, keeping the option to clear site data unticked. Open `/retail/till/index.html` in a normal browser tab, reload, then install **InventoryOS Till**. Once it appears separately in the app list, the main app can be installed again. No backend or database change is required. The install helper explains this order; refreshing static files or clearing cookies cannot fix overlapping app scopes.
 
 Chrome-team guidance: https://web.dev/articles/building-multiple-pwas-on-the-same-domain#additional_challenges_for_overlapping_and_nested_paths. A separate origin for the Till would avoid this overlap permanently, but requires a dedicated domain/hosting and backend CORS configuration; this release does not silently move paired devices or their credentials.
+
+
+## Retail dashboard PWA and store locations (v8)
+
+The management PWA has identity `/inventoryos-retail`, starts at `/retail/dashboard/index.html`, and is scoped to `/retail/dashboard/`. This is separate from the restricted `/retail/till/` app. Login accepts only the exact dashboard return path after the existing billing checks. The normal Retail entry remains available; its Install Retail app button opens the PWA entry. The main root PWA can still suppress installation promotion; install Till and Dashboard before installing the main app.
+
+Retail replaces the global banner with Admin > Store location. Its controller validates accessible workspaces/inventories and enforces one selected inventory. Changing store is blocked with a basket, pending payment or unsynced sales. The small store-name link identifies the active store without the banner. Other app areas retain the original topbar.
+
+`GET /retail/locations` exposes role-checked store display names and inventory names without administration credentials. `POST /retail/platform` action `store-display-name` is owner/admin only, workspace-scoped and rejects stale prior names. It updates only `retail_stores.name`, preserving the inventory name, stock, receipt/legal settings and subscription. Empty input resets to the current inventory name. No new tables are needed. Install the cumulative InventoryOS-retail-dashboard-update package for shared naming; older backends can still select stores but cannot edit names on the new page.
