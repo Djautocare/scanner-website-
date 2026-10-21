@@ -34,7 +34,7 @@
     element.hidden = false; status('Opening the rear camera…');
     element.querySelector('[data-stop-camera]').onclick = stop;
     function found(raw) {
-      const code = String(raw || '').trim(); if (a.cancelled || !(options.kind === 'loyalty' ? /^IO-LC-[0-9a-f-]{36}$/i.test(code) : valid(code))) return;
+      const code = String(raw || '').trim(); if (a.cancelled || !(options.kind === 'staff' ? /^IO-ST-[0-9a-f-]{36}$/i.test(code) : options.kind === 'loyalty' ? /^IO-LC-[0-9a-f-]{36}$/i.test(code) : valid(code))) return;
       const time = Date.now();
       a.hits = a.last === code && time - a.lastAt < 2500 ? a.hits + 1 : 1;
       a.last = code; a.lastAt = time;
@@ -52,8 +52,8 @@
       if (window.BarcodeDetector) {
         try {
           const formats = await BarcodeDetector.getSupportedFormats();
-          const selected = (options.kind === 'loyalty' ? ['qr_code'] : ['ean_13', 'ean_8', 'upc_a']).filter(f => formats.includes(f));
-          if (selected.includes(options.kind === 'loyalty' ? 'qr_code' : 'ean_13')) detector = new BarcodeDetector({ formats: selected });
+          const selected = (['loyalty','staff'].includes(options.kind) ? ['qr_code'] : ['ean_13', 'ean_8', 'upc_a']).filter(f => formats.includes(f));
+          if (selected.includes(['loyalty','staff'].includes(options.kind) ? 'qr_code' : 'ean_13')) detector = new BarcodeDetector({ formats: selected });
         } catch { /* Use the local ZXing decoder on browsers without support. */ }
       }
       if (a.cancelled) return;
@@ -68,7 +68,7 @@
         const ZX = await fallback(); if (a.cancelled) return;
         // DecodeHintType.TRY_HARDER is 3 in the pinned ZXing core. This scans
         // more image rows and permits the core's rotated-image retry.
-        const reader = new (options.kind === 'loyalty' ? ZX.BrowserQRCodeReader : ZX.BrowserMultiFormatOneDReader)(new Map([[3, true]]), { delayBetweenScanAttempts: 250, delayBetweenScanSuccess: 250 });
+        const reader = new (['loyalty','staff'].includes(options.kind) ? ZX.BrowserQRCodeReader : ZX.BrowserMultiFormatOneDReader)(new Map([[3, true]]), { delayBetweenScanAttempts: 250, delayBetweenScanSuccess: 250 });
         const controls = await reader.decodeFromStream(a.stream, video, result => { if (result) found(result.getText()); });
         a.controls = controls; if (a.cancelled) controls.stop();
       }

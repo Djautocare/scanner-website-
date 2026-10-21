@@ -7,6 +7,7 @@ const catalogue = require('../utils/retailCatalogue').createLookup();
 const router = express.Router();
 router.use(auth, workspaceMiddleware);
 const handle = fn => async (req, res) => {
+  res.set('Cache-Control','no-store');
   try { res.json(await fn(req)); }
   catch (e) {
     const status = e.statusCode || 500;
@@ -44,7 +45,7 @@ mutate('patch', '/tasks/:id', R.taskStatus);
 mutate('post', '/reports/preview', async (c, s) => ({ report: await R.report(c, s, true) }));
 router.get('/business/customers', handle(R.business.customerSearch));
 router.get('/business/customer-card/:token', handle(R.business.customerCard));
-router.get('/business/profit', handle(R.business.profit));
+router.get('/business/profit', handle(async req=>{const s=await R.scope(require('../database'),req);if(!s.retail_access.features.profit)throw Object.assign(new Error('Retail Pro is required for advanced reports'),{statusCode:402});return R.business.profit(req);}));
 mutate('patch', '/business/settings', R.business.saveSettings, { admin: true });
 mutate('post', '/business/staff', R.business.saveStaff, { admin: true });
 mutate('patch', '/business/staff/:id', R.business.saveStaff, { admin: true });
@@ -74,4 +75,7 @@ mutate('post','/operations/device',R.operations.device);
 mutate('post','/operations/parked',R.operations.park);
 mutate('post','/operations/parked/:id',R.operations.recall);
 mutate('post','/operations/import',R.catalogueTransfer.importCatalogue,{admin:true});
+router.get('/platform',handle(R.platform.management));
+router.post('/platform',handle(R.platform.ownerChange));
+router.post('/platform/billing',handle(R.platform.billing));
 module.exports = router;

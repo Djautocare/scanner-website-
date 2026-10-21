@@ -1,0 +1,21 @@
+'use strict';
+const express=require('express'),R=require('../utils/retail').service();
+const router=express.Router();
+const handle=fn=>async(req,res)=>{res.set('Cache-Control','no-store');try{res.json(await fn(req));}catch(e){res.status(e.statusCode||500).json({success:false,error:e.statusCode?e.message:'Could not complete the till request. Retry the same action to recover a completed sale.',retryable:!e.statusCode||e.statusCode>=500});}};
+// A device credential is deliberately not a website JWT. No other InventoryOS
+// router accepts it. Keep this route list small and deny all other endpoints.
+router.use((req,res,next)=>{req.retail_pos=true;next();});
+router.post('/pair',handle(R.platform.pair));
+router.post('/login',handle(R.platform.login));
+router.post('/logout',handle(R.platform.logout));
+router.get('/state',handle(R.platform.state));
+router.get('/customers',handle(R.platform.customers));
+router.get('/refund-sale',handle(R.platform.refundSale));
+router.post('/refund',handle(R.platform.posRefund));
+router.post('/reconcile',handle(R.platform.reconcile));
+const mutation=(route,fn)=>router.post(route,handle(req=>R.transaction(req,fn)));
+mutation('/checkout',R.checkout);
+mutation('/customers',async(c,s,b)=>{if(!s.retail_access.features.loyalty||!s.business.features.loyalty)throw Object.assign(new Error('Loyalty requires Retail Pro'),{statusCode:402});return R.business.saveCustomer(c,s,b);});
+mutation('/park',R.operations.park);
+mutation('/recall',(c,s,b)=>R.operations.recall(c,s,b,b.parked_id));
+module.exports=router;

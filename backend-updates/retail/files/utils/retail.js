@@ -84,7 +84,7 @@ function catalogueDetails(body, barcode, old = {}) {
   return { source, code };
 }
 
-function createService({ pool, calculateAccess, ensureBillingSchema = async () => {}, now = () => new Date(), offlineSecret = process.env.JWT_SECRET, sendEmail }) {
+function createService({ pool, calculateAccess, ensureBillingSchema = async () => {}, now = () => new Date(), offlineSecret = process.env.JWT_SECRET, sendEmail, stripeClient }) {
   // Offline receipts use authenticated server-issued prices, never client-supplied prices.
   const offlineKey = offlineSecret ? crypto.createHmac('sha256', offlineSecret).update('InventoryOS Retail offline v1').digest() : null;
   function signOffline(value) {
@@ -125,12 +125,14 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-business.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-operations.sql'), 'utf8'));
+        await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-platform.sql'), 'utf8'));
         await c.query('COMMIT');
       } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
     })().catch(e => { ready = null; throw e; });
     return ready;
   }
   async function scope(c, req, { write = false, admin = false, inventory = true, enabled = true, entitled = true } = {}) {
+    if (req.retail_pos) return platform.posScope(c,req,{write,admin,inventory,enabled,entitled});
     const workspace = id(req.workspace?.id), actor = id(req.user?.id);
     const requested = String(req.headers['x-workspace-id'] || '').trim().toLowerCase();
     if (requested && requested !== workspace) throw fail('Selected workspace is not available', 403);
@@ -142,7 +144,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     if (write && role === 'viewer') throw fail('Viewers cannot change Retail records', 403);
     if (admin && !['owner', 'admin'].includes(role)) throw fail('The workspace owner or an admin must do this', 403);
     const access = calculateAccess(w, 'free');
-    if (entitled && !access.allowed) throw fail('Select an active InventoryOS plan to use Retail', 402);
+
     const setting = (await c.query('SELECT * FROM retail_settings WHERE workspace_id=$1', [workspace])).rows[0] || { enabled: false, report_time: '17:00', timezone: 'Europe/London' };
     if (enabled && !setting.enabled) throw fail('Enable Retail mode in Settings first', 409);
     let inventoryId = null;
@@ -153,22 +155,27 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       if (!(await c.query(`SELECT id FROM inventories WHERE id=$1 AND workspace_id=$2 ${write ? 'FOR SHARE' : ''}`, [inventoryId, workspace])).rows.length) throw fail('Inventory unavailable in this workspace', 403);
     }
     const result = { workspace_id: workspace, workspace_name: w.name, inventory_id: inventoryId, actor_id: actor, role, settings: setting, access, staff_token: req.headers['x-retail-staff-token'], device_id: req.headers['x-retail-device-id'] };
-    if (inventoryId) { result.business = await business.config(c, result); result.counter = await operations.config(c, result); }
+    result.retail_access = await platform.access(c, workspace, inventoryId);
+    if (entitled && !result.retail_access.allowed) throw fail('An active Retail subscription or Retail trial is required for this store',402);
+    if (inventoryId) { result.business = platform.limitBusiness(await business.config(c, result),result.retail_access); result.counter = await operations.config(c, result); result.settings={...setting,...result.retail_access.settings}; result.registered_till_id=req.headers['x-retail-till-id']?id(req.headers['x-retail-till-id']):null; if(result.registered_till_id)await platform.validateTill(c,result); }
     return result;
   }
   const args = s => [s.workspace_id, s.inventory_id];
   async function audit(c, s, kind, data) {
+    if(s.pos_staff) data={...data,staff_id:s.pos_staff.id,till_id:s.registered_till_id};
     await c.query('INSERT INTO retail_audit(id,workspace_id,inventory_id,actor_id,kind,data) VALUES($1,$2,$3,$4,$5,$6)', [uuid(), s.workspace_id, s.inventory_id, s.actor_id, kind, JSON.stringify(data)]);
   }
   async function transaction(req, fn, options) {
     await ensureSchema();
+    if(req.retail_pos){const ps=await platform.posScope(pool,req);req.workspace={id:ps.workspace_id};}
     const c = await pool.connect();
     try {
       await c.query('BEGIN');
       await c.query("SELECT pg_advisory_xact_lock(hashtextextended('retail-workspace:'||$1,0))", [id(req.workspace?.id)]);
       const s = await scope(c, req, { ...options, write: true });
       const request = id(req.body?.request_id);
-      const hash = crypto.createHash('sha256').update(JSON.stringify({ route: req.originalUrl, actor: s.actor_id, inventory: s.inventory_id, body: req.body })).digest('hex');
+      if(req.retail_pos) await platform.authorizeAction(c,s,req.originalUrl);
+      const hash = crypto.createHash('sha256').update(JSON.stringify({ route: req.originalUrl, actor: s.actor_id, inventory: s.inventory_id, ...(s.pos_staff?{till:s.registered_till_id,staff:s.pos_staff.id}:{}), body: req.body })).digest('hex');
       const old = (await c.query('SELECT * FROM retail_requests WHERE workspace_id=$1 AND request_id=$2', [s.workspace_id, request])).rows[0];
       if (old) {
         if (hash !== old.body_hash) throw fail('Request already used with different details', 409);
@@ -197,7 +204,8 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     return updated;
   }
   async function till(c, s, required = false) {
-    const session = (await c.query('SELECT * FROM retail_till_sessions WHERE workspace_id=$1 AND inventory_id=$2 AND closed_at IS NULL', args(s))).rows[0];
+    const session = (await c.query('SELECT * FROM retail_till_sessions WHERE workspace_id=$1 AND inventory_id=$2 AND closed_at IS NULL AND registered_till_id IS NOT DISTINCT FROM $3::uuid', [...args(s),s.registered_till_id||null])).rows[0];
+    if (s.registered_till_id) await platform.validateTill(c,s);
     if (!session) { if (required) throw fail('Open the till with its counted opening float first', 409); return null; }
     const events = (await c.query('SELECT COALESCE(SUM(amount_pence),0)::text AS total FROM retail_cash_events WHERE workspace_id=$1 AND inventory_id=$2 AND session_id=$3', [...args(s), session.id])).rows[0];
     return { ...session, expected_pence: Number(session.opening_pence) + Number(events.total) };
@@ -234,11 +242,11 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   async function status(req) {
     await ensureSchema();
     const s = await scope(pool, req, { inventory: false, entitled: false, enabled: false });
-    return { success: true, counter_supported: true, offline_supported: Boolean(offlineKey), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, role: s.role, allowed: s.access.allowed, enabled: s.settings.enabled, active: s.access.allowed && s.settings.enabled, settings: s.settings, plan: s.access.plan_key };
+    return { success: true, counter_supported: true, offline_supported: Boolean(offlineKey), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, role: s.role, platform_supported:true, allowed: s.retail_access.allowed, enabled: s.settings.enabled, active: s.retail_access.allowed && s.settings.enabled, settings: s.settings, plan: s.access.plan_key };
   }
   async function settings(c, s, b) {
     if (typeof b.enabled !== 'boolean') throw fail('Choose enabled or disabled');
-    if (b.enabled && !s.access.allowed) throw fail('Select an active InventoryOS plan first', 402);
+    if (b.enabled && !s.retail_access.allowed) throw fail('Activate Retail for this store first',402);
     const time = b.report_time ?? s.settings.report_time;
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw fail('Choose the daily report time');
     const timezone = text(b.timezone ?? s.settings.timezone, 'Timezone', 80);
@@ -262,6 +270,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     const name = text(b.name, 'Product name');
     if (b.item_kind === 'service' && Number(b.opening_qty || 0)) throw fail('Services do not have opening stock');
     const barcode = text(b.barcode || `RT-${uuid().slice(0, 12).toUpperCase()}`, 'Barcode', 100);
+    if(/^IO-(LC|ST)-/i.test(barcode))throw fail('That barcode prefix is reserved for customer/staff QR cards');
     const price = money(b.price, 'Selling price'), cost = money(b.cost, 'Cost per unit');
     const minimum = integer(b.minimum_qty, 'Minimum stock'), target = integer(b.target_qty, 'Reorder target', minimum);
     const supplier = text(b.supplier, 'Supplier', 160, true), url = web(b.supplier_url);
@@ -275,11 +284,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const catalogue = catalogueDetails(b, barcode, old);
       if (integer(b.edit_version, 'Product version', 0, 2147483647) !== old.edit_version) throw fail('Product changed since you opened it. Refresh before saving', 409);
       if (typeof b.archived !== 'boolean') throw fail('Choose whether the product is archived');
-      if (old.archived && !b.archived && s.access.active_item_limit != null) {
-        const active = Number((await c.query('SELECT COUNT(*)::text AS n FROM retail_products WHERE workspace_id=$1 AND NOT archived', [s.workspace_id])).rows[0].n);
-        const legacy = Number((await c.query('SELECT COUNT(*)::text AS n FROM products WHERE workspace_id=$1', [s.workspace_id])).rows[0].n);
-        if (active + legacy >= s.access.active_item_limit) throw fail('Your plan’s product limit has been reached', 402);
-      }
+
       if (b.archived && !old.archived) {
         await business.archiveCheck(c, s, old);
         if (old.stock_qty !== 0 || (await c.query("SELECT id FROM retail_counts WHERE workspace_id=$1 AND inventory_id=$2 AND product_id=$3 AND status='pending'", [...args(s), old.id])).rows.length || (await reorders(c, s)).some(x => x.id === old.id && x.on_order > 0)) throw fail('Clear stock, counts and outstanding deliveries before archiving');
@@ -290,9 +295,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     } else {
       if (s.settings.vat_receipts && !tax.vat_treatment) throw fail('Choose this product’s VAT treatment before saving');
       const catalogue = catalogueDetails(b, barcode);
-      const count = Number((await c.query('SELECT COUNT(*)::text AS n FROM retail_products WHERE workspace_id=$1 AND NOT archived', [s.workspace_id])).rows[0].n);
-      const legacy = Number((await c.query('SELECT COUNT(*)::text AS n FROM products WHERE workspace_id=$1', [s.workspace_id])).rows[0].n);
-      if (s.access.active_item_limit != null && count + legacy >= s.access.active_item_limit) throw fail('Your plan’s product limit has been reached', 402);
+
       if (Number((await c.query('SELECT COUNT(*)::text AS n FROM retail_products WHERE workspace_id=$1 AND inventory_id=$2', args(s))).rows[0].n) >= 5000) throw fail('This inventory has reached the Retail limit of 5,000 products');
       p = (await c.query('INSERT INTO retail_products(id,workspace_id,inventory_id,name,barcode,price_pence,cost_pence,minimum_qty,target_qty,supplier,supplier_url,vat_treatment,vat_rate,catalogue_source,catalogue_code) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *', [uuid(), ...args(s), name, barcode, price, cost, minimum, target, supplier, url, tax.vat_treatment, tax.vat_rate, catalogue.source, catalogue.code])).rows[0];
       const opening = integer(b.opening_qty ?? 0, 'Opening quantity');
@@ -330,9 +333,10 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   async function openTill(c, s, b) {
     if (await till(c, s)) throw fail('The till is already open', 409);
     const opening = money(b.amount, 'Opening float');
-    const session = (await c.query('INSERT INTO retail_till_sessions(id,workspace_id,inventory_id,opening_pence,opened_by) VALUES($1,$2,$3,$4,$5) RETURNING *', [uuid(), ...args(s), opening, s.actor_id])).rows[0];
+    const session = (await c.query('INSERT INTO retail_till_sessions(id,workspace_id,inventory_id,opening_pence,opened_by,registered_till_id) VALUES($1,$2,$3,$4,$5,$6) RETURNING *', [uuid(), ...args(s), opening, s.actor_id,s.registered_till_id||null])).rows[0];
     await audit(c, s, 'till_opened', { session_id: session.id, opening_pence: opening });
-    return { till: { ...session, expected_pence: opening } };
+    if(s.registered_till_id) await c.query('UPDATE retail_till_sessions SET registered_till_id=$2 WHERE id=$1',[session.id,s.registered_till_id]);
+    return { till: { ...session, registered_till_id:s.registered_till_id||null, expected_pence: opening } };
   }
   async function movement(c, s, b) {
     const t = await till(c, s, true);
@@ -356,11 +360,14 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   }
   async function checkout(c, s, b) {
     const t = await till(c, s, true), offline = offlineSale(s, b, t);
+    if(!s.registered_till_id&&!offline)throw fail('Open the registered Till app to sell. Back-office devices do not count as tills',409);
     const cashier = await operations.cashier(c, s, b, offline);
     if (cashier && s.business.features.staff) b = { ...b, staff_id: cashier.id };
     const saleSettings = offline?.settings || s.settings;
     const context = await business.checkoutContext(c, s, b, offline);
-    if (b.payment_method !== 'cash') throw fail('Automatic card payments are not connected. Use cash checkout only');
+    if(!['cash','card'].includes(b.payment_method))throw fail('Choose cash or card');
+    const cardPayment=b.payment_method==='card';
+    if(cardPayment&&(offline||b.manual_card_confirmed!==true))throw fail('Check the external card reader succeeded, then confirm the card payment online',409);
     if (!Array.isArray(b.items) || !b.items.length || b.items.length > 100) throw fail('Add between 1 and 100 different products');
     if (saleSettings.vat_receipts && b.vat_version !== saleSettings.vat_version) throw fail('VAT receipt settings changed. Refresh the website and review the basket before taking payment', 409);
     const seen = new Set(), items = []; let total = 0;
@@ -371,6 +378,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         if (quote.context_id !== offline.context_id || quote.product?.id !== p.id) throw fail('Offline product price could not be verified', 403);
         p = { ...p, ...quote.product, archived: false };
       }
+      if(p.item_kind==='service'&&!context.config.features.services)throw fail('Services are switched off for this store',409);
       p = business.reviewedProduct(context, p, item);
       if (p.archived || seen.has(p.id)) throw fail('Each active product must appear only once');
       seen.add(p.id);
@@ -383,28 +391,32 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     const ageCheck = operations.ageCheck(items, b);
     const priced = business.priced(context, items, b, offline ? Date.parse(offline.occurred_at) : now().getTime());
     const deposits = context.deposits.reduce((n,d) => n + d.amount_pence, 0);
+    if(cardPayment&&deposits)throw fail('This booking/order has a cash deposit. Settle it through owner cash checkout; mixed deposit/card settlement is not supported',409);
     if (deposits > priced.total_pence) throw fail('Held deposits exceed this sale. Refund the excess before completing checkout',409);
     total = integer(priced.total_pence + context.tip, 'Sale total', 0, 100000000);
-    const tendered = money(b.tendered, 'Cash received') + deposits;
+    const tendered = cardPayment?total:money(b.tendered, 'Cash received') + deposits;
     integer(tendered,'Cash and deposit',0,100000000);
     if (tendered < total) throw fail('Cash received is less than the sale total');
-    if (t.expected_pence + total - deposits > 100000000) throw fail('Cash limit reached. Balance and close this till first');
+    if (!cardPayment && t.expected_pence + total - deposits > 100000000) throw fail('Cash limit reached. Balance and close this till first');
     const saleId = offline ? id(b.request_id) : uuid(), soldAt = offline?.occurred_at || now().toISOString();
     const reference = `RT-${soldAt.slice(0, 10).replace(/-/g, '')}-${saleId.slice(0, 8).toUpperCase()}`;
     const vat = vatSnapshot(saleSettings, items);
     const receiptBusiness = { name: saleSettings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail', address: saleSettings.receipt_business_address || '' };
-    const sale = (await c.query('INSERT INTO retail_sales(id,workspace_id,inventory_id,reference,total_pence,tendered_pence,change_pence,payment_method,actor_id,vat_receipt,receipt_business,created_at,offline_device_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *', [saleId, ...args(s), reference, total, tendered, tendered - total, 'cash', s.actor_id, vat ? JSON.stringify(vat) : null, JSON.stringify(receiptBusiness), soldAt, offline?.device_id || null])).rows[0];
+    const sale = (await c.query('INSERT INTO retail_sales(id,workspace_id,inventory_id,reference,total_pence,tendered_pence,change_pence,payment_method,actor_id,vat_receipt,receipt_business,created_at,offline_device_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *', [saleId, ...args(s), reference, total, tendered, tendered - total, b.payment_method, s.actor_id, vat ? JSON.stringify(vat) : null, JSON.stringify(receiptBusiness), soldAt, offline?.device_id || null])).rows[0];
     for (const { product: p, qty } of items) {
       await c.query('INSERT INTO retail_sale_items(id,workspace_id,inventory_id,sale_id,product_id,name,barcode,qty,unit_price_pence,unit_cost_pence) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [uuid(), ...args(s), saleId, p.id, p.name, p.barcode, qty, p.price_pence, p.cost_pence]);
       if (p.item_kind !== 'service') await stock(c, s, p, -qty, 'sale', saleId);
     }
+    if(cardPayment)b={...b,tendered:((total-deposits)/100).toFixed(2)};
     const extras = await business.finaliseSale(c, s, b, context, sale, items, priced, vat);
     const cashierSnapshot = cashier ? { id: cashier.id, name: cashier.name, number: cashier.number } : null;
     await c.query('UPDATE retail_sales SET cashier_snapshot=$2,age_check=$3 WHERE id=$1', [saleId,cashierSnapshot?JSON.stringify(cashierSnapshot):null,ageCheck?JSON.stringify(ageCheck):null]);
-    await cash(c, s, t, 'sale', total - deposits, { sale: saleId, note: reference });
-    return { sale: { ...sale, ...extras, cashier_snapshot: cashierSnapshot, age_check: ageCheck, items: items.map(({ product: p, qty, gross_pence, discount_pence }) => ({ product_id: p.id, name: p.name, barcode: p.barcode, qty, unit_price_pence: p.price_pence, line_total_pence: gross_pence, line_discount_pence: discount_pence, item_kind: p.item_kind })) } };
+    if(!cardPayment) await cash(c, s, t, 'sale', total - deposits, { sale: saleId, note: reference });
+    await c.query('UPDATE retail_sales SET registered_till_id=$2,till_session_id=$3,payment_confirmation=$4 WHERE id=$1',[saleId,s.registered_till_id||null,t.id,cardPayment?'manual_external_card':'cash']);
+    sale.registered_till_id=s.registered_till_id||null;sale.payment_confirmation=cardPayment?'manual_external_card':'cash';
+    return { sale: { ...sale, ...extras, customer_id:context.customer?.id||null, cashier_snapshot: cashierSnapshot, age_check: ageCheck, items: items.map(({ product: p, qty, gross_pence, discount_pence }) => ({ product_id: p.id, name: p.name, barcode: p.barcode, qty, unit_price_pence: p.price_pence, line_total_pence: gross_pence, line_discount_pence: discount_pence, item_kind: p.item_kind })) } };
   }
-  async function refund(c,s,b,saleId) { return operations.returned(c,s,b,saleId); }
+  async function refund(c,s,b,saleId) { return platform.refund(c,s,b,saleId); }
   async function createDelivery(c, s, b) {
     if (!Array.isArray(b.items) || !b.items.length || b.items.length > 100) throw fail('Add between 1 and 100 products to the delivery');
     const delivery = uuid(), seen = new Set();
@@ -482,7 +494,8 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const reports = (await c.query('SELECT *,report_date::text AS report_date FROM retail_reports WHERE workspace_id=$1 AND inventory_id=$2 ORDER BY retail_reports.report_date DESC LIMIT 31', args(s))).rows;
       const tools = await business.overview(c, s), counter = await operations.overview(c,s);
       await c.query('COMMIT');
-      return { success: true, operations: counter, business_supported: true, business: tools, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id, tools), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
+      const registeredTills=(await c.query('SELECT t.id,t.name,t.slot FROM retail_registered_tills t JOIN retail_till_sessions se ON se.registered_till_id=t.id AND se.closed_at IS NULL WHERE t.workspace_id=$1 AND t.inventory_id=$2 AND t.active ORDER BY t.slot',args(s))).rows;
+      return { success: true, registered_tills:registeredTills, platform_supported:true,retail_access:s.retail_access, operations: counter, business_supported: true, business: tools, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id, tools), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
     } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
   }
   async function history(req) {
@@ -494,13 +507,13 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     await ensureSchema();
     const targets = (await pool.query('SELECT r.*,i.id AS inventory_id,w.*,u.admin_plan_override,r.workspace_id FROM retail_settings r JOIN workspaces w ON w.id=r.workspace_id JOIN users u ON u.id=w.owner_user_id JOIN inventories i ON i.workspace_id=w.id WHERE r.enabled=true')).rows;
     for (const row of targets) {
-      if (!calculateAccess(row, 'free').allowed) continue;
+      if (!(await platform.access(pool,row.workspace_id,row.inventory_id)).allowed) continue;
       const c = await pool.connect();
       try {
         await c.query('BEGIN');
         await c.query("SELECT pg_advisory_xact_lock(hashtextextended('retail-workspace:'||$1,0))", [row.workspace_id]);
         const fresh = (await c.query('SELECT w.*,u.admin_plan_override,r.enabled,r.report_time,r.timezone FROM workspaces w JOIN users u ON u.id=w.owner_user_id JOIN retail_settings r ON r.workspace_id=w.id WHERE w.id=$1 FOR SHARE OF w,u,r', [row.workspace_id])).rows[0];
-        if (fresh?.enabled && calculateAccess(fresh, 'free').allowed) await report(c, { workspace_id: row.workspace_id, inventory_id: row.inventory_id, settings: fresh });
+        if (fresh?.enabled && (await platform.access(c,row.workspace_id,row.inventory_id)).allowed) {const ra=await platform.access(c,row.workspace_id,row.inventory_id);await report(c, { workspace_id: row.workspace_id, inventory_id: row.inventory_id, settings: {...fresh,...ra.settings} });}
         await c.query('COMMIT');
       } catch (e) { await c.query('ROLLBACK'); console.error('Retail daily report failed:', e.code || e.name); } finally { c.release(); }
     }
@@ -508,13 +521,14 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   function start() {
     if (worker) return;
     let running = false;
-    const run = async () => { if (running) return; running = true; try { await tick(); await business.reminderTick(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
+    const run = async () => { if (running) return; running = true; try { await tick(); await business.reminderTick(); await platform.tick(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
     run(); worker = setInterval(run, 60000); worker.unref?.();
   }
   const business = require('./retailBusiness').createBusiness({ pool, now, calculateAccess, sendEmail, args, id, fail, text, integer, money, timestamp, product, stock, till, cash, audit, vatSnapshot, ensureSchema, scope });
   const operations = require('./retailOperations').createOperations({pool,args,id,text,integer,money,fail,now,product,stock,till,cash,audit,ensureSchema,scope,checkout,saveProduct});
   const catalogueTransfer = require('./retailTransfer').createTransfer({pool,args,id,text,fail,ensureSchema,scope,saveProduct});
-  return { operations, catalogueTransfer, business, ensureSchema, scope, status, transaction, settings, saveProduct, receiveStock, countStock, requestCount, openTill, movement, balance, checkout, refund, createDelivery, deliveryStatus, receiveDelivery, createTask, taskStatus, overview, history, report, reorders, tick, start };
+  const platform = require('./retailPlatform').createPlatform({pool,now,id,text,integer,money,fail,args,audit,ensureSchema,scope,transaction,till,business,operations,checkout,openTill,movement,balance,report,reorders,sendEmail,calculateAccess,stripe:stripeClient});
+  return { platform, operations, catalogueTransfer, business, ensureSchema, scope, status, transaction, settings, saveProduct, receiveStock, countStock, requestCount, openTill, movement, balance, checkout, refund, createDelivery, deliveryStatus, receiveDelivery, createTask, taskStatus, overview, history, report, reorders, tick, start };
 }
 
 let live;

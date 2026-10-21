@@ -1,0 +1,58 @@
+RETAIL STRIPE SETUP — USE YOUR EXISTING STRIPE ACCOUNT
+
+You can test every Retail entitlement with your admin overrides before this.
+Do not send your Stripe secret key or webhook signing secret to ChatGPT.
+
+1. In Stripe, create three MONTHLY recurring GBP prices:
+   Retail Starter — GBP 9.99 / month
+   Retail Pro — GBP 19.99 / month
+   Additional pair of tills — GBP 4.99 / month
+   The till-pair price must be normal licensed/per-unit pricing (not usage-based).
+   Starter/Pro quantity is always 1; the extra-pair quantity is the number of pairs.
+
+2. Copy the THREE price_... IDs into your BACKEND .env:
+   STRIPE_PRICE_RETAIL_STARTER_MONTHLY=price_your_starter_price
+   STRIPE_PRICE_RETAIL_PRO_MONTHLY=price_your_pro_price
+   STRIPE_PRICE_RETAIL_TILL_PAIR_MONTHLY=price_your_pair_price
+
+   Keep your existing STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET unchanged.
+   New Retail checkout explicitly keeps automatic_tax disabled, as requested.
+   Never mix test-mode prices with a live-mode secret key (or the reverse).
+
+3. Keep the EXISTING /billing/webhook URL. The installer adds Retail handling
+   AFTER signature verification, before standard InventoryOS plan handling.
+   It needs the existing events:
+   checkout.session.completed
+   customer.subscription.created / updated / deleted
+   invoice.payment_failed / payment_action_required / payment_succeeded
+   Retail subscriptions carry product_type=inventoryos_retail and store metadata.
+   They never overwrite a reseller/manufacturing subscription.
+   Duplicate/delayed events retrieve current subscription state before updating.
+
+4. Restart the backend, then Retail > Stores, tills & Retail billing.
+   Select the store, choose Starter/Pro and optional extra till pairs.
+   Only a store owner/workspace admin can buy or change subscriptions.
+   Stripe-confirmed state controls paid access; the checkout return page alone
+   does not unlock features.
+   Updates to paid plans/pairs use prorated invoices and require successful
+   payment; failed payment does not grant extra tills.
+
+5. Cancellation is through Manage billing / cancel (Stripe customer portal).
+   Enable cancellation in your Stripe portal settings. If using a dedicated
+   Retail portal configuration, optionally add its ID:
+   STRIPE_RETAIL_PORTAL_CONFIGURATION=bpc_your_retail_portal_configuration
+   Normal paid InventoryOS subscriptions remain in their existing billing flow.
+   The portal may show other subscriptions for the same Stripe customer.
+   Prefer Stores & tills for plan/pair changes so you can deactivate surplus
+   till positions before reducing your allowance.
+
+6. Device licences are checked on every till request.
+   A canceled/inactive subscription locks tills unless a valid admin trial or
+   override remains. A Pro-to-Starter change locks Pro tools, keeping history.
+   A valid new upgrade re-enables access; staff/loyalty records are retained.
+   Admin overrides do not cancel existing Stripe charges. Cancel paid billing
+   through Stripe if a customer should no longer be charged.
+
+7. Before taking a real payment, use Stripe test mode in a separate backend
+   test environment. Automated tests in this package mock Stripe and Resend;
+   they do not create customers, charge cards or send real emails.

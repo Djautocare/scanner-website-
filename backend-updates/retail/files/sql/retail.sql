@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS retail_till_sessions (
  opened_by uuid REFERENCES users(id) ON DELETE SET NULL, opened_at timestamptz NOT NULL DEFAULT now(), closed_at timestamptz,
  UNIQUE(workspace_id,inventory_id,id)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS retail_one_open_till ON retail_till_sessions(workspace_id,inventory_id) WHERE closed_at IS NULL;
+-- Open till uniqueness is migrated in retail-platform.sql (per registered till).
 CREATE TABLE IF NOT EXISTS retail_cash_events (
  id uuid PRIMARY KEY, workspace_id uuid NOT NULL, inventory_id uuid NOT NULL, session_id uuid NOT NULL,
  kind text NOT NULL CHECK(kind IN('sale','refund','lift','change_in','adjustment','balance','close')),

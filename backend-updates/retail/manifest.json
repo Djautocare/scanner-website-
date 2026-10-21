@@ -1,13 +1,17 @@
 {
-  "routes/retailRoutes.js": "edf196b70c091a7c60fe67ce26374d8eaedd981a23d900a168eb45819d6f2774",
-  "utils/retail.js": "0d0b2cceee4cf100ae3e367b4ce79d9df991b9740ccefe92976753f692ff767f",
-  "utils/retailCatalogue.js": "810e1926ac5388474d7311fc3373179e18672ff573fc82472f759690bbf071e5",
-  "utils/retailBusiness.js": "13ecd1b774f58a708d387e96df3f397a5abb0b2bf5cb6f3026cbfe6ca6304d43",
-  "utils/retailPricing.js": "d0a376c8032470a689962a47b01d44f6481850ee6864a60ce2ef0781517435b8",
-  "utils/retailOperations.js": "03c5130daba217b0ad37734ccd2a6df06dcc9c812a3f500bc09c00fff94bd73e",
-  "utils/retailTransfer.js": "0670b6f686a7250c4cc974199ea8999ad32e4363ef34ae574af85519a0015073",
-  "sql/retail.sql": "77d05b742ae7d3deb256b11cb017f804173e0a6cb35e7558b20c6e0a7c4af6a2",
+  "check-retail.cjs": "12fcdd6eb7adace5ee1ed91e44b4b687405f8cc6ae7cb666e30117125bb248b5",
+  "routes/retailPosRoutes.js": "cf4dd6823b63c84a22fb92f388da29118e8051e9a5ca714232544e3006a7ff23",
+  "routes/retailRoutes.js": "54a199f421761b5ab0715fef673e3864fe3804a9197a4b393024db38d51ae7f3",
   "sql/retail-business.sql": "af2cc464b7962e9a6477a9a1755432110d38a245b1b082eda2b13dfb2847c033",
   "sql/retail-operations.sql": "9f2e2c459fa4b720ca64092d1412650e16f25cb7f580a945ecada483879c9976",
-  "check-retail.cjs": "9607096131472d8d7c1fc6a1a684c4ae18eed81aca1d68c1e48364d83f5df85b"
+  "sql/retail-platform.sql": "ebdc558e2815dc819597cd5f8ffb08b704ab3e621fcc1c6bcbaf5b40967be73b",
+  "sql/retail.sql": "958dc23aa1d38f2093c627065bcfc9e9a184c0c800e9b23a43205c4a5f0132cb",
+  "utils/retail.js": "3190d7b930a9b593170706e955d4c7da3fd311ebb526e55939682fec9feb0fc1",
+  "utils/retailBusiness.js": "ccf88fa28a4e4c728728314bff9a3f7f6cd0534c83fd6237344737c1b68a310c",
+  "utils/retailCatalogue.js": "810e1926ac5388474d7311fc3373179e18672ff573fc82472f759690bbf071e5",
+  "utils/retailOperations.js": "36ac53f2b6b55364f38adeab54bc012255e543c2f07e721618a4e9246f05631f",
+  "utils/retailPlatform.js": "046936b5beb3f4231e1e3161c9c0817be6987c667a2ba91252f1f7e71cebaa13",
+  "utils/retailPlatformAdmin.js": "b579b7cc2c4d34b7d7e5eb406fe1131110ff4fd321dee282d34b1e2c6f4f5fa5",
+  "utils/retailPricing.js": "d0a376c8032470a689962a47b01d44f6481850ee6864a60ce2ef0781517435b8",
+  "utils/retailTransfer.js": "0670b6f686a7250c4cc974199ea8999ad32e4363ef34ae574af85519a0015073"
 }

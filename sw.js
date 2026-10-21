@@ -1,0 +1,4 @@
+'use strict';
+// The main PWA never caches authenticated API responses or a signed-in dashboard.
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('fetch',event=>{if(event.request.method!=='GET'||event.request.mode!=='navigate')return;const url=new URL(event.request.url);if(url.origin!==self.location.origin)return;event.respondWith(fetch(event.request).catch(()=>new Response('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InventoryOS offline</title><body style="font:18px system-ui;padding:32px;background:#101512;color:#fff"><h1>InventoryOS</h1><p>Reconnect to open your dashboard. Your saved Retail cash sales remain in the original Retail device queue.</p><button onclick="location.reload()">Try again</button></body></html>',{headers:{'Content-Type':'text/html; charset=utf-8'},status:503})));});

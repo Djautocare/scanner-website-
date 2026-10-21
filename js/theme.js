@@ -144,3 +144,5 @@ window.addEventListener('storage',event=>{if(event.key==='inventoryos_appearance
  window.addEventListener('inventoryos-appearance-changed',schedule);
  document.addEventListener('DOMContentLoaded',()=>{schedule();new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});});
 })();
+
+;(function(){if(!location.pathname.includes("/retail/till/")){const s=document.createElement("script");s.src=new URL("pwa/install.js?v=1",document.baseURI).href;s.defer=true;document.head.append(s);}})();

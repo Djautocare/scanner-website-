@@ -5,14 +5,14 @@ const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const hash = b => crypto.createHash('sha256').update(b).digest('hex');
 const root = process.cwd();
-const names = ['routes/retailRoutes.js', 'utils/retail.js', 'utils/retailCatalogue.js', 'utils/retailBusiness.js', 'utils/retailPricing.js', 'utils/retailOperations.js', 'utils/retailTransfer.js', 'sql/retail-operations.sql', 'sql/retail.sql', 'sql/retail-business.sql', 'check-retail.cjs'];
+const names = ['routes/retailPosRoutes.js','utils/retailPlatform.js','utils/retailPlatformAdmin.js','sql/retail-platform.sql','routes/retailRoutes.js', 'utils/retail.js', 'utils/retailCatalogue.js', 'utils/retailBusiness.js', 'utils/retailPricing.js', 'utils/retailOperations.js', 'utils/retailTransfer.js', 'sql/retail-operations.sql', 'sql/retail.sql', 'sql/retail-business.sql', 'check-retail.cjs'];
 function checked(relative) {
   const p = path.join(root, relative);
   if (fs.existsSync(p) && fs.lstatSync(p).isSymbolicLink()) throw new Error('Refusing a symbolic link: ' + relative);
   return p;
 }
 try {
-  for (const p of ['server.js', 'database.js', 'package.json', 'middleware/authMiddleware.js', 'middleware/workspaceMiddleware.js', 'utils/billing.js']) {
+  for (const p of ['server.js', 'database.js', 'package.json', 'middleware/authMiddleware.js', 'middleware/workspaceMiddleware.js', 'utils/billing.js', 'routes/billing.js', 'routes/admin.js']) {
     if (!fs.existsSync(checked(p))) throw new Error('Open PowerShell in your current backend folder. Required file missing: ' + p);
   }
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, 'manifest.json'), 'utf8'));
@@ -46,17 +46,40 @@ try {
     if ([...server.matchAll(anchor)].length !== 1) throw new Error('Could not identify the backend startup point. Nothing was changed.');
     server = server.replace(anchor, '$&\n' + start);
   }
+  const posMount = 'app.use("/retail-pos", require("./routes/retailPosRoutes"));';
+  if (!server.includes(posMount)) {
+    if (/app\.use\(\s*["']\/retail-pos["']/.test(server)) throw new Error('A different Retail POS mount exists. Nothing changed.');
+    server=server.replace(mount,posMount+'\n'+mount);
+  }
+  // Extend the verified billing webhook in place; leave all standard plan/add-on
+  // handling intact. A Retail subscription never reaches legacy plan updates.
+  const billingPath=checked('routes/billing.js');
+  const billingOld=fs.readFileSync(billingPath,'utf8');
+  const hook="        if (await require('../utils/retail').service().platform.webhook(event, stripe)) return res.json({ received: true });";
+  if(!billingOld.includes(hook.trim())){
+    const anchor='        if (event.type === "checkout.session.completed") {';
+    if(billingOld.split(anchor).length!==2 || !billingOld.includes('stripe.webhooks.constructEvent(')) throw new Error('Could not safely identify the verified Stripe webhook hook. Nothing changed.');
+    writes.push({name:'routes/billing.js',bytes:Buffer.from(billingOld.replace(anchor,hook+'\n\n'+anchor)),old:Buffer.from(billingOld)});
+  }
+  // New controls inherit the EXISTING admin middleware. Do not replace it.
+  const adminPath=checked('routes/admin.js'),adminOld=fs.readFileSync(adminPath,'utf8');
+  const adminHook='require("../utils/retailPlatformAdmin")(router);';
+  if(!adminOld.includes(adminHook)){
+    const anchor='module.exports = router;';
+    if(adminOld.split(anchor).length!==2 || !adminOld.includes('router.use(requireAdmin);') || !adminOld.includes('router.use(authMiddleware);')) throw new Error('Could not verify the existing protected admin insertion point. Nothing changed.');
+    writes.push({name:'routes/admin.js',bytes:Buffer.from(adminOld.replace(anchor,adminHook+'\n'+anchor)),old:Buffer.from(adminOld)});
+  }
   // The deployed API uses an explicit CORS allowlist. Staff credentials remain
   // in headers, never URL query strings or the pending-action body store.
-  if (!server.includes('"X-Retail-Staff-Token"') || !server.includes('"X-Retail-Device-Id"')) {
+  if (!server.includes('"X-Retail-Staff-Token"') || !server.includes('"X-Retail-Device-Id"') || !server.includes('"X-Retail-Till-Id"')) {
     const blocks = [...server.matchAll(/allowedHeaders\s*:\s*\[[\s\S]*?\]/g)];
     if (blocks.length !== 1 || !blocks[0][0].includes('"Authorization"') || !blocks[0][0].includes('"X-Workspace-Id"')) throw new Error('Could not safely update the API header allowlist. Nothing was changed.');
-    const block=blocks[0][0], extras=['X-Retail-Staff-Token','X-Retail-Device-Id'].filter(name=>!block.includes('"'+name+'"'));
+    const block=blocks[0][0], extras=['X-Retail-Staff-Token','X-Retail-Device-Id','X-Retail-Till-Id'].filter(name=>!block.includes('"'+name+'"'));
     const updated=block.replace(/,?\s*\]$/,',\n'+extras.map(name=>'        "'+name+'"').join(',\n')+'\n    ]');
     server=server.replace(block,updated);
   }
   if (server !== before) writes.push({ name: 'server.js', bytes: Buffer.from(server), old: Buffer.from(before) });
-  const stateBytes = Buffer.from(JSON.stringify({ version: 5, files: manifest }, null, 2));
+  const stateBytes = Buffer.from(JSON.stringify({ version: 6, files: manifest }, null, 2));
   const stateOld = fs.existsSync(stateFile) ? fs.readFileSync(stateFile) : null;
   if (!stateOld || hash(stateOld) !== hash(stateBytes)) writes.push({ name: '.retail-installed.json', bytes: stateBytes, old: stateOld });
   if (!writes.length) { console.log('Retail update is already installed. Next: node .\\check-retail.cjs'); process.exit(0); }
@@ -68,6 +91,7 @@ try {
   const changed = [];
   try {
     for (const w of writes) { fs.mkdirSync(path.dirname(checked(w.name)), { recursive: true }); fs.writeFileSync(checked(w.name), w.bytes); changed.push(w); }
+    for(const w of writes.filter(w=>/\.(js|cjs)$/.test(w.name))){const v=spawnSync(process.execPath,['--check',checked(w.name)],{shell:false,windowsHide:true});if(v.status!==0)throw new Error('Syntax check failed: '+w.name);}
     const check = spawnSync(process.execPath, ['--check', checked('server.js')], { shell: false, windowsHide: true });
     if (check.status !== 0) throw new Error('Patched server.js did not pass syntax validation');
   } catch (e) {
@@ -77,5 +101,5 @@ try {
   console.log('Installed Retail update. Existing server mount/start lines were kept or added as needed.');
   console.log('Backup: ' + backup);
   console.log('Next: node .\\check-retail.cjs. If it passes, restart InventoryOS Backend.');
-  console.log('No .env changes or new npm packages are required.');
+  console.log('No new npm packages. Stripe setup: see STRIPE-SETUP.txt; admin trials work before prices are configured.');
 } catch (e) { console.error('Retail installation stopped: ' + e.message); process.exitCode = 1; }

@@ -31,7 +31,7 @@ const { createService, money, dayAndTime } = require('../files/utils/retail');
   const edit=(route,body,fn,recordId,admin=true)=>run(route,body,(c,s,b)=>fn(c,s,b,recordId),admin?{admin:true}:{});
   const overview=()=>R.overview(request('/overview'));
   const O=R.operations;
-  await R.ensureSchema();await run('/settings',{enabled:true},R.settings,{inventory:false,enabled:false,admin:true});
+  await R.ensureSchema();await require('./platform-fixture.cjs')(R,db);await run('/settings',{enabled:true},R.settings,{inventory:false,enabled:false,admin:true});
   await run('/business/settings',{business_type:'general',features:Object.fromEntries(B.features.map(k=>[k,true])),loyalty_target:2,loyalty_minimum:'1.00',loyalty_reward_product_id:null,reminder_hours:24,version:0},B.saveSettings,{admin:true});
   const make=async body=>(await run('/products',{name:'Test product',price:'1.00',cost:'0.20',barcode:uuid(),minimum_qty:1,target_qty:10,opening_qty:20,item_kind:'product',category:'Drinks',favourite:true,...body},R.saveProduct,{admin:true})).product;
   const p=await make({name:'Age restricted',minimum_age:18}),q=await make({name:'Replacement',price:'2.00'});

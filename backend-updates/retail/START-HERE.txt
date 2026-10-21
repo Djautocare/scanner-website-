@@ -1,240 +1,150 @@
-INVENTORYOS - RETAIL COUNTER & APPEARANCE UPDATE (v5)
+INVENTORYOS RETAIL PLATFORM UPDATE (v6)
 
-Includes the previous Retail releases. Existing data is retained.
-No new npm packages, credentials or .env changes are required.
+1. BEFORE INSTALLING
+- Sync saved offline sales on every existing Retail device.
+- Count/balance and close your existing till. Back up PostgreSQL.
+- Stop the InventoryOS Backend task.
 
-INSTALL ON YOUR BACKEND PC
+2. INSTALL ON YOUR BACKEND PC
+Extract the ZIP. Put the WHOLE InventoryOS-retail-platform-update folder
+inside your backend folder, beside server.js. Open PowerShell in BACKEND:
 
-1. Sync saved offline sales on ALL till devices. Back up PostgreSQL, then stop
-   the InventoryOS Backend task.
-2. Extract the ZIP. Put the WHOLE InventoryOS-retail-counter-update folder
-   inside your backend folder, beside server.js.
-3. Open PowerShell in that BACKEND folder and run:
+  node .\InventoryOS-retail-platform-update\install.cjs
+  node .\check-retail.cjs
 
-   node .\InventoryOS-retail-counter-update\install.cjs
-   node .\check-retail.cjs
+If the check says PASS, restart your existing backend task.
+Refresh the website. If installation/check fails, keep the backend stopped
+and send the error text, without sending .env, passwords or private keys.
 
-4. If the check says PASS, restart your existing backend task. If it fails,
-   keep the backend stopped and send the error text, without passwords or .env.
-5. Refresh the website (Ctrl+F5 on PC). Prepare offline devices again before
-   offline trading. The check creates the extra tables automatically.
+The installer creates a dated code backup and adds the database tables.
+It does NOT replace your .env, authentication middleware, standard billing
+plan definitions or admin checks. It extends the existing verified Stripe
+webhook and adds new controls AFTER the original admin authentication check.
+No new npm packages are needed. Retail Stripe prices need three new settings;
+see STRIPE-SETUP.txt. You can test with an admin override before configuring them.
 
-THE NEW MENU
+3. START WITH A TEST STORE / RETAIL OVERRIDE
+- Open https://app.inventoryos.co.uk/retail/manage.html while logged in as owner.
+- Select an existing migrated store, or Add store.
+- Your restricted admin portal: Users > View account > Retail subscriptions &
+  overrides. Choose this store. Set one-week Pro trial, or your desired plan,
+  extra till pairs and feature overrides. Save with a reason.
+- Overrides are independent of Free/Starter/Pro/Business reseller plans and
+  their manufacturing trial. They never create a Stripe charge.
+- On expiry the store returns to its actual paid Retail entitlement.
+- Previously enabled Retail inventories receive a ONE-TIME seven-day Retail
+  Pro transition grant at installation; it never renews on restart. New stores
+  do not receive automatic trial access. Admin can replace/remove this grant.
 
-Products: Products & stock, Deliveries, Offers, Reductions & waste,
-          Shelf labels, Import & export (as applicable to enabled tools).
-Customers: Customers & loyalty, Preorders & collections.
-Reports: Sales & receipts, Reorder report, Gross profit/staff reports.
-Admin: Staff & access, Stock counts (with a due badge), Retail settings,
-       Offline & sync.
-Dashboard, Checkout, Services, Appointments, Tasks and Till & cash remain
-quick links. Physical products and Services have separate lists and forms.
-Services only appear when enabled in Retail business settings.
+4. SET UP STAFF AND TILLS
+In Stores & tills select the correct store:
+- Staff access > Add staff.
+- Set a unique business-wide staff number and 4-8 digit PIN.
+- Store permission: assign the staff member to this store; optionally allow
+  them to approve refunds. Repeat for each store they should be able to use.
+- Print staff QR. The same QR identifies that person in their assigned stores.
+  It never includes their PIN. Resetting PIN revokes prior sessions.
+- Tills > Register till. Starter and Pro include TWO registered positions.
+- Open till and enter the physically counted opening float.
+- Pair device / Replace device: on the actual checkout device open
+  https://app.inventoryos.co.uk/retail/till/index.html and enter the pairing code.
+  Codes expire after ten minutes and work once. Re-pairing replaces the prior
+  device within the SAME till position, without buying another licence.
+- Staff scan their QR (or type number), then enter their OWN PIN.
+- Lock / log out switches operators. Never share the owner's website login
+  with cashiers. Pairing the Till app clears any ordinary website login saved
+  in that browser, so an owner session is not left behind on a shared till.
+- Dedicated tills have no dashboard, product editing, cost, settings, billing
+  or global reporting access. Opening other API routes with a Till credential
+  is rejected by the website's normal JWT authentication.
+- Five incorrect PIN attempts cause a 15-minute lockout for that device/login.
+- Owner/admin back-office checkout can select a registered open till for
+  existing appointments, deposits, collections and exchanges. It uses that
+  till's cash ledger; it does not create another free till position.
 
-STAFF NUMBER / PIN SETUP
+5. RETAIL PRICING
+Retail Starter: GBP 9.99/month/store.
+Retail Pro: GBP 19.99/month/store.
+Both: two simultaneous registered tills and unlimited staff identities.
+Extra tills: GBP 4.99/month per pair. Back-office devices do not count.
+Enterprise: contact hello@inventoryos.co.uk for a custom arrangement; access
+can be provisioned with the existing admin controls. It is not a self-serve
+Stripe Enterprise price and no future chain-specific features are advertised.
 
-1. Admin > Staff & access > Add staff. Save their name and optional commission.
-2. Set number / PIN. Give them a unique number and a 4-8 digit PIN.
-3. After setting up staff, tick Require staff PIN login at checkout and Save.
-   This starts OFF to preserve existing tills. Sync all offline sales first.
-4. Checkout > Staff log in. Each completed sale saves the logged-in cashier,
-   even if another staff ID is supplied by an older client. The receipt and
-   sales history show the saved cashier. PINs are not recoverable; reset one
-   from Staff & access if forgotten. Resetting or disabling staff revokes access.
-5. Lock / log out immediately revokes that session; the unpaid basket stays.
-   Assign till to me reserves THIS browser's till for that member of staff.
-   They can unlock it with their PIN. An owner/admin can Release till.
+Starter: products/services, scanning, stock, counts, deliveries, manual reorder
+list, staff PINs, receipts, parked baskets, cash/card recording and balancing.
+Pro additionally: loyalty, offers, appointments, preorders/deposits, advanced
+reports, customer display and combined daily reorder emails.
+Reseller/manufacturing entitlements are separate, even for the same account.
 
-Staff sessions last up to 12 hours and remain in this tab's session storage.
-Five wrong attempts lock PIN login for that app account/inventory for 15 minutes.
-Login, assigned-till checkout and staff-attributed sales require a connection.
-Existing ordinary offline cash checkout remains available when PIN login is
-optional and no staff PIN session is in use.
+6. LOYALTY ON PRO
+Retail > business tools: enable Customer loyalty and set the reward rules.
+In Till app: Customer loyalty > Search or Add account.
+New accounts can immediately print a QR card. View profile shows stamps and
+purchase history, and can reprint the SAME QR any number of times.
+Scanning IO-LC-... selects the account for the next sale. Completing payment
+records the sale and rewards against that account, then clears the selection.
+No marketing consent is inferred. Accounts/QRs are store-specific.
+Staff QR (IO-ST-...) and customer QR (IO-LC-...) are different credential types.
+QRs contain random identifiers, not names, email addresses or PINs.
 
-IMPORTANT: PINs are Retail cashier identities, not new website accounts.
-Website/workspace roles still control admin access. On a shared staff till,
-use a workspace MEMBER account, not the owner's InventoryOS account. Staff
-cannot gain owner/admin permissions merely by entering a PIN. The original
-site admin portal and its account restrictions are not changed.
+7. CASH / EXTERNAL CARD PAYMENTS
+Cash: enter cash received, confirm, then give the displayed change.
+Card: manually enter the exact displayed amount into your EXISTING card reader.
+Only after the reader says successful, press Confirm Card Payment in InventoryOS.
+Cancel / back does not create a sale. InventoryOS records 'manually confirmed';
+it does not send an amount to a reader or verify/process a card payment.
+Card sales/refunds are separate from expected CASH in the drawer.
 
-COUNTER TOOLS
+If recording loses its connection, use Recover payment. Do not charge again.
+A completed request is returned with the same reference and no second stock
+movement. Pending recordings block new checkout until resolved. If it genuinely
+cannot be recorded, Manager reconciliation requires an authorised staff QR/PIN
+and a written reason. Staff must separately check/resolve the actual payment.
+It cannot delete a completed sale; a late retry is blocked by the audit record.
 
-- Categories & favourites: edit a product/service, set its category and tick
-  Favourite on till. Checkout has category and favourite buttons. Barcode
-  scanning still searches the saved catalogue regardless of the selected tab.
-- Park a sale: ordinary baskets only. Give it a name, then serve the next
-  customer. Parked sales > Recall brings it back at CURRENT prices. Parking
-  does not reserve or deduct stock, take cash, or hold an old offer price.
-  Linked bookings/preorders/customer rewards should be completed or detached
-  first. Another device can recall a parked basket once.
-- Age checks: set Minimum age on a product (0 = unrestricted). Adding it asks
-  staff to complete the age check or refuse the sale. Recalled baskets require
-  fresh confirmation. This records the staff acknowledgement; the shop still
-  decides which products need checks and how staff verify age.
-- Partial returns: Reports > Sales & receipts > Return / exchange. Choose only
-  returned quantities, and tick which are saleable to put back into stock.
-  Discounts and VAT use the original sale values, with cumulative penny
-  allocation. The original receipt remains intact. Each return gets a receipt.
-- Exchanges: add replacement items in that same return screen. The preview
-  shows return credit, new total, additional cash due and change. Cash, stock
-  and both records commit together. Only completed original quantities can be
-  returned. Refunds/exchanges are owner/admin actions and currently cash only.
-  Loyalty earned on the original sale is reversed at the first return; spent
-  stamps are restored once all its goods are returned. Tips are optional.
-- Import & export: download the CSV template, fill it, then Preview import.
-  Nothing is saved until Confirm import. A matching barcode updates product
-  details without replacing existing stock. Opening quantities apply only to
-  NEW products. Up to 2,000 rows / 1 MB, physical products only. Services have
-  their own creation screen. Exported formula-like text is escaped for safety.
-- Shelf labels: select products and 2 x 1 or 4 x 6 inch paper. Create labels,
-  Download PDF / Mobile share, or open the PDF to print. Labels include name,
-  current selling price and a scannable Code 128 barcode. Print at 100% / actual
-  size with the matching thermal label size. Up to 50 labels per PDF.
+Refund: enter the original receipt reference, quantities and reason. Scan an
+assigned approver's QR and enter THAT SAME PERSON'S PIN. They must have refund
+permission at the CURRENT store. For a card return, perform the refund on the
+external reader first, then explicitly confirm it here. No automatic card refund.
 
-LIGHT / DARK MODE
+8. INSTALL THE PWAs
+Main app: Account settings > Install InventoryOS, or Stores & tills > Install.
+Till app: open /retail/till/index.html on the till device > Install app.
+On iPhone/iPad use Safari > Share > Add to Home Screen. Windows/Android browser
+installation varies. The two apps have distinct identities, names and icons.
+Use the Till app for staff, and the main app on owner/back-office devices.
+A PWA restricts what InventoryOS permissions grant; it cannot prevent leaving
+for another app. Use the device's kiosk / Guided Access controls if required.
 
-Use Account settings > Appearance, or Retail settings > Appearance.
-Light has a white background; Dark keeps the black background. Your accent
-colour remains selected, with a darker shade in Light for readable text.
-Appearance persists across application pages and tabs on this browser/device.
-Accent colour continues to use the existing account setting. Other devices
-can choose their own light/dark appearance.
+9. PRINTING / HARDWARE
+The dedicated Till app uses the corrected browser/mobile receipt print layout,
+including staff/customer QR cards. Choose the matching printer/paper size.
+Printer and cash-drawer names can be recorded per till for setup/reference.
+This does not install drivers, operate a cash drawer, or add QZ Tray to phones.
+Existing reseller/Dispatch Centre QZ printing is retained. Direct silent QZ
+printing from the new restricted Till app is not added by this release.
+USB/Bluetooth scanners must support keyboard/HID mode; QR scanning requires a
+2D/QR-capable scanner. Phone cameras can scan product EANs and staff/loyalty QRs.
+Test the actual printer/scanner model before relying on it for trading.
 
-ROLLBACK
-
-Keep the retail-backup-... folder printed by the installer. The included
-restore.cjs can restore unchanged code from that backup; it does not delete
-new database records or reverse completed sales. Sync device queues first.
-If rolling back after partial returns have been recorded, keep the v5 backend
-for financial reporting: older versions do not understand partial returns.
-
-PREVIOUS BUSINESS TOOLS / MANUFACTURING / OFFLINE REFERENCE
-
-SWITCH ON THE TOOLS YOU NEED
-
-Retail > Retail settings > Business type & tools.
-Choose General shop, Corner shop, Barber / salon or Bakery. Press Apply
-recommended tools, adjust the individual switches, then Save business tools.
-These choices belong to the selected Retail inventory. Turning a tool off
-retains its records. VAT and receipt business details stay workspace-wide.
-
-- Services: add an item with Item type = Service. It has a price, estimated cost
-  and duration, but does not receive stock or deduct stock when sold.
-- Appointments: book a service or add a walk-in, optionally choose a customer
-  and staff member. Start the service, then Take payment to complete it.
-  Record a cash deposit with an open till if required. Deposits are applied
-  once at checkout; cancelled bookings require an explicit deposit refund.
-- Email reminders: only sent when requested for a booking. Existing backend
-  RESEND_API_KEY and EMAIL_FROM settings are used; no new key is needed if
-  your existing app emails work. The backend must be running. Reminders are
-  service messages, not mailing-list signups. Use real times and consent.
-- Staff: add staff and optional commission percentage, choose staff and tips
-  at checkout. Commission is a reporting estimate; it is not payroll.
-- Cases: set a product's units per case. Stock in Cases or use Cases on a
-  delivery line; the system converts them to individual sellable units.
-- Offers: create percentage discounts, same-product multibuys or meal deals.
-  Priority decides which deal uses a unit first; one unit cannot be used by
-  two offers. Timed reductions set the starting price before offers.
-- Preorders: reserve current stock or add a Make / production order. Take an
-  optional cash deposit, mark it ready when finished stock is available, then
-  Collect & pay. Collection deducts stock and applies the deposit once.
-  Agreed preorder prices are preserved; new offers are not applied to them.
-- Production list: linked recipes can be opened in Manufacturing Calculate.
-  This is a planning handoff. Manufacturing and Retail stock remain separate:
-  receive finished products into Retail once before marking a make order ready.
-  It does not automatically transfer or duplicate finished stock.
-- Customers & loyalty: save a customer and show/print their QR card. Set the
-  stamp target, minimum spend and free reward in Retail settings. Select/scan
-  the customer at checkout, and select Redeem when their balance qualifies.
-  Refunds reverse stamps; a previously spent stamp may leave a negative balance.
-- Reductions & waste: schedule reduced prices and record unsold, expired or
-  damaged units. Waste removes available stock with an audit record and cost.
-- Gross profit: owner/admin reports compare actual discounted revenue after
-  VAT with saved costs. Tips are separate; overheads and payroll are excluded.
-- Customer display: Checkout > Open customer display. Move that second tab to
-  another screen connected to the SAME browser on the SAME device. It shows
-  basket, total and change only; customer contact details are never broadcast.
-  It is not a remote screen link for a separate phone/tablet/browser.
-
-MANUFACTURING
-
-Manufacturing now opens in its own workspace with Retail-style navigation,
-colours and cards, on desktop and mobile. Existing links redirect there.
-Existing Business-plan checks and the Manufacturing setting still apply.
-Your original materials, recipes, production, batches, equipment and timers
-use the same APIs and data. This installer does not replace those modules.
-
-BARCODE LOOKUP FOR THE WHOLE SHOP
-
-Scan or type an EAN/UPC in Add product, then Look up barcode. Searches route
-across Open Food Facts (including alcohol), Open Beauty Facts (toiletries),
-Open Products Facts (household/general goods) and Open Pet Food Facts.
-Check the name, brand and pack size before accepting; set your own price,
-cost, stock and VAT treatment. These are public catalogues, not a complete
-list of every product. If no match exists, enter the name once and save it
-against its barcode; your shop will recognise that saved item next time.
-Public lookup requires internet. Checkout scans your saved shop products.
-USB scanners should use Keyboard / HID mode with an Enter or Tab suffix.
-
-ONLINE / OFFLINE
-
-Ordinary cash sales of saved stock products and services can queue offline
-using the prepared, signed prices/promotions. Staff attribution, tips,
-customer loyalty, bookings, preorders and deposits need a working connection.
-Cash deposits increase till cash when taken but are not sales revenue until
-collection. Held deposits need an explicit refund with an open till.
-No integrated card payments, cash-drawer hardware or external POS sync are
-included. Use your existing external card system separately.
-
-PREPARE OFFLINE CASH CHECKOUT ON EACH DEVICE
-
-1. Sign in while connected. Pick exactly one workspace/inventory.
-2. Add the products and prices you need, then open the till with a counted float.
-3. Open Offline & sync > Prepare / refresh device. Allow persistent device
-   storage if the browser asks. Wait for the screen to confirm saved Retail
-   screens and checkout authorisation. Check it before trading offline.
-4. Checkout works with saved products for up to 24 hours after preparation.
-   Cash sales are durably saved to this device BEFORE the receipt appears.
-   Receipts identify sales awaiting server confirmation.
-5. Keep using the same browser/account/device. When internet/backend returns,
-   the current inventory's queue retries automatically. Offline & sync > Sync
-   now also retries. Check that no sales remain awaiting sync before closing
-   the till, changing device, clearing browser data or updating the app.
-6. Download saved sales backup if a sale needs attention. A backup preserves
-   the original details for reconciliation; it is not a second checkout and
-   should not be manually submitted under a new request ID.
-
-OFFLINE BOUNDARIES
-
-- This release supports OFFLINE CASH SALES and viewing saved Retail screens.
-  Product edits/new products, name lookups, deliveries, stock counts, refunds,
-  settings and till opening/cash management require a working connection.
-- The Retail page must have been prepared online. Other InventoryOS pages and
-  a new login are not available offline. External card payments are not added.
-- Pending sales belong to the account/workspace/inventory that saved them.
-  Sign in to that same account and select that inventory to sync its queue.
-- The backend rechecks current membership/role, plan and Retail enablement on
-  sync. It verifies signed price, tax, seller and till snapshots. Stock is
-  deducted from CURRENT stock, never replaced by an old device quantity.
-- The same request ID is retried after a lost response; no duplicate sale is
-  created. Sale time and upload time are retained separately.
-- A changed/closed till, removed access, expired authorisation or other conflict
-  stays in the queue for review. It is never silently dropped or attached to a
-  different till. Contact the workspace owner to reconcile a blocked sale.
-- Offline authorisation permits sales within 24 hours, with a seven-day upload
-  window. Reconnect promptly. An already-confirmed request can still be safely
-  recovered after expiry.
-- Private browsing and clearing/evicting site storage can lose device data.
-  Do not clear storage while sales are pending. Storage persistence is a
-  browser preference, not a guarantee. Download a backup if sync is blocked.
-- An open page syncs after reconnecting. If all tabs are closed, reopen Retail
-  in the same browser/account/inventory to resume; it is not a background server.
-- The backend remains required for reports, shared data and other devices.
-  Daily reorder snapshots are generated only while the backend is running.
+10. CONNECTIVITY / EMAILS
+The NEW staff Till app requires a backend connection for login, sales and card
+confirmation. Installing a PWA does not make those transactions offline.
+The existing ordinary Retail offline queue/signed cash workflow remains intact;
+sync older queued sales before installing or changing accounts/workspaces.
+No transactions or customer data are cached in either PWA service worker.
+Pro reorder email: Store settings > enable combined daily email, destination,
+time and timezone. Default time 17:00. Uses your EXISTING Resend configuration.
+One combined email per store/day; independent from the reseller reminder add-on.
+Your PC/backend must be running at send time. Retries are bounded and use the
+existing email helper's idempotency support.
 
 ROLLBACK
-
-Keep the retail-backup-... folder printed by install.cjs. Code can be restored
-with the included restore.cjs and that backup path, provided those files have
-not since been changed. Saved database records are never deleted by restore.
-Sync all saved device sales before changing or restoring the installed version.
+Keep the dated retail-backup-... folder. Stop the backend, close all registered
+tills and sync old offline sales first. Restore code with:
+  node .\InventoryOS-retail-platform-update\restore.cjs .\retail-backup-...
+The guarded restore refuses files edited after installation. It never deletes
+saved database records. After recording new card transactions, ask for a
+review before reverting to an older release that does not understand cards or
+multiple tills. A database backup is separate from the installer's code backup.
