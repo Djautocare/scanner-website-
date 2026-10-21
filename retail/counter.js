@@ -15,10 +15,10 @@ window.InventoryRetailCounter={create(H){
  function nav(base,active){
   const opened=new Set([...document.querySelectorAll('#retailNav details[open]')].map(x=>x.dataset.group));
   const n=new Map(base.map(x=>[x[0],x])),pending=D()?.counts?.filter(c=>c.status==='pending').length||0;
-  n.set('services',['services','◇','Services']);n.set('staff-access',['staff-access','♙','Staff & access']);n.set('transfer',['transfer','⇅','Import & export']);n.set('shelf-labels',['shelf-labels','▤','Shelf labels']);
-  const groups=[['Products',['products','deliveries','offers','waste','shelf-labels','transfer']],['Customers',['customers','preorders']],['Reports',['sales','reorders','insights']],['Admin',['staff-access','counts','settings','offline']]];
+  n.set('services',['services','◇','Services']);n.set('staff-access',['staff-access','♙','Staff access']);n.set('tills',['tills','▤','Tills']);n.set('retail-billing',['retail-billing','£','Stores & billing']);n.set('transfer',['transfer','⇅','Import & export']);n.set('shelf-labels',['shelf-labels','▤','Shelf labels']);
+  const groups=[['Products',['products','deliveries','offers','waste','shelf-labels','transfer']],['Customers',['customers','preorders']],['Reports',['sales','reorders','insights']],['Admin',['tills','staff-access','counts','retail-billing','settings','offline']]];
   const direct=['dashboard','checkout','services','appointments','tasks','cash'];
-  const allowed=k=>n.has(k)&&(k!=='services'||D()?.business?.config?.features.services)&&(k!=='team')&&(!['staff-access','transfer'].includes(k)||H.admin());
+  const allowed=k=>n.has(k)&&(k!=='services'||D()?.business?.config?.features.services)&&(k!=='team')&&(!['tills','staff-access','retail-billing','transfer'].includes(k)||H.admin()||(['tills','staff-access','retail-billing'].includes(k)&&H.platformAdmin?.()));
   const item=k=>{if(!allowed(k))return '';const x=n.get(k);return `<button type="button" class="retail-nav-button ${active===k?'active':''}" data-view="${k}" ${active===k?'aria-current="page"':''}><span aria-hidden="true">${x[1]}</span><span>${esc(k==='products'?'Products & stock':x[2])}</span>${k==='counts'&&pending?`<span class="counter-count" aria-label="${pending} counts due">${pending}</span>`:''}</button>`;};
   return direct.map(item).join('')+groups.map(([name,keys])=>{const rows=keys.map(item).join('');return rows?`<details class="counter-nav-group" data-group="${esc(name)}" ${keys.includes(active)||opened.has(name)?'open':''}><summary>${name}${name==='Admin'&&pending?`<span class="counter-count" aria-label="${pending} counts due">${pending}</span>`:''}</summary><div>${rows}</div></details>`:'';}).join('');
  }

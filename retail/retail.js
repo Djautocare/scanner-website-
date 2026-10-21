@@ -13,7 +13,9 @@
   };
   const nav = [['dashboard', '▦', 'Dashboard'], ['checkout', '▤', 'Checkout'], ['products', '□', 'Products & stock'], ['deliveries', '↓', 'Deliveries'], ['reorders', '↻', 'Reorder report'], ['counts', '✓', 'Stock counts'], ['tasks', '◷', 'Tasks'], ['cash', '£', 'Till & cash'], ['sales', '↗', 'Sales & receipts'], ['settings', '⚙', 'Retail settings'], ['offline', '⇅', 'Offline & sync']];
   let data = null, online = false, ready = false, generation = 0, currentScope = '', basket = [], search = '', checkoutBusy = false;
-  let registeredTillSupported=false;
+  let registeredTillSupported=false,platformAdminScope='';
+  const platformView=()=>['tills','retail-billing'].includes(view)||(view==='staff-access'&&(registeredTillSupported||data?.platform_supported));
+  const platformContent=()=>'<div class="retail-platform-inline"><p id="platformNotice" role="status"></p><div id="platformMain">Loading administration…</div></div>';
   const registeredTillKey=()=> 'inventoryos_retail_selected_till:'+scopeKey();
   const registeredTill=()=>localStorage.getItem(registeredTillKey())||'';
   let tillMode = location.hash.slice(1) === 'till';
@@ -22,6 +24,7 @@
   const offline = window.InventoryRetailOffline;
   const checkoutWriter = () => counterUI.canSell() && (!businessUI.needsOnline() || online) && (writer() || (shellReady && offline.canSell(offlineState) && scopeKey() === currentScope));
   function syncStatus() {
+    if(platformView()){$('#retailSyncStatus').hidden=true;return;}
     const count = offlineState.operations.filter(x => x.status !== 'applied').length;
     const blocked = offlineState.operations.some(x => x.status === 'blocked');
     const text = blocked ? 'Sync needs attention' : count ? count + ' sale' + (count === 1 ? '' : 's') + ' awaiting sync' : online ? (shellReady && offline.canSell(offlineState) ? 'Online · offline till ready' : 'Up to date') : 'Offline · saved data';
@@ -160,14 +163,23 @@
       table(['Sale', 'Amount', 'Sync status'], offlineState.operations.map(o => `<tr><td>${esc(o.sale.reference)}<small>${when(o.sale.created_at)}</small>${button('Receipt', 'offline-receipt', 'data-id="' + o.id + '"')}</td><td>${pounds(o.sale.total_pence)}</td><td>${esc(o.status === 'applied' ? 'Confirmed; refreshing stock' : o.status)}${o.error ? '<small>' + esc(o.error) + '</small>' : ''}</td></tr>`), 'No cash sales awaiting sync.'));
   }
   function render() {
+    $('#retailNotice').hidden=platformView();
     const tenderedBefore = $('#retailCheckoutForm input[name=tendered]')?.value;
     document.body.classList.toggle('retail-till-mode', tillMode);
     if (!tillMode && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-    const names = { ...Object.fromEntries(businessUI.nav().map(n => [n[0],n[2]])), dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Sales & receipts', settings: 'Retail settings', offline: 'Offline & sync', services:'Services', 'staff-access':'Staff & access', transfer:'Import & export', 'shelf-labels':'Shelf labels' };
+    const names = { ...Object.fromEntries(businessUI.nav().map(n => [n[0],n[2]])), dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Sales & receipts', settings: 'Retail settings', offline: 'Offline & sync', services:'Services', 'staff-access':'Staff access', tills:'Tills', 'retail-billing':'Stores & billing', transfer:'Import & export', 'shelf-labels':'Shelf labels' };
     if (!names[view]) view = 'dashboard';
     $('#retailTitle').textContent = names[view];
-    const navKey=JSON.stringify([view,online,data?.role,data?.business?.config.features,data?.counts?.filter(c=>c.status==='pending').length]);
+    const navKey=JSON.stringify([view,online,data?.role,data?.business?.config.features,data?.counts?.filter(c=>c.status==='pending').length,platformAdminScope]);
     if(navKey!==lastNavKey){$('#retailNav').innerHTML=counterUI.nav([...nav,...businessUI.nav()],view);lastNavKey=navKey;}
+    if(platformView()){
+      $('#retailView').innerHTML=platformContent();const context=scopeKey();
+      window.InventoryRetailPlatform.mount(view==='staff-access'?'staff':view==='retail-billing'?'billing':'tills',{
+       inventory:selected().inventory,
+       authorized:()=>{if(context!==scopeKey())return;platformAdminScope=context;$('#retailConnection').textContent='Connected';$('#retailConnection').classList.add('connected');$('#retailNav').innerHTML=counterUI.nav([...nav,...businessUI.nav()],view);},
+       storeChanged:async()=>{lastNavKey='';await InventoryTopbar.init();refresh();}
+      });$('#retailSyncStatus').hidden=true;return;
+    }
     if (!data) return;
     $('#retailRole').textContent = `${data.role} · Retail`;
     $('#retailView').innerHTML = ({ dashboard, products: () => productView(false), services: () => productView(true), checkout: checkoutView, deliveries: deliveryView, reorders: reordersView, counts: countsView, tasks: tasksView, cash: cashView, sales: salesView, settings: () => counterUI.appearance() + settingsView() + (data.business_supported ? businessUI.settings() : ''), offline: offlineView, ...businessUI.views, ...counterUI.views })[view]();
@@ -215,6 +227,7 @@
       if (!status.active) {
         await offline.lock(context, 'Retail is off or no longer entitled.');
         online = false; data = null; render();
+        if(platformView())return;
         $('#retailView').innerHTML = card(header('Retail is switched off', 'Enable it for this workspace in Settings.') + '<a href="settings.html">Open account settings</a>');
         notice(status.allowed ? 'Retail is off for this workspace.' : 'Activate a Retail subscription or trial in Stores & tills.'); return;
       }
@@ -241,7 +254,7 @@
       online = false; $('#retailConnection').textContent = 'Needs refresh'; $('#retailConnection').classList.remove('connected');
       if (e.status && e.status < 500) { await offline.lock(context, e.message); offlineState = { ...offlineState, snapshot: null }; }
       else if (offlineState.snapshot) data = offline.project(offlineState);
-      if (data) render(); else $('#retailView').innerHTML = empty('Retail could not be loaded. Install the backend update if you have not done so yet, then refresh.');
+      if (data||platformView()) render(); else $('#retailView').innerHTML = empty('Retail could not be loaded. Install the backend update if you have not done so yet, then refresh.');
       notice(e.message, true); syncStatus();
     }
   }
@@ -526,7 +539,7 @@
     }
   });
   const businessUI = window.InventoryRetailBusiness.create({ getData: () => data, api, mutate, refresh, render, esc, pounds, when, input, moneyInput, qtyInput, button, card, header, row, table, empty, dialog, formDialog, basket: () => basket, setBasket: value => { basket = value; }, switchView, online: () => online, admin, writer, scope: () => currentScope, notice, now: () => Date.now() + retailClockOffset });
-  const counterUI = window.InventoryRetailCounter.create({getData:()=>data,scope:()=>currentScope,api,mutate,refresh,render,esc,pounds,when,button,card,header,table,input,moneyInput,qtyInput,formDialog,dialog,admin,online:()=>online,basket:()=>basket,setBasket:v=>{basket=v;},clear:()=>{basket=[];businessUI.reset();},linked:()=>Boolean(businessUI.extras().booking_id||businessUI.extras().preorder_id||businessUI.extras().customer_id||Number(businessUI.extras().tip||0)),switchView,notice,afterDialog:fn=>{afterDialog=fn;},now:()=>Date.now()+retailClockOffset,labels:window.InventoryRetailLabels.create({esc,pounds,dialog,button})});
+  const counterUI = window.InventoryRetailCounter.create({getData:()=>data,scope:()=>currentScope,api,mutate,refresh,render,esc,pounds,when,button,card,header,table,input,moneyInput,qtyInput,formDialog,dialog,admin,platformAdmin:()=>platformAdminScope===scopeKey(),online:()=>online,basket:()=>basket,setBasket:v=>{basket=v;},clear:()=>{basket=[];businessUI.reset();},linked:()=>Boolean(businessUI.extras().booking_id||businessUI.extras().preorder_id||businessUI.extras().customer_id||Number(businessUI.extras().tip||0)),switchView,notice,afterDialog:fn=>{afterDialog=fn;},now:()=>Date.now()+retailClockOffset,labels:window.InventoryRetailLabels.create({esc,pounds,dialog,button})});
   async function boot() {
     if (!InventoryAPI.requireLogin()) return;
     const user = InventoryAPI.getUser();

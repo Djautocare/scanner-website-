@@ -24,7 +24,7 @@ No new npm packages are needed. Retail Stripe prices need three new settings;
 see STRIPE-SETUP.txt. You can test with an admin override before configuring them.
 
 3. START WITH A TEST STORE / RETAIL OVERRIDE
-- Open https://app.inventoryos.co.uk/retail/manage.html while logged in as owner.
+- Open https://app.inventoryos.co.uk/retail/index.html#retail-billing while logged in as owner.
 - Select an existing migrated store, or Add store.
 - Your restricted admin portal: Users > View account > Retail subscriptions &
   overrides. Choose this store. Set one-week Pro trial, or your desired plan,
@@ -37,20 +37,22 @@ see STRIPE-SETUP.txt. You can test with an admin override before configuring the
   do not receive automatic trial access. Admin can replace/remove this grant.
 
 4. SET UP STAFF AND TILLS
-In Stores & tills select the correct store:
-- Staff access > Add staff.
+In Retail select the store using the inventory bar, then open Admin:
+- Admin > Staff access > Add staff.
 - Set a unique business-wide staff number and 4-8 digit PIN.
 - Store permission: assign the staff member to this store; optionally allow
   them to approve refunds. Repeat for each store they should be able to use.
 - Print staff QR. The same QR identifies that person in their assigned stores.
   It never includes their PIN. Resetting PIN revokes prior sessions.
-- Tills > Add till. Choose the store and give the till a name, then Continue.
-  A single store is selected automatically. Starter and Pro include TWO tills.
+- Admin > Tills > Add till. The current store is selected automatically.
+  Give the till a name, then Continue. Starter and Pro include TWO tills.
 - Choose Use this device to connect immediately, or Connect another device
   to get its address and one-use code. Codes expire after ten minutes.
   Finish setup continues an existing till without registering another one.
   Change device replaces its connection within the SAME licensed till.
 - Open till and enter the physically counted opening float before selling.
+- Use Open Till app in the Retail header when you are ready to log in.
+  If access is revoked, reconnect the existing till rather than creating one.
 - Staff scan their QR (or type number), then enter their OWN PIN.
 - Lock / log out switches operators without signing the website account out.
   For a shared staff device, tick the sign-out option when choosing Use this

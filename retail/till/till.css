@@ -3,3 +3,5 @@ body.retail-body{padding:18px;min-height:100dvh}.pos-header{display:flex;justify
 @media print{.pos-header,#posNotice,#posMain{display:none!important}body.retail-body{padding:0}.retail-dialog[open]{margin:0;padding:0;overflow:visible}}
 
 .pos-header>div,.pos-product,.pos-basket-line>div,.pos-customer,#retailDialogBody{min-width:0;overflow-wrap:anywhere}
+
+@media(max-width:600px){.pos-header{display:grid;grid-template-columns:minmax(0,1fr)}.pos-header strong{white-space:nowrap}.pos-header .retail-action-row{justify-content:flex-start;flex-wrap:wrap}}
