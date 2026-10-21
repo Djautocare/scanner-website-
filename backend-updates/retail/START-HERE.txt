@@ -44,16 +44,18 @@ In Stores & tills select the correct store:
   them to approve refunds. Repeat for each store they should be able to use.
 - Print staff QR. The same QR identifies that person in their assigned stores.
   It never includes their PIN. Resetting PIN revokes prior sessions.
-- Tills > Register till. Starter and Pro include TWO registered positions.
-- Open till and enter the physically counted opening float.
-- Pair device / Replace device: on the actual checkout device open
-  https://app.inventoryos.co.uk/retail/till/index.html and enter the pairing code.
-  Codes expire after ten minutes and work once. Re-pairing replaces the prior
-  device within the SAME till position, without buying another licence.
+- Tills > Add till. Choose the store and give the till a name, then Continue.
+  A single store is selected automatically. Starter and Pro include TWO tills.
+- Choose Use this device to connect immediately, or Connect another device
+  to get its address and one-use code. Codes expire after ten minutes.
+  Finish setup continues an existing till without registering another one.
+  Change device replaces its connection within the SAME licensed till.
+- Open till and enter the physically counted opening float before selling.
 - Staff scan their QR (or type number), then enter their OWN PIN.
-- Lock / log out switches operators. Never share the owner's website login
-  with cashiers. Pairing the Till app clears any ordinary website login saved
-  in that browser, so an owner session is not left behind on a shared till.
+- Lock / log out switches operators without signing the website account out.
+  For a shared staff device, tick the sign-out option when choosing Use this
+  device, or use Shared till setup > Sign out website account in the Till app
+  before handing it to cashiers. Ordinary owner navigation preserves login.
 - Dedicated tills have no dashboard, product editing, cost, settings, billing
   or global reporting access. Opening other API routes with a Till credential
   is rejected by the website's normal JWT authentication.

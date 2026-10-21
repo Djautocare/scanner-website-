@@ -1,4 +1,9 @@
 'use strict';
-const CACHE='inventoryos-till-v1';const urls=['index.html','till.js?v=1','till.css?v=1','manifest.webmanifest','../../pwa/till-192.png','../../pwa/till-512.png','../../css/theme.css?v=5','../../js/theme.js?v=6','../retail.css?v=6','../keyboard-scanner.js?v=3','../scanner.js?v=6','../pricing.js?v=5','../print.js?v=1','../vendor/zxing-browser-0.1.5.min.js'].map(p=>new URL(p,self.location.href).href);
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(urls))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('inventoryos-till-')&&k!==CACHE).map(k=>caches.delete(k))))));
+const CACHE='inventoryos-till-v2';const urls=['index.html','till.js?v=2','till.css?v=1','manifest.webmanifest','../../pwa/till-192.png','../../pwa/till-512.png','../../css/theme.css?v=5','../../js/theme.js?v=6','../retail.css?v=6','../keyboard-scanner.js?v=3','../scanner.js?v=6','../pricing.js?v=5','../print.js?v=1','../vendor/zxing-browser-0.1.5.min.js'].map(p=>new URL(p,self.location.href).href);
+self.addEventListener('install',e=>e.waitUntil(
+ caches.open(CACHE).then(c=>c.addAll(urls)).then(()=>self.skipWaiting())
+));
+self.addEventListener('activate',e=>e.waitUntil(
+ caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('inventoryos-till-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())
+));
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const url=new URL(e.request.url);if(e.request.mode==='navigate'&&url.origin===self.location.origin&&url.pathname.startsWith('/retail/till/')){e.respondWith(fetch(e.request).catch(()=>caches.open(CACHE).then(c=>c.match(urls[0]))));return;}if(urls.includes(url.href))e.respondWith(caches.open(CACHE).then(async c=>await c.match(e.request)||fetch(e.request)));});
