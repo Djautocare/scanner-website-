@@ -1,0 +1,72 @@
+INVENTORYOS RETAIL — STORE DELETION (v16)
+
+1. Extract the whole InventoryOS-retail-store-deletion-update folder into your
+   backend folder, beside server.js. Do not copy individual files by hand.
+2. Finish transactions and sync saved offline sales, then stop the backend using
+   your usual working method.
+3. Open PowerShell in the backend folder and run:
+
+   node .\InventoryOS-retail-store-deletion-update\install.cjs
+   node .\check-retail.cjs
+   node .\check-retail-store-deletion.cjs
+
+4. If both checks pass, restart your backend and refresh/reopen Retail.
+
+No new .env settings or npm packages are required. Your existing Resend sender
+and API key are used. The checks do not send emails, delete data or change Stripe.
+The installer creates a code backup and adds its PostgreSQL table automatically
+when a check starts the Retail schema. Keep your normal database backups too.
+
+HOW TO REMOVE A STORE
+
+Only its Retail business owner can delete it. Open Admin > Stores & billing,
+select the unused store, and choose Delete store near the bottom.
+
+Finish transactions, log staff out of drawers and balance/close the store's tills.
+The screen lists anything that needs finishing. Sync every offline device first.
+Choose Email my CSV backup. It goes only to the account email used to sign in,
+looked up on the server. Save every attachment before continuing.
+
+Tick the box confirming the emailed backup has been received and saved. Type
+Confirm delete exactly, then press Permanently delete store.
+
+Products have their own products.csv. The email includes separate CSVs for sales,
+sale lines, refunds, customers, stock history, counts, orders/delivery lines,
+cash/tills, staff assignments, appointments, loyalty, wastage, tasks, reports,
+settings and other store business records. backup-index.csv lists every file.
+Money columns ending _pence are GBP pence. Nested settings/receipt snapshots are
+JSON within CSV cells. Import barcode columns as Text to preserve leading zeroes.
+Spreadsheet formulas in text fields are escaped for safe opening.
+
+Staff PINs, account passwords, QR/login tokens and temporary authentication caches
+are never emailed. Your account, shared Retail business, Help history and other
+stores remain. Staff assigned to another store retain their access there.
+
+BILLING AND FAILURE HANDLING
+
+Deleting stops renewal of the store's Retail and email-receipt subscriptions at
+the current billing period's end. It does not refund payments, erase invoices or
+waive usage already incurred. Final email-receipt usage can still be invoiced.
+Open, unpaid checkout sessions are expired; a newly completed payment requires
+billing to be refreshed and a new backup before deletion.
+
+If email, billing or database validation fails, store data is retained. If Stripe
+renewals were already stopped before a later failure, that cancellation remains;
+the screen explains this. A timed-out confirmed deletion can be safely retried.
+
+Backups expire after 23 hours. A change to store data requires a fresh backup.
+Email acceptance is checked by the server; actual receipt must also be confirmed
+by the owner. Temporary backup email payloads are removed on successful deletion
+or expiry. Minimal deletion/billing references remain for safe retries and Stripe
+webhooks; shared workspace idempotency records remain to prevent repeated sales.
+
+If the full encoded backup exceeds 28 MB, deletion is blocked and support must
+arrange the full backup. No truncated backup is sent. Unknown additional store
+tables with records also block deletion until they can be included safely.
+
+INSTALLER SAFETY
+
+This includes previous Retail updates. Your .env, original Help service and
+protected admin middleware are retained. The installer stops on unrecognised
+local edits instead of overwriting them. Do not bypass that protection.
+Restoring old code cannot undo a completed deletion or a Stripe cancellation.

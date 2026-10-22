@@ -128,6 +128,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-platform.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-ordering.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-email-receipts.sql'), 'utf8'));
+        await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-store-deletion.sql'), 'utf8'));
         await require('./retailWorkspaces').schema(c);
         await c.query('COMMIT');
       } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
@@ -160,6 +161,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     }
     const result = { workspace_id: workspace, workspace_name: w.name, inventory_id: inventoryId, actor_id: actor, role, settings: setting, access, staff_token: req.headers['x-retail-staff-token'], device_id: req.headers['x-retail-device-id'] };
     result.retail_access = await platform.access(c, workspace, inventoryId);
+    if(inventoryId && result.retail_access.deleting)throw fail('Store deletion is in progress. Resume it from Stores & billing',409);
     if (entitled && !result.retail_access.allowed) throw fail('An active Retail subscription or Retail trial is required for this store',402);
     if (inventoryId) { result.business = platform.limitBusiness(await business.config(c, result),result.retail_access); result.counter = await operations.config(c, result); result.settings={...setting,...result.retail_access.settings}; result.registered_till_id=req.headers['x-retail-till-id']?id(req.headers['x-retail-till-id']):null; if(result.registered_till_id)await platform.validateTill(c,result); }
     return result;
@@ -542,7 +544,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   function start() {
     if (worker) return;
     let running = false;
-    const run = async () => { if (running) return; running = true; try { await tick(); await business.reminderTick(); await platform.receipts.tick(); await platform.tick(); await ordering.tick(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
+    const run = async () => { if (running) return; running = true; try { await tick(); await business.reminderTick(); await platform.receipts.tick(); await platform.tick(); await ordering.tick(); await deletions.cleanup(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
     run(); worker = setInterval(run, 60000); worker.unref?.();
   }
   const business = require('./retailBusiness').createBusiness({ pool, now, calculateAccess, sendEmail, args, id, fail, text, integer, money, timestamp, product, stock, till, cash, audit, vatSnapshot, ensureSchema, scope });
@@ -551,7 +553,8 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   const platform = require('./retailPlatform').createPlatform({pool,now,id,text,integer,money,fail,args,audit,ensureSchema,scope,transaction,till,business,operations,checkout,openTill,movement,balance,report,reorders,product,sendEmail,calculateAccess,stripe:stripeClient});
   const ordering = require('./retailOrdering').createOrdering({pool,args,id,text,integer,money,fail,now,product,audit,ensureSchema,scope,createDelivery,reorders,lookupProduct});
   const reports = require('./retailReports').createReports({pool,args,id,text,integer,fail,now,ensureSchema,scope});
-  return { ordering,reports,platform, operations, catalogueTransfer, business, ensureSchema, scope, status, transaction, settings, saveProduct, receiveStock, countStock, requestCount, openTill, movement, balance, checkout, refund, createDelivery, deliveryStatus, receiveDelivery, createTask, taskStatus, overview, history, report, reorders, tick, start };
+  const deletions = require('./retailStoreDeletion').create({pool,now,id,fail,ensureSchema,scope,sendEmail,stripe:stripeClient});
+  return { deletions,ordering,reports,platform, operations, catalogueTransfer, business, ensureSchema, scope, status, transaction, settings, saveProduct, receiveStock, countStock, requestCount, openTill, movement, balance, checkout, refund, createDelivery, deliveryStatus, receiveDelivery, createTask, taskStatus, overview, history, report, reorders, tick, start };
 }
 
 let live;

@@ -1,3 +1,3 @@
 'use strict';
 self.RETAIL_DASHBOARD=true;
-importScripts('../sw.js?v=17');
+importScripts('../sw.js?v=18');

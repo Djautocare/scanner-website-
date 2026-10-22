@@ -23,10 +23,10 @@ function createPlatform(H){
   if(!row)return {allowed:false,plan:'none',paid_plan:'none',till_allowance:0,features:Object.fromEntries(FEATURES.map(k=>[k,false])),settings:{}};
   const active=['active','trialing'].includes(row.stripe_status)&&!(row.cancel_at_period_end&&row.period_end&&Date.parse(row.period_end)<=now().getTime()),overrideActive=!row.override_expires_at||Date.parse(row.override_expires_at)>now().getTime();
   const paid=active?row.paid_plan:'none',plan=overrideActive&&row.override_plan?row.override_plan:paid;
-  const allowed=row.enabled&&Boolean(PLANS[plan]||LEGACY_PLANS.includes(plan));
+  const allowed=!row.deleting_backup_id&&row.enabled&&Boolean(PLANS[plan]||LEGACY_PLANS.includes(plan));
   const features=Object.fromEntries(FEATURES.map(k=>[k,allowed]));
   if(overrideActive)for(const [k,v]of Object.entries(row.feature_overrides||{}))if(FEATURES.includes(k)&&typeof v==='boolean')features[k]=allowed&&v;
-  return {display_name:row.name,billing_environment:B.mode(row),allowed,plan,plan_name:allowed?'InventoryOS Retail':'Retail inactive',paid_plan:paid,stripe_status:row.stripe_status,unlimited_tills:allowed,till_allowance:allowed?null:0,paid_pairs:Number(row.paid_pairs),override_extra_pairs:overrideActive?row.override_extra_pairs:0,features,settings:row.settings||{},override_active:overrideActive&&Boolean(row.override_plan||row.override_extra_pairs||Object.keys(row.feature_overrides||{}).length),override_plan:row.override_plan,override_expires_at:row.override_expires_at,reverts_to:paid,reason:row.override_reason,period_end:row.period_end,cancel_at_period_end:row.cancel_at_period_end};
+  return {deleting:Boolean(row.deleting_backup_id),display_name:row.name,billing_environment:B.mode(row),allowed,plan,plan_name:allowed?'InventoryOS Retail':'Retail inactive',paid_plan:paid,stripe_status:row.stripe_status,unlimited_tills:allowed,till_allowance:allowed?null:0,paid_pairs:Number(row.paid_pairs),override_extra_pairs:overrideActive?row.override_extra_pairs:0,features,settings:row.settings||{},override_active:overrideActive&&Boolean(row.override_plan||row.override_extra_pairs||Object.keys(row.feature_overrides||{}).length),override_plan:row.override_plan,override_expires_at:row.override_expires_at,reverts_to:paid,reason:row.override_reason,period_end:row.period_end,cancel_at_period_end:row.cancel_at_period_end};
  }
  async function access(c,w,inventory){
   if(inventory){const row=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2',[w,inventory])).rows[0];return entitlement(row);}
@@ -51,11 +51,11 @@ function createPlatform(H){
   const staff=(await c.query('SELECT st.id,st.inventory_id,st.name,st.active,cr.staff_number,cr.qr_token,cr.version AS credential_version FROM retail_team st LEFT JOIN retail_staff_credentials cr ON cr.staff_id=st.id WHERE st.workspace_id=$1 ORDER BY st.name',[s.workspace_id])).rows;
   const assignments=(await c.query('SELECT * FROM retail_staff_assignments WHERE workspace_id=$1',[s.workspace_id])).rows;
   const inventories=(await c.query('SELECT id,name FROM inventories WHERE workspace_id=$1 ORDER BY name',[s.workspace_id])).rows;
-  return {success:true,stores:stores.map(publicStore),tills,staff,assignments,inventories,plans:PLANS,features:FEATURES,server_now:stamp()};});}
+  return {success:true,role:s.role,stores:stores.map(publicStore),tills,staff,assignments,inventories,plans:PLANS,features:FEATURES,server_now:stamp()};});}
  async function locations(req){return connect(async c=>{const s=await H.scope(c,req,{inventory:false,enabled:false,entitled:false});const rows=(await c.query('SELECT i.id,i.name AS inventory_name,r.name AS display_name,r.customer_number,r.inventory_id AS registered_inventory FROM inventories i LEFT JOIN retail_stores r ON r.inventory_id=i.id AND r.workspace_id=i.workspace_id WHERE i.workspace_id=$1 ORDER BY COALESCE(r.name,i.name),i.id',[s.workspace_id])).rows;const stores=[];for(const r of rows){const a=await access(c,s.workspace_id,r.id);stores.push({...r,display_name:r.display_name||r.inventory_name,registered:Boolean(r.registered_inventory),billing_environment:a.billing_environment,plan_name:a.plan_name||'Retail inactive',plan:a.plan,allowed:a.allowed,override_active:a.override_active,override_expires_at:a.override_expires_at,reverts_to:a.reverts_to});}return {success:true,locations_supported:true,workspace:{id:s.workspace_id,name:s.workspace_name,role:s.role},stores};});}
  async function ownerChange(req){return connect(async c=>{const s=await H.scope(c,req,{inventory:false,admin:true,enabled:false,entitled:false});await lock(c,s.workspace_id);const b=req.body||{};
   if(b.action==='create-store')return {success:true,...await createStore(c,s,b)};
-  const inventory=id(b.inventory_id),store=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2 FOR UPDATE',[s.workspace_id,inventory])).rows[0];if(!store)throw fail('Store unavailable',404);s.inventory_id=inventory;const a=entitlement(store);
+  const inventory=id(b.inventory_id),store=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2 FOR UPDATE',[s.workspace_id,inventory])).rows[0];if(!store)throw fail('Store unavailable',404);if(store.deleting_backup_id)throw fail('Store deletion is in progress. Resume it from Stores & billing',409);s.inventory_id=inventory;const a=entitlement(store);
   if(b.action==='store-display-name'){
    if(typeof b.display_name!=='string')throw fail('Enter a Retail display name');if(typeof b.previous_name!=='string'||b.previous_name!==store.name)throw fail('Store details changed. Reload before saving',409);
    const inv=(await c.query('SELECT name FROM inventories WHERE id=$1 AND workspace_id=$2',[inventory,s.workspace_id])).rows[0];if(!inv)throw fail('Inventory unavailable',403);
@@ -229,7 +229,7 @@ function createPlatform(H){
   const reason=text(b.reason,'Override reason',500);await c.query('UPDATE retail_stores SET override_plan=$2,override_extra_pairs=$3,feature_overrides=$4,override_expires_at=$5,override_reason=$6,override_version=override_version+1 WHERE inventory_id=$1',[inventory,plan,pairs,JSON.stringify(features),expires,reason]);await event(c,s,'admin_retail_override',{before:{plan:row.override_plan,pairs:row.override_extra_pairs,features:row.feature_overrides,expires:row.override_expires_at},after:{plan,pairs,features,expires},reason});return {success:true,entitlement:await access(c,row.workspace_id,inventory)};
  });}
  async function billing(req){
-  await H.ensureSchema();const c=await pool.connect();try{await c.query('BEGIN');const s=await H.scope(c,req,{inventory:false,admin:true,enabled:false,entitled:false});await lock(c,s.workspace_id);const b=req.body,inventory=id(b.inventory_id),row=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2 FOR UPDATE',[s.workspace_id,inventory])).rows[0];if(!row)throw fail('Store unavailable',404);if(s.role!=='owner')throw fail('Only the Retail business owner can manage subscription billing',403);const api=B.client(row),environment=B.mode(row);
+  await H.ensureSchema();const c=await pool.connect();try{await c.query('BEGIN');const s=await H.scope(c,req,{inventory:false,admin:true,enabled:false,entitled:false});await lock(c,s.workspace_id);const b=req.body,inventory=id(b.inventory_id),row=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2 FOR UPDATE',[s.workspace_id,inventory])).rows[0];if(!row)throw fail('Store unavailable',404);if(row.deleting_backup_id)throw fail('Store deletion is in progress. Resume it from Stores & billing',409);if(s.role!=='owner')throw fail('Only the Retail business owner can manage subscription billing',403);const api=B.client(row),environment=B.mode(row);
    if(b.action==='portal'||b.action==='cancel'){
     if(b.action==='cancel'&&!row.stripe_subscription_id)throw fail('This shop has no subscription to cancel',409);
     if(!row.stripe_customer_id)throw fail('This store has no paid Retail subscription yet. Admin overrides do not create Stripe billing',409);
@@ -279,6 +279,7 @@ function createPlatform(H){
   await event(c,{workspace_id:workspace,inventory_id:inventory,actor_id:null},'stripe_retail_synced',{subscription_id:sub.id,status:sub.status,plan,pairs});return true;
  }
  async function webhook(event,api,environment='live'){
+  if(await require('./retailStoreDeletion').create(H).webhook(event,environment))return true;
   if(await receipts.webhook(event,api,environment))return true;
   if(typeof event.livemode==='boolean'&&event.livemode!==(environment==='live'))throw fail('Stripe webhook environment mismatch',400);
   let object=event.data.object,subId=null;
