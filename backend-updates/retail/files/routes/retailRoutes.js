@@ -19,7 +19,11 @@ const handle = fn => async (req, res) => {
 router.get('/workspaces',handle(retailWorkspaces.directory));
 router.post('/workspaces',handle(retailWorkspaces.createBusiness));
 router.get('/billing-summary',handle(R.platform.billingSummary));
+router.get('/email-receipts/summary',handle(R.platform.receipts.summary));
 router.use(retailWorkspaces.resolve);
+router.post('/email-receipts',handle(R.platform.receipts.enqueue));
+router.get('/email-receipts/status',handle(R.platform.receipts.status));
+router.post('/email-receipts/billing',handle(R.platform.receipts.billing));
 router.get('/locations',handle(R.platform.locations));
 router.get('/status', handle(R.status));
 router.get('/overview', handle(R.overview));

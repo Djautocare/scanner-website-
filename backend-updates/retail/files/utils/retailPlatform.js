@@ -14,6 +14,7 @@ function createPlatform(H){
  const stamp=()=>now().toISOString();
  const app=()=>String(process.env.APP_URL||'https://app.inventoryos.co.uk').replace(/\/$/,'');
  const B=require('./retailBilling').create(H);
+ const receipts=require('./retailReceiptEmails').create({...H,entitlement});
  const price=k=>String(k==='retail'?(process.env.STRIPE_PRICE_RETAIL_MONTHLY||process.env.STRIPE_PRICE_RETAIL_PRO_MONTHLY||''):(process.env['STRIPE_PRICE_RETAIL_'+k.toUpperCase()+'_MONTHLY']||'')).trim();
  async function event(c,s,kind,data){await c.query('INSERT INTO retail_platform_events(id,workspace_id,inventory_id,actor_id,kind,data,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)',[uuid(),s.workspace_id,s.inventory_id||null,s.actor_id||null,kind,JSON.stringify(data),stamp()]);}
  async function lock(c,w){await c.query("SELECT pg_advisory_xact_lock(hashtextextended('retail-workspace:'||$1,0))",[w]);}
@@ -156,7 +157,7 @@ function createPlatform(H){
   const till=await H.till(c,s),pricing=await H.business.pricing(c,s),cfg=s.business;
   const cardTotals=(await c.query("SELECT COALESCE(SUM(total_pence-deposit_applied_pence),0)::bigint total FROM retail_sales WHERE till_session_id=$1 AND payment_method='card'",[till?.id||null])).rows[0];
   const publicStaff={id:s.pos_staff.id,name:s.pos_staff.name,number:s.pos_staff.number,can_refund:s.pos_staff.can_refund,can_manage:s.pos_staff.can_manage};const receiptSettings=Object.fromEntries(['vat_version','vat_receipts','vat_number','receipt_business_name','receipt_business_address'].map(k=>[k,s.settings[k]]));
-  return {...base,...await drawers.state(c,s),locked:false,staff:publicStaff,settings:receiptSettings,products:products.filter(p=>p.item_kind!=='service'||s.business.features.services),parked,pricing,business:{...cfg,features:cfg.features},cash_open:Boolean(till)};
+  return {...base,...await drawers.state(c,s),locked:false,email_receipts:await receipts.info(c,(await c.query('SELECT * FROM retail_stores WHERE inventory_id=$1',[s.inventory_id])).rows[0]),staff:publicStaff,settings:receiptSettings,products:products.filter(p=>p.item_kind!=='service'||s.business.features.services),parked,pricing,business:{...cfg,features:cfg.features},cash_open:Boolean(till)};
  });}
  async function customers(req){return connect(async c=>{const s=await posScope(c,req);if(!s.retail_access.features.loyalty||!s.business.features.loyalty)throw fail('Customer loyalty requires active Retail access and Loyalty enabled',402);const q=text(req.query.query||'','Search',160,true),card=String(req.query.card||'');let customer=null;
   if(card){if(!/^IO-LC-[0-9a-f-]{36}$/i.test(card))throw fail('Scan an InventoryOS customer loyalty QR');customer=(await c.query('SELECT id,name,email,phone,stamps,card_token,active FROM retail_customers WHERE workspace_id=$1 AND inventory_id=$2 AND card_token=$3 AND active',[...args(s),id(card.slice(6))])).rows[0];if(!customer)throw fail('Loyalty account not found at this store',404);}
@@ -211,13 +212,14 @@ function createPlatform(H){
    await drawers.reconcile(c,s,request);await event(c,s,'payment_recording_reconciled',{request_id:request,approved_by:approver.id,processed_by:s.pos_staff.id,till_id:s.registered_till_id,reason:text(req.body.reason,'Reconciliation reason',300)});return {success:true,reconciled:true};
   });
  }
- async function adminStores(req){return connect(async c=>{const user=id(req.params.id);if(!(await c.query('SELECT id FROM users WHERE id=$1',[user])).rows.length)throw fail('Account not found',404);const stores=(await c.query('SELECT s.* FROM retail_stores s JOIN workspaces w ON w.id=s.workspace_id WHERE w.owner_user_id=$1 ORDER BY s.name',[user])).rows;const history=(await c.query('SELECT e.* FROM retail_platform_events e JOIN workspaces w ON w.id=e.workspace_id WHERE w.owner_user_id=$1 AND e.kind IN(\'admin_retail_override\',\'admin_till_revoked\',\'admin_billing_environment\') ORDER BY e.created_at DESC LIMIT 50',[user])).rows;return {success:true,stores:stores.map(publicStore),history,features:FEATURES,server_now:stamp()};});}
+ async function adminStores(req){return connect(async c=>{const user=id(req.params.id);if(!(await c.query('SELECT id FROM users WHERE id=$1',[user])).rows.length)throw fail('Account not found',404);const stores=(await c.query('SELECT s.* FROM retail_stores s JOIN workspaces w ON w.id=s.workspace_id WHERE w.owner_user_id=$1 ORDER BY s.name',[user])).rows;const history=(await c.query('SELECT e.* FROM retail_platform_events e JOIN workspaces w ON w.id=e.workspace_id WHERE w.owner_user_id=$1 AND e.kind IN(\'admin_retail_override\',\'admin_till_revoked\',\'admin_billing_environment\',\'admin_receipt_email_override\') ORDER BY e.created_at DESC LIMIT 50',[user])).rows;return {success:true,stores:await Promise.all(stores.map(async row=>({...publicStore(row),email_receipts:await receipts.info(c,row)}))),history,features:FEATURES,server_now:stamp()};});}
  async function adminOverride(req){return connect(async c=>{const user=id(req.params.id),inventory=id(req.body.inventory_id);const row=(await c.query('SELECT s.* FROM retail_stores s JOIN workspaces w ON w.id=s.workspace_id WHERE w.owner_user_id=$1 AND s.inventory_id=$2 FOR UPDATE OF s',[user,inventory])).rows[0];if(!row)throw fail('Store not owned by this account',404);await lock(c,row.workspace_id);
   const s={workspace_id:row.workspace_id,inventory_id:inventory,actor_id:req.user.id},b=req.body;
+  if(b.action==='receipt-email-override'){const result=await receipts.admin(c,row,b);await event(c,s,'admin_receipt_email_override',{enabled:b.enabled,expires_at:b.expires_at,reason:b.reason});return result;}
   if(b.action==='billing-environment'){
    if(!['live','sandbox'].includes(b.environment))throw fail('Choose live or sandbox billing');
    if(b.previous_environment!==B.mode(row))throw fail('Billing environment changed; reload this account',409);
-   if(row.stripe_subscription_id||row.stripe_customer_id||row.checkout_session_id)throw fail('This shop already has Stripe billing history. Create a separate test shop instead',409);
+   if(row.stripe_subscription_id||row.stripe_customer_id||row.checkout_session_id||(await c.query('SELECT 1 FROM retail_receipt_accounts WHERE inventory_id=$1 AND stripe_customer_id IS NOT NULL',[inventory])).rows.length)throw fail('This shop already has Stripe billing history. Create a separate test shop instead',409);
    const reason=text(b.reason,'Reason',500);await c.query('UPDATE retail_stores SET billing_environment=$2 WHERE inventory_id=$1',[inventory,b.environment]);await event(c,s,'admin_billing_environment',{before:B.mode(row),after:b.environment,reason});return {success:true};
   }
   if(b.action==='revoke-till'){const r=await c.query('UPDATE retail_registered_tills SET device_hash=NULL,pair_hash=NULL,generation=generation+1 WHERE inventory_id=$1 AND id=$2',[inventory,id(b.till_id)]);if(!r.rowCount)throw fail('Till unavailable',404);await event(c,s,'admin_till_revoked',{till_id:b.till_id,reason:text(b.reason,'Reason',500)});return {success:true};}
@@ -277,6 +279,7 @@ function createPlatform(H){
   await event(c,{workspace_id:workspace,inventory_id:inventory,actor_id:null},'stripe_retail_synced',{subscription_id:sub.id,status:sub.status,plan,pairs});return true;
  }
  async function webhook(event,api,environment='live'){
+  if(await receipts.webhook(event,api,environment))return true;
   if(typeof event.livemode==='boolean'&&event.livemode!==(environment==='live'))throw fail('Stripe webhook environment mismatch',400);
   let object=event.data.object,subId=null;
   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)){
@@ -305,6 +308,6 @@ function createPlatform(H){
  }
  const waste=require('./retailWaste').createWaste({...H,connect,device,lock,posScope,checkPin,failedAttempt});
  const drawers=require('./retailDrawers').createDrawers({...H,connect,device,lock,access,event,posScope});
- return {locations,drawers,access,entitlement,limitBusiness,management,ownerChange,validateTill,posScope,pair,login,logout,state,customers,refund,refundSale,posRefund,posWaste,startWaste:waste.start,reconcile,authorizeAction,adminStores,adminOverride,billing,billingSummary:B.summary,webhook,tick,features:FEATURES};
+ return {receipts,locations,drawers,access,entitlement,limitBusiness,management,ownerChange,validateTill,posScope,pair,login,logout,state,customers,refund,refundSale,posRefund,posWaste,startWaste:waste.start,reconcile,authorizeAction,adminStores,adminOverride,billing,billingSummary:B.summary,webhook,tick,features:FEATURES};
 }
 module.exports={createPlatform,PLANS,PRO_FEATURES,BASE_FEATURES};

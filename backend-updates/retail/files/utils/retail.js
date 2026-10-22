@@ -127,6 +127,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-operations.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-platform.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-ordering.sql'), 'utf8'));
+        await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-email-receipts.sql'), 'utf8'));
         await require('./retailWorkspaces').schema(c);
         await c.query('COMMIT');
       } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
@@ -513,7 +514,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const registeredTills=(await c.query('SELECT t.id,t.name,t.slot,t.active,(se.id IS NOT NULL) AS open,st.name AS assigned_to,(d.transaction_id IS NOT NULL) AS in_transaction FROM retail_registered_tills t LEFT JOIN retail_till_sessions se ON se.registered_till_id=t.id AND se.closed_at IS NULL LEFT JOIN retail_drawer_assignments d ON d.till_id=t.id LEFT JOIN retail_team st ON st.id=d.staff_id WHERE t.workspace_id=$1 AND t.inventory_id=$2 ORDER BY t.slot,t.name',args(s))).rows.map(t=>({...t,licensed:s.retail_access.allowed&&(s.retail_access.unlimited_tills||t.slot<=s.retail_access.till_allowance)}));
       const orderingData=await ordering.overview(c,s);
       await c.query('COMMIT');
-      return { success: true, ordering:orderingData, registered_tills:registeredTills, platform_supported:true,retail_access:s.retail_access, operations: counter, business_supported: true, business: tools, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id, tools), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
+      return { success: true, email_receipts:await platform.receipts.info(c,{...(await c.query('SELECT * FROM retail_stores WHERE inventory_id=$1',[s.inventory_id])).rows[0]}), ordering:orderingData, registered_tills:registeredTills, platform_supported:true,retail_access:s.retail_access, operations: counter, business_supported: true, business: tools, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id, tools), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
     } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
   }
   async function history(req) {
@@ -532,6 +533,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         await c.query("SELECT pg_advisory_xact_lock(hashtextextended('retail-workspace:'||$1,0))", [row.workspace_id]);
         const fresh = (await c.query('SELECT w.*,u.admin_plan_override,r.enabled,r.report_time,r.timezone FROM workspaces w JOIN users u ON u.id=w.owner_user_id JOIN retail_settings r ON r.workspace_id=w.id WHERE w.id=$1 FOR SHARE OF w,u,r', [row.workspace_id])).rows[0];
         if (fresh?.enabled && (await platform.access(c,row.workspace_id,row.inventory_id)).allowed) {const ra=await platform.access(c,row.workspace_id,row.inventory_id);await report(c, { workspace_id: row.workspace_id, inventory_id: row.inventory_id, settings: {...fresh,...ra.settings} });}
+        await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-email-receipts.sql'), 'utf8'));
         await require('./retailWorkspaces').schema(c);
         await c.query('COMMIT');
       } catch (e) { await c.query('ROLLBACK'); console.error('Retail daily report failed:', e.code || e.name); } finally { c.release(); }
@@ -540,7 +542,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   function start() {
     if (worker) return;
     let running = false;
-    const run = async () => { if (running) return; running = true; try { await tick(); await business.reminderTick(); await platform.tick(); await ordering.tick(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
+    const run = async () => { if (running) return; running = true; try { await tick(); await business.reminderTick(); await platform.receipts.tick(); await platform.tick(); await ordering.tick(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
     run(); worker = setInterval(run, 60000); worker.unref?.();
   }
   const business = require('./retailBusiness').createBusiness({ pool, now, calculateAccess, sendEmail, args, id, fail, text, integer, money, timestamp, product, stock, till, cash, audit, vatSnapshot, ensureSchema, scope });

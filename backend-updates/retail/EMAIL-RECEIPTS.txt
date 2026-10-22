@@ -1,0 +1,86 @@
+InventoryOS Retail email receipts — v13
+
+Optional independent per-shop subscription. The existing £19.99 Retail
+subscription is unchanged. Printed receipts stay included in Retail.
+
+INSTALL
+1. Extract InventoryOS-retail-email-receipts-update into your backend folder.
+2. Open PowerShell in the backend folder and run:
+   node .\InventoryOS-retail-email-receipts-update\install.cjs
+3. Configure new public Stripe prices (no payments or subscriptions created):
+   node .\setup-retail-email-receipts.cjs --sandbox
+   node .\setup-retail-email-receipts.cjs --live
+4. Run:
+   node .\check-retail-email-receipts.cjs
+5. Restart the InventoryOS Backend task and refresh the website with Ctrl+F5.
+
+The setup uses your existing private live/sandbox keys locally. Never send
+those keys to anyone. It appends only the new PUBLIC price IDs to backend/.env.
+A restricted setup key needs Products Write, Prices Write and Billing Meters
+Write. Runtime additionally uses Billing Meter Events Write (Billing All Write
+covers the Billing permissions). Your existing Customers, Checkout and portal
+permissions remain required. If setup reports insufficient permissions, adjust
+only that key in the correct Stripe account and rerun; no new key is required.
+
+The sender uses RETAIL_RECEIPT_FROM, falling back to your existing EMAIL_FROM.
+If needed, add this public sender setting privately in backend/.env:
+RETAIL_RECEIPT_FROM=receipts@inventoryos.co.uk
+The sending domain must already be verified in Resend. The sender display name
+comes from the business name saved on the sale; it varies for each shop.
+No separate Resend account or domain is needed for each shop. Replies can use
+the shop's contact email saved on its email-receipt billing page. If blank,
+replies go to the shop owner's account email, not InventoryOS support.
+
+DATABASE
+The check creates retail_receipt_accounts and retail_receipt_emails safely.
+No manual PostgreSQL table creation is needed. Existing stock/sales remain.
+
+STRIPE / PRICING
+£2.99 upfront covers the first 30 days (up to 25,000 sends). The monthly usage
+subscription starts at day 30 and is charged at the end of each usage month:
+0–1,000 £2.99; 1,001–5,000 £4.99; 5,001–10,000 £9.99;
+10,001–25,000 £19.99. The minimum applies even with no receipt sends.
+After the introduction, there is no advance estimate-based band charge or
+retroactive adjustment to the £2.99 introduction. Stripe bills actual usage
+in arrears. The screen shows the current usage-month estimate.
+Only provider-accepted sends count. Automatic retries reuse the same request
+and meter event. An explicitly requested resend is another email and counts.
+Sending pauses at 25,000/month; request higher volume support separately.
+
+These are independent Stripe subscriptions/customers for each shop's add-on,
+so usage cannot be combined with another shop, base Retail or legacy plans.
+Manage/cancel from Retail billing -> Manage email-receipt billing & usage.
+Cancellation is at period end; already incurred usage can be billed finally.
+Cancelling the base Retail plan also schedules add-on cancellation. Access
+requires Retail to remain active and a paid add-on or temporary admin override.
+
+No new webhook is needed. The existing signed live and isolated sandbox
+Retail endpoints route receipt add-on events using their product metadata.
+
+TEST
+Use your existing sandbox shop. Set a temporary override in:
+Admin -> account -> Retail -> selected shop -> Email-receipt test override.
+It expires within 31 days and never changes existing Stripe charges.
+For payment testing, remove that override and activate the add-on in the
+sandbox shop. A paid base Retail subscription (sandbox or live as applicable)
+is required to purchase the add-on. The main sandbox Retail test subscription
+counts as paid access. Sandbox receipt emails are deliberately redirected to
+the shop owner's account email, regardless of the customer email entered.
+
+CUSTOMER USE
+After a completed sale: Print, Email / resend receipt, Print & email, or Done.
+Loyalty email is prefilled when available. No marketing signup is created.
+Receipts contain the saved shop identity, lines, discounts, total, payment and
+saved VAT breakdown when applicable. Wastage receipts cannot be emailed here.
+Transactions -> Receipt also offers Email / resend receipt.
+Offline back-office cash receipts are queued on that device until the sale
+syncs. Keep browser data until sync. Offline drafts expire after seven days.
+The restricted till-only app continues to require an internet connection.
+
+RELIABILITY
+The worker processes queued emails every minute. The sale stays completed if
+email fails. Provider idempotency avoids duplicate sends after a retry. An
+unconfirmed delivery or usage report older than 23 hours stops automatic
+retries; inspect Resend/Stripe before manually resending or reporting usage.
+Stripe meter events are asynchronous; dashboard usage may settle later.
+The backend/tunnel must remain running for sending and webhooks.

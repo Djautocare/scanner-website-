@@ -1,3 +1,5 @@
+Email receipts v13: follow EMAIL-RECEIPTS.txt for the separate optional paid add-on. Existing base Retail billing stays unchanged.
+
 INVENTORYOS RETAIL — BILLING AND SANDBOX UPDATE (v12)
 
 Includes the v11 separate Retail workspaces and all previous Retail updates.

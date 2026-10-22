@@ -13,6 +13,8 @@ router.post('/confirm-drawer',handle(R.platform.drawers.confirm));
 router.post('/transaction',handle(R.platform.drawers.transaction));
 router.post('/logout',handle(R.platform.logout));
 router.get('/state',handle(R.platform.state));
+router.post('/email-receipts',handle(R.platform.receipts.enqueue));
+router.get('/email-receipts/status',handle(R.platform.receipts.status));
 router.get('/customers',handle(R.platform.customers));
 router.get('/refund-sale',handle(R.platform.refundSale));
 router.post('/refund',handle(R.platform.posRefund));
