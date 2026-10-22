@@ -7,3 +7,5 @@ body.retail-body{padding:18px;min-height:100dvh}.pos-header{display:flex;justify
 @media(max-width:600px){.pos-header{display:grid;grid-template-columns:minmax(0,1fr)}.pos-header strong{white-space:nowrap}.pos-header .retail-action-row{justify-content:flex-start;flex-wrap:wrap}}
 
 .pos-drawer-list{display:grid;gap:12px;margin:22px 0}.pos-drawer-list button{text-align:left;display:grid;gap:6px;padding:16px}.pos-drawer-list small{color:var(--muted)}.pos-drawer-name{font-size:26px!important;color:var(--text)!important;font-weight:750}
+
+.pos-basket-heading{display:flex;align-items:start;justify-content:space-between;flex-wrap:wrap;gap:12px}.pos-basket-heading h2{margin:0 0 16px}.pos-waste-reason{display:grid;gap:5px;font-size:12px;min-width:140px}.pos-waste-reason select{width:100%}.pos-search input{min-width:0}.pos-search button{flex-shrink:0}

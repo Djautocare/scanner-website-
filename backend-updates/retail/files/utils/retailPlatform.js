@@ -146,9 +146,9 @@ function createPlatform(H){
   return drawers.prepare(c,t,cr);
  });if(denied)throw fail('Staff QR/number or PIN is incorrect, or this person is not assigned to this store',403);return result;}
  async function logout(req){return connect(async c=>{const t=await device(c,req);await lock(c,t.workspace_id);await drawers.logout(c,t,req.headers['x-retail-staff-token']);return {success:true};});}
- function authorizeAction(c,s,url){if(!s.pos_staff)throw fail('Staff session required',401);const suffix=String(url).replace(/^.*?\/retail-pos/,'').split('?')[0];if(!['/checkout','/customers','/park','/recall','/refund','/waste'].includes(suffix))throw fail('This till action is not allowed',403);}
+ function authorizeAction(c,s,url){if(!s.pos_staff)throw fail('Staff session required',401);const suffix=String(url).replace(/^.*?\/retail-pos/,'').split('?')[0];if(!['/checkout','/customers','/park','/recall','/refund','/waste','/waste/start'].includes(suffix))throw fail('This till action is not allowed',403);}
  async function state(req){return connect(async c=>{const t=await device(c,req);let s=null;if(req.headers['x-retail-staff-token'])s=await posScope(c,req);
-  const base={success:true,till:{id:t.id,name:t.name,hardware:t.hardware},store:{id:t.inventory_id,name:(await c.query('SELECT name FROM retail_stores WHERE inventory_id=$1',[t.inventory_id])).rows[0].name},entitlement:{plan:t.retail_access.plan,features:t.retail_access.features},server_now:stamp(),management_supported:true,drawer_flow:true,drawer_selected:t.drawer_selected};if(!s)return {...base,locked:true};
+  const base={success:true,till:{id:t.id,name:t.name,hardware:t.hardware},store:{id:t.inventory_id,name:(await c.query('SELECT name FROM retail_stores WHERE inventory_id=$1',[t.inventory_id])).rows[0].name},entitlement:{plan:t.retail_access.plan,features:t.retail_access.features},server_now:stamp(),management_supported:true,waste_mode_supported:true,drawer_flow:true,drawer_selected:t.drawer_selected};if(!s)return {...base,locked:true};
   const products=(await c.query('SELECT id,name,barcode,price_pence,vat_treatment,vat_rate,stock_qty,item_kind,category,favourite,minimum_age FROM retail_products WHERE workspace_id=$1 AND inventory_id=$2 AND NOT archived ORDER BY name',args(s))).rows;
   const parked=(await c.query("SELECT id,label,cashier_name,created_at FROM retail_parked_sales WHERE workspace_id=$1 AND inventory_id=$2 AND status='parked' ORDER BY created_at DESC LIMIT 100",args(s))).rows;
   await c.query('UPDATE retail_registered_tills SET last_seen=$2 WHERE id=$1',[t.id,stamp()]);
@@ -185,6 +185,7 @@ function createPlatform(H){
   return H.transaction(safe,async(c,s,b)=>{const row=(await c.query('SELECT st.active,cr.version,a.active AS assigned,a.can_refund,a.can_manage FROM retail_team st JOIN retail_staff_credentials cr ON cr.staff_id=st.id JOIN retail_staff_assignments a ON a.staff_id=st.id AND a.inventory_id=$2 WHERE st.id=$1 AND st.workspace_id=$3',[approval.id,s.inventory_id,s.workspace_id])).rows[0];if(!row?.active||!row.assigned||!row.can_refund||row.version!==approval.version)throw fail('Refund approval has expired',403);return refund(c,{...s,refund_approver:approval},b,b.sale_id);});
  }
  async function posWaste(req){
+  if(Array.isArray(req.body.items))return waste.complete(req);
   let denied=false;const approval=await connect(async c=>{const t=await device(c,req);await lock(c,t.workspace_id);await posScope(c,req);const x=await checkPin(c,t,req.body.approval||{});if(x.invalid||!x.cr?.can_manage){await failedAttempt(c,x.buckets);denied=true;return null;}return {id:x.cr.staff_id,name:x.cr.name,number:x.cr.staff_number,version:x.cr.version};});
   if(denied)throw fail('Management approval denied. Check the staff code, PIN and store permission',403);
   const body={...req.body};delete body.approval;
@@ -283,7 +284,8 @@ function createPlatform(H){
    try{const send=H.sendEmail||require('./email').sendEmail;let timeout;try{await Promise.race([send({to:live.settings.reorder_email_to||job.email,subject:job.name+' — stock to reorder',html:'<h1>'+esc(job.name)+'</h1><p>Items to reorder:</p><ul>'+job.items.map(i=>'<li>'+esc(i.name)+' — '+i.order_qty+' to order'+(i.supplier?' · '+esc(i.supplier):'')+(i.supplier_url?' · <a href="'+esc(i.supplier_url)+'">Order product</a>':'')+'</li>').join('')+'</ul>',idempotencyKey:job.idempotency_key}),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('Email send timed out')),20000);})]);}finally{clearTimeout(timeout);}await c.query("UPDATE retail_reorder_emails SET status='sent' WHERE inventory_id=$1 AND report_date=$2",[job.inventory_id,job.report_date]);}catch(e){await c.query("UPDATE retail_reorder_emails SET attempts=attempts+1,next_attempt=$3 WHERE inventory_id=$1 AND report_date=$2",[job.inventory_id,job.report_date,new Date(now().getTime()+300000).toISOString()]);}
   });}
  }
+ const waste=require('./retailWaste').createWaste({...H,connect,device,lock,posScope,checkPin,failedAttempt});
  const drawers=require('./retailDrawers').createDrawers({...H,connect,device,lock,access,event,posScope});
- return {locations,drawers,access,entitlement,limitBusiness,management,ownerChange,validateTill,posScope,pair,login,logout,state,customers,refund,refundSale,posRefund,posWaste,reconcile,authorizeAction,adminStores,adminOverride,billing,webhook,tick,features:FEATURES};
+ return {locations,drawers,access,entitlement,limitBusiness,management,ownerChange,validateTill,posScope,pair,login,logout,state,customers,refund,refundSale,posRefund,posWaste,startWaste:waste.start,reconcile,authorizeAction,adminStores,adminOverride,billing,webhook,tick,features:FEATURES};
 }
 module.exports={createPlatform,PLANS,PRO_FEATURES,BASE_FEATURES};

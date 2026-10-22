@@ -1,0 +1,6 @@
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.InventoryTillBasket=factory();})(typeof globalThis!=='undefined'?globalThis:this,function(){
+ 'use strict';
+ function aggregate(lines){const groups=new Map();for(const line of lines){if(!Number.isInteger(line.qty)||line.qty<1)throw Error('Enter a positive whole quantity');const old=groups.get(line.product_id);if(old)old.qty+=line.qty;else {const copy={...line};delete copy.line_id;groups.set(line.product_id,copy);}if(groups.get(line.product_id).qty>1000000)throw Error('Quantity exceeds the supported limit');}if(groups.size>100)throw Error('A basket can contain up to 100 different products');return [...groups.values()];}
+ function display(lines,priced){const used=new Map(),totals=new Map(priced.lines.map(l=>[l.product_id,l]));return lines.map(line=>{const total=totals.get(line.product_id);if(!total)throw Error('Basket price is unavailable');const previous=used.get(line.product_id)||0;used.set(line.product_id,previous+line.qty);const gross=Math.floor(total.line_total_pence*(previous+line.qty)/total.qty)-Math.floor(total.line_total_pence*previous/total.qty);return {...line,line_total_pence:gross,line_discount_pence:line.qty*line.unit_price_pence-gross,labels:total.labels};});}
+ return {aggregate,display};
+});

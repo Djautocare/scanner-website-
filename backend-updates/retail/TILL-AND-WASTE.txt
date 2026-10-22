@@ -1,0 +1,66 @@
+INVENTORYOS: TILL SCAN LINES, WASTE MODE AND BUTTON FIXES (v10)
+
+INSTALL ON YOUR BACKEND PC
+1. Finish any till transactions. Stop InventoryOS Backend in Task Scheduler.
+2. Extract InventoryOS-till-and-waste-update.zip. Put the folder that contains
+   install.cjs inside your current backend folder, beside server.js and .env.
+3. Open PowerShell in your backend folder and run:
+   node .\InventoryOS-till-and-waste-update\install.cjs
+4. If installation succeeds, run:
+   node .\check-retail.cjs
+5. If the check passes, start InventoryOS Backend again. Refresh the website;
+   close and reopen installed Retail and Till apps to load their latest screens.
+
+This includes the earlier ordering and reports update. You do not need to install
+that first. No new .env values, npm dependencies or Stripe prices are required.
+The database additions happen automatically during check-retail.cjs.
+
+Keep the backup folder printed by install.cjs. To restore code, stop the backend
+and run from the backend folder:
+   node .\InventoryOS-till-and-waste-update\restore.cjs "FULL BACKUP FOLDER"
+The installer refuses to overwrite unknown Retail edits. Do not force it if it
+stops; keep the error message for review. Restore keeps recorded database data.
+
+BUTTON FIXES
+- Save clicks inside administration forms no longer get intercepted as unrelated
+  page commands. Covers staff, PINs, till preferences, cash and similar forms.
+- Save controls acknowledge the first submission, prevent repeats while working,
+  and become usable again when an error is returned.
+- Quantity changes cannot redraw the button between pressing and clicking it.
+- Administration background refresh does not replace the form being edited.
+- CSV preview now recognises the browser's normal submit button.
+
+SALES SCANNING
+Each scan creates a separate line, including repeated scans of the same product.
+Qty sets the quantity for the NEXT product scan or product-button selection.
+After that scan, Qty returns to 1. You can also edit each line quantity or remove
+that individual line. Quantities are combined behind the scenes for stock,
+offers, loyalty, payments and the sale ledger. Parked baskets retain scan lines.
+
+WASTE MODE
+1. Start with an empty till basket.
+2. Management controls > Write off stock.
+3. Choose Out of date or Damaged. An authorised person enters their staff code/QR
+   and PIN. They need Management controls permission at THIS store.
+4. The normal till screen reopens as a Waste basket. Scan items or use Qty in the
+   same way as a sale. Change the reason using Waste reason beside the basket.
+5. Cash and Card are disabled. Confirm waste records the whole basket together.
+6. A Wastage receipt opens and starts the browser/mobile print flow. It contains
+   product quantities, reason, staff and approver, with NO VAT details.
+   Print wastage receipt can print another copy if required. Your normal printer
+   setup is still needed; the website cannot silently print on every device.
+
+Waste only changes stock and its waste records. It does not create a sale,
+refund, payment or cash movement. A batch with insufficient stock in any line
+changes nothing. A drawer stays locked to the cashier throughout the basket.
+
+If a connection fails, use Recover waste to retrieve the original result without
+writing off stock again. Cancel unrecorded waste safely cancels a recording that
+has not completed. Do not start a second basket to replace an uncertain one.
+
+CHECKS
+Tested using an isolated database and browser workflows, including first-click
+saves, repeat submissions, scanner lines, bulk quantities, cash checkout after
+quantity editing, waste permissions/reasons, insufficient-stock rollback,
+recording recovery/cancellation, receipt content and mobile layout. Physical
+printers and your live PostgreSQL database were not accessed.

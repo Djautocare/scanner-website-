@@ -166,6 +166,7 @@
       table(['Sale', 'Amount', 'Sync status'], offlineState.operations.map(o => `<tr><td>${esc(o.sale.reference)}<small>${when(o.sale.created_at)}</small>${button('Receipt', 'offline-receipt', 'data-id="' + o.id + '"')}</td><td>${pounds(o.sale.total_pence)}</td><td>${esc(o.status === 'applied' ? 'Confirmed; refreshing stock' : o.status)}${o.error ? '<small>' + esc(o.error) + '</small>' : ''}</td></tr>`), 'No cash sales awaiting sync.'));
   }
   function render() {
+    if(window.InventoryRetailInteractions?.defer(render))return;
     $('#retailNotice').hidden=platformView();
     const tenderedBefore = $('#retailCheckoutForm input[name=tendered]')?.value;
     document.body.classList.toggle('retail-till-mode', tillMode);
@@ -215,7 +216,7 @@
   }
   async function refresh({ quiet = false } = {}) {
     if (!ready || checkoutBusy) return;
-    if(quiet&&view==='store-location')return;
+    if(quiet&&(view==='store-location'||platformView()||$('#retailDialog').open))return;
     if (quiet && view === 'settings' && ($('#retailSettingsForm')?.dataset.dirty === 'true' || $('#retailBusinessSettings')?.dataset.dirty === 'true')) return;
     const context = scopeKey(), g = ++generation;
     if (currentScope !== context) {
@@ -260,7 +261,7 @@
       });
       $('#retailConnection').textContent = 'Up to date'; $('#retailConnection').classList.add('connected');
       $('#retailUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      if (!quiet || !$('#retailDialog').open) render();
+      if (!quiet || (!$('#retailDialog').open && !platformView() && !(view==='settings'&&($('#retailSettingsForm')?.dataset.dirty==='true'||$('#retailBusinessSettings')?.dataset.dirty==='true')))) render();
       notice(basketChanged ? 'Product details changed. The basket now uses the current prices, VAT details and active products; please review it before taking payment.' : '');
     } catch (e) {
       if (g !== generation) return;
@@ -286,19 +287,20 @@
     form.addEventListener('submit', async event => {
       event.preventDefault(); if (context !== currentScope) return;
       const submits = [...form.querySelectorAll('[type="submit"]')]; if (submits.some(s => s.disabled)) return;
-      submits.forEach(s => { s.disabled = true; }); window.InventoryRetailScanner?.stop(); form.querySelector('.retail-form-error').textContent = '';
+      const labels=submits.map(s=>s.textContent);form.setAttribute('aria-busy','true');
+      submits.forEach(s => { s.disabled = true;s.textContent='Saving…'; }); window.InventoryRetailScanner?.stop(); form.querySelector('.retail-form-error').textContent = '';
       try {
         const result = await action(new FormData(form), form, event.submitter);
         if (!result || context !== currentScope) return;
         if(result.recount_required){await refresh({quiet:true});form.querySelector('.retail-form-error').textContent=result.message;return;}
-        $('#retailDialog').close(); await refresh();
+        if(form.isConnected)$('#retailDialog').close(); await refresh();
         if (result.variance_pence != null) notice(result.variance_pence === 0 ? 'Till balanced exactly.' : `${pounds(Math.abs(result.variance_pence))} ${result.variance_pence < 0 ? 'short' : 'over'} recorded. The counted cash is the new baseline.`);
         if (result.deposit) businessUI.depositReceipt(result.deposit);
         if (result.customer) businessUI.savedCustomer(result.customer);
         if (result.scan_next && context === currentScope) productForm(undefined, true);
         if (afterDialog) { const done = afterDialog; afterDialog = null; done(); }
       } catch (e) { form.querySelector('.retail-form-error').textContent = e.message + (pending() ? ' Close this dialog and use Retry pending action above to confirm the result safely.' : ''); }
-      finally { submits.forEach(s => { s.disabled = false; }); }
+      finally { form.removeAttribute('aria-busy');submits.forEach((s,i) => { s.disabled = false;s.textContent=labels[i]; }); }
     });
   }
   function productForm(productId, scanAfterOpen = false, serviceOnly = false) {
@@ -498,10 +500,10 @@
   }
   document.addEventListener('click', event => {
     const next = event.target.closest('[data-view]'); if (next) { event.preventDefault(); switchView(next.dataset.view); return; }
-    const action = event.target.closest('[data-action]'); if (action && !action.disabled) { event.preventDefault(); Promise.resolve(handleAction(action)).catch(e => notice(e.message, true)); }
+    const action = event.target.closest('button[data-action], a[data-action]'); if (action && !action.disabled) { event.preventDefault(); Promise.resolve(handleAction(action)).catch(e => notice(e.message, true)); }
   });
   document.addEventListener('input', event => {
-    if (event.target.closest('#retailSettingsForm')) event.target.closest('form').dataset.dirty = 'true';
+    if (event.target.closest('#retailSettingsForm, #retailBusinessSettings')) event.target.closest('form').dataset.dirty = 'true';
     if (event.target.id === 'retailSearch') {
       const caret = event.target.selectionStart; search = event.target.value; render(); const field = $('#retailSearch'); field?.focus(); if (field?.type === 'search') field.setSelectionRange(caret, caret);
     }

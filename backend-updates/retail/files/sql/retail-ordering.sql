@@ -45,3 +45,15 @@ CREATE INDEX IF NOT EXISTS retail_supplier_checks ON retail_supplier_products(ne
 CREATE INDEX IF NOT EXISTS retail_count_dates ON retail_counts(workspace_id,inventory_id,completed_at);
 CREATE INDEX IF NOT EXISTS retail_waste_dates ON retail_waste(workspace_id,inventory_id,created_at);
 CREATE INDEX IF NOT EXISTS retail_audit_dates ON retail_audit(workspace_id,inventory_id,created_at);
+
+-- v10: waste baskets share drawer locking, never the sales or cash ledger.
+ALTER TABLE retail_drawer_assignments DROP CONSTRAINT IF EXISTS retail_drawer_assignments_transaction_kind_check;
+ALTER TABLE retail_drawer_assignments ADD CONSTRAINT retail_drawer_assignments_transaction_kind_check CHECK(transaction_kind IN('sale','refund','waste'));
+CREATE TABLE IF NOT EXISTS retail_waste_batches(
+ id uuid PRIMARY KEY,workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ inventory_id uuid NOT NULL REFERENCES inventories(id) ON DELETE CASCADE,
+ registered_till_id uuid REFERENCES retail_registered_tills(id),receipt jsonb NOT NULL,
+ actor_id uuid REFERENCES users(id),created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE retail_waste ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES retail_waste_batches(id);
+CREATE INDEX IF NOT EXISTS retail_waste_batch_store ON retail_waste_batches(workspace_id,inventory_id,created_at);

@@ -1,3 +1,6 @@
+RETAIL TILL SCANNING AND WASTE UPDATE (v10)
+Read TILL-AND-WASTE.txt first for the current installation instructions.
+
 RETAIL ORDERING AND REPORTS UPDATE (v9)
 Read ORDERING-AND-REPORTS.txt first for this release and installation.
 
