@@ -1,23 +1,22 @@
-INVENTORYOS RETAIL — RECEIPT UPDATE (v14)
+INVENTORYOS RETAIL — HELP CONNECTION (v15)
 
-Existing Retail installation: follow RECEIPT-LAYOUT.txt.
+Follow RETAIL-HELP.txt. This connects the new Retail Help button to your existing
+Help records, admin portal and notification email. No Stripe setup is needed.
 
-This update changes printed/email receipt shop names, cashier numbers and email
-appearance. You do NOT need to rerun Stripe setup or change prices or keys.
-
-Extract the whole InventoryOS-receipt-layout-update folder into your backend
+Extract the whole InventoryOS-retail-help-update folder into your backend
 folder, next to server.js. Finish open baskets, sync offline sales and stop the
 backend. In PowerShell opened in the backend folder, run:
 
-  node .\InventoryOS-receipt-layout-update\install.cjs
+  node .\InventoryOS-retail-help-update\install.cjs
   node .\check-retail.cjs
+  node .\check-retail-help.cjs
 
-If the check passes, restart the backend, then refresh/reopen Retail and Till.
+If both checks pass, restart the backend, then refresh/reopen Retail.
+
+Your existing Help backend must already be installed. This update does not
+replace utils/helpRequests.js, its SQL or your original Help/admin routes.
+It uses the same account email, rate limits, history and notification worker.
+It also includes all previous Retail receipt, billing and shop updates.
 
 The website/frontend update is deployed separately from this backend ZIP.
-The ZIP does not replace your server.js wholesale, .env, database or non-Retail
-features. It preserves protected admin middleware and backs up replaced files.
-
-For a first-time installation only, the included STRIPE-SETUP.txt and
-EMAIL-RECEIPTS.txt explain the separate subscription setup. Existing configured
-installations should not repeat those steps for this receipt update.
+Your .env and protected admin middleware are retained. Code backups are made.

@@ -1,0 +1,31 @@
+INVENTORYOS RETAIL — HELP CONNECTION (v15)
+
+This adds Help to the Retail sidebar and connects it to your existing Help
+requests, admin statuses/archive and queued Resend notification email.
+
+1. Finish open till baskets and sync saved offline sales, then stop your backend.
+2. Extract the ZIP. Put the entire InventoryOS-retail-help-update folder inside:
+   C:\Users\dylan\Desktop\Inventory Server\backend
+   The folder sits beside server.js. Do not copy its individual files over yours.
+3. Open PowerShell in your backend folder and run:
+
+   node .\InventoryOS-retail-help-update\install.cjs
+   node .\check-retail.cjs
+   node .\check-retail-help.cjs
+
+4. If both checks pass, restart InventoryOS Backend using your usual method.
+5. Refresh Retail and click Help in its sidebar.
+6. Send a request, then look in your existing admin Help requests section.
+
+The account email, Retail business and selected shop come from the backend.
+The admin list and its email copy show InventoryOS Retail and the shop name.
+Users can read their own requests and see New, Ongoing or Help completed.
+Recent requests cover the selected Retail business, including its other shops.
+Support stays available when Retail subscription access has ended.
+
+This reuses utils/helpRequests.js, sql/help-requests.sql and the existing Help
+notification worker. Those existing files are not replaced. No new Help tables,
+Stripe changes, API keys, environment settings or npm packages are needed.
+The usual Help notification settings continue to apply. The checks do not send
+any help requests or emails. The installer backs up code and refuses unknown
+local edits. Existing receipts, stock, billing and admin permissions are retained.

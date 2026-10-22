@@ -171,13 +171,17 @@
     const tenderedBefore = $('#retailCheckoutForm input[name=tendered]')?.value;
     document.body.classList.toggle('retail-till-mode', tillMode);
     if (!tillMode && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-    const names = { ...Object.fromEntries(businessUI.nav().map(n => [n[0],n[2]])), dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Transactions', settings: 'Retail settings', offline: 'Offline & sync', services:'Services', 'staff-access':'Staff access', tills:'Tills', 'retail-billing':'Stores & billing', transfer:'Import & export', 'shelf-labels':'Shelf labels', 'store-location':'Store location',suppliers:'Supplier links & prices','price-reviews':'Review selling prices','daily-sales':'Daily sales','count-losses':'Stock-count losses','waste-report':'Waste','waste-lines':'Biggest waste lines',activity:'Management activity' };
+    const names = { ...Object.fromEntries(businessUI.nav().map(n => [n[0],n[2]])), help:'Help', dashboard: 'Retail dashboard', products: 'Products & stock', checkout: 'Checkout', deliveries: 'Deliveries', reorders: 'Reorder report', counts: 'Stock counts', tasks: 'Tasks', cash: 'Till & cash', sales: 'Transactions', settings: 'Retail settings', offline: 'Offline & sync', services:'Services', 'staff-access':'Staff access', tills:'Tills', 'retail-billing':'Stores & billing', transfer:'Import & export', 'shelf-labels':'Shelf labels', 'store-location':'Store location',suppliers:'Supplier links & prices','price-reviews':'Review selling prices','daily-sales':'Daily sales','count-losses':'Stock-count losses','waste-report':'Waste','waste-lines':'Biggest waste lines',activity:'Management activity' };
     if (!names[view]) view = 'dashboard';
     $('#retailTitle').textContent = names[view];
     const navKey=JSON.stringify([view,online,data?.role,data?.business?.config.features,data?.counts?.filter(c=>c.status==='pending').length,platformAdminScope]);
     if(navKey!==lastNavKey){$('#retailNav').innerHTML=counterUI.nav([...nav,...businessUI.nav()],view);lastNavKey=navKey;}
     if(view==='store-location'){
       $('#retailView').innerHTML='<div id="retailLocationView"></div>';InventoryRetailLocation.mount({refresh,notice,changeBlocked:()=>checkoutBusy||pending()?'Finish or recover the pending transaction before changing store.':basket.length?'Finish, park or clear the basket before changing store.':offlineState.operations.length?'Sync the saved sales before changing store.':''});$('#retailSyncStatus').hidden=true;return;
+    }
+    if(view==='help'){
+      if(!$('#retailHelp')){$('#retailView').innerHTML='<section id="retailHelp"></section>';window.InventoryRetailHelp.mount($('#retailHelp'),{request:api,scope:scopeKey,selection:selected});}
+      $('#retailSyncStatus').hidden=true;return;
     }
     InventoryRetailLocation.identity(data?.retail_access?.display_name);
     if(platformView()){
@@ -216,7 +220,7 @@
   }
   async function refresh({ quiet = false } = {}) {
     if (!ready || checkoutBusy) return;
-    if(quiet&&(view==='store-location'||platformView()||$('#retailDialog').open))return;
+    if(quiet&&(view==='store-location'||view==='help'||platformView()||$('#retailDialog').open))return;
     if (quiet && view === 'settings' && ($('#retailSettingsForm')?.dataset.dirty === 'true' || $('#retailBusinessSettings')?.dataset.dirty === 'true')) return;
     const context = scopeKey(), g = ++generation;
     if (currentScope !== context) {
@@ -242,7 +246,7 @@
       if (!status.active) {
         await offline.lock(context, 'Retail is off or no longer entitled.');
         online = false; data = null; render();
-        if(platformView()||view==='store-location')return;
+        if(platformView()||view==='store-location'||view==='help')return;
         $('#retailView').innerHTML = card(header('Activate InventoryOS Retail') + '<p>£19.99 per store per month. All core Retail features and unlimited tills included.</p><button type="button" data-view="retail-billing">Choose Retail / manage billing</button>');
         notice('Activate a Retail subscription or trial in Stores & billing.'); return;
       }
@@ -270,7 +274,7 @@
       online = false; $('#retailConnection').textContent = 'Needs refresh'; $('#retailConnection').classList.remove('connected');
       if (e.status && e.status < 500) { await offline.lock(context, e.message); offlineState = { ...offlineState, snapshot: null }; }
       else if (offlineState.snapshot) data = offline.project(offlineState);
-      if (data||platformView()||view==='store-location') render(); else $('#retailView').innerHTML = empty('Retail could not be loaded. Install the backend update if you have not done so yet, then refresh.');
+      if (data||platformView()||view==='store-location'||view==='help') render(); else $('#retailView').innerHTML = empty('Retail could not be loaded. Install the backend update if you have not done so yet, then refresh.');
       notice(e.message, true); syncStatus();
     }
   }
