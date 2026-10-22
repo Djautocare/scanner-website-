@@ -8,7 +8,7 @@ const {createService}=require('../files/utils/retail');
  const owner=uuid(),workspace=uuid(),inventory=uuid(),second=uuid();await db.query("INSERT INTO users(id,email)VALUES($1,'owner@example.test')",[owner]);await db.query("INSERT INTO workspaces(id,owner_user_id,name)VALUES($1,$2,'Shop')",[workspace,owner]);for(const i of [inventory,second])await db.query("INSERT INTO inventories(id,workspace_id,name)VALUES($1,$2,'Store')",[i,workspace]);
  let clock=new Date(),sent=[];const R=createService({pool,calculateAccess:()=>({allowed:false,plan_key:'free'}),now:()=>clock,sendEmail:async m=>sent.push(m)}),P=R.platform;
  const req=(route,body={})=>({workspace:{id:workspace},user:{id:owner},headers:{'x-workspace-id':workspace,'x-inventory-ids':inventory},originalUrl:'/retail'+route,body:{request_id:uuid(),...body},query:{}});
- await R.ensureSchema();for(const i of [inventory,second])await P.ownerChange(req('/platform',{action:'create-store',inventory_id:i,name:i===inventory?'First shop':'Second shop'}));
+ await db.exec("ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS workspace_kind text NOT NULL DEFAULT 'retail'");await R.ensureSchema();for(const i of [inventory,second])await P.ownerChange(req('/platform',{action:'create-store',inventory_id:i,name:i===inventory?'First shop':'Second shop'}));
  assert.equal((await P.management(req(''))).stores[0].entitlement.allowed,false);
  const grant=async(i,plan,more={})=>{const row=(await db.query('SELECT * FROM retail_stores WHERE inventory_id=$1',[i])).rows[0];return P.adminOverride({...req('',{inventory_id:i,version:row.override_version,plan,extra_pairs:0,features:{},reason:'Test access',...more}),params:{id:owner}});};
  await grant(inventory,'pro');await grant(second,'pro');
@@ -22,7 +22,7 @@ const {createService}=require('../files/utils/retail');
  await P.ownerChange(req('',{action:'staff-assignment',inventory_id:inventory,staff_id:st.id,active:true,can_refund:true}));
  const cr=(await db.query('SELECT qr_token FROM retail_staff_credentials WHERE staff_id=$1',[st.id])).rows[0];
  const createTill=async(i,name)=>P.ownerChange(req('',{action:'register-till',inventory_id:i,name}));const t1=(await createTill(inventory,'Till 1')).till_id,t2=(await createTill(inventory,'Till 2')).till_id;
- await assert.rejects(()=>createTill(inventory,'Till 3'),/licensed/);
+ assert((await createTill(inventory,'Till 3')).till_id);
  async function paired(i,t){const code=await P.ownerChange(req('',{action:'pair-till',inventory_id:i,till_id:t}));const r=await P.pair({body:{code:code.pair_code}});await assert.rejects(()=>P.pair({body:{code:code.pair_code}}),/expired|already/);return r.device_token;}
  const d1=await paired(inventory,t1),d2=await paired(inventory,t2);
  const pos=(token,staff,route,body={})=>({retail_pos:true,headers:{authorization:'Till '+token,...(staff?{'x-retail-staff-token':staff}:{})},originalUrl:'/retail-pos'+route,query:{},body:{request_id:uuid(),drawer_flow:true,...body}});

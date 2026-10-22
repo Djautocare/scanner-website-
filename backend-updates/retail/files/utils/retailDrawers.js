@@ -10,7 +10,7 @@ function createDrawers(H){
   if(!r||r.used||!r.active||!r.assigned||r.connection_till_id!==anchor(t)||r.connection_generation!==gen(t)||r.credential_version!==r.live_version||Date.parse(r.expires_at)<=now().getTime())throw fail('Log in with your staff code and PIN again',401);return r;
  }
  async function list(c,t,l){
-  const a=await access(c,t.workspace_id,t.inventory_id),rows=(await c.query('SELECT t.id,t.name,t.slot,d.assignment_id,d.staff_id,d.connection_till_id,d.transaction_id,st.name AS staff_name FROM retail_registered_tills t LEFT JOIN retail_drawer_assignments d ON d.till_id=t.id LEFT JOIN retail_team st ON st.id=d.staff_id WHERE t.inventory_id=$1 AND t.active AND t.slot<=$2 ORDER BY t.slot',[t.inventory_id,a.till_allowance])).rows;
+  const a=await access(c,t.workspace_id,t.inventory_id),rows=(await c.query('SELECT t.id,t.name,t.slot,d.assignment_id,d.staff_id,d.connection_till_id,d.transaction_id,st.name AS staff_name FROM retail_registered_tills t LEFT JOIN retail_drawer_assignments d ON d.till_id=t.id LEFT JOIN retail_team st ON st.id=d.staff_id WHERE t.inventory_id=$1 AND t.active AND ($2::integer IS NULL OR t.slot<=$2) ORDER BY t.slot',[t.inventory_id,a.till_allowance])).rows;
   return rows.map(r=>({id:r.id,name:r.name,assigned_to:r.staff_name||null,in_transaction:Boolean(r.transaction_id),available:!r.assignment_id||(r.staff_id===l.staff_id&&r.connection_till_id===anchor(t))}));
  }
  async function prepare(c,t,cr){

@@ -97,3 +97,9 @@ CREATE INDEX IF NOT EXISTS retail_drawer_connections ON retail_drawer_assignment
 INSERT INTO retail_platform_schema(version) VALUES(7) ON CONFLICT DO NOTHING;
 
 ALTER TABLE retail_drawer_assignments ADD COLUMN IF NOT EXISTS transaction_context jsonb NOT NULL DEFAULT '{}';
+
+-- One Retail plan; retain legacy subscription keys until owners confirm a change.
+ALTER TABLE retail_stores DROP CONSTRAINT IF EXISTS retail_stores_paid_plan_check;
+ALTER TABLE retail_stores ADD CONSTRAINT retail_stores_paid_plan_check CHECK(paid_plan IN('none','starter','pro','enterprise','retail'));
+ALTER TABLE retail_stores DROP CONSTRAINT IF EXISTS retail_stores_override_plan_check;
+ALTER TABLE retail_stores ADD CONSTRAINT retail_stores_override_plan_check CHECK(override_plan IN('blocked','starter','pro','enterprise','retail'));

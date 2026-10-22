@@ -22,7 +22,7 @@ const { createLookup, gtin } = require('../files/utils/retailCatalogue');
   const R = createService({ pool, calculateAccess: () => ({ allowed: true, active_item_limit: null, plan_key: 'business' }) });
   const request = (route, body = {}) => ({ workspace: { id: workspace }, user: { id: user }, headers: { 'x-workspace-id': workspace, 'x-inventory-ids': inventory }, originalUrl: '/retail' + route, body: { request_id: uuid(), ...body } });
   const run = (route, body, fn, options) => R.transaction(request(route, body), fn, options);
-  await R.ensureSchema();await require('./platform-fixture.cjs')(R,db);
+  await db.exec("ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS workspace_kind text NOT NULL DEFAULT 'retail'");await R.ensureSchema();await require('./platform-fixture.cjs')(R,db);
   const migrated = await R.overview(request('/overview'));
   assert.equal(migrated.settings.vat_receipts, false);
   assert.equal(migrated.products[0].vat_treatment, null);

@@ -1,3 +1,5 @@
+SUPERSEDED INSTALL STEPS: read SINGLE-PLAN-AND-WORKSPACES.txt first for v11.
+
 INVENTORYOS RETAIL DASHBOARD & STORE LOCATION UPDATE (v8)
 
 1. Finish Till transactions and sync any saved offline sales.

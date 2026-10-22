@@ -28,7 +28,7 @@ const { createService, money, dayAndTime } = require('../files/utils/retail');
   const device=uuid();
   const request=(route,body={},options={})=>({user:{id:options.actor||owner},workspace:{id:options.workspace||workspace},headers:{'x-workspace-id':options.workspace||workspace,'x-inventory-ids':options.inventory||inventory},originalUrl:'/retail'+route,body:{request_id:uuid(),...body},query:{offline_device_id:device}});
   const run=(route,body,fn,options)=>R.transaction(request(route,body),fn,options);
-  await R.ensureSchema();await require('./platform-fixture.cjs')(R,db);
+  await db.exec("ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS workspace_kind text NOT NULL DEFAULT 'retail'");await R.ensureSchema();await require('./platform-fixture.cjs')(R,db);
   await run('/settings',{enabled:true,vat_receipts:true,receipt_business_name:'Original shop',receipt_business_address:'Test Street',vat_number:'GB123456789'},R.settings,{inventory:false,enabled:false,admin:true});
   const p=(await run('/products',{name:'Original product',barcode:'3017620422003',price:'2.00',cost:'0.50',opening_qty:10,minimum_qty:5,target_qty:20,vat_treatment:'taxable',vat_rate:20},R.saveProduct,{admin:true})).product;
   await run('/till/open',{amount:'50.00'},R.openTill,{admin:true});

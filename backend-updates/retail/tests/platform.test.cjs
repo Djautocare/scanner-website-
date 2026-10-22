@@ -8,7 +8,7 @@ const {createService}=require('../files/utils/retail');
  const owner=uuid(),workspace=uuid(),inventory=uuid(),second=uuid();await db.query("INSERT INTO users(id,email)VALUES($1,'owner@example.test')",[owner]);await db.query("INSERT INTO workspaces(id,owner_user_id,name)VALUES($1,$2,'Shop')",[workspace,owner]);for(const i of [inventory,second])await db.query("INSERT INTO inventories(id,workspace_id,name)VALUES($1,$2,'Store')",[i,workspace]);
  let clock=new Date(),sent=[];const R=createService({pool,calculateAccess:()=>({allowed:false,plan_key:'free'}),now:()=>clock,sendEmail:async m=>sent.push(m)}),P=R.platform;
  const req=(route,body={})=>({workspace:{id:workspace},user:{id:owner},headers:{'x-workspace-id':workspace,'x-inventory-ids':inventory},originalUrl:'/retail'+route,body:{request_id:uuid(),...body},query:{}});
- await R.ensureSchema();for(const i of [inventory,second])await P.ownerChange(req('/platform',{action:'create-store',inventory_id:i,name:i===inventory?'First shop':'Second shop'}));
+ await db.exec("ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS workspace_kind text NOT NULL DEFAULT 'retail'");await R.ensureSchema();for(const i of [inventory,second])await P.ownerChange(req('/platform',{action:'create-store',inventory_id:i,name:i===inventory?'First shop':'Second shop'}));
  assert.equal((await P.management(req(''))).stores[0].entitlement.allowed,false);
  const grant=async(i,plan,more={})=>{const row=(await db.query('SELECT * FROM retail_stores WHERE inventory_id=$1',[i])).rows[0];return P.adminOverride({...req('',{inventory_id:i,version:row.override_version,plan,extra_pairs:0,features:{},reason:'Test access',...more}),params:{id:owner}});};
  await grant(inventory,'pro');await grant(second,'pro');
@@ -22,7 +22,7 @@ const {createService}=require('../files/utils/retail');
  await P.ownerChange(req('',{action:'staff-assignment',inventory_id:inventory,staff_id:st.id,active:true,can_refund:true}));
  const cr=(await db.query('SELECT qr_token FROM retail_staff_credentials WHERE staff_id=$1',[st.id])).rows[0];
  const createTill=async(i,name)=>P.ownerChange(req('',{action:'register-till',inventory_id:i,name}));const t1=(await createTill(inventory,'Till 1')).till_id,t2=(await createTill(inventory,'Till 2')).till_id;
- await assert.rejects(()=>createTill(inventory,'Till 3'),/licensed/);
+ assert((await createTill(inventory,'Till 3')).till_id);
  async function paired(i,t){const code=await P.ownerChange(req('',{action:'pair-till',inventory_id:i,till_id:t}));const r=await P.pair({body:{code:code.pair_code}});await assert.rejects(()=>P.pair({body:{code:code.pair_code}}),/expired|already/);return r.device_token;}
  const d1=await paired(inventory,t1),d2=await paired(inventory,t2);
  // Exercise the explicit drawer flow before running the existing billing/loyalty regressions.
@@ -51,7 +51,7 @@ const {createService}=require('../files/utils/retail');
  assert(!/"(?:pin|pin_hash|pin_salt|approval)"\s*:/.test(JSON.stringify((await db.query('SELECT * FROM retail_requests')).rows)));
  await assert.rejects(()=>P.posRefund(pos(d2,a2,'/refund',{...refundBody,sale_id:card.sale.id})),/external reader/);
  await P.posRefund(pos(d2,a2,'/refund',{...refundBody,sale_id:card.sale.id,external_card_refund_confirmed:true}));assert.equal((await expected(t2)),3000);
- await grant(inventory,'starter');await assert.rejects(()=>P.customers({...pos(d1,a1,''),query:{id:customer.id}}),/Retail Pro/);assert.equal((await P.state(pos(d1,a1,''))).entitlement.features.loyalty,false);
+ await grant(inventory,'starter');assert.equal((await P.customers({...pos(d1,a1,''),query:{id:customer.id}})).customer.id,customer.id);assert.equal((await P.state(pos(d1,a1,''))).entitlement.features.loyalty,true);
  await grant(inventory,'pro',{expires_at:new Date(clock.getTime()+60000).toISOString()});clock=new Date(clock.getTime()+120000);await assert.rejects(()=>P.state(pos(d1,a1,'')),/licensed/);await grant(inventory,'pro');
  const otherTill=(await createTill(second,'Other store till')).till_id,otherDevice=await paired(second,otherTill);await assert.rejects(()=>P.login(pos(otherDevice,'','/login',{staff_identifier:'IO-ST-'+cr.qr_token,pin:'1234'})),/assigned/);
  await P.ownerChange(req('',{action:'staff-assignment',inventory_id:second,staff_id:st.id,active:true,can_refund:false}));const otherStaff=(await P.login(pos(otherDevice,'','/login',{staff_identifier:'IO-ST-'+cr.qr_token,pin:'1234'}))).token;
@@ -64,13 +64,13 @@ const {createService}=require('../files/utils/retail');
  let current={id:'sub_test',customer:'cus_test',status:'active',metadata:{product_type:'inventoryos_retail',workspace_id:workspace,inventory_id:inventory},items:{data:[{id:'si_base',quantity:1,price:{id:'price_test_starter'},current_period_end:Math.floor(clock.getTime()/1000)+86400}]}};let updates=[],checkouts=[];
  const fakeStripe={prices:{retrieve:async price=>({id:price,currency:'gbp',active:true,unit_amount:price==='price_test_starter'?999:price==='price_test_pro'?1999:499,recurring:{interval:'month',interval_count:1}})},customers:{create:async()=>({id:'cus_test'})},checkout:{sessions:{create:async(body,options)=>{checkouts.push({body,options});return{id:'cs_test',url:'https://checkout.stripe.com/TEST'};},retrieve:async()=>({id:'cs_test',status:'open',url:'https://checkout.stripe.com/TEST'})}},subscriptions:{retrieve:async()=>current,update:async(id,b,options)=>{updates.push({b,options});current={...current,metadata:b.metadata,items:{data:b.items.filter(i=>!i.deleted).map((i,n)=>({id:i.id||'si_pairs',quantity:i.quantity,price:{id:i.price||(i.id==='si_pairs'?'price_test_pairs':current.items.data[n]?.price.id)}}))}};}},billingPortal:{sessions:{create:async()=>({url:'https://billing.stripe.com/TEST'})}}};
  const RP=createService({pool,calculateAccess:()=>({allowed:false}),now:()=>clock,stripeClient:fakeStripe}).platform;
- await RP.billing(req('',{inventory_id:inventory,plan:'starter',pairs:0,request_id:uuid()}));assert.equal(checkouts.length,1);assert.equal(checkouts[0].body.subscription_data.metadata.product_type,'inventoryos_retail');assert.equal(checkouts[0].body.automatic_tax.enabled,false);
+ await RP.billing(req('',{inventory_id:inventory,plan:'retail',pairs:0,request_id:uuid()}));assert.equal(checkouts.length,1);assert.equal(checkouts[0].body.subscription_data.metadata.product_type,'inventoryos_retail');assert.equal(checkouts[0].body.automatic_tax.enabled,false);
  assert.equal(await RP.webhook({type:'customer.subscription.updated',data:{object:current}},fakeStripe),true);assert.equal((await RP.management(req(''))).stores.find(s=>s.inventory_id===inventory).paid_plan,'starter');
- await RP.billing(req('',{inventory_id:inventory,plan:'pro',pairs:1,request_id:uuid()}));assert.equal(updates[0].b.proration_behavior,'always_invoice');assert.equal(updates[0].b.payment_behavior,'error_if_incomplete');assert.equal((await P.access(pool,workspace,inventory)).paid_plan,'pro');
+ current.items.data.push({id:'si_pairs',quantity:1,price:{id:'price_test_pairs'}});await RP.webhook({type:'customer.subscription.updated',data:{object:current}},fakeStripe);await RP.billing(req('',{inventory_id:inventory,plan:'retail',pairs:0,request_id:uuid()}));assert(updates[0].b.items.some(x=>x.id==='si_pairs'&&x.deleted===true));assert.equal(updates[0].b.items[0].price,'price_test_pro');assert.equal(updates[0].b.proration_behavior,'always_invoice');assert.equal(updates[0].b.payment_behavior,'error_if_incomplete');assert.equal((await P.access(pool,workspace,inventory)).paid_plan,'retail');
  assert.equal(await RP.webhook({type:'customer.subscription.updated',data:{object:{metadata:{}}}},fakeStripe),false);
  current={...current,status:'canceled'};await RP.webhook({type:'customer.subscription.updated',data:{object:{...current,status:'active'}}},fakeStripe);assert.equal((await P.access(pool,workspace,inventory)).paid_plan,'none');
  // A second valid subscription can be purchased after a canceled subscription.
- await RP.billing(req('',{inventory_id:inventory,plan:'starter',pairs:0,request_id:uuid()}));assert.equal(checkouts.length,2);
+ await RP.billing(req('',{inventory_id:inventory,plan:'retail',pairs:0,request_id:uuid()}));assert.equal(checkouts.length,2);
  // Reconciliation closes a genuinely unrecorded request and never deletes a sale.
  const again=(await P.login(pos(d1,'','/login',{staff_identifier:'100',pin:'1234'}))).token;
  const lostId=uuid(),beforeReconcile=(await db.query('SELECT stock_qty FROM retail_products WHERE id=$1',[p.id])).rows[0].stock_qty;

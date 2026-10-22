@@ -46,7 +46,7 @@
   }
   const admin = () => online && ['owner', 'admin'].includes(data?.role);
   const writer = () => online && data?.role && data.role !== 'viewer';
-  const selected = () => ({ workspace: localStorage.getItem('inventoryos_selected_workspace_id') || '', inventory: InventoryAPI.getSelectedInventoryHeader(), user: InventoryAPI.getUser()?.id || '' });
+  const selected = () => ({ workspace: InventoryRetailLocation.selection().workspace, inventory: InventoryRetailLocation.selection().inventory, user: InventoryAPI.getUser()?.id || '' });
   const scopeKey = () => JSON.stringify(selected());
   const pendingKey = () => 'inventoryos_retail_pending:' + currentScope;
   function pending() { try { return JSON.parse(localStorage.getItem(pendingKey()) || 'null'); } catch { return null; } }
@@ -157,7 +157,7 @@
   function settingsView() {
     const s = data.settings, canEdit = admin() && data.vat_supported;
     if(data.platform_supported)return card(header('Store settings & billing')+'<div class="retail-action-row"><a href="retail/manage.html">Stores, receipt details, tills & Retail billing</a><a href="retail/till/index.html">Open Till app</a></div>');
-    return card(header('Retail settings', 'Shared by this workspace') + `<form id="retailSettingsForm" class="retail-form"><label class="retail-check-label"><input type="checkbox" name="enabled" ${s.enabled ? 'checked' : ''} ${!admin() ? 'disabled' : ''}> Enable Retail mode</label><div class="retail-form-grid"><label>Daily reorder report time<input type="time" name="report_time" value="${esc(s.report_time)}" required ${!admin() ? 'disabled' : ''}></label><label>Timezone<input name="timezone" value="${esc(s.timezone)}" required list="retailTimezones" ${!admin() ? 'disabled' : ''}><datalist id="retailTimezones"><option value="Europe/London"><option value="Europe/Dublin"><option value="America/New_York"><option value="UTC"></datalist></label></div><fieldset class="retail-receipt-settings"><legend>Receipt details</legend><label>Business name on receipts<input name="receipt_business_name" value="${esc(s.receipt_business_name)}" maxlength="160" ${!canEdit ? 'disabled' : ''}><small>Printed at the top of new receipts, with or without VAT. For VAT receipts, enter the registered business name.</small></label><label>Business address<textarea name="receipt_business_address" maxlength="500" ${!canEdit ? 'disabled' : ''}>${esc(s.receipt_business_address)}</textarea></label><label class="retail-check-label"><input type="checkbox" name="vat_receipts" id="retailVatReceipts" ${s.vat_receipts ? 'checked' : ''} ${!canEdit ? 'disabled' : ''}> VAT receipt — show VAT breakdown</label><label>VAT registration number<input name="vat_number" value="${esc(s.vat_number)}" maxlength="20" placeholder="GB123456789" ${!canEdit ? 'disabled' : ''}></label><p class="retail-help">Enable VAT only for a VAT-registered business. Selling prices include VAT already; this separates it out without increasing the total. Set each product’s correct VAT treatment before using this option. Your business details and tax breakdown are saved with each sale; older receipts are not changed.</p><p class="retail-help">Adds a UK domestic sales receipt with a VAT breakdown. Full VAT invoices and credit notes are not generated here; provide a full invoice separately when required.</p>${!data.vat_supported ? '<p class="retail-note">Install the latest Retail VAT backend update to edit receipt details and enable VAT.</p>' : ''}</fieldset><p class="retail-help">The closing report is saved once per local calendar day while the backend is running. Retail stock is recorded separately from your reseller and manufacturing stock. Turning Retail off keeps its saved records.</p><p class="retail-help">Cash checkout and browser receipt printing are available. Automatic card-reader payments, cash-drawer hardware and external POS sync require a separate integration.</p><button type="submit" class="retail-primary" ${!admin() ? 'disabled' : ''}>Save Retail settings</button><p class="retail-form-error" role="status"></p></form>`);
+    return card(header('Retail settings', 'Shared by this workspace') + `<form id="retailSettingsForm" class="retail-form"><div class="retail-form-grid"><label>Daily reorder report time<input type="time" name="report_time" value="${esc(s.report_time)}" required ${!admin() ? 'disabled' : ''}></label><label>Timezone<input name="timezone" value="${esc(s.timezone)}" required list="retailTimezones" ${!admin() ? 'disabled' : ''}><datalist id="retailTimezones"><option value="Europe/London"><option value="Europe/Dublin"><option value="America/New_York"><option value="UTC"></datalist></label></div><fieldset class="retail-receipt-settings"><legend>Receipt details</legend><label>Business name on receipts<input name="receipt_business_name" value="${esc(s.receipt_business_name)}" maxlength="160" ${!canEdit ? 'disabled' : ''}><small>Printed at the top of new receipts, with or without VAT. For VAT receipts, enter the registered business name.</small></label><label>Business address<textarea name="receipt_business_address" maxlength="500" ${!canEdit ? 'disabled' : ''}>${esc(s.receipt_business_address)}</textarea></label><label class="retail-check-label"><input type="checkbox" name="vat_receipts" id="retailVatReceipts" ${s.vat_receipts ? 'checked' : ''} ${!canEdit ? 'disabled' : ''}> VAT receipt — show VAT breakdown</label><label>VAT registration number<input name="vat_number" value="${esc(s.vat_number)}" maxlength="20" placeholder="GB123456789" ${!canEdit ? 'disabled' : ''}></label><p class="retail-help">Enable VAT only for a VAT-registered business. Selling prices include VAT already; this separates it out without increasing the total. Set each product’s correct VAT treatment before using this option. Your business details and tax breakdown are saved with each sale; older receipts are not changed.</p><p class="retail-help">Adds a UK domestic sales receipt with a VAT breakdown. Full VAT invoices and credit notes are not generated here; provide a full invoice separately when required.</p>${!data.vat_supported ? '<p class="retail-note">Install the latest Retail VAT backend update to edit receipt details and enable VAT.</p>' : ''}</fieldset><p class="retail-help">The closing report is saved once per local calendar day while the backend is running. Retail stock is recorded separately from your reseller and manufacturing stock. Manage the shop subscription under Stores & billing.</p><p class="retail-help">Cash checkout and browser receipt printing are available. Automatic card-reader payments, cash-drawer hardware and external POS sync require a separate integration.</p><button type="submit" class="retail-primary" ${!admin() ? 'disabled' : ''}>Save Retail settings</button><p class="retail-form-error" role="status"></p></form>`);
   }
   function offlineView() {
     const prepared = offlineState.snapshot?.offline;
@@ -186,7 +186,7 @@
        inventory:selected().inventory,
        changeBlocked:()=>checkoutBusy||pending()?'Finish or recover the pending transaction before changing store.':basket.length?'Finish, park or clear the basket before changing store.':offlineState.operations.length?'Sync the saved sales before changing store.':'',
        authorized:()=>{if(context!==scopeKey())return;platformAdminScope=context;$('#retailConnection').textContent='Connected';$('#retailConnection').classList.add('connected');$('#retailNav').innerHTML=counterUI.nav([...nav,...businessUI.nav()],view);},
-       storeChanged:async()=>{lastNavKey='';await InventoryTopbar.init();refresh();}
+       storeChanged:async()=>{lastNavKey='';await InventoryRetailLocation.init();refresh();}
       });$('#retailSyncStatus').hidden=true;return;
     }
     if (!data) return;
@@ -226,7 +226,8 @@
     }
     try {
       const selection = selected();
-      if (!selection.inventory || selection.inventory.includes(',')) throw new Error('Open Admin → Store location to choose one store for Retail.');
+      if (!selection.workspace){switchView('store-location');return;}
+      if (!selection.inventory || selection.inventory.includes(',')){online=true;switchView('retail-billing');return;}
       offlineState = await offline.read(context);
       if(navigator.onLine&&offlineState.operations.length)await api('/status');
       if (offlineState.operations.length) {
@@ -242,8 +243,8 @@
         await offline.lock(context, 'Retail is off or no longer entitled.');
         online = false; data = null; render();
         if(platformView()||view==='store-location')return;
-        $('#retailView').innerHTML = card(header('Retail is switched off', 'Enable it for this workspace in Settings.') + '<a href="settings.html">Open account settings</a>');
-        notice(status.allowed ? 'Retail is off for this workspace.' : 'Activate a Retail subscription or trial in Stores & tills.'); return;
+        $('#retailView').innerHTML = card(header('Activate InventoryOS Retail') + '<p>£19.99 per store per month. All Retail features and unlimited tills included.</p><button type="button" data-view="retail-billing">Choose Retail / manage billing</button>');
+        notice('Activate a Retail subscription or trial in Stores & billing.'); return;
       }
       const r = await api('/overview?offline_device_id=' + encodeURIComponent(offline.device())); if (g !== generation || scopeKey() !== context) return;
       if (r.workspace_id !== selected().workspace || r.inventory_id !== selected().inventory) throw new Error('Workspace selection changed. Refresh to load the correct inventory.');
@@ -293,7 +294,7 @@
         const result = await action(new FormData(form), form, event.submitter);
         if (!result || context !== currentScope) return;
         if(result.recount_required){await refresh({quiet:true});form.querySelector('.retail-form-error').textContent=result.message;return;}
-        if(form.isConnected)$('#retailDialog').close(); await refresh();
+        await refresh(); if(form.isConnected)$('#retailDialog').close();
         if (result.variance_pence != null) notice(result.variance_pence === 0 ? 'Till balanced exactly.' : `${pounds(Math.abs(result.variance_pence))} ${result.variance_pence < 0 ? 'short' : 'over'} recorded. The counted cash is the new baseline.`);
         if (result.deposit) businessUI.depositReceipt(result.deposit);
         if (result.customer) businessUI.savedCustomer(result.customer);
@@ -550,7 +551,7 @@
     } else {
       const submit = form.querySelector('[type="submit"]'); if (submit.disabled) return; submit.disabled = true;
       const f = new FormData(form);
-      try { await mutate('/settings', { enabled: f.has('enabled'), report_time: f.get('report_time'), timezone: f.get('timezone'), ...(data.vat_supported ? { vat_receipts: f.has('vat_receipts'), receipt_business_name: f.get('receipt_business_name'), receipt_business_address: f.get('receipt_business_address'), vat_number: f.get('vat_number') } : {}) }, 'PATCH'); await refresh(); InventoryRetail.refresh(); }
+      try { await mutate('/settings', { enabled: true, report_time: f.get('report_time'), timezone: f.get('timezone'), ...(data.vat_supported ? { vat_receipts: f.has('vat_receipts'), receipt_business_name: f.get('receipt_business_name'), receipt_business_address: f.get('receipt_business_address'), vat_number: f.get('vat_number') } : {}) }, 'PATCH'); await refresh(); InventoryRetail.refresh(); }
       catch (e) { form.querySelector('.retail-form-error').textContent = e.message; }
       finally { submit.disabled = false; }
     }
@@ -571,13 +572,13 @@
     $('#retailDialog').addEventListener('close', () => { if (!$('#retailDialog').open) { window.InventoryRetailScanner?.stop(); productBarcodeScan = null; if (view === 'checkout') $('#retailSearch')?.focus(); } });
     render();
     offline.shell().then(ok => { shellReady = ok; syncStatus(); }).catch(() => { shellReady = false; });
-    if (navigator.onLine) await Promise.race([InventoryTopbar.init(), new Promise(resolve => setTimeout(resolve, 12000))]);
+    if (navigator.onLine) {try{await InventoryRetailLocation.init();}catch(e){ready=true;switchView('store-location');notice(e.message,true);return;}}
     ready = true; await refresh();window.InventoryRetailPWA?.ready();
   }
   window.addEventListener('retail-offline-change', async () => { if (!currentScope) return; offlineState = await offline.read(currentScope); syncStatus(); if (view === 'offline' && !$('#retailDialog').open) render(); });
   window.addEventListener('online', () => { if (ready && !checkoutBusy) refresh({ quiet: true }); });
   window.addEventListener('offline', () => { online = false; syncStatus(); if (ready && !checkoutBusy && !$('#retailDialog').open) render(); });
-  window.addEventListener('inventory-selection-changed', () => { if (ready) refresh(); });
+  window.addEventListener('retail-selection-changed', () => { if (ready) refresh(); });
   window.addEventListener('hashchange', () => switchView(location.hash.slice(1)));
   window.addEventListener('resize', () => setMenu(false));
   document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });

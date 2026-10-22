@@ -37,6 +37,7 @@ function createBusiness(H){
   await audit(c,s,'business_settings_changed',{business_type:b.business_type,features:b.features});return {business_settings:r};
  }
  async function manufacturingAllowed(c,s){
+  if(s.retail_access)return false;
   const schema=(await c.query("SELECT to_regclass('manufacturing_recipes') AS recipes,to_regclass('manufacturing_settings') AS settings")).rows[0];if(!schema?.recipes||!schema?.settings)return false;
   const w=(await c.query('SELECT w.*,u.admin_plan_override FROM workspaces w JOIN users u ON u.id=w.owner_user_id WHERE w.id=$1',[s.workspace_id])).rows[0];
   return H.calculateAccess(w,'business').allowed&&Boolean((await c.query('SELECT enabled FROM manufacturing_settings WHERE workspace_id=$1',[s.workspace_id])).rows[0]?.enabled);

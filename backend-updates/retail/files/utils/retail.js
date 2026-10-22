@@ -127,6 +127,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-operations.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-platform.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-ordering.sql'), 'utf8'));
+        await require('./retailWorkspaces').schema(c);
         await c.query('COMMIT');
       } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
     })().catch(e => { ready = null; throw e; });
@@ -139,6 +140,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     if (requested && requested !== workspace) throw fail('Selected workspace is not available', 403);
     const r = await c.query(`SELECT w.*,u.admin_plan_override FROM workspaces w JOIN users u ON u.id=w.owner_user_id WHERE w.id=$1 ${write ? 'FOR SHARE OF w,u' : ''}`, [workspace]);
     const w = r.rows[0]; if (!w) throw fail('Workspace unavailable', 403);
+    if(w.workspace_kind!=='retail')throw fail('Choose a separate Retail workspace; reseller/manufacturing workspaces cannot be used here',409);
     const members = await c.query(`SELECT role FROM workspace_members WHERE workspace_id=$1 AND user_id=$2 AND LOWER(TRIM(status))='active' ${write ? 'FOR SHARE' : ''}`, [workspace, actor]);
     const role = w.owner_user_id === actor ? 'owner' : String(members.rows[0]?.role || '').trim().toLowerCase();
     if (!['owner', 'admin', 'member', 'viewer'].includes(role) || (role === 'owner' && w.owner_user_id !== actor)) throw fail('Workspace access required', 403);
@@ -244,7 +246,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   }
   async function status(req) {
     await ensureSchema();
-    const s = await scope(pool, req, { inventory: false, entitled: false, enabled: false });
+    const s = await scope(pool, req, { entitled: false, enabled: false });
     return { success: true, counter_supported: true, offline_supported: Boolean(offlineKey), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, role: s.role, platform_supported:true, allowed: s.retail_access.allowed, enabled: s.settings.enabled, active: s.retail_access.allowed && s.settings.enabled, settings: s.settings, plan: s.access.plan_key };
   }
   async function settings(c, s, b) {
@@ -265,7 +267,13 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     if (vatEnabled && (!number || !business || !address)) throw fail('Add the VAT-registered business name, address and VAT registration number before enabling VAT receipts');
     const changed = Boolean(old.vat_receipts) !== vatEnabled || (old.vat_number || '') !== number || (old.receipt_business_name || '') !== business || (old.receipt_business_address || '') !== address;
     const version = (old.vat_version || 0) + (changed ? 1 : 0);
+    if(s.inventory_id){
+      if(!b.enabled)throw fail('Retail is a separate product. Manage this shop subscription under Stores & billing');
+      await c.query('UPDATE retail_stores SET settings=settings||$3::jsonb WHERE workspace_id=$1 AND inventory_id=$2',[...args(s),JSON.stringify({report_time:time,timezone,vat_receipts:vatEnabled,vat_number:number,receipt_business_name:business,receipt_business_address:address,vat_version:version})]);
+    }else{
     await c.query('INSERT INTO retail_settings(workspace_id,enabled,report_time,timezone,vat_receipts,vat_number,receipt_business_name,receipt_business_address,vat_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(workspace_id) DO UPDATE SET enabled=EXCLUDED.enabled,report_time=EXCLUDED.report_time,timezone=EXCLUDED.timezone,vat_receipts=EXCLUDED.vat_receipts,vat_number=EXCLUDED.vat_number,receipt_business_name=EXCLUDED.receipt_business_name,receipt_business_address=EXCLUDED.receipt_business_address,vat_version=EXCLUDED.vat_version,updated_at=now()', [s.workspace_id, b.enabled, time, timezone, vatEnabled, number, business, address, version]);
+    }
+
     await audit(c, s, 'settings_changed', { enabled: b.enabled, report_time: time, timezone, vat_receipts: vatEnabled, vat_version: version });
     return { enabled: b.enabled };
   }
@@ -502,7 +510,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const t = await till(c, s), reorder = await reorders(c, s);
       const reports = (await c.query('SELECT *,report_date::text AS report_date FROM retail_reports WHERE workspace_id=$1 AND inventory_id=$2 ORDER BY retail_reports.report_date DESC LIMIT 31', args(s))).rows;
       const tools = await business.overview(c, s), counter = await operations.overview(c,s);
-      const registeredTills=(await c.query('SELECT t.id,t.name,t.slot,t.active,(se.id IS NOT NULL) AS open,st.name AS assigned_to,(d.transaction_id IS NOT NULL) AS in_transaction FROM retail_registered_tills t LEFT JOIN retail_till_sessions se ON se.registered_till_id=t.id AND se.closed_at IS NULL LEFT JOIN retail_drawer_assignments d ON d.till_id=t.id LEFT JOIN retail_team st ON st.id=d.staff_id WHERE t.workspace_id=$1 AND t.inventory_id=$2 ORDER BY t.slot,t.name',args(s))).rows.map(t=>({...t,licensed:t.slot<=s.retail_access.till_allowance}));
+      const registeredTills=(await c.query('SELECT t.id,t.name,t.slot,t.active,(se.id IS NOT NULL) AS open,st.name AS assigned_to,(d.transaction_id IS NOT NULL) AS in_transaction FROM retail_registered_tills t LEFT JOIN retail_till_sessions se ON se.registered_till_id=t.id AND se.closed_at IS NULL LEFT JOIN retail_drawer_assignments d ON d.till_id=t.id LEFT JOIN retail_team st ON st.id=d.staff_id WHERE t.workspace_id=$1 AND t.inventory_id=$2 ORDER BY t.slot,t.name',args(s))).rows.map(t=>({...t,licensed:s.retail_access.allowed&&(s.retail_access.unlimited_tills||t.slot<=s.retail_access.till_allowance)}));
       const orderingData=await ordering.overview(c,s);
       await c.query('COMMIT');
       return { success: true, ordering:orderingData, registered_tills:registeredTills, platform_supported:true,retail_access:s.retail_access, operations: counter, business_supported: true, business: tools, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id, tools), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
@@ -524,6 +532,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         await c.query("SELECT pg_advisory_xact_lock(hashtextextended('retail-workspace:'||$1,0))", [row.workspace_id]);
         const fresh = (await c.query('SELECT w.*,u.admin_plan_override,r.enabled,r.report_time,r.timezone FROM workspaces w JOIN users u ON u.id=w.owner_user_id JOIN retail_settings r ON r.workspace_id=w.id WHERE w.id=$1 FOR SHARE OF w,u,r', [row.workspace_id])).rows[0];
         if (fresh?.enabled && (await platform.access(c,row.workspace_id,row.inventory_id)).allowed) {const ra=await platform.access(c,row.workspace_id,row.inventory_id);await report(c, { workspace_id: row.workspace_id, inventory_id: row.inventory_id, settings: {...fresh,...ra.settings} });}
+        await require('./retailWorkspaces').schema(c);
         await c.query('COMMIT');
       } catch (e) { await c.query('ROLLBACK'); console.error('Retail daily report failed:', e.code || e.name); } finally { c.release(); }
     }
@@ -548,4 +557,4 @@ function service() {
   if (!live) { const billing = require('./billing'); live = createService({ pool: require('../database'), calculateAccess: billing.calculateAccess, ensureBillingSchema: billing.ensureBillingSchema }); }
   return live;
 }
-module.exports = { createService, service, money, integer, dayAndTime, fail, vatSnapshot, taxDetails };
+module.exports = { id, text, createService, service, money, integer, dayAndTime, fail, vatSnapshot, taxDetails };

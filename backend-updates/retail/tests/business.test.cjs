@@ -30,7 +30,7 @@ const { createService, money, dayAndTime } = require('../files/utils/retail');
   const edit=(route,body,fn,recordId,admin=true)=>run(route,body,(c,s,b)=>fn(c,s,b,recordId),admin?{admin:true}:{});
   const overview=()=>R.overview(request('/overview'));
   const all=Object.fromEntries(B.features.map(k=>[k,true]));
-  await R.ensureSchema();await require('./platform-fixture.cjs')(R,db);
+  await db.exec("ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS workspace_kind text NOT NULL DEFAULT 'retail'");await R.ensureSchema();await require('./platform-fixture.cjs')(R,db);
   await run('/settings',{enabled:true},R.settings,{inventory:false,enabled:false,admin:true});
   let cfg=(await overview()).business.config;assert.ok(Object.values(cfg.features).every(x=>x===false));
   const settings={business_type:'corner_shop',features:all,loyalty_target:2,loyalty_minimum:'1.00',loyalty_reward_product_id:null,reminder_hours:24,version:0};

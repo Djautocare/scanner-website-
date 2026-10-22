@@ -26,7 +26,7 @@ const { createService, money, dayAndTime } = require('../files/utils/retail');
   const R = createService({ pool, calculateAccess: w => ({ allowed: w.plan_allowed, active_item_limit: w.plan_key === 'free' ? 2 : null, plan_key: w.plan_key }), now: () => clock });
   const request = (route, body = {}, options = {}) => ({ user: { id: options.actor || owner }, workspace: { id: options.workspace || workspace }, headers: { 'x-workspace-id': options.headerWorkspace || options.workspace || workspace, 'x-inventory-ids': options.inventory || inventory }, originalUrl: '/retail' + route, body: { request_id: uuid(), ...body } });
   const run = (route, body, fn, options, reqOptions) => R.transaction(request(route, body, reqOptions), fn, options);
-  await R.ensureSchema();await require('./platform-fixture.cjs')(R,db); await R.ensureSchema();
+  await db.exec("ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS workspace_kind text NOT NULL DEFAULT 'retail'");await R.ensureSchema();await require('./platform-fixture.cjs')(R,db); await R.ensureSchema();
   assert.equal((await R.status(request('/status'))).enabled, false);
   await assert.rejects(() => R.overview(request('/overview')), /Enable Retail/);
   await run('/settings', { enabled: true }, R.settings, { inventory: false, enabled: false, admin: true });

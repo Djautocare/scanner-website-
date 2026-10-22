@@ -55,7 +55,7 @@ Reports > Ordering:
 
 Reports:
 - Transactions (sales/refunds/search/original receipt), Daily sales and Waste.
-- Retail Pro: Stock-count losses, Biggest waste lines and Management activity.
+- Included in Retail: Stock-count losses, Biggest waste lines and Management activity.
 - Date presets and custom dates use the store timezone; end date is inclusive.
 - Ordering is live. Historic snapshots remain in your database.
 - Historical counts without a saved cost show unknown/partially priced values;

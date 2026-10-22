@@ -1,164 +1,60 @@
-RETAIL TILL SCANNING AND WASTE UPDATE (v10)
-Read TILL-AND-WASTE.txt first for the current installation instructions.
+INVENTORYOS RETAIL — SINGLE PLAN AND SEPARATE SHOPS UPDATE (v11)
 
-RETAIL ORDERING AND REPORTS UPDATE (v9)
-Read ORDERING-AND-REPORTS.txt first for this release and installation.
+Read SINGLE-PLAN-AND-WORKSPACES.txt for the current steps.
+Retail is now a permanent navigation option. It is not a Settings switch.
+One plan: GBP 19.99 per shop per month, all tools, unlimited till licences/staff.
+Each additional shop has its own subscription.
+The same login can access both products. Retail workspaces, shop stock,
+selection and billing are separate from reseller/manufacturing workspaces.
 
-READ DASHBOARD-AND-STORES.txt FIRST FOR THIS v8 UPDATE.
+INSTALL
+1. Finish/cancel every till basket and sync saved offline sales on ALL devices.
+2. Stop InventoryOS Backend in Windows Task Scheduler.
+3. Make a PostgreSQL backup before the workspace migration.
+4. Extract the whole InventoryOS-retail-single-plan-update folder inside your
+   backend folder, beside server.js. Do not individually replace the files.
+5. Open PowerShell in BACKEND and run:
+   node .\InventoryOS-retail-single-plan-update\install.cjs
+   node .\check-retail.cjs
+6. Restart InventoryOS Backend. Refresh the website and reopen installed PWAs.
 
-READ DRAWERS-AND-INSTALL.txt FIRST FOR THE NEW DRAWER FLOW AND REINSTALL HELP.
+The installer saves code backups and preserves your .env and existing auth,
+admin checks and normal subscriptions. It adds narrow guards to normal
+workspace routes so Retail IDs cannot be used there. No npm packages needed.
+The checker applies a transactional database migration. Existing Retail shops,
+products, sales, receipts, staff/PINs, loyalty and paired tills are retained.
+Normal inventory/stock and subscription rows remain in their original workspace.
+Keep this backend version after migration: restoring older code alone does not
+undo the workspace database move. A full rollback needs the database backup.
 
-INVENTORYOS RETAIL DRAWER UPDATE (v7)
+STRIPE
+See STRIPE-SETUP.txt. Use one monthly GBP 19.99 price. The existing Retail Pro
+price can be reused. No new webhook required. Keep legacy price IDs while old
+subscriptions exist. Existing charges are not silently raised: the owner
+confirms a switch, which removes extra-till charges and may be prorated.
+New shops are not charged until the owner chooses their subscription.
 
-1. BEFORE INSTALLING
-- Sync saved offline sales on every existing Retail device.
-- Count/balance and close your existing till. Back up PostgreSQL.
-- Stop the InventoryOS Backend task.
+ADMIN
+User account > Retail subscriptions & overrides > choose the shop.
+Select Retail, Blocked or Use paid entitlement. Set an expiry/reason, or use the
+one-week Retail trial button. Individual feature overrides are retained.
+Normal InventoryOS Business trials do not grant Retail access or vice versa.
+Overrides do not alter Stripe charges.
 
-2. INSTALL ON YOUR BACKEND PC
-Extract the ZIP. Put the WHOLE InventoryOS-retail-dashboard-update folder
-inside your backend folder, beside server.js. Open PowerShell in BACKEND:
+USE
+Open InventoryOS Retail from the permanent sidebar link, or:
+https://app.inventoryos.co.uk/retail/index.html
+Choose a Retail business/shop under Admin > Store location.
+For the first shop, enter its business name then choose its Retail subscription.
+Add more shops under Admin > Stores & billing; each has separate stock/billing.
+Add staff and set their store permissions and own PIN under Admin > Staff access.
+Add/name/connect as many tills as needed under Admin > Tills.
+Use the dedicated Till app for scanning/selling. Card payments are still taken
+on the shop's external reader and manually confirmed in InventoryOS.
+Enable appropriate business tools in Retail settings. Included tools can still
+be switched off to keep a shop's screen simple.
+Reseller/manufacturing recipe links cannot be used to consume stock from Retail.
+Existing history remains stored; pending make-to-order jobs should be reviewed.
 
-  node .\InventoryOS-retail-dashboard-update\install.cjs
-  node .\check-retail.cjs
-
-If the check says PASS, restart your existing backend task.
-Refresh the website. If installation/check fails, keep the backend stopped
-and send the error text, without sending .env, passwords or private keys.
-
-The installer creates a dated code backup and adds the database tables.
-It does NOT replace your .env, authentication middleware, standard billing
-plan definitions or admin checks. It extends the existing verified Stripe
-webhook and adds new controls AFTER the original admin authentication check.
-No new npm packages are needed. Retail Stripe prices need three new settings;
-see STRIPE-SETUP.txt. You can test with an admin override before configuring them.
-
-3. START WITH A TEST STORE / RETAIL OVERRIDE
-- Open https://app.inventoryos.co.uk/retail/index.html#retail-billing while logged in as owner.
-- Select an existing migrated store, or Add store.
-- Your restricted admin portal: Users > View account > Retail subscriptions &
-  overrides. Choose this store. Set one-week Pro trial, or your desired plan,
-  extra till pairs and feature overrides. Save with a reason.
-- Overrides are independent of Free/Starter/Pro/Business reseller plans and
-  their manufacturing trial. They never create a Stripe charge.
-- On expiry the store returns to its actual paid Retail entitlement.
-- Previously enabled Retail inventories receive a ONE-TIME seven-day Retail
-  Pro transition grant at installation; it never renews on restart. New stores
-  do not receive automatic trial access. Admin can replace/remove this grant.
-
-4. SET UP STAFF AND TILLS
-In Retail select the store using the inventory bar, then open Admin:
-- Admin > Staff access > Add staff.
-- Set a unique business-wide staff number and 4-8 digit PIN.
-- Store permission: assign the staff member to this store; optionally allow
-  them to approve refunds. Repeat for each store they should be able to use.
-- Print staff QR. The same QR identifies that person in their assigned stores.
-  It never includes their PIN. Resetting PIN revokes prior sessions.
-- Admin > Tills > Add till. The current store is selected automatically.
-  Give the till a name, then Continue. Starter and Pro include TWO tills.
-- Choose Use this device to connect immediately, or Connect another device
-  to get its address and one-use code. Codes expire after ten minutes.
-  Finish setup continues an existing till without registering another one.
-  Change device replaces its connection within the SAME licensed till.
-- Open till and enter the physically counted opening float before selling.
-- Use Open Till app in the Retail header when you are ready to log in.
-  If access is revoked, reconnect the existing till rather than creating one.
-- Staff scan their QR (or type number), then enter their OWN PIN.
-- Lock / log out switches operators without signing the website account out.
-  For a shared staff device, tick the sign-out option when choosing Use this
-  device, or use Shared till setup > Sign out website account in the Till app
-  before handing it to cashiers. Ordinary owner navigation preserves login.
-- Dedicated tills have no dashboard, product editing, cost, settings, billing
-  or global reporting access. Opening other API routes with a Till credential
-  is rejected by the website's normal JWT authentication.
-- Five incorrect PIN attempts cause a 15-minute lockout for that device/login.
-- Owner/admin back-office checkout can select a registered open till for
-  existing appointments, deposits, collections and exchanges. It uses that
-  till's cash ledger; it does not create another free till position.
-
-5. RETAIL PRICING
-Retail Starter: GBP 9.99/month/store.
-Retail Pro: GBP 19.99/month/store.
-Both: two simultaneous registered tills and unlimited staff identities.
-Extra tills: GBP 4.99/month per pair. Back-office devices do not count.
-Enterprise: contact hello@inventoryos.co.uk for a custom arrangement; access
-can be provisioned with the existing admin controls. It is not a self-serve
-Stripe Enterprise price and no future chain-specific features are advertised.
-
-Starter: products/services, scanning, stock, counts, deliveries, manual reorder
-list, staff PINs, receipts, parked baskets, cash/card recording and balancing.
-Pro additionally: loyalty, offers, appointments, preorders/deposits, advanced
-reports, customer display and combined daily reorder emails.
-Reseller/manufacturing entitlements are separate, even for the same account.
-
-6. LOYALTY ON PRO
-Retail > business tools: enable Customer loyalty and set the reward rules.
-In Till app: Customer loyalty > Search or Add account.
-New accounts can immediately print a QR card. View profile shows stamps and
-purchase history, and can reprint the SAME QR any number of times.
-Scanning IO-LC-... selects the account for the next sale. Completing payment
-records the sale and rewards against that account, then clears the selection.
-No marketing consent is inferred. Accounts/QRs are store-specific.
-Staff QR (IO-ST-...) and customer QR (IO-LC-...) are different credential types.
-QRs contain random identifiers, not names, email addresses or PINs.
-
-7. CASH / EXTERNAL CARD PAYMENTS
-Cash: enter cash received, confirm, then give the displayed change.
-Card: manually enter the exact displayed amount into your EXISTING card reader.
-Only after the reader says successful, press Confirm Card Payment in InventoryOS.
-Cancel / back does not create a sale. InventoryOS records 'manually confirmed';
-it does not send an amount to a reader or verify/process a card payment.
-Card sales/refunds are separate from expected CASH in the drawer.
-
-If recording loses its connection, use Recover payment. Do not charge again.
-A completed request is returned with the same reference and no second stock
-movement. Pending recordings block new checkout until resolved. If it genuinely
-cannot be recorded, Manager reconciliation requires an authorised staff QR/PIN
-and a written reason. Staff must separately check/resolve the actual payment.
-It cannot delete a completed sale; a late retry is blocked by the audit record.
-
-Refund: enter the original receipt reference, quantities and reason. Scan an
-assigned approver's QR and enter THAT SAME PERSON'S PIN. They must have refund
-permission at the CURRENT store. For a card return, perform the refund on the
-external reader first, then explicitly confirm it here. No automatic card refund.
-
-8. INSTALL THE PWAs
-Main app: Account settings > Install InventoryOS, or Stores & tills > Install.
-Till app: open /retail/till/index.html on the till device > Install app.
-On iPhone/iPad use Safari > Share > Add to Home Screen. Windows/Android browser
-installation varies. The two apps have distinct identities, names and icons.
-Use the Till app for staff, and the main app on owner/back-office devices.
-A PWA restricts what InventoryOS permissions grant; it cannot prevent leaving
-for another app. Use the device's kiosk / Guided Access controls if required.
-
-9. PRINTING / HARDWARE
-The dedicated Till app uses the corrected browser/mobile receipt print layout,
-including staff/customer QR cards. Choose the matching printer/paper size.
-Printer and cash-drawer names can be recorded per till for setup/reference.
-This does not install drivers, operate a cash drawer, or add QZ Tray to phones.
-Existing reseller/Dispatch Centre QZ printing is retained. Direct silent QZ
-printing from the new restricted Till app is not added by this release.
-USB/Bluetooth scanners must support keyboard/HID mode; QR scanning requires a
-2D/QR-capable scanner. Phone cameras can scan product EANs and staff/loyalty QRs.
-Test the actual printer/scanner model before relying on it for trading.
-
-10. CONNECTIVITY / EMAILS
-The NEW staff Till app requires a backend connection for login, sales and card
-confirmation. Installing a PWA does not make those transactions offline.
-The existing ordinary Retail offline queue/signed cash workflow remains intact;
-sync older queued sales before installing or changing accounts/workspaces.
-No transactions or customer data are cached in either PWA service worker.
-Pro reorder email: Store settings > enable combined daily email, destination,
-time and timezone. Default time 17:00. Uses your EXISTING Resend configuration.
-One combined email per store/day; independent from the reseller reminder add-on.
-Your PC/backend must be running at send time. Retries are bounded and use the
-existing email helper's idempotency support.
-
-ROLLBACK
-Keep the dated retail-backup-... folder. Stop the backend, close all registered
-tills and sync old offline sales first. Restore code with:
-  node .\InventoryOS-retail-dashboard-update\restore.cjs .\retail-backup-...
-The guarded restore refuses files edited after installation. It never deletes
-saved database records. After recording new card transactions, ask for a
-review before reverting to an older release that does not understand cards or
-multiple tills. A database backup is separate from the installer's code backup.
+The cumulative update includes the previous till scan/Qty/waste, reports,
+supplier prices, VAT, loyalty and drawer-management changes.

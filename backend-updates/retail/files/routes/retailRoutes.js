@@ -5,7 +5,8 @@ const { workspaceMiddleware } = require('../middleware/workspaceMiddleware');
 const R = require('../utils/retail').service();
 const catalogue = require('../utils/retailCatalogue').createLookup();
 const router = express.Router();
-router.use(auth, workspaceMiddleware);
+const retailWorkspaces=require('../utils/retailWorkspaces').create({pool:require('../database'),ensureSchema:R.ensureSchema,id:require('../utils/retail').id,text:require('../utils/retail').text,fail:(message,statusCode=400)=>Object.assign(new Error(message),{statusCode})});
+router.use(auth);
 const handle = fn => async (req, res) => {
   res.set('Cache-Control','no-store');
   try { res.json(await fn(req)); }
@@ -15,6 +16,9 @@ const handle = fn => async (req, res) => {
     res.status(status).json({ success: false, error: status === 500 ? 'Retail could not complete this request. Please retry; completed requests are protected from duplication.' : e.message, upgrade_required: status === 402, retryable: status >= 500, retry_after_seconds: e.retry_after_seconds });
   }
 };
+router.get('/workspaces',handle(retailWorkspaces.directory));
+router.post('/workspaces',handle(retailWorkspaces.createBusiness));
+router.use(retailWorkspaces.resolve);
 router.get('/locations',handle(R.platform.locations));
 router.get('/status', handle(R.status));
 router.get('/overview', handle(R.overview));
@@ -30,7 +34,7 @@ router.get('/catalogue/:barcode', handle(async req => {
 function mutate(method, route, fn, options) {
   router[method](route, handle(req => R.transaction(req, (c, s, b) => fn(c, s, b, req.params.id), options)));
 }
-mutate('patch', '/settings', R.settings, { inventory: false, admin: true, enabled: false, entitled: false });
+mutate('patch', '/settings', R.settings, { admin: true, enabled: false, entitled: false });
 mutate('patch','/suppliers/:id',R.ordering.configure,{admin:true});
 mutate('post','/suppliers/check',R.ordering.queue,{admin:true});
 mutate('post','/price-reviews/:id',R.ordering.resolveReview,{admin:true});

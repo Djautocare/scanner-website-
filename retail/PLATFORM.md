@@ -3,10 +3,12 @@
 The main InventoryOS account keeps its existing Free / Starter / Pro / Business
 subscription. Retail is separately licensed per store (one Retail inventory).
 
-- Retail Starter: £9.99/store/month, including two registered tills.
-- Retail Pro: £19.99/store/month, including two registered tills and Pro tools.
-- Additional till pairs: £4.99/month each.
-- Enterprise: contact the owner for a custom arrangement; not self-serve billing.
+- InventoryOS Retail: £19.99 per shop per month, all Retail tools included.
+- Unlimited till licences and staff; no till-pair add-on for new subscriptions.
+- Each shop has its own subscription inside a dedicated Retail workspace.
+- Legacy subscriptions retain their Stripe charges until their owner confirms
+  switching to the flat plan. Switching removes any till-pair item.
+
 
 Open `retail/manage.html` for store billing, till registration/pairing, separate
 cash sessions and staff store/refund permissions. Open `retail/till/index.html`
@@ -33,7 +35,7 @@ supported. Database transactions serialize store mutations and persist request
 IDs/results to recover lost responses without duplicating sales or stock moves.
 
 The original admin router receives additional Retail controls after its existing
-authentication/authorisation middleware. Retail plan, extra pairs and individual
+authentication/authorisation middleware. Retail access and individual
 feature overrides have optional expiry, explicit denial, reasons, version checks
 and audit history. They do not modify Stripe charges or legacy plan overrides.
 
@@ -73,8 +75,21 @@ Chrome-team guidance: https://web.dev/articles/building-multiple-pwas-on-the-sam
 
 ## Retail dashboard PWA and store locations (v8)
 
-The management PWA has identity `/inventoryos-retail`, starts at `/retail/dashboard/index.html`, and is scoped to `/retail/dashboard/`. This is separate from the restricted `/retail/till/` app. Login accepts only the exact dashboard return path after the existing billing checks. The normal Retail entry remains available; its Install Retail app button opens the PWA entry. The main root PWA can still suppress installation promotion; install Till and Dashboard before installing the main app.
+The management PWA has identity `/inventoryos-retail`, starts at `/retail/dashboard/index.html`, and is scoped to `/retail/dashboard/`. This is separate from the restricted `/retail/till/` app. Login accepts only the exact dashboard return path independently of normal InventoryOS plan checks. The normal Retail entry remains available; its Install Retail app button opens the PWA entry. The main root PWA can still suppress installation promotion; install Till and Dashboard before installing the main app.
 
 Retail replaces the global banner with Admin > Store location. Its controller validates accessible workspaces/inventories and enforces one selected inventory. Changing store is blocked with a basket, pending payment or unsynced sales. The small store-name link identifies the active store without the banner. Other app areas retain the original topbar.
 
 `GET /retail/locations` exposes role-checked store display names and inventory names without administration credentials. `POST /retail/platform` action `store-display-name` is owner/admin only, workspace-scoped and rejects stale prior names. It updates only `retail_stores.name`, preserving the inventory name, stock, receipt/legal settings and subscription. Empty input resets to the current inventory name. No new tables are needed. Install the cumulative InventoryOS-retail-dashboard-update package for shared naming; older backends can still select stores but cannot edit names on the new page.
+
+## Product boundary (v11)
+Retail has `workspace_kind=retail`; normal workspaces keep `inventory`.
+The migration copies the Retail inventory identity into its new Retail business
+and moves only Retail ledgers, preserving original normal inventory/stock.
+Migration mapping also resolves older Stripe subscription metadata safely.
+Retail directory and selection are independent of normal workspace endpoints
+and local storage. Retail has permanent navigation, with no Settings toggle.
+Normal API guards reject Retail workspace/shop IDs; Retail scope rejects normal
+workspaces. Cross-product Manufacturing consumption is not permitted.
+Sync every offline device and finish all baskets before migration. The code
+installer does not roll back migrated database scopes; use a database backup
+for a full rollback to an older release.
