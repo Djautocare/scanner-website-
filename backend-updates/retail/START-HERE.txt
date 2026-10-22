@@ -1,47 +1,23 @@
-Email receipts v13: follow EMAIL-RECEIPTS.txt for the separate optional paid add-on. Existing base Retail billing stays unchanged.
+INVENTORYOS RETAIL — RECEIPT UPDATE (v14)
 
-INVENTORYOS RETAIL — BILLING AND SANDBOX UPDATE (v12)
+Existing Retail installation: follow RECEIPT-LAYOUT.txt.
 
-Includes the v11 separate Retail workspaces and all previous Retail updates.
-Price: GBP 19.99 per subscribed shop per month. All Retail features, unlimited
-staff/tills. Retail and reseller/manufacturing stock and subscriptions stay separate.
+This update changes printed/email receipt shop names, cashier numbers and email
+appearance. You do NOT need to rerun Stripe setup or change prices or keys.
 
-1. Finish/cancel till baskets and sync saved offline sales on ALL devices.
-2. Back up PostgreSQL, then stop InventoryOS Backend in Task Scheduler.
-3. Extract the whole InventoryOS-retail-billing-update folder into:
-   C:\Users\dylan\Desktop\Inventory Server\backend
-   The folder sits beside server.js. Do not copy its individual files over yours.
-4. Open PowerShell in BACKEND and run:
-   node .\InventoryOS-retail-billing-update\install.cjs
-   node .\check-retail.cjs
-5. Follow STRIPE-SETUP.txt to add the public price/configuration IDs and your
-   private sandbox key/signing secret to backend/.env. Keep your live key.
-6. Run:
-   node .\check-retail-billing.cjs
-7. If the checks pass, restart InventoryOS Backend. Refresh the website and PWAs.
-8. For a full test with no real money, follow SANDBOX-TEST.txt using a separate
-   test account and shop. Never use real trading stock for a sandbox shop.
+Extract the whole InventoryOS-receipt-layout-update folder into your backend
+folder, next to server.js. Finish open baskets, sync offline sales and stop the
+backend. In PowerShell opened in the backend folder, run:
 
-WEBSITE
-Settings > Manage InventoryOS Retail billing shows all shops you own,
-shop-by-shop prices, renewal/end dates, and separate live/sandbox monthly totals.
-The same page is linked from Retail > Admin > Stores & billing.
-Add shops there. A new shop adds no charge until you explicitly subscribe it.
-One shop costs GBP 19.99/month; two GBP 39.98; three GBP 59.97.
-Each shop has its own subscription/renewal date. Cancel one through Stripe
-without cancelling other shops. Access lasts until the paid period ends.
-Opening a portal does not grant access; Stripe state is verified server-side.
-Displayed totals are recurring prices before discounts/credits/adjustments;
-Stripe invoices show the final amounts. Legacy prices are labelled for review.
+  node .\InventoryOS-receipt-layout-update\install.cjs
+  node .\check-retail.cjs
 
-INSTALLER
-Saves code backups and preserves .env, auth, administrator checks and ordinary
-subscriptions. No new npm package is needed. The checker runs schema changes
-transactionally. Adds billing snapshot/environment columns to retail_stores;
-no manual PostgreSQL table creation is needed. Unknown local Retail edits stop
-installation before changes. Existing shops, staff, PINs and paired tills remain.
+If the check passes, restart the backend, then refresh/reopen Retail and Till.
 
-If upgrading from before v11, a database backup is essential: that migration
-moves Retail to its own workspaces/inventories while retaining normal stock.
-Older code alone cannot undo that migration; use the matching database backup
-for a full rollback. See SINGLE-PLAN-AND-WORKSPACES.txt for migration details.
+The website/frontend update is deployed separately from this backend ZIP.
+The ZIP does not replace your server.js wholesale, .env, database or non-Retail
+features. It preserves protected admin middleware and backs up replaced files.
+
+For a first-time installation only, the included STRIPE-SETUP.txt and
+EMAIL-RECEIPTS.txt explain the separate subscription setup. Existing configured
+installations should not repeat those steps for this receipt update.

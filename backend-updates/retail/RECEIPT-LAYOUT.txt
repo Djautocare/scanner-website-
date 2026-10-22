@@ -1,0 +1,38 @@
+INVENTORYOS RETAIL — RECEIPT UPDATE (v14)
+
+For an existing Retail/email-receipt installation. No Stripe setup needs repeating.
+
+1. Finish any open till baskets and sync offline sales. Stop the backend using
+   your usual method before installing. Keep your normal database backup.
+2. Extract the ZIP. Put the complete InventoryOS-receipt-layout-update folder
+   inside your backend folder, beside server.js. Do not copy the individual files.
+3. Open PowerShell in your backend folder and run:
+
+   node .\InventoryOS-receipt-layout-update\install.cjs
+   node .\check-retail.cjs
+
+4. If the check passes, restart InventoryOS Backend using your usual method.
+5. Refresh Retail and the Till app (close and reopen installed apps if needed).
+6. Make a sandbox sale and print/email its receipt to check your shop details.
+
+WHAT CHANGED
+- Shop display name heads sale, return, deposit and wastage receipts and loyalty
+  cards. Change it in Admin > Store location > Shop display name.
+- Customer receipts show the saved cashier login number, without staff names.
+  Internal staff records and audit history remain available to the owner.
+- Email sender name/subject use the shop display name. The verified sending
+  email address stays the same.
+- Emails now resemble narrow paper till receipts: monochrome, monospaced,
+  itemised lines, dashed separators and a clear total.
+- VAT still uses the registered business details when enabled. Business name
+  (VAT details) is the separate field for those details.
+- New sale snapshots keep the shop display name at the time of sale, including
+  offline sales. Older receipts without a shop snapshot use that shop's current
+  display name. If an old sale has no saved cashier number, it says Not recorded.
+- Previously queued emails retain their original payload for safe delivery
+  retries. Re-email a receipt after updating to use the new layout.
+
+No new database tables, npm packages, environment settings or Stripe price
+changes are needed for this update. Your current paid add-on and sandbox
+settings continue to apply. The installer backs up replaced files and refuses
+unknown local edits instead of overwriting them.

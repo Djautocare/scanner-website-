@@ -103,7 +103,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     if (!offlineKey || s.role === 'viewer' || !t || !device || s.counter?.staff_login_required) return null;
     id(device);
     const issued = now().getTime(), contextId = uuid();
-    const context = { version: 1, context_id: contextId, device_id: device, workspace_id: s.workspace_id, inventory_id: s.inventory_id, actor_id: s.actor_id, till_id: t.id, issued_at: issued, expires_at: issued + 24 * 3600000, upload_until: issued + 7 * 86400000, settings: s.settings, business: s.business, pricing: tools?.pricing || { offers: [], reductions: [] } };
+    const context = { version: 1, context_id: contextId, device_id: device, workspace_id: s.workspace_id, inventory_id: s.inventory_id, actor_id: s.actor_id, till_id: t.id, issued_at: issued, expires_at: issued + 24 * 3600000, upload_until: issued + 7 * 86400000, shop_name: s.retail_access.display_name, settings: s.settings, business: s.business, pricing: tools?.pricing || { offers: [], reductions: [] } };
     return { context: signOffline(context), expires_at: context.expires_at, issued_at: issued, device_id: device, business: s.business, pricing: tools?.pricing || { offers: [], reductions: [] }, quotes: Object.fromEntries(products.filter(p => !p.archived).map(p => [p.id, signOffline({ context_id: contextId, product: { id: p.id, name: p.name, barcode: p.barcode, price_pence: p.price_pence, cost_pence: p.cost_pence, vat_treatment: p.vat_treatment, vat_rate: p.vat_rate, item_kind: p.item_kind, minimum_age: p.minimum_age } })])) };
   }
   function offlineSale(s, b, t) {
@@ -418,7 +418,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     const saleId = offline ? id(b.request_id) : uuid(), soldAt = offline?.occurred_at || now().toISOString();
     const reference = `RT-${soldAt.slice(0, 10).replace(/-/g, '')}-${saleId.slice(0, 8).toUpperCase()}`;
     const vat = vatSnapshot(saleSettings, items);
-    const receiptBusiness = { name: saleSettings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail', address: saleSettings.receipt_business_address || '' };
+    const receiptBusiness = { name: saleSettings.receipt_business_name || s.workspace_name || 'InventoryOS · Retail', shop_name: offline?.shop_name || s.retail_access.display_name || saleSettings.receipt_business_name || s.workspace_name, address: saleSettings.receipt_business_address || '', timezone: saleSettings.timezone || 'Europe/London', till_name: s.registered_till_id ? (await c.query('SELECT name FROM retail_registered_tills WHERE id=$1',[s.registered_till_id])).rows[0]?.name || '' : '' };
     const sale = (await c.query('INSERT INTO retail_sales(id,workspace_id,inventory_id,reference,total_pence,tendered_pence,change_pence,payment_method,actor_id,vat_receipt,receipt_business,created_at,offline_device_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *', [saleId, ...args(s), reference, total, tendered, tendered - total, b.payment_method, s.actor_id, vat ? JSON.stringify(vat) : null, JSON.stringify(receiptBusiness), soldAt, offline?.device_id || null])).rows[0];
     for (const { product: p, qty } of items) {
       await c.query('INSERT INTO retail_sale_items(id,workspace_id,inventory_id,sale_id,product_id,name,barcode,qty,unit_price_pence,unit_cost_pence) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [uuid(), ...args(s), saleId, p.id, p.name, p.barcode, qty, p.price_pence, p.cost_pence]);

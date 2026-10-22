@@ -143,7 +143,7 @@ function createBusiness(H){
   if(amount+previous.reduce((n,d)=>n+d.amount_pence,0)>total)throw fail('Deposit exceeds the remaining order/service price');
   if(t.expected_pence+amount>100000000)throw fail('Till cash limit reached');
   const allocated=Pricing.allocate(amount,items,i=>i.product.price_pence*i.qty),vat=vatSnapshot(s.settings,items.map((i,n)=>({...i,gross_pence:allocated[n]})));
-  const recordId=uuid(),reference='DEP-'+recordId.slice(0,8).toUpperCase(),business={name:s.settings.receipt_business_name||s.workspace_name,address:s.settings.receipt_business_address||''};
+  const recordId=uuid(),reference='DEP-'+recordId.slice(0,8).toUpperCase(),business={shop_name:s.retail_access?.display_name||s.workspace_name,name:s.settings.receipt_business_name||s.workspace_name,address:s.settings.receipt_business_address||''};
   const result=(await c.query('INSERT INTO retail_deposits(id,workspace_id,inventory_id,origin_type,origin_id,amount_pence,session_id,vat_receipt,receipt_business,actor_id,reference) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',[recordId,...args(s),b.origin_type,origin.id,amount,t.id,vat?JSON.stringify(vat):null,JSON.stringify(business),s.actor_id,reference])).rows[0];
   await cash(c,s,t,'deposit',amount,{note:reference});return {deposit:result};
  }

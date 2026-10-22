@@ -23,7 +23,7 @@ function createWaste(H){
    const display=ctx.display_lines?.length?ctx.display_lines.map(line=>({...rows.find(p=>p.product_id===line.product_id),line_id:line.line_id,qty:line.qty})):rows;
    const till=(await c.query('SELECT name FROM retail_registered_tills WHERE id=$1',[s.registered_till_id])).rows[0],store=(await c.query('SELECT name FROM retail_stores WHERE inventory_id=$1',[s.inventory_id])).rows[0];
    // A stock write-off is not a sale. This receipt deliberately has no tax or payment fields.
-   const receipt={id:batch,reference,created_at:now().toISOString(),store_name:s.settings.receipt_business_name||store.name,business_address:s.settings.receipt_business_address||'',till_name:till.name,staff:{id:s.pos_staff.id,name:s.pos_staff.name,number:s.pos_staff.number},approved_by:{name:ctx.approved_by.name,number:ctx.approved_by.number},reason:ctx.reason,items:display};
+   const receipt={id:batch,reference,created_at:now().toISOString(),shop_name:store.name,store_name:store.name,business_address:s.settings.receipt_business_address||'',till_name:till.name,staff:{id:s.pos_staff.id,name:s.pos_staff.name,number:s.pos_staff.number},approved_by:{name:ctx.approved_by.name,number:ctx.approved_by.number},reason:ctx.reason,items:display};
    await c.query('INSERT INTO retail_waste_batches(id,workspace_id,inventory_id,registered_till_id,receipt,actor_id) VALUES($1,$2,$3,$4,$5,$6)',[batch,...args(s),s.registered_till_id,JSON.stringify(receipt),s.actor_id]);
    for(const item of clean)await business.waste(c,{...s,waste_approver:ctx.approved_by,waste_batch_id:batch},{...item,reason:ctx.reason,note:'Wastage receipt '+reference});
    return {recorded:true,waste_receipt:receipt};
