@@ -22,6 +22,7 @@ const pool = require('./database');
   console.log('PASS: Retail ordering, price reviews, reports and drawer controls are ready. Retail has permanent navigation and separate shop workspaces.');
   const mixed=(await pool.query("SELECT s.inventory_id FROM retail_stores s JOIN inventories i ON i.id=s.inventory_id JOIN workspaces w ON w.id=s.workspace_id WHERE w.workspace_kind<>'retail' OR i.workspace_id<>s.workspace_id")).rows;if(mixed.length)throw new Error('Retail workspace migration incomplete');
   console.log('Existing stock, billing, admin permissions and .env were not replaced.');
+  console.log('For Stripe live/sandbox setup also run: node .\\check-retail-billing.cjs');
   console.log('Restart InventoryOS Backend. Retail Admin > Tills manages inventory connections and drawer assignments. Till staff log in, choose a drawer, and confirm it.');
   console.log('Retail business tools, VAT, barcode lookup and offline cash checkout are ready. Existing records were retained. Business tools start off until selected in Retail settings.');
 })().catch(e => { console.error('Retail check failed: ' + e.message); process.exitCode = 1; }).finally(() => pool.end());

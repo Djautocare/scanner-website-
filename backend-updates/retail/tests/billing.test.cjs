@@ -1,0 +1,37 @@
+'use strict';
+const assert=require('node:assert/strict'),{randomUUID:uuid}=require('node:crypto');
+const {createService}=require('../files/utils/retail');
+(async()=>{
+ const f=await require('./till-fixture.cjs')(),{db,pool,owner,workspace,inventory,other,req}=f;
+ process.env.STRIPE_PRICE_RETAIL_MONTHLY='price_live_retail';process.env.STRIPE_SECRET_KEY='sk_live_FAKE';
+ process.env.STRIPE_RETAIL_SANDBOX_PRICE_MONTHLY='price_sandbox_retail';process.env.STRIPE_RETAIL_SANDBOX_SECRET_KEY='sk_test_FAKE';process.env.STRIPE_RETAIL_SANDBOX_WEBHOOK_SECRET='whsec_FAKE';
+ const logs=[],subscriptions=new Map(),sessions=new Map();
+ const fake=environment=>({prices:{retrieve:async id=>({id,livemode:environment==='live',active:true,currency:'gbp',unit_amount:1999,recurring:{interval:'month',interval_count:1}})},customers:{create:async(body)=>{logs.push({environment,kind:'customer',body});return{id:'cus_'+environment};}},checkout:{sessions:{create:async body=>{logs.push({environment,kind:'checkout',body});const session={id:'cs_'+environment,status:'open',url:'https://checkout.stripe.com/c/'+environment,metadata:body.metadata};sessions.set(session.id,session);return session;},retrieve:async id=>sessions.get(id),expire:async id=>sessions.get(id).status='expired'}},subscriptions:{retrieve:async id=>subscriptions.get(id),update:async()=>{throw Error('Unexpected repricing');}},billingPortal:{sessions:{create:async body=>{logs.push({environment,kind:'portal',body});return{url:'https://billing.stripe.com/session/'+environment};}}}});
+ const live=fake('live'),sandbox=fake('sandbox'),P=createService({pool,calculateAccess:()=>({allowed:false}),stripeClient:{live,sandbox}}).platform;
+ await P.adminOverride({...req('',{action:'billing-environment',inventory_id:other,environment:'sandbox',previous_environment:'live',reason:'Isolated test shop'}),params:{id:owner}});
+ assert.equal((await P.billingSummary(req(''))).live.monthly_pence,0);
+ const bill=(inv,action='checkout',extra={})=>P.billing(req('',{inventory_id:inv,action,request_id:uuid(),...extra}));
+ await bill(inventory);await bill(inventory);assert.equal(logs.filter(x=>x.kind==='checkout'&&x.environment==='live').length,1);
+ const created=logs.find(x=>x.kind==='checkout');assert.equal(created.body.line_items[0].quantity,1);assert.equal(created.body.metadata.billing_environment,'live');assert.equal(created.body.subscription_data.billing_mode.type,'flexible');assert.equal(created.body.automatic_tax.enabled,false);assert.match(created.body.integration_identifier,/^inventoryos_retail_[a-z]{8}$/);
+ await bill(other,'checkout',{environment:'live'});assert.equal(logs.filter(x=>x.kind==='checkout'&&x.environment==='sandbox').length,1);assert.equal(logs.filter(x=>x.kind==='customer').length,2);assert.equal(logs.find(x=>x.environment==='sandbox'&&x.kind==='checkout').body.line_items[0].price,'price_sandbox_retail');
+ await assert.rejects(()=>P.adminOverride({...req('',{action:'billing-environment',inventory_id:inventory,environment:'sandbox',previous_environment:'live',reason:'Cannot move live history'}),params:{id:owner}}),/history/);
+ const sub=(environment,inv)=>({id:'sub_'+environment,customer:'cus_'+environment,livemode:environment==='live',status:'active',cancel_at_period_end:false,metadata:{product_type:'inventoryos_retail',billing_environment:environment,workspace_id:workspace,inventory_id:inv},items:{data:[{id:'si_'+environment,quantity:1,current_period_end:Math.floor(Date.now()/1000)+86400,price:{id:'price_'+environment+'_retail',currency:'gbp',unit_amount:1999,recurring:{interval:'month',interval_count:1}}}]}});
+ const l=sub('live',inventory),s=sub('sandbox',other);subscriptions.set(l.id,l);subscriptions.set(s.id,s);
+ const hook=(value,environment='live')=>P.webhook({type:'customer.subscription.updated',livemode:environment==='live',data:{object:value}},environment==='live'?live:sandbox,environment);
+ await hook(l);let summary=await P.billingSummary(req(''));assert.equal(summary.live.monthly_pence,1999);assert.equal(summary.sandbox.monthly_pence,0);
+ await assert.rejects(()=>hook(l,'sandbox'),/environment mismatch/);await assert.rejects(()=>hook(s),/environment mismatch/);assert.equal((await P.billingSummary(req(''))).sandbox.monthly_pence,0);
+ await hook(s,'sandbox');summary=await P.billingSummary(req(''));assert.equal(summary.live.subscribed_shops,1);assert.equal(summary.live.monthly_pence,1999);assert.equal(summary.sandbox.monthly_pence,1999);
+ assert(!JSON.stringify(summary).includes('cus_live'));assert(!JSON.stringify(summary).includes('sub_live'));
+ const third=(await P.ownerChange(req('',{action:'create-store',name:'Second live shop'}))).store.inventory_id;
+ await bill(third);assert.equal(logs.filter(x=>x.kind==='customer'&&x.environment==='live').length,1);
+ const secondLive={...sub('live',third),id:'sub_live_second'};subscriptions.set(secondLive.id,secondLive);await hook(secondLive);assert.equal((await P.billingSummary(req(''))).live.monthly_pence,3998);
+ await bill(inventory,'cancel');const portal=logs.find(x=>x.kind==='portal');assert.equal(portal.body.flow_data.subscription_cancel.subscription,l.id);assert.equal(portal.environment,'live');
+ l.cancel_at_period_end=true;await hook(l);summary=await P.billingSummary(req(''));assert.equal(summary.live.monthly_pence,3998);assert.equal(summary.live.renewing_monthly_pence,1999);
+ l.status='canceled';await hook(l);summary=await P.billingSummary(req(''));assert.equal(summary.live.monthly_pence,1999);assert.equal(summary.sandbox.monthly_pence,1999);
+ const outsider=uuid();await db.query("INSERT INTO users(id,name,email)VALUES($1,'Unrelated','x@example.test')",[outsider]);assert.equal((await P.billingSummary({...req(''),user:{id:outsider}})).stores.length,0);
+ await db.query("INSERT INTO workspace_members(workspace_id,user_id,role,status)VALUES($1,$2,'admin','active')",[workspace,outsider]);await assert.rejects(()=>P.billing({...req('',{inventory_id:inventory,action:'portal'}),user:{id:outsider}}),/Only the Retail business owner/);
+ // Normal InventoryOS billing records cannot be changed by Retail webhooks.
+ const normal=uuid();await db.query("INSERT INTO workspaces(id,owner_user_id,name,workspace_kind,stripe_customer_id)VALUES($1,$2,'Normal inventory','inventory','cus_normal')",[normal,owner]);assert.equal((await P.billingSummary(req(''))).stores.length,3);assert.equal((await db.query('SELECT stripe_customer_id FROM workspaces WHERE id=$1',[normal])).rows[0].stripe_customer_id,'cus_normal');
+ const {client}=require('../files/utils/retailBilling').create({pool,id:v=>v,fail:(m,statusCode)=>Object.assign(Error(m),{statusCode}),now:()=>new Date(),ensureSchema:async()=>{}});process.env.STRIPE_RETAIL_SANDBOX_SECRET_KEY='sk_live_FAKE';assert.throws(()=>client({billing_environment:'sandbox'}),/does not match/);
+ console.log('PASS billing: live/sandbox isolation, per-shop checkout and idempotent retries, independent customers, £19.99 totals, cancel deep links, scheduled totals, owner-only billing, admin-only environment configuration, no cross-workspace or normal-plan changes.');await db.close();
+})().catch(e=>{console.error(e);process.exit(1);});

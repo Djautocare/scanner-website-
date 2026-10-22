@@ -1,27 +1,65 @@
-INVENTORYOS RETAIL — ONE PLAN, £19.99 PER SHOP PER MONTH
+INVENTORYOS RETAIL STRIPE SETUP — v12 (supersedes older billing instructions)
 
-1. Keep your existing Stripe account, secret key and webhook.
-2. Use ONE active monthly recurring GBP price for £19.99.
-   You can reuse your existing £19.99 Retail Pro price.
-3. Put its price_... ID in your backend .env:
-   STRIPE_PRICE_RETAIL_MONTHLY=price_your_1999_monthly_price
-   If omitted, STRIPE_PRICE_RETAIL_PRO_MONTHLY is accepted as a fallback.
-   Keep old Starter/Pro/till-pair price IDs while legacy subscriptions exist:
-   they are needed to recognise webhooks and remove the old till add-on.
-4. Keep your existing /billing/webhook endpoint and subscribed events.
-   No new webhook, key, npm package or PostgreSQL table setup is manual.
-5. Restart backend. Open Retail > Admin > Stores & billing for each shop.
-   One subscription covers that shop, all Retail features and unlimited tills.
-   Each extra shop needs its own subscription. Staff and devices are not billed.
-6. Existing subscriptions are NOT silently repriced. Until the owner confirms
-   switching, existing Stripe charges continue. Confirmation updates the base
-   to £19.99 and removes any extra-till item, with a Stripe prorated adjustment.
-   Legacy active stores already receive all tools and unlimited till licences.
-   Do not archive old Stripe prices until all subscriptions have switched.
-7. Admin Retail overrides apply only to the selected shop. A timed Retail grant
-   can be used for a free trial. Expiry returns to paid Retail access or locked.
-   Overrides never change or cancel Stripe charges.
-8. Your ordinary Free/Starter/Pro/Business InventoryOS plans are unchanged.
-   Retail shops have separate workspaces, inventory, billing and selection.
-9. Test Stripe in a separate test backend before accepting real subscriptions.
-   The automated checks mock Stripe and never charge cards or send emails.
+The Stripe products, prices, Retail portal configurations and sandbox webhook
+have already been created. Their IDs below are PUBLIC configuration values.
+No customer charges or existing subscription prices were changed.
+
+1. Open backend/.env in Notepad on your PC. Keep all existing lines, including
+   STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET. Do not send their values to us.
+2. Add/update these public values:
+
+STRIPE_PRICE_RETAIL_MONTHLY=price_1UTKrrC9bSpYsWkxVIK1huZz
+STRIPE_RETAIL_PORTAL_CONFIGURATION=bpc_1UTL1PC9bSpYsWkx5mPMIbmn
+STRIPE_RETAIL_SANDBOX_PRICE_MONTHLY=price_1UTKsUCKUUaMpjJ43nKnZJdG
+STRIPE_RETAIL_SANDBOX_PORTAL_CONFIGURATION=bpc_1UTKujCKUUaMpjJ4mlqLrcLh
+
+3. In Stripe, switch to the SEPARATE account named InventoryOS sandbox.
+   The account ID is acct_1TrOrXCKUUaMpjJ4. This is different from merely
+   turning on test mode in the live InventoryOS account.
+4. In that sandbox, open Developers/Workbench > API keys. Create a restricted
+   TEST API key where supported (rk_test_...). Grant the permissions needed
+   for prices/products read, customers read/write, Checkout Sessions read/write,
+   subscriptions read/write, and billing portal read/write. Use a sandbox
+   sk_test_ key if your restricted permissions cannot cover the integration.
+   Copy it privately into .env using this NAME (replace the placeholder):
+
+STRIPE_RETAIL_SANDBOX_SECRET_KEY=YOUR_PRIVATE_SANDBOX_API_KEY
+
+5. Still in InventoryOS sandbox, open Workbench > Webhooks and select:
+   InventoryOS Retail isolated sandbox billing
+   Endpoint ID: we_1UTKx7CKUUaMpjJ43zpcj41A
+   URL: https://api.inventoryos.co.uk/retail/billing/sandbox-webhook
+   Reveal the endpoint signing secret (whsec_...). Copy it privately into:
+
+STRIPE_RETAIL_SANDBOX_WEBHOOK_SECRET=YOUR_PRIVATE_SANDBOX_SIGNING_SECRET
+
+   Do not use the old sandbox /billing/webhook signing secret. This new endpoint
+   has its own secret. Live billing continues to use /billing/webhook and its
+   existing live secret. Until your backend update is running, the new sandbox
+   endpoint will not work. Retry failed sandbox events after restarting.
+
+6. Save .env. In backend PowerShell run:
+   node .\check-retail-billing.cjs
+   This checks API key mode, active monthly GBP 19.99 prices and the configured
+   portals without creating payments/customers/subscriptions. Fix any named
+   setting, rerun, then restart InventoryOS Backend.
+7. Refresh the website. Settings > Manage InventoryOS Retail billing.
+
+BILLING BEHAVIOUR
+- One paid subscription per shop; all Retail features, unlimited tills/staff.
+- Adding a shop does not charge until the owner confirms its subscription.
+- Each additional subscribed shop adds GBP 19.99 to the monthly recurring total.
+- Shop subscriptions have individual billing dates and separate cancellation.
+- Portal supports payment details, invoices and cancellation at period end.
+  Quantity editing is disabled: subscription quantity cannot bypass shop access.
+- Existing ordinary Starter/Pro/Business/add-on prices were not changed.
+- Existing legacy Retail prices remain until the owner confirms switching.
+  Switching removes any old till-pair item and may create a prorated adjustment.
+  Keep legacy price IDs in .env until those subscriptions have all switched.
+- Do not replace STRIPE_SECRET_KEY with a test key. Sandbox has separate settings.
+- Sandbox events only affect shops marked sandbox by your protected admin portal.
+- A shop with any Stripe customer/subscription/checkout history cannot switch
+  environment. Create a fresh test shop/account instead. No automatic conversion
+  of sandbox subscriptions into real paid subscriptions occurs.
+- Hardware/card-provider fees are separate. Shop card payments remain manually
+  confirmed on the external reader; this integration bills InventoryOS software.

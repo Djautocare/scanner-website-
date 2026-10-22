@@ -103,3 +103,11 @@ ALTER TABLE retail_stores DROP CONSTRAINT IF EXISTS retail_stores_paid_plan_chec
 ALTER TABLE retail_stores ADD CONSTRAINT retail_stores_paid_plan_check CHECK(paid_plan IN('none','starter','pro','enterprise','retail'));
 ALTER TABLE retail_stores DROP CONSTRAINT IF EXISTS retail_stores_override_plan_check;
 ALTER TABLE retail_stores ADD CONSTRAINT retail_stores_override_plan_check CHECK(override_plan IN('blocked','starter','pro','enterprise','retail'));
+
+-- Billing is isolated per shop. Only the protected platform admin may select sandbox.
+ALTER TABLE retail_stores ADD COLUMN IF NOT EXISTS billing_environment text NOT NULL DEFAULT 'live' CHECK(billing_environment IN('live','sandbox'));
+ALTER TABLE retail_stores ADD COLUMN IF NOT EXISTS billing_amount_pence bigint;
+ALTER TABLE retail_stores ADD COLUMN IF NOT EXISTS billing_currency text;
+ALTER TABLE retail_stores ADD COLUMN IF NOT EXISTS billing_interval text;
+ALTER TABLE retail_stores ADD COLUMN IF NOT EXISTS billing_interval_count integer;
+ALTER TABLE retail_stores ADD COLUMN IF NOT EXISTS billing_synced_at timestamptz;

@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const hash = b => crypto.createHash('sha256').update(b).digest('hex');
 const root = process.cwd();
-const names = ['utils/retailWorkspaces.js','middleware/inventoryWorkspaceOnly.js','utils/retailWaste.js','utils/supplierProduct.js','utils/retailOrdering.js','utils/retailReports.js','sql/retail-ordering.sql','utils/retailDrawers.js','routes/retailPosRoutes.js','utils/retailPlatform.js','utils/retailPlatformAdmin.js','sql/retail-platform.sql','routes/retailRoutes.js', 'utils/retail.js', 'utils/retailCatalogue.js', 'utils/retailBusiness.js', 'utils/retailPricing.js', 'utils/retailOperations.js', 'utils/retailTransfer.js', 'sql/retail-operations.sql', 'sql/retail.sql', 'sql/retail-business.sql', 'check-retail.cjs'];
+const names = ['check-retail-billing.cjs','utils/retailBilling.js','utils/retailWorkspaces.js','middleware/inventoryWorkspaceOnly.js','utils/retailWaste.js','utils/supplierProduct.js','utils/retailOrdering.js','utils/retailReports.js','sql/retail-ordering.sql','utils/retailDrawers.js','routes/retailPosRoutes.js','utils/retailPlatform.js','utils/retailPlatformAdmin.js','sql/retail-platform.sql','routes/retailRoutes.js', 'utils/retail.js', 'utils/retailCatalogue.js', 'utils/retailBusiness.js', 'utils/retailPricing.js', 'utils/retailOperations.js', 'utils/retailTransfer.js', 'sql/retail-operations.sql', 'sql/retail.sql', 'sql/retail-business.sql', 'check-retail.cjs'];
 function checked(relative) {
   const p = path.join(root, relative);
   if (fs.existsSync(p) && fs.lstatSync(p).isSymbolicLink()) throw new Error('Refusing a symbolic link: ' + relative);
@@ -78,9 +78,16 @@ try {
     const updated=block.replace(/,?\s*\]$/,',\n'+extras.map(name=>'        "'+name+'"').join(',\n')+'\n    ]');
     server=server.replace(block,updated);
   }
+  const sandboxMount='app.post("/retail/billing/sandbox-webhook", express.raw({type:"application/json",limit:"2mb"}), require("./utils/retailBilling").sandboxWebhook);';
+  if(!server.includes(sandboxMount)){
+    if(server.includes('/retail/billing/sandbox-webhook'))throw new Error('A different Retail sandbox webhook exists. Nothing changed.');
+    const anchor='app.use(express.json({ limit: "25mb" }));';
+    if(server.split(anchor).length!==2)throw new Error('Could not identify raw sandbox webhook insertion before JSON parsing. Nothing changed.');
+    server=server.replace(anchor,sandboxMount+'\n\n'+anchor);
+  }
   writes.push(...require('./partition-install.cjs')(name=>fs.readFileSync(checked(name),'utf8')));
   if (server !== before) writes.push({ name: 'server.js', bytes: Buffer.from(server), old: Buffer.from(before) });
-  const stateBytes = Buffer.from(JSON.stringify({ version: 11, files: manifest }, null, 2));
+  const stateBytes = Buffer.from(JSON.stringify({ version: 12, files: manifest }, null, 2));
   const stateOld = fs.existsSync(stateFile) ? fs.readFileSync(stateFile) : null;
   if (!stateOld || hash(stateOld) !== hash(stateBytes)) writes.push({ name: '.retail-installed.json', bytes: stateBytes, old: stateOld });
   if (!writes.length) { console.log('Retail update is already installed. Next: node .\\check-retail.cjs'); process.exit(0); }

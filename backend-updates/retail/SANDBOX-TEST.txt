@@ -1,0 +1,42 @@
+TEST INVENTORYOS RETAIL WITHOUT REAL MONEY
+
+First install v12 and complete STRIPE-SETUP.txt. Never share your keys here.
+
+1. Create and verify a SEPARATE InventoryOS test account. Sign in and open Retail.
+2. Create a Retail business/first shop, for example 'Test shop'. Do not start
+   checkout yet. Creating the shop does not charge or require an override.
+3. On your OWNER ADMIN account, open Admin portal > that test account >
+   Retail subscriptions & overrides. Choose Test shop.
+4. Expand Stripe sandbox testing. Select Sandbox — test payments only.
+   Enter a reason (e.g. 'Retail billing test') and Save billing environment.
+   This control uses your existing protected administrator checks.
+5. Back on the TEST account, open Settings > Manage InventoryOS Retail billing.
+   The shop must clearly say SANDBOX — TEST PAYMENTS ONLY.
+6. Click Test subscribe — GBP 19.99/month. Confirm, then use Stripe's TEST card:
+   Number: 4242 4242 4242 4242
+   Expiry: any future month/year
+   CVC: any three digits
+   Use a test name/address. Do not enter a real card.
+7. Complete checkout. After returning, the sandbox shop should show Active,
+   its renewal date and GBP 19.99/month in the SANDBOX total. LIVE total stays 0.
+   If confirmation is delayed, press Refresh billing and check the sandbox
+   webhook delivery in Stripe. Retry any delivery that failed before installation.
+8. Create a SECOND test shop in the same Retail business. In your admin account,
+   mark that shop sandbox BEFORE its first checkout. Subscribe it with the same
+   test card. The sandbox total becomes GBP 39.98/month; live remains unchanged.
+9. Test payment details/invoices and Cancel this shop. Stripe asks for final
+   confirmation and schedules cancellation at period end. Other shops remain.
+10. A declined payment can be tested using 4000 0000 0000 0002.
+    A failed/cancelled checkout must not grant paid access or increase totals.
+
+Admin trial/plan overrides can hide whether payment gating works. Clear the
+Retail access override on the test shop when testing access before/after payment.
+A normal Business trial grants no Retail access. Sandbox subscriptions do not
+charge real money, but the shop itself is still a real test data container:
+keep test products/receipts separate from your trading records.
+
+The automated backend/browser tests cover billing requests, webhook isolation,
+monthly totals, checkout retries, cancellation and ordinary workspace separation.
+The real round-trip on your PC still needs the private environment setup and
+this account test. A standalone Stripe demo link is a checkout preview only;
+it does not activate a shop, because it is not linked to an InventoryOS account.

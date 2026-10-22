@@ -458,7 +458,7 @@ function updateStrength(){
 
 async function redirectAfterLogin(){
     const requested = new URLSearchParams(window.location.search).get("returnTo");
-    if(["/retail/index.html","/retail/dashboard/index.html"].includes(requested)){
+    if(["/retail/index.html","/retail/dashboard/index.html","/retail/billing.html"].includes(requested)){
         window.location.href=requested;
         return;
     }
@@ -592,6 +592,8 @@ document.addEventListener("keydown", function(e){
 
 if(InventoryAPI.isLoggedIn()){
     redirectAfterLogin();
+}else if(new URLSearchParams(location.search).get("view")==="register"){
+    showRegister();
 }
 </script>
 

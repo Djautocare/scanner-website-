@@ -21,5 +21,12 @@ module.exports=function patchPartition(read){
   }
   const next=source.replaceAll('\n',newline);if(next!==old)changes.push({name,bytes:Buffer.from(next),old:Buffer.from(old)});
  }
+ // Keep the normal billing feature list aligned with the existing Pro reorder routes.
+ const billingName='utils/billing.js',billingOld=read(billingName);
+ if(billingOld.includes('const PLAN_DEFINITIONS = {')&&!billingOld.includes('Reorder rules, ordered stock and destination assignment')){
+  const anchor='"Custom workspace location labels"';
+  const next=once(billingOld,anchor,anchor+',\n            "Reorder rules, ordered stock and destination assignment"','normal Pro billing feature list');
+  changes.push({name:billingName,bytes:Buffer.from(next),old:Buffer.from(billingOld)});
+ }
  return changes;
 };

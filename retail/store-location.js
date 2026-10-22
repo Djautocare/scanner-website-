@@ -7,7 +7,7 @@ const selection=()=>({workspace:workspace(),inventory:ids().join(',')});
 function select(w,id){localStorage.setItem(W,w||'');localStorage.setItem(I,JSON.stringify(id?[id]:[]));localStorage.setItem('inventoryos_retail_store',id||'');}
 async function request(path,w=workspace(),options={}){const r=await InventoryAPI.request(path,{...options,headers:{'X-Workspace-Id':w,'X-Inventory-Ids':ids().join(','),...(options.headers||{})}});if(!r.success)throw Error(r.error||'Could not load Retail. Install the latest backend update.');return r;}
 async function loadContext(w){if(!w)return null;const location=await request('/retail/locations',w);return {workspace:location.workspace,stores:location.stores,editable:true};}
-function identity(fallback){const store=context?.stores.find(s=>s.id===ids()[0]),el=document.querySelector('#retailStoreIdentity');if(el){el.textContent=fallback||store?.display_name||'Choose Retail shop';el.title='Open store location';}}
+function identity(fallback){const store=context?.stores.find(s=>s.id===ids()[0]),el=document.querySelector('#retailStoreIdentity');if(el){el.textContent=(fallback||store?.display_name||'Choose Retail shop')+(store?.billing_environment==='sandbox'?' · SANDBOX':'');el.title='Open store location';}}
 async function init(){if(loading)return loading;loading=(async()=>{
  const user=String(InventoryAPI.getUser()?.id||'');if(localStorage.getItem(U)!==user){select('','');localStorage.setItem(U,user);}
  const all=await request('/retail/workspaces');if(!all.separate_workspaces)throw Error('Install the separate Retail workspace backend update.');groups=all.workspaces;inventories=all.stores;

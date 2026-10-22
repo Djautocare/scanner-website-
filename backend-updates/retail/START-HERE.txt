@@ -1,60 +1,45 @@
-INVENTORYOS RETAIL — SINGLE PLAN AND SEPARATE SHOPS UPDATE (v11)
+INVENTORYOS RETAIL — BILLING AND SANDBOX UPDATE (v12)
 
-Read SINGLE-PLAN-AND-WORKSPACES.txt for the current steps.
-Retail is now a permanent navigation option. It is not a Settings switch.
-One plan: GBP 19.99 per shop per month, all tools, unlimited till licences/staff.
-Each additional shop has its own subscription.
-The same login can access both products. Retail workspaces, shop stock,
-selection and billing are separate from reseller/manufacturing workspaces.
+Includes the v11 separate Retail workspaces and all previous Retail updates.
+Price: GBP 19.99 per subscribed shop per month. All Retail features, unlimited
+staff/tills. Retail and reseller/manufacturing stock and subscriptions stay separate.
 
-INSTALL
-1. Finish/cancel every till basket and sync saved offline sales on ALL devices.
-2. Stop InventoryOS Backend in Windows Task Scheduler.
-3. Make a PostgreSQL backup before the workspace migration.
-4. Extract the whole InventoryOS-retail-single-plan-update folder inside your
-   backend folder, beside server.js. Do not individually replace the files.
-5. Open PowerShell in BACKEND and run:
-   node .\InventoryOS-retail-single-plan-update\install.cjs
+1. Finish/cancel till baskets and sync saved offline sales on ALL devices.
+2. Back up PostgreSQL, then stop InventoryOS Backend in Task Scheduler.
+3. Extract the whole InventoryOS-retail-billing-update folder into:
+   C:\Users\dylan\Desktop\Inventory Server\backend
+   The folder sits beside server.js. Do not copy its individual files over yours.
+4. Open PowerShell in BACKEND and run:
+   node .\InventoryOS-retail-billing-update\install.cjs
    node .\check-retail.cjs
-6. Restart InventoryOS Backend. Refresh the website and reopen installed PWAs.
+5. Follow STRIPE-SETUP.txt to add the public price/configuration IDs and your
+   private sandbox key/signing secret to backend/.env. Keep your live key.
+6. Run:
+   node .\check-retail-billing.cjs
+7. If the checks pass, restart InventoryOS Backend. Refresh the website and PWAs.
+8. For a full test with no real money, follow SANDBOX-TEST.txt using a separate
+   test account and shop. Never use real trading stock for a sandbox shop.
 
-The installer saves code backups and preserves your .env and existing auth,
-admin checks and normal subscriptions. It adds narrow guards to normal
-workspace routes so Retail IDs cannot be used there. No npm packages needed.
-The checker applies a transactional database migration. Existing Retail shops,
-products, sales, receipts, staff/PINs, loyalty and paired tills are retained.
-Normal inventory/stock and subscription rows remain in their original workspace.
-Keep this backend version after migration: restoring older code alone does not
-undo the workspace database move. A full rollback needs the database backup.
+WEBSITE
+Settings > Manage InventoryOS Retail billing shows all shops you own,
+shop-by-shop prices, renewal/end dates, and separate live/sandbox monthly totals.
+The same page is linked from Retail > Admin > Stores & billing.
+Add shops there. A new shop adds no charge until you explicitly subscribe it.
+One shop costs GBP 19.99/month; two GBP 39.98; three GBP 59.97.
+Each shop has its own subscription/renewal date. Cancel one through Stripe
+without cancelling other shops. Access lasts until the paid period ends.
+Opening a portal does not grant access; Stripe state is verified server-side.
+Displayed totals are recurring prices before discounts/credits/adjustments;
+Stripe invoices show the final amounts. Legacy prices are labelled for review.
 
-STRIPE
-See STRIPE-SETUP.txt. Use one monthly GBP 19.99 price. The existing Retail Pro
-price can be reused. No new webhook required. Keep legacy price IDs while old
-subscriptions exist. Existing charges are not silently raised: the owner
-confirms a switch, which removes extra-till charges and may be prorated.
-New shops are not charged until the owner chooses their subscription.
+INSTALLER
+Saves code backups and preserves .env, auth, administrator checks and ordinary
+subscriptions. No new npm package is needed. The checker runs schema changes
+transactionally. Adds billing snapshot/environment columns to retail_stores;
+no manual PostgreSQL table creation is needed. Unknown local Retail edits stop
+installation before changes. Existing shops, staff, PINs and paired tills remain.
 
-ADMIN
-User account > Retail subscriptions & overrides > choose the shop.
-Select Retail, Blocked or Use paid entitlement. Set an expiry/reason, or use the
-one-week Retail trial button. Individual feature overrides are retained.
-Normal InventoryOS Business trials do not grant Retail access or vice versa.
-Overrides do not alter Stripe charges.
-
-USE
-Open InventoryOS Retail from the permanent sidebar link, or:
-https://app.inventoryos.co.uk/retail/index.html
-Choose a Retail business/shop under Admin > Store location.
-For the first shop, enter its business name then choose its Retail subscription.
-Add more shops under Admin > Stores & billing; each has separate stock/billing.
-Add staff and set their store permissions and own PIN under Admin > Staff access.
-Add/name/connect as many tills as needed under Admin > Tills.
-Use the dedicated Till app for scanning/selling. Card payments are still taken
-on the shop's external reader and manually confirmed in InventoryOS.
-Enable appropriate business tools in Retail settings. Included tools can still
-be switched off to keep a shop's screen simple.
-Reseller/manufacturing recipe links cannot be used to consume stock from Retail.
-Existing history remains stored; pending make-to-order jobs should be reviewed.
-
-The cumulative update includes the previous till scan/Qty/waste, reports,
-supplier prices, VAT, loyalty and drawer-management changes.
+If upgrading from before v11, a database backup is essential: that migration
+moves Retail to its own workspaces/inventories while retaining normal stock.
+Older code alone cannot undo that migration; use the matching database backup
+for a full rollback. See SINGLE-PLAN-AND-WORKSPACES.txt for migration details.

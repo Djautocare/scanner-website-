@@ -18,6 +18,7 @@ const handle = fn => async (req, res) => {
 };
 router.get('/workspaces',handle(retailWorkspaces.directory));
 router.post('/workspaces',handle(retailWorkspaces.createBusiness));
+router.get('/billing-summary',handle(R.platform.billingSummary));
 router.use(retailWorkspaces.resolve);
 router.get('/locations',handle(R.platform.locations));
 router.get('/status', handle(R.status));

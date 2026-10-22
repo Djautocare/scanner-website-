@@ -13,7 +13,7 @@ function createPlatform(H){
  const {pool,now,id,text,integer,money,fail,args}=H;
  const stamp=()=>now().toISOString();
  const app=()=>String(process.env.APP_URL||'https://app.inventoryos.co.uk').replace(/\/$/,'');
- const stripe=()=>{if(!process.env.STRIPE_SECRET_KEY)throw fail('Stripe billing has not been configured yet',503);return new(require('stripe'))(process.env.STRIPE_SECRET_KEY);};
+ const B=require('./retailBilling').create(H);
  const price=k=>String(k==='retail'?(process.env.STRIPE_PRICE_RETAIL_MONTHLY||process.env.STRIPE_PRICE_RETAIL_PRO_MONTHLY||''):(process.env['STRIPE_PRICE_RETAIL_'+k.toUpperCase()+'_MONTHLY']||'')).trim();
  async function event(c,s,kind,data){await c.query('INSERT INTO retail_platform_events(id,workspace_id,inventory_id,actor_id,kind,data,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)',[uuid(),s.workspace_id,s.inventory_id||null,s.actor_id||null,kind,JSON.stringify(data),stamp()]);}
  async function lock(c,w){await c.query("SELECT pg_advisory_xact_lock(hashtextextended('retail-workspace:'||$1,0))",[w]);}
@@ -25,7 +25,7 @@ function createPlatform(H){
   const allowed=row.enabled&&Boolean(PLANS[plan]||LEGACY_PLANS.includes(plan));
   const features=Object.fromEntries(FEATURES.map(k=>[k,allowed]));
   if(overrideActive)for(const [k,v]of Object.entries(row.feature_overrides||{}))if(FEATURES.includes(k)&&typeof v==='boolean')features[k]=allowed&&v;
-  return {display_name:row.name,allowed,plan,plan_name:allowed?'InventoryOS Retail':'Retail inactive',paid_plan:paid,stripe_status:row.stripe_status,unlimited_tills:allowed,till_allowance:allowed?null:0,paid_pairs:Number(row.paid_pairs),override_extra_pairs:overrideActive?row.override_extra_pairs:0,features,settings:row.settings||{},override_active:overrideActive&&Boolean(row.override_plan||row.override_extra_pairs||Object.keys(row.feature_overrides||{}).length),override_plan:row.override_plan,override_expires_at:row.override_expires_at,reverts_to:paid,reason:row.override_reason,period_end:row.period_end,cancel_at_period_end:row.cancel_at_period_end};
+  return {display_name:row.name,billing_environment:B.mode(row),allowed,plan,plan_name:allowed?'InventoryOS Retail':'Retail inactive',paid_plan:paid,stripe_status:row.stripe_status,unlimited_tills:allowed,till_allowance:allowed?null:0,paid_pairs:Number(row.paid_pairs),override_extra_pairs:overrideActive?row.override_extra_pairs:0,features,settings:row.settings||{},override_active:overrideActive&&Boolean(row.override_plan||row.override_extra_pairs||Object.keys(row.feature_overrides||{}).length),override_plan:row.override_plan,override_expires_at:row.override_expires_at,reverts_to:paid,reason:row.override_reason,period_end:row.period_end,cancel_at_period_end:row.cancel_at_period_end};
  }
  async function access(c,w,inventory){
   if(inventory){const row=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2',[w,inventory])).rows[0];return entitlement(row);}
@@ -42,7 +42,7 @@ function createPlatform(H){
   await c.query('INSERT INTO retail_settings(workspace_id,enabled) VALUES($1,true) ON CONFLICT(workspace_id) DO UPDATE SET enabled=true',[s.workspace_id]);
   await event(c,{...s,inventory_id:inventory},'store_created',{name});return {store:publicStore(r)};
  }
- function publicStore(r){const {stripe_customer_id,stripe_subscription_id,checkout_session_id,...safe}=r;return {...safe,entitlement:entitlement(r),has_subscription:Boolean(stripe_subscription_id),checkout_configured:Boolean(price('retail')&&process.env.STRIPE_SECRET_KEY),legacy_billing:Boolean(r.stripe_subscription_id&&(r.paid_plan!=='retail'||Number(r.paid_pairs)>0))};}
+ function publicStore(r){const {stripe_customer_id,stripe_subscription_id,checkout_session_id,...safe}=r;return {...safe,entitlement:entitlement(r),has_subscription:Boolean(stripe_subscription_id),billing:B.publicInfo(r),checkout_configured:B.configured(r),legacy_billing:Boolean(r.stripe_subscription_id&&(r.paid_plan!=='retail'||Number(r.paid_pairs)>0))};}
  async function management(req){return connect(async c=>{const s=await H.scope(c,req,{inventory:false,admin:true,enabled:false,entitled:false});
   const stores=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 ORDER BY name',[s.workspace_id])).rows;
   const tills=(await c.query('SELECT id,inventory_id,name,slot,active,hardware,last_seen,device_hash IS NOT NULL AS paired,generation FROM retail_registered_tills WHERE workspace_id=$1 ORDER BY inventory_id,slot',[s.workspace_id])).rows;
@@ -51,7 +51,7 @@ function createPlatform(H){
   const assignments=(await c.query('SELECT * FROM retail_staff_assignments WHERE workspace_id=$1',[s.workspace_id])).rows;
   const inventories=(await c.query('SELECT id,name FROM inventories WHERE workspace_id=$1 ORDER BY name',[s.workspace_id])).rows;
   return {success:true,stores:stores.map(publicStore),tills,staff,assignments,inventories,plans:PLANS,features:FEATURES,server_now:stamp()};});}
- async function locations(req){return connect(async c=>{const s=await H.scope(c,req,{inventory:false,enabled:false,entitled:false});const rows=(await c.query('SELECT i.id,i.name AS inventory_name,r.name AS display_name,r.customer_number,r.inventory_id AS registered_inventory FROM inventories i LEFT JOIN retail_stores r ON r.inventory_id=i.id AND r.workspace_id=i.workspace_id WHERE i.workspace_id=$1 ORDER BY COALESCE(r.name,i.name),i.id',[s.workspace_id])).rows;const stores=[];for(const r of rows){const a=await access(c,s.workspace_id,r.id);stores.push({...r,display_name:r.display_name||r.inventory_name,registered:Boolean(r.registered_inventory),plan_name:a.plan_name||'Retail inactive',plan:a.plan,allowed:a.allowed,override_active:a.override_active,override_expires_at:a.override_expires_at,reverts_to:a.reverts_to});}return {success:true,locations_supported:true,workspace:{id:s.workspace_id,name:s.workspace_name,role:s.role},stores};});}
+ async function locations(req){return connect(async c=>{const s=await H.scope(c,req,{inventory:false,enabled:false,entitled:false});const rows=(await c.query('SELECT i.id,i.name AS inventory_name,r.name AS display_name,r.customer_number,r.inventory_id AS registered_inventory FROM inventories i LEFT JOIN retail_stores r ON r.inventory_id=i.id AND r.workspace_id=i.workspace_id WHERE i.workspace_id=$1 ORDER BY COALESCE(r.name,i.name),i.id',[s.workspace_id])).rows;const stores=[];for(const r of rows){const a=await access(c,s.workspace_id,r.id);stores.push({...r,display_name:r.display_name||r.inventory_name,registered:Boolean(r.registered_inventory),billing_environment:a.billing_environment,plan_name:a.plan_name||'Retail inactive',plan:a.plan,allowed:a.allowed,override_active:a.override_active,override_expires_at:a.override_expires_at,reverts_to:a.reverts_to});}return {success:true,locations_supported:true,workspace:{id:s.workspace_id,name:s.workspace_name,role:s.role},stores};});}
  async function ownerChange(req){return connect(async c=>{const s=await H.scope(c,req,{inventory:false,admin:true,enabled:false,entitled:false});await lock(c,s.workspace_id);const b=req.body||{};
   if(b.action==='create-store')return {success:true,...await createStore(c,s,b)};
   const inventory=id(b.inventory_id),store=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2 FOR UPDATE',[s.workspace_id,inventory])).rows[0];if(!store)throw fail('Store unavailable',404);s.inventory_id=inventory;const a=entitlement(store);
@@ -149,7 +149,7 @@ function createPlatform(H){
  async function logout(req){return connect(async c=>{const t=await device(c,req);await lock(c,t.workspace_id);await drawers.logout(c,t,req.headers['x-retail-staff-token']);return {success:true};});}
  function authorizeAction(c,s,url){if(!s.pos_staff)throw fail('Staff session required',401);const suffix=String(url).replace(/^.*?\/retail-pos/,'').split('?')[0];if(!['/checkout','/customers','/park','/recall','/refund','/waste','/waste/start'].includes(suffix))throw fail('This till action is not allowed',403);}
  async function state(req){return connect(async c=>{const t=await device(c,req);let s=null;if(req.headers['x-retail-staff-token'])s=await posScope(c,req);
-  const base={success:true,till:{id:t.id,name:t.name,hardware:t.hardware},store:{id:t.inventory_id,name:(await c.query('SELECT name FROM retail_stores WHERE inventory_id=$1',[t.inventory_id])).rows[0].name},entitlement:{plan:t.retail_access.plan,features:t.retail_access.features},server_now:stamp(),management_supported:true,waste_mode_supported:true,drawer_flow:true,drawer_selected:t.drawer_selected};if(!s)return {...base,locked:true};
+  const base={success:true,till:{id:t.id,name:t.name,hardware:t.hardware},store:{id:t.inventory_id,name:(await c.query('SELECT name FROM retail_stores WHERE inventory_id=$1',[t.inventory_id])).rows[0].name},entitlement:{plan:t.retail_access.plan,features:t.retail_access.features,billing_environment:t.retail_access.billing_environment},server_now:stamp(),management_supported:true,waste_mode_supported:true,drawer_flow:true,drawer_selected:t.drawer_selected};if(!s)return {...base,locked:true};
   const products=(await c.query('SELECT id,name,barcode,price_pence,vat_treatment,vat_rate,stock_qty,item_kind,category,favourite,minimum_age FROM retail_products WHERE workspace_id=$1 AND inventory_id=$2 AND NOT archived ORDER BY name',args(s))).rows;
   const parked=(await c.query("SELECT id,label,cashier_name,created_at FROM retail_parked_sales WHERE workspace_id=$1 AND inventory_id=$2 AND status='parked' ORDER BY created_at DESC LIMIT 100",args(s))).rows;
   await c.query('UPDATE retail_registered_tills SET last_seen=$2 WHERE id=$1',[t.id,stamp()]);
@@ -211,9 +211,15 @@ function createPlatform(H){
    await drawers.reconcile(c,s,request);await event(c,s,'payment_recording_reconciled',{request_id:request,approved_by:approver.id,processed_by:s.pos_staff.id,till_id:s.registered_till_id,reason:text(req.body.reason,'Reconciliation reason',300)});return {success:true,reconciled:true};
   });
  }
- async function adminStores(req){return connect(async c=>{const user=id(req.params.id);if(!(await c.query('SELECT id FROM users WHERE id=$1',[user])).rows.length)throw fail('Account not found',404);const stores=(await c.query('SELECT s.* FROM retail_stores s JOIN workspaces w ON w.id=s.workspace_id WHERE w.owner_user_id=$1 ORDER BY s.name',[user])).rows;const history=(await c.query('SELECT e.* FROM retail_platform_events e JOIN workspaces w ON w.id=e.workspace_id WHERE w.owner_user_id=$1 AND e.kind IN(\'admin_retail_override\',\'admin_till_revoked\') ORDER BY e.created_at DESC LIMIT 50',[user])).rows;return {success:true,stores:stores.map(publicStore),history,features:FEATURES,server_now:stamp()};});}
+ async function adminStores(req){return connect(async c=>{const user=id(req.params.id);if(!(await c.query('SELECT id FROM users WHERE id=$1',[user])).rows.length)throw fail('Account not found',404);const stores=(await c.query('SELECT s.* FROM retail_stores s JOIN workspaces w ON w.id=s.workspace_id WHERE w.owner_user_id=$1 ORDER BY s.name',[user])).rows;const history=(await c.query('SELECT e.* FROM retail_platform_events e JOIN workspaces w ON w.id=e.workspace_id WHERE w.owner_user_id=$1 AND e.kind IN(\'admin_retail_override\',\'admin_till_revoked\',\'admin_billing_environment\') ORDER BY e.created_at DESC LIMIT 50',[user])).rows;return {success:true,stores:stores.map(publicStore),history,features:FEATURES,server_now:stamp()};});}
  async function adminOverride(req){return connect(async c=>{const user=id(req.params.id),inventory=id(req.body.inventory_id);const row=(await c.query('SELECT s.* FROM retail_stores s JOIN workspaces w ON w.id=s.workspace_id WHERE w.owner_user_id=$1 AND s.inventory_id=$2 FOR UPDATE OF s',[user,inventory])).rows[0];if(!row)throw fail('Store not owned by this account',404);await lock(c,row.workspace_id);
   const s={workspace_id:row.workspace_id,inventory_id:inventory,actor_id:req.user.id},b=req.body;
+  if(b.action==='billing-environment'){
+   if(!['live','sandbox'].includes(b.environment))throw fail('Choose live or sandbox billing');
+   if(b.previous_environment!==B.mode(row))throw fail('Billing environment changed; reload this account',409);
+   if(row.stripe_subscription_id||row.stripe_customer_id||row.checkout_session_id)throw fail('This shop already has Stripe billing history. Create a separate test shop instead',409);
+   const reason=text(b.reason,'Reason',500);await c.query('UPDATE retail_stores SET billing_environment=$2 WHERE inventory_id=$1',[inventory,b.environment]);await event(c,s,'admin_billing_environment',{before:B.mode(row),after:b.environment,reason});return {success:true};
+  }
   if(b.action==='revoke-till'){const r=await c.query('UPDATE retail_registered_tills SET device_hash=NULL,pair_hash=NULL,generation=generation+1 WHERE inventory_id=$1 AND id=$2',[inventory,id(b.till_id)]);if(!r.rowCount)throw fail('Till unavailable',404);await event(c,s,'admin_till_revoked',{till_id:b.till_id,reason:text(b.reason,'Reason',500)});return {success:true};}
   if(integer(b.version,'Override version')!==row.override_version)throw fail('Override changed. Reload the account',409);
   const plan=b.plan||null;if(plan&&!['blocked','retail',...LEGACY_PLANS].includes(plan))throw fail('Choose a Retail plan');const pairs=0,features=b.features||{};if(Array.isArray(features)||typeof features!=='object'||Object.entries(features).some(([k,v])=>!FEATURES.includes(k)||typeof v!=='boolean'))throw fail('Choose valid feature overrides');
@@ -221,48 +227,59 @@ function createPlatform(H){
   const reason=text(b.reason,'Override reason',500);await c.query('UPDATE retail_stores SET override_plan=$2,override_extra_pairs=$3,feature_overrides=$4,override_expires_at=$5,override_reason=$6,override_version=override_version+1 WHERE inventory_id=$1',[inventory,plan,pairs,JSON.stringify(features),expires,reason]);await event(c,s,'admin_retail_override',{before:{plan:row.override_plan,pairs:row.override_extra_pairs,features:row.feature_overrides,expires:row.override_expires_at},after:{plan,pairs,features,expires},reason});return {success:true,entitlement:await access(c,row.workspace_id,inventory)};
  });}
  async function billing(req){
-  await H.ensureSchema();const c=await pool.connect();try{await c.query('BEGIN');const s=await H.scope(c,req,{inventory:false,admin:true,enabled:false,entitled:false});await lock(c,s.workspace_id);const b=req.body,inventory=id(b.inventory_id),row=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2 FOR UPDATE',[s.workspace_id,inventory])).rows[0];if(!row)throw fail('Store unavailable',404);const api=H.stripe||stripe();
-   if(b.action==='portal'){
+  await H.ensureSchema();const c=await pool.connect();try{await c.query('BEGIN');const s=await H.scope(c,req,{inventory:false,admin:true,enabled:false,entitled:false});await lock(c,s.workspace_id);const b=req.body,inventory=id(b.inventory_id),row=(await c.query('SELECT * FROM retail_stores WHERE workspace_id=$1 AND inventory_id=$2 FOR UPDATE',[s.workspace_id,inventory])).rows[0];if(!row)throw fail('Store unavailable',404);if(s.role!=='owner')throw fail('Only the Retail business owner can manage subscription billing',403);const api=B.client(row),environment=B.mode(row);
+   if(b.action==='portal'||b.action==='cancel'){
+    if(b.action==='cancel'&&!row.stripe_subscription_id)throw fail('This shop has no subscription to cancel',409);
     if(!row.stripe_customer_id)throw fail('This store has no paid Retail subscription yet. Admin overrides do not create Stripe billing',409);
-    const session=await api.billingPortal.sessions.create({customer:row.stripe_customer_id,...(process.env.STRIPE_RETAIL_PORTAL_CONFIGURATION?{configuration:process.env.STRIPE_RETAIL_PORTAL_CONFIGURATION}:{}),return_url:app()+'/retail/manage.html'});await c.query('COMMIT');return {success:true,url:session.url};
+    const session=await api.billingPortal.sessions.create({customer:row.stripe_customer_id,...(B.portalConfiguration(row)?{configuration:B.portalConfiguration(row)}:{}),...(b.action==='cancel'?{flow_data:{type:'subscription_cancel',subscription_cancel:{subscription:row.stripe_subscription_id},after_completion:{type:'redirect',redirect:{return_url:app()+'/retail/billing.html'}}}}:{}),return_url:app()+'/retail/billing.html'});await c.query('COMMIT');return {success:true,url:session.url};
    }
+   if(b.action==='refresh'){
+    if(row.stripe_subscription_id)await syncSubscription(c,await api.subscriptions.retrieve(row.stripe_subscription_id),environment);
+    else if(row.checkout_session_id){const session=await api.checkout.sessions.retrieve(row.checkout_session_id);if(session.status==='complete'&&['paid','no_payment_required'].includes(session.payment_status)&&session.subscription)await syncSubscription(c,await api.subscriptions.retrieve(String(session.subscription?.id||session.subscription)),environment);}
+    await c.query('COMMIT');return {success:true};
+   }
+   if(b.action&&b.action!=='checkout')throw fail('Choose a valid Retail billing action');
+   if(!B.configured(row)&&!H.stripe)throw fail('Retail '+environment+' billing setup is incomplete; check the API key, price and sandbox webhook settings',503);
    const plan='retail';if(b.plan&&b.plan!=='retail')throw fail('Choose InventoryOS Retail; the previous tiers are no longer sold');
    if(Number(b.pairs||0)!==0)throw fail('Extra till charges have been removed. All tills are included');
-   const baseId=price('retail'),pairId=price('till_pair');if(!baseId)throw fail('Retail Stripe price is not configured. Set STRIPE_PRICE_RETAIL_MONTHLY to the £19.99 monthly GBP price',503);
-   for(const [priceId,amount]of [[baseId,1999]]){const p=await api.prices.retrieve(priceId);if(p.currency!=='gbp'||p.unit_amount!==amount||p.recurring?.interval!=='month'||p.recurring?.interval_count!==1||!p.active)throw fail('Retail Stripe price must be active, monthly GBP at the agreed price',503);}
+   const baseId=B.price(row),pairId=environment==='sandbox'?'':price('till_pair');if(!baseId)throw fail('Retail Stripe price is not configured. Set STRIPE_PRICE_RETAIL_MONTHLY to the £19.99 monthly GBP price',503);
+   for(const [priceId,amount]of [[baseId,1999]]){const p=await api.prices.retrieve(priceId);if((typeof p.livemode==='boolean'&&p.livemode!==(environment==='live'))||p.currency!=='gbp'||p.unit_amount!==amount||p.recurring?.interval!=='month'||p.recurring?.interval_count!==1||!p.active)throw fail('Retail Stripe price must be active, monthly GBP at the agreed price',503);}
    const key=id(b.request_id);
    if(row.stripe_subscription_id){const previous=await api.subscriptions.retrieve(row.stripe_subscription_id);if(['canceled','incomplete_expired'].includes(previous.status)){await c.query('UPDATE retail_stores SET stripe_subscription_id=NULL WHERE inventory_id=$1',[inventory]);row.stripe_subscription_id=null;}}
    if(row.stripe_subscription_id){
     const sub=await api.subscriptions.retrieve(row.stripe_subscription_id);if(!['active','trialing'].includes(sub.status))throw fail('Resolve or cancel the existing subscription in Manage billing first',409);
-    const base=sub.items.data.find(i=>[price('retail'),price('starter'),price('pro')].filter(Boolean).includes(i.price.id)),extra=sub.items.data.find(i=>i.price.id===pairId);if(!base||sub.items.data.length>(extra?2:1))throw fail('Subscription needs support review',409);
+    const base=sub.items.data.find(i=>[B.price(row),...(environment==='live'?[price('starter'),price('pro')]:[])].filter(Boolean).includes(i.price.id)),extra=sub.items.data.find(i=>i.price.id===pairId);if(!base||sub.items.data.length>(extra?2:1))throw fail('Subscription needs support review',409);
     const items=[{id:base.id,price:baseId,quantity:1},...(extra?[{id:extra.id,deleted:true}]:[])];
-    await api.subscriptions.update(sub.id,{items,proration_behavior:'always_invoice',payment_behavior:'error_if_incomplete',metadata:{...sub.metadata,plan_key:plan}},{idempotencyKey:'retail-change/'+inventory+'/'+key});
-    const fresh=await api.subscriptions.retrieve(sub.id);await syncSubscription(c,fresh);await c.query('COMMIT');return {success:true,updated:true};
+    await api.subscriptions.update(sub.id,{items,proration_behavior:'always_invoice',payment_behavior:'error_if_incomplete',metadata:{...sub.metadata,plan_key:plan}},{idempotencyKey:'retail-change/'+environment+'/'+inventory+'/'+key});
+    const fresh=await api.subscriptions.retrieve(sub.id);await syncSubscription(c,fresh,environment);await c.query('COMMIT');return {success:true,updated:true};
    }
    if(row.checkout_session_id&&Date.parse(row.checkout_expires_at)>now().getTime()){const old=await api.checkout.sessions.retrieve(row.checkout_session_id);if(old.status==='open'&&old.metadata?.plan_key==='retail'){await c.query('COMMIT');return {success:true,url:old.url};}if(old.status==='open')await api.checkout.sessions.expire(old.id);if(old.status==='complete')throw fail('Payment is being confirmed. Refresh in a moment',409);}
-   let customer=row.stripe_customer_id||(await c.query('SELECT stripe_customer_id FROM workspaces WHERE id=$1',[s.workspace_id])).rows[0]?.stripe_customer_id;
-   if(!customer)customer=(await api.customers.create({email:req.user.email,name:req.user.name,metadata:{workspace_id:s.workspace_id}},{idempotencyKey:'retail-customer/'+s.workspace_id})).id;
-   const metadata={product_type:'inventoryos_retail',workspace_id:s.workspace_id,inventory_id:inventory,plan_key:plan};
-   const session=await api.checkout.sessions.create({mode:'subscription',customer,line_items:[{price:baseId,quantity:1},],metadata,subscription_data:{metadata},success_url:app()+'/retail/manage.html?retail_checkout=success',cancel_url:app()+'/retail/manage.html?retail_checkout=cancelled',automatic_tax:{enabled:false},expires_at:Math.floor(now().getTime()/1000)+1800},{idempotencyKey:'retail-checkout/'+inventory+'/'+key});
-   await c.query('UPDATE retail_stores SET stripe_customer_id=$2,checkout_session_id=$3,checkout_expires_at=$4 WHERE inventory_id=$1',[inventory,customer,session.id,new Date(now().getTime()+1800000).toISOString()]);await c.query('COMMIT');return {success:true,url:session.url};
+   let customer=row.stripe_customer_id||(await c.query('SELECT stripe_customer_id FROM retail_stores WHERE workspace_id=$1 AND billing_environment=$2 AND stripe_customer_id IS NOT NULL ORDER BY created_at LIMIT 1',[s.workspace_id,environment])).rows[0]?.stripe_customer_id;
+   if(!customer)customer=(await api.customers.create({email:req.user.email,name:req.user.name,metadata:{workspace_id:s.workspace_id,product_type:'inventoryos_retail',billing_environment:environment}},{idempotencyKey:'retail-customer/'+environment+'/'+s.workspace_id})).id;
+   const metadata={product_type:'inventoryos_retail',workspace_id:s.workspace_id,inventory_id:inventory,plan_key:plan,billing_environment:environment,store_name:row.name};
+   const session=await api.checkout.sessions.create({mode:'subscription',integration_identifier:'inventoryos_retail_'+Array.from(crypto.createHash('sha256').update(key).digest().subarray(0,8),n=>String.fromCharCode(97+n%26)).join(''),customer,line_items:[{price:baseId,quantity:1},],metadata,subscription_data:{metadata,billing_mode:{type:'flexible'}},custom_text:{submit:{message:(environment==='sandbox'?'SANDBOX TEST — no real money. ':'')+row.name+': £19.99/month for this shop. Unlimited tills and staff. Each additional subscribed shop costs £19.99/month. Cancel from Manage InventoryOS Retail billing.'}},success_url:app()+'/retail/billing.html?retail_checkout=success',cancel_url:app()+'/retail/billing.html?retail_checkout=cancelled',automatic_tax:{enabled:false}},{idempotencyKey:'retail-checkout/'+environment+'/'+inventory+'/'+key});
+   await c.query('UPDATE retail_stores SET stripe_customer_id=$2,checkout_session_id=$3,checkout_expires_at=$4 WHERE inventory_id=$1',[inventory,customer,session.id,new Date(session.expires_at?session.expires_at*1000:now().getTime()+86400000).toISOString()]);await c.query('COMMIT');return {success:true,url:session.url};
   }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}
  }
- async function syncSubscription(c,sub){
+ async function syncSubscription(c,sub,environment='live'){
   if(sub.metadata?.product_type!=='inventoryos_retail')return false;
   let inventory=id(sub.metadata.inventory_id),workspace=id(sub.metadata.workspace_id);
   const moved=(await c.query('SELECT inventory_id,workspace_id FROM retail_store_moves WHERE source_inventory_id=$1 AND source_workspace_id=$2',[inventory,workspace])).rows[0];if(moved){inventory=moved.inventory_id;workspace=moved.workspace_id;}await lock(c,workspace);
   const row=(await c.query('SELECT * FROM retail_stores WHERE inventory_id=$1 AND workspace_id=$2 FOR UPDATE',[inventory,workspace])).rows[0];if(!row)throw fail('Retail subscription has no matching store',409);
+  if(B.mode(row)!==environment||sub.metadata.billing_environment&&sub.metadata.billing_environment!==environment||typeof sub.livemode==='boolean'&&sub.livemode!==(environment==='live'))throw fail('Retail subscription billing environment mismatch',409);
   if(row.stripe_subscription_id&&row.stripe_subscription_id!==sub.id){if(['canceled','incomplete_expired'].includes(sub.status))return true;throw fail('Another subscription is attached to this store',409);}
   if(row.stripe_customer_id&&row.stripe_customer_id!==String(sub.customer?.id||sub.customer))throw fail('Retail subscription customer mismatch',409);
-  const base=sub.items.data.filter(i=>[price('retail'),price('starter'),price('pro')].filter(Boolean).includes(i.price.id)),extras=sub.items.data.filter(i=>i.price.id===price('till_pair'));
+  const base=sub.items.data.filter(i=>[B.price(row),...(environment==='live'?[price('starter'),price('pro')]:[])].filter(Boolean).includes(i.price.id)),extras=sub.items.data.filter(i=>environment==='live'&&i.price.id===price('till_pair'));
   if(base.length!==1||base[0].quantity!==1||extras.length>1||sub.items.data.length!==base.length+extras.length)throw fail('Retail subscription items do not match configured prices',409);
-  const plan=base[0].price.id===price('retail')?'retail':base[0].price.id===price('pro')?'pro':'starter',pairs=integer(extras[0]?.quantity||0,'Till pairs',0,499),period=sub.current_period_end||base[0].current_period_end;
+  const plan=base[0].price.id===B.price(row)?'retail':base[0].price.id===price('pro')?'pro':'starter',pairs=integer(extras[0]?.quantity||0,'Till pairs',0,499),period=sub.current_period_end||base[0].current_period_end;
   await c.query('UPDATE retail_stores SET stripe_subscription_id=$2,stripe_customer_id=$3,stripe_status=$4,paid_plan=$5,paid_pairs=$6,period_end=$7,cancel_at_period_end=$8,checkout_session_id=NULL,checkout_expires_at=NULL WHERE inventory_id=$1',[inventory,sub.id,String(sub.customer?.id||sub.customer),sub.status,plan,pairs,period?new Date(period*1000).toISOString():null,Boolean(sub.cancel_at_period_end)]);
+  await B.record(c,row,sub);
   await event(c,{workspace_id:workspace,inventory_id:inventory,actor_id:null},'stripe_retail_synced',{subscription_id:sub.id,status:sub.status,plan,pairs});return true;
  }
- async function webhook(event,api){
+ async function webhook(event,api,environment='live'){
+  if(typeof event.livemode==='boolean'&&event.livemode!==(environment==='live'))throw fail('Stripe webhook environment mismatch',400);
   let object=event.data.object,subId=null;
-  if(event.type==='checkout.session.completed'){
+  if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)){
    if(object.metadata?.product_type!=='inventoryos_retail')return false;subId=object.subscription;
   }else if(event.type.startsWith('customer.subscription.')){
    if(object.metadata?.product_type!=='inventoryos_retail')return false;subId=object.id;
@@ -272,7 +289,7 @@ function createPlatform(H){
   }else return false;
   if(!subId)throw fail('Retail webhook has no subscription',409);
   // Retrieve current Stripe state: delayed events cannot restore a canceled plan.
-  const current=await api.subscriptions.retrieve(String(subId?.id||subId));await connect(c=>syncSubscription(c,current));return true;
+  const current=await api.subscriptions.retrieve(String(subId?.id||subId));await connect(c=>syncSubscription(c,current,environment));return true;
  }
  async function tick(){
   if(!process.env.RESEND_API_KEY&&!H.sendEmail)return;
@@ -288,6 +305,6 @@ function createPlatform(H){
  }
  const waste=require('./retailWaste').createWaste({...H,connect,device,lock,posScope,checkPin,failedAttempt});
  const drawers=require('./retailDrawers').createDrawers({...H,connect,device,lock,access,event,posScope});
- return {locations,drawers,access,entitlement,limitBusiness,management,ownerChange,validateTill,posScope,pair,login,logout,state,customers,refund,refundSale,posRefund,posWaste,startWaste:waste.start,reconcile,authorizeAction,adminStores,adminOverride,billing,webhook,tick,features:FEATURES};
+ return {locations,drawers,access,entitlement,limitBusiness,management,ownerChange,validateTill,posScope,pair,login,logout,state,customers,refund,refundSale,posRefund,posWaste,startWaste:waste.start,reconcile,authorizeAction,adminStores,adminOverride,billing,billingSummary:B.summary,webhook,tick,features:FEATURES};
 }
 module.exports={createPlatform,PLANS,PRO_FEATURES,BASE_FEATURES};
