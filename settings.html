@@ -603,6 +603,11 @@ button{
         <button type="button" class="printer-download" data-printer-installer="mac">Set up printing for Mac <small>Apple silicon &amp; Intel</small></button>
     </div>
     <p id="printerInstallerStatus" class="helper printer-installer-status" role="status" aria-live="polite"></p>
+    <details class="printer-other-downloads"><summary>Troubleshoot setup downloads</summary>
+        <p class="helper">If setup reports a backend problem, download the diagnostic into your backend folder and run <code>node .\check-printing.cjs</code> in PowerShell. It checks the existing signing files without changing them. It does not print passwords, private keys or file paths.</p>
+        <a href="printing/check-printing.cjs" download="check-printing.cjs">Download printing diagnostic</a>
+        <p class="helper">Keep your .env and private key on your PC. Only share the PASS / FAIL messages if you need help.</p>
+    </details>
     <ol class="printer-setup-steps">
         <li>Connect your printer and check it appears in your computer’s printers. Install the manufacturer’s driver if needed.</li>
         <li>Download and open the setup file above (on Mac, open the ZIP first, then the command inside). Approve your computer’s security prompts and enter an administrator password if asked. Keep an internet connection while setup runs.</li>
@@ -1251,7 +1256,7 @@ showAdminCard();
 
 <script src="js/removePreferences.js?v=4"></script>
 <script src="js/accountSettings.js?v=2"></script>
-<script src="js/printerInstaller.js?v=1"></script>
+<script src="js/printerInstaller.js?v=2"></script>
 
 
 <script src="js/appShell.js?v=manufacturing-1"></script>

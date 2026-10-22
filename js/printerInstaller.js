@@ -4,10 +4,30 @@
 const card=document.getElementById('printingSettingsCard');if(!card)return;
 const buttons=[...card.querySelectorAll('[data-printer-installer]')],status=document.getElementById('printerInstallerStatus');
 let busy=false;
+function serverCheckError(data,endpoint){
+ const error=String(data?.error||'');let message,code;
+ if(data?.billing_required||data?.upgrade_required){code='PLAN_ACCESS';message='The server is blocking direct printing for the selected workspace’s subscription. Check its plan or account override. A Retail subscription and an InventoryOS subscription are separate.';}
+ else if(/could not connect|failed to fetch|networkerror/i.test(error)){code='CONNECTION';message='Could not connect to your InventoryOS backend. Check that the backend is running, then try again.';}
+ else if(/origin.*not allowed/i.test(error)){code='ORIGIN';message='The backend is rejecting this website’s address. Its QZ_ALLOWED_ORIGINS setting needs to include https://app.inventoryos.co.uk.';}
+ else if(/QZ_PRIVATE_KEY_PATH.*not configured/i.test(error)){code='KEY_SETTING';message='The backend is missing QZ_PRIVATE_KEY_PATH in its .env file. Restore the path to your existing private signing key, then restart the backend.';}
+ else if(/QZ_CERTIFICATE_PATH.*not configured/i.test(error)){code='CERTIFICATE_SETTING';message='The backend is missing QZ_CERTIFICATE_PATH in its .env file. Restore the path to your existing public printing certificate, then restart the backend.';}
+ else if(/ENOENT|no such file|cannot find.*file/i.test(error)){code='FILE_MISSING';message='The backend cannot find a configured QZ key or certificate file. Check that both files still exist at the paths in .env, then restart the backend.';}
+ else if(/EACCES|EPERM|permission denied/i.test(error)){code='FILE_PERMISSION';message='The Windows account running your backend cannot read a QZ signing file. Check its file permissions, then restart the backend.';}
+ else if(/does not match|key.*mismatch/i.test(error)){code='KEY_MISMATCH';message='The backend’s QZ private key and public certificate do not match. Restore the matching pair, then restart the backend.';}
+ else if(/not.*PEM|configured.*certificate|configured.*private key|DECODER|bad.*(key|certificate)/i.test(error)){code='INVALID_SIGNING_FILE';message='A configured QZ signing file is not a valid PEM key or certificate. Check the existing signing files on the backend.';}
+ else if(/invalid server response|cannot (get|post)|not found/i.test(error)){code='ROUTE_RESPONSE';message='The backend did not return the expected printing API response. Check that qzSigningRoutes.js is mounted at /qz in server.js.';}
+ else if(/unauthori|token|log.?in|sign.?in|authenticat/i.test(error)){code='SIGN_IN';message='Your printing request could not be authenticated. Sign out and sign back in, then try again.';}
+ else if(/billing status/i.test(error)){code='BILLING_CHECK';message='The backend could not check this workspace’s billing access. Check the backend console for the billing error.';}
+ else {code='SERVER_CHECK';message='The backend could not complete its printing check. Check the backend console when you try setup, or run the printing diagnostic below.';}
+ // Deliberately exclude raw server errors: they can contain local paths or account details.
+ return Error(message+' [Printing check: '+endpoint+' / '+code+']');
+}
 async function publicCertificate(signal){
  const stamp=Date.now();
  const [state,result]=await Promise.all([InventoryAPI.request('/qz/status?_t='+stamp,{signal}),InventoryAPI.request('/qz/certificate?_t='+stamp,{signal})]);
- if(!state?.success||!state.configured||!result?.success)throw Error('Secure printing is not configured on the server. Contact hello@inventoryos.co.uk before installing.');
+ if(!result?.success)throw serverCheckError(result,'certificate');
+ if(!state?.success||state.configured===false)throw serverCheckError(state,'status');
+ if(!state.certificate)throw Error('The backend returned incomplete printing certificate details. Check its qzSigningRoutes.js version. [Printing check: status / CERTIFICATE_DETAILS]');
  const pem=String(result.certificate||'');
  if(pem.length>100000||/PRIVATE KEY/.test(pem))throw Error('The server returned an invalid public certificate. Setup was not downloaded.');
  const match=pem.match(/-----BEGIN CERTIFICATE-----\s*([A-Za-z0-9+/=\s]+)-----END CERTIFICATE-----/);

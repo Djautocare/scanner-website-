@@ -14,6 +14,10 @@ These are transparent setup scripts, not InventoryOS-signed EXE/PKG applications
 
 ## Maintenance and verification
 
+Failed certificate/status requests show specific setup, network, origin, subscription or signing-file errors, without displaying raw backend paths. An older successful status response may omit the redundant `configured` flag; certificate fingerprint and validity checks still apply. An explicit `configured: false` remains a failure.
+
+The Settings troubleshooting link downloads `check-printing.cjs`. Run it from the existing backend folder to check the configured key/certificate, signing match, validity, allowed origins and route mount. It does not change files or expose environment values. It cannot verify a specific signed-in account's billing access; it notes the legacy Pro gate when present. Its checks are covered by `node --test printing/tests/diagnostic.test.cjs`.
+
 When updating QZ, obtain official release assets from `qzind/tray`, verify their release digests, and update the pinned version, URLs and hashes in both templates. Update the standard installer links in `settings.html` too. Certificate rotation needs a fresh website-generated setup download and rerun on each printing computer.
 
 Run `printing/tests/installer.browser.cjs` with the same Playwright/Chromium environment variables as Retail browser tests. It generates a disposable test certificate, checks both browser downloads, opens the ZIP with Python's ZIP reader, checks executable permissions, validates native shell syntax, exercises the actual existing-trust parser and checks error paths. Set `INVENTORYOS_TEST_PWSH` to a PowerShell runtime to also parse both Windows stages and execute the certificate/trust helpers. The test does not install QZ or modify a real machine's printing configuration.
