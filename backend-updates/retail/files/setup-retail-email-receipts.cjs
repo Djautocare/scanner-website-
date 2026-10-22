@@ -17,8 +17,13 @@ const fs=require('node:fs'),path=require('node:path');
  for(const [k,v]of Object.entries(settings)){if(process.env[k]&&process.env[k]!==v)throw Error(k+' already points to a different price. No .env changes were made.');process.env[k]=v;}
  await E.validatePrices(api,row);
  const file=path.join(process.cwd(),'.env');if(!fs.existsSync(file))throw Error('Run this in the backend folder beside .env.');const before=fs.readFileSync(file,'utf8');let after=before;
- for(const [k,v]of Object.entries(settings)){const re=new RegExp('^\\s*'+k+'\\s*=','m');if(!re.test(before))after+='\n'+k+'='+v;}
- if(after!==before)fs.appendFileSync(file,after.slice(before.length)+'\n');
+ const stored=require('dotenv').parse(before);
+ for(const [k,v]of Object.entries(settings)){
+  if(stored[k]&&stored[k]!==v)throw Error(k+' in .env points to a different price. No .env changes were made.');
+  const re=new RegExp('^[ \\t]*'+k+'[ \\t]*=.*$','m');
+  if(re.test(after))after=after.replace(re,k+'='+v);else after+='\n'+k+'='+v;
+ }
+ if(after!==before)fs.writeFileSync(file,after+'\n');
  console.log('PASS: '+environment+' email-receipt product, meter and prices configured. Public price IDs saved in backend/.env.');
  console.log('No customers were charged and no existing subscriptions were changed. Restart the backend after configuring both environments.');
 })().catch(error=>{const message=String(error.message||'Setup failed').replace(/(?:sk|rk)_(?:live|test)_[A-Za-z0-9]+/g,'[private key]');console.error('Email-receipt setup stopped: '+message);if(error.type==='StripePermissionError')console.error('The selected restricted key needs Products Write, Prices Write and Billing Meters Write for setup. Keep the key private.');process.exitCode=1;});

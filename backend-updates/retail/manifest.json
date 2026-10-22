@@ -5,7 +5,7 @@
   "middleware/inventoryWorkspaceOnly.js": "8cbafbc4384491d7e2d571ae9a6dc1b95e5debe0751e0fea61da342b84356fb3",
   "routes/retailPosRoutes.js": "57f7bcdec72c5e8f6e6b1cba7548cf6f360f1b9b7c1e9f2b3ee6d896440ee8bb",
   "routes/retailRoutes.js": "8c6a2ba7fdbc9733bbd8e688e2a959d2313f02d4ece6cb3b3aa19ebf12b2aee4",
-  "setup-retail-email-receipts.cjs": "4899794a380520da3dec3774a728efea25a52730f217f005b9c4e9ed4a44e74b",
+  "setup-retail-email-receipts.cjs": "1186dd99f32f40d1ead4be468552f37bdf4881781f298b9e16e0a0231c755d25",
   "sql/retail-business.sql": "af2cc464b7962e9a6477a9a1755432110d38a245b1b082eda2b13dfb2847c033",
   "sql/retail-email-receipts.sql": "852551082fe83daf86df10eaf9369fcee32a7105b13bd8cb35ec4ace24944b52",
   "sql/retail-operations.sql": "9f2e2c459fa4b720ca64092d1412650e16f25cb7f580a945ecada483879c9976",
