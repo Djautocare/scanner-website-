@@ -472,7 +472,7 @@ button{
 <link rel="stylesheet" href="css/appShell.css?v=4">
 <link rel="stylesheet" href="css/inventoryGuide.css?v=guide-2026-10">
 <link rel="stylesheet" href="css/inboundEmail.css?v=2">
-<link rel="stylesheet" href="css/help.css?v=1">
+<link rel="stylesheet" href="css/help.css?v=1"><link rel="stylesheet" href="css/accountSettings.css?v=1">
 <link rel="manifest" href="pwa/manifest.webmanifest"><link rel="apple-touch-icon" href="pwa/main-192.png"></head>
 
 <body>
@@ -486,23 +486,6 @@ button{
     <button class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="guidePanel" data-settings-tab="guidePanel">▣ Inventory Guide</button>
     <button class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="helpPanel" data-settings-tab="helpPanel">Help</button>
     <button class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="stackPanel" data-settings-tab="stackPanel">Stack order</button>
-</div>
-
-<div id="stackPanel" class="settings-view" hidden data-location-wording-ignore>
-    <div class="card">
-        <h1>Stack order</h1>
-        <p id="stackOrderIntro" class="helper">Arrange your storage locations from top to bottom.</p>
-        <p class="helper">Picking uses the fewest locations first, then prefers those with fewer locations above them. You can still choose a different location after consolidation. Blank positions are treated as empty space.</p>
-        <div class="stack-order-tools">
-            <label for="stackDefaultHeight"><span id="stackDefaultHeightLabel">Default stack height</span><input id="stackDefaultHeight" type="number" min="1" max="100" step="1" value="4" disabled></label>
-            <button id="stackAdd" type="button" disabled>Add stack</button>
-            <button id="stackReload" type="button">Reload layout</button>
-            <button id="stackSave" type="button" disabled>Save stack order</button>
-        </div>
-        <p id="stackOrderStatus" role="status" aria-live="polite">Select one inventory in the header, then open Stack order.</p>
-        <div id="stackOrderEditor"></div>
-        <p id="stackUnassigned" class="stack-order-muted"></p>
-    </div>
 </div>
 
 <div id="settingsPanel" class="settings-view">
@@ -547,7 +530,7 @@ button{
     </div>
 </div>
 
-<div class="card">
+<div class="card" id="workspaceMembersSettingsCard">
     <div class="card-title"><span class="card-icon">👥</span>Workspace Members</div>
     <div class="helper">
         Invite people to share this workspace and its selected inventory. You can manage their roles and remove access at any time.
@@ -569,7 +552,7 @@ button{
 
 <div class="settings-grid">
 
-<div class="card">
+<div class="card" id="workspaceSettingsCard">
     <div class="card-title">
         <span class="card-icon">🏢</span>
         Workspace
@@ -604,13 +587,13 @@ button{
     <button type="button" class="billing-action" id="settingsManageBilling" onclick="openSettingsBilling()">
         Manage InventoryOS billing
     </button>
-    <a class="billing-action" href="retail/billing.html">Manage InventoryOS Retail billing</a>
+    <a class="billing-action" href="retail/index.html#retail-billing">Stores &amp; billing — InventoryOS Retail</a>
     <div class="result" id="billingSettingsResult" role="status" aria-live="polite">
         Stripe opens securely in a new billing session. You can manage your plan and any active add-ons there.
     </div>
 </div>
 
-<section class="inbound-labels card full" data-inbound-labels aria-label="Shipping-label email settings"><p>Loading workspace shipping-label email…</p></section>
+<section class="inbound-labels card full" data-inbound-labels aria-label="Shipping-label email settings" id="inboundEmailSettingsCard"><p>Loading workspace shipping-label email…</p></section>
 
 <div class="card" id="adminCard" style="display:none;">
     <div class="card-title"><span class="card-icon">🛡️</span>Administration</div>
@@ -629,7 +612,7 @@ button{
     </div>
 </div>
 
-<div class="card">
+<div class="card" id="appearanceSettingsCard">
     <div class="card-title"><span class="card-icon">🎨</span>Appearance</div>
     <div class="helper">
         Choose the accent colour used across InventoryOS. Your choice is saved to your account and follows you between devices.
@@ -648,7 +631,7 @@ button{
     <div id="themeResult" class="result">Choose a theme above.</div>
 </div>
 
-<div class="card">
+<div class="card" id="securitySettingsCard">
     <div class="card-title"><span class="card-icon">🔒</span>Security</div>
     <div class="helper">
         Change your login password. Enter your current password, then choose a new password of at least 8 characters.
@@ -668,7 +651,7 @@ button{
     <div id="passwordResult" class="result">No password change requested.</div>
 </div>
 
-<div class="card full">
+<div class="card full" id="dataManagementSettingsCard">
     <div class="card-title"><span class="card-icon">☁️</span>Data Management</div>
     <div class="helper">
         Bring existing stock, sales and expenses into the current workspace from Excel files. Nothing is imported until you press Import Data.
@@ -692,7 +675,7 @@ button{
 </div>
 
 
-<div class="card">
+<div class="card" id="aboutSettingsCard">
     <div class="card-title"><span class="card-icon">ℹ️</span>About InventoryOS</div>
     <div class="helper">
         Technical details that may help when checking your installation or contacting support.
@@ -713,10 +696,27 @@ button{
 </div>
 
 <div class="settings-footer">
-    <a class="link-card" href="index.html">← Back to Dashboard</a>
+    <a class="link-card" id="settingsBackDashboard" href="index.html">← Back to Dashboard</a>
     <a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Log out</a>
 </div>
 
+</div>
+
+<div id="stackPanel" class="settings-view" hidden data-location-wording-ignore>
+    <div class="card">
+        <h1>Stack order</h1>
+        <p id="stackOrderIntro" class="helper">Arrange your storage locations from top to bottom.</p>
+        <p class="helper">Picking uses the fewest locations first, then prefers those with fewer locations above them. You can still choose a different location after consolidation. Blank positions are treated as empty space.</p>
+        <div class="stack-order-tools">
+            <label for="stackDefaultHeight"><span id="stackDefaultHeightLabel">Default stack height</span><input id="stackDefaultHeight" type="number" min="1" max="100" step="1" value="4" disabled></label>
+            <button id="stackAdd" type="button" disabled>Add stack</button>
+            <button id="stackReload" type="button">Reload layout</button>
+            <button id="stackSave" type="button" disabled>Save stack order</button>
+        </div>
+        <p id="stackOrderStatus" role="status" aria-live="polite">Select one inventory in the header, then open Stack order.</p>
+        <div id="stackOrderEditor"></div>
+        <p id="stackUnassigned" class="stack-order-muted"></p>
+    </div>
 </div>
 
 <div id="guidePanel" class="settings-view" hidden>
@@ -1221,6 +1221,7 @@ showAdminCard();
 </script>
 
 <script src="js/removePreferences.js?v=4"></script>
+<script src="js/accountSettings.js?v=1"></script>
 
 
 <script src="js/appShell.js?v=manufacturing-1"></script>
