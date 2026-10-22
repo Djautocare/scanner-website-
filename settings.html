@@ -472,7 +472,7 @@ button{
 <link rel="stylesheet" href="css/appShell.css?v=4">
 <link rel="stylesheet" href="css/inventoryGuide.css?v=guide-2026-10">
 <link rel="stylesheet" href="css/inboundEmail.css?v=2">
-<link rel="stylesheet" href="css/help.css?v=1"><link rel="stylesheet" href="css/accountSettings.css?v=1">
+<link rel="stylesheet" href="css/help.css?v=1"><link rel="stylesheet" href="css/accountSettings.css?v=2">
 <link rel="manifest" href="pwa/manifest.webmanifest"><link rel="apple-touch-icon" href="pwa/main-192.png"></head>
 
 <body>
@@ -594,6 +594,27 @@ button{
 </div>
 
 <section class="inbound-labels card full" data-inbound-labels aria-label="Shipping-label email settings" id="inboundEmailSettingsCard"><p>Loading workspace shipping-label email…</p></section>
+
+<section class="card full" id="printingSettingsCard" aria-label="QZ Tray printing setup">
+    <div class="card-title">Printing</div>
+    <p class="helper">Install QZ Tray on the computer connected to your label printer.</p>
+    <div class="printer-download-grid" aria-label="Official QZ Tray installers">
+        <a class="printer-download" href="https://github.com/qzind/tray/releases/download/v2.3.0/qz-tray-2.3.0-x86_64.exe" target="_blank" rel="noopener noreferrer">Download for Windows <small>Intel / AMD · 64-bit</small></a>
+        <a class="printer-download" href="https://github.com/qzind/tray/releases/download/v2.3.0/qz-tray-2.3.0-arm64.pkg" target="_blank" rel="noopener noreferrer">Download for Mac <small>Apple silicon · M-series</small></a>
+        <a class="printer-download" href="https://github.com/qzind/tray/releases/download/v2.3.0/qz-tray-2.3.0-x86_64.pkg" target="_blank" rel="noopener noreferrer">Download for Mac <small>Intel processor</small></a>
+    </div>
+    <details class="printer-other-downloads"><summary>Windows on ARM and other downloads</summary>
+        <a class="printer-download" href="https://github.com/qzind/tray/releases/download/v2.3.0/qz-tray-2.3.0-arm64.exe" target="_blank" rel="noopener noreferrer">Download for Windows ARM <small>ARM64 / Snapdragon</small></a>
+        <a href="https://qz.io/download/" target="_blank" rel="noopener noreferrer">QZ Tray download page and other versions</a>
+    </details>
+    <ol class="printer-setup-steps">
+        <li>Connect your printer, install its manufacturer’s driver and check that your computer can print.</li>
+        <li>Download and install the QZ Tray version for your computer, then open QZ Tray and keep it running.</li>
+        <li>Open Printer Setup, refresh the printer list, select your printers and print a test label.</li>
+    </ol>
+    <a class="printer-download printer-setup-link" href="printer-setup.html">Open Printer Setup &amp; test labels</a>
+    <p class="helper">QZ Tray is for desktop computers. On a phone, use the mobile or browser print option.</p>
+</section>
 
 <div class="card" id="adminCard" style="display:none;">
     <div class="card-title"><span class="card-icon">🛡️</span>Administration</div>
@@ -1221,7 +1242,7 @@ showAdminCard();
 </script>
 
 <script src="js/removePreferences.js?v=4"></script>
-<script src="js/accountSettings.js?v=1"></script>
+<script src="js/accountSettings.js?v=2"></script>
 
 
 <script src="js/appShell.js?v=manufacturing-1"></script>

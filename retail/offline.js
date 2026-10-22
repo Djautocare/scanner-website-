@@ -48,7 +48,7 @@
   async function save(key, snapshot) {
     return update(key, value => {
       if (value.operations.length) return false; // An uncertain write might already exist on the server.
-      value.locked_reason = ''; value.snapshot = snapshot; value.saved_at = Date.now(); return true;
+      value.locked_reason = ''; value.access_denied = false; value.snapshot = snapshot; value.saved_at = Date.now(); return true;
     });
   }
   function clock(value) { return Date.parse(value.snapshot?.server_now) + Date.now() - value.saved_at; }
@@ -162,5 +162,5 @@
     const value=await read(key), url=URL.createObjectURL(new Blob([JSON.stringify({version:1,scope:JSON.parse(key),...value},null,2)],{type:'application/json'}));
     const a=document.createElement('a');a.href=url;a.download='InventoryOS-saved-retail-sales-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
-  window.InventoryRetailOffline={read,save,device,canSell,enqueue,project,sync,shell,backup,lock:(key,reason)=>update(key,value=>{value.locked_reason=reason;})};
+  window.InventoryRetailOffline={read,save,device,canSell,enqueue,project,sync,shell,backup,lock:(key,reason,details={})=>update(key,value=>{value.locked_reason=reason;value.access_denied=details.access_denied===true;})};
 })();

@@ -13,6 +13,8 @@
   };
   const nav = [['dashboard', '▦', 'Dashboard'], ['products', '□', 'Products & stock'], ['deliveries', '↓', 'Deliveries'], ['reorders', '↻', 'Reorder report'], ['counts', '✓', 'Stock counts'], ['tasks', '◷', 'Tasks'], ['cash', '£', 'Till & cash'], ['sales', '↗', 'Sales & receipts'], ['settings', '⚙', 'Retail settings'], ['offline', '⇅', 'Offline & sync']];
   let data = null, online = false, ready = false, generation = 0, currentScope = '', basket = [], search = '', checkoutBusy = false;
+  let pageAccess = { scope: '', active: null, message: '' };
+  const subscriptionInactive=()=>pageAccess.scope===scopeKey()&&pageAccess.active===false;
   let registeredTillSupported=false,platformAdminScope='';
   const platformView=()=>['tills','retail-billing'].includes(view)||(view==='staff-access'&&(registeredTillSupported||data?.platform_supported));
   const platformContent=()=>'<div class="retail-platform-inline"><p id="platformNotice" role="status"></p><div id="platformMain">Loading administration…</div></div>';
@@ -25,6 +27,11 @@
   const checkoutWriter = () => counterUI.canSell() && (!businessUI.needsOnline() || online) && (writer() || (shellReady && offline.canSell(offlineState) && scopeKey() === currentScope));
   function syncStatus() {
     if(platformView()){$('#retailSyncStatus').hidden=true;return;}
+    if(subscriptionInactive()){
+      $('#retailConnection').textContent='Subscription inactive';$('#retailConnection').classList.remove('connected');
+      $('#retailSyncStatus').hidden=!offlineState.operations.length;
+      $('#retailSyncStatus').innerHTML=offlineState.operations.length+' saved sale(s) remain on this device. <button type="button" data-view="offline">View saved sales</button>';return;
+    }
     const count = offlineState.operations.filter(x => x.status !== 'applied').length;
     const blocked = offlineState.operations.some(x => x.status === 'blocked');
     const text = blocked ? 'Sync needs attention' : count ? count + ' sale' + (count === 1 ? '' : 's') + ' awaiting sync' : online ? (shellReady && offline.canSell(offlineState) ? 'Online · offline till ready' : 'Up to date') : 'Offline · saved data';
@@ -193,7 +200,12 @@
        storeChanged:async()=>{lastNavKey='';await InventoryRetailLocation.init();refresh();}
       });$('#retailSyncStatus').hidden=true;return;
     }
-    if (!data) return;
+    // Every navigation must replace the body, including when no overview can be
+    // loaded. Subscription gating belongs here, not in one refresh response.
+    if(subscriptionInactive()){
+      $('#retailView').innerHTML=view==='offline'&&offlineState.operations.length?offlineView():card(header('Activate InventoryOS Retail')+'<p>Activate your subscription to gain access to this page.</p><p>£19.99 per store per month. All core Retail features and unlimited tills included.</p><button type="button" data-view="retail-billing">Choose Retail / manage billing</button>');syncStatus();return;
+    }
+    if (!data) {$('#retailView').innerHTML=empty(pageAccess.scope===scopeKey()&&pageAccess.message||'Loading this Retail inventory…');return;}
     $('#retailRole').textContent = `${data.role} · Retail`;
     $('#retailView').innerHTML = ({ dashboard, products: () => productView(false), services: () => productView(true), checkout: checkoutView, deliveries: deliveryView, reorders: reordersView, counts: countsView, tasks: tasksView, cash: cashView, sales: salesView, settings: () => counterUI.appearance() + settingsView() + orderingUI.settings() + (data.business_supported ? businessUI.settings() : ''), offline: offlineView, ...businessUI.views, ...counterUI.views, ...Object.fromEntries(Object.entries(orderingUI.views).filter(([k])=>k!=='sales'||orderingUI.supported())) })[view]();
     orderingUI.mount(view);
@@ -209,6 +221,7 @@
     tillMode = next === 'till'; view = tillMode ? 'checkout' : next; search = ''; history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(tillMode ? 'till' : view)); render();
     setMenu(false);
     if (view === 'checkout') $('#retailSearch')?.focus(); else $('#main').focus({ preventScroll: true });
+    if(ready&&navigator.onLine&&!platformView()&&!['help','store-location'].includes(view)&&(!data||subscriptionInactive()))refresh();
   }
   function setMenu(open) {
     const mobile = matchMedia('(max-width:760px)').matches;
@@ -225,7 +238,7 @@
     const context = scopeKey(), g = ++generation;
     if (currentScope !== context) {
       if (basket.length) notice('Basket cleared because the workspace or inventory changed. No sale was recorded.');
-      basket = []; data = null; search = ''; currentScope = context; businessUI.reset(); counterUI.reset(); afterDialog=null; $('#retailDialog').close();
+      basket = []; data = null; search = ''; currentScope = context; pageAccess={scope:context,active:null,message:''}; businessUI.reset(); counterUI.reset(); afterDialog=null; $('#retailDialog').close();
       $('#retailView').innerHTML = empty('Loading this Retail inventory…');
     }
     try {
@@ -233,23 +246,33 @@
       if (!selection.workspace){switchView('store-location');return;}
       if (!selection.inventory || selection.inventory.includes(',')){online=true;switchView('retail-billing');return;}
       offlineState = await offline.read(context);
-      if(navigator.onLine&&offlineState.operations.length)await api('/status');
-      if (offlineState.operations.length) {
-        if (navigator.onLine) await offline.sync(context);
-        if (g !== generation || scopeKey() !== context) return;
-        offlineState = await offline.read(context);
-        if(navigator.onLine&&offlineState.operations.length)await api('/status');
-      if (offlineState.operations.length) { data = offline.project(offlineState); retailClockOffset = Date.parse(data.server_now) - Date.now(); online = false; render(); notice('Saved sales remain on this device until confirmed. Check Offline & sync for progress or errors.'); return; }
+      if(g!==generation||scopeKey()!==context)return;
+      if(offlineState.access_denied)pageAccess={scope:context,active:false,message:offlineState.locked_reason||''};
+      // Check entitlement before syncing/projecting cached sales. A known
+      // inactive subscription must not restore the previous paid page.
+      if(navigator.onLine){
+        const status=await api('/status');if(g!==generation||scopeKey()!==context)return;
+        pageAccess={scope:context,active:Boolean(status.active),message:''};
+        platformAdminScope=['owner','admin'].includes(status.role)?context:'';
+        if(!status.active){
+          await offline.lock(context,'Retail is off or no longer entitled.',{access_denied:true});
+          if(g!==generation||scopeKey()!==context)return;
+          offlineState={...offlineState,locked_reason:'Retail is off or no longer entitled.',access_denied:true};
+          online=false;data=null;render();
+          if(!platformView()&&!['store-location','help'].includes(view))notice('Activate a Retail subscription or trial in Stores & billing.');return;
+        }
       }
-      if (!navigator.onLine && offlineState.snapshot) throw new Error('Working from the saved Retail data.');
-      const status = await api('/status'); if (g !== generation) return;
-      if (!status.active) {
-        await offline.lock(context, 'Retail is off or no longer entitled.');
-        online = false; data = null; render();
-        if(platformView()||view==='store-location'||view==='help')return;
-        $('#retailView').innerHTML = card(header('Activate InventoryOS Retail') + '<p>£19.99 per store per month. All core Retail features and unlimited tills included.</p><button type="button" data-view="retail-billing">Choose Retail / manage billing</button>');
-        notice('Activate a Retail subscription or trial in Stores & billing.'); return;
+      if(offlineState.operations.length){
+        if(navigator.onLine)await offline.sync(context);
+        if(g!==generation||scopeKey()!==context)return;
+        offlineState=await offline.read(context);
+        if(offlineState.operations.length){
+          data=!offlineState.locked_reason?offline.project(offlineState):null;
+          if(data)retailClockOffset=Date.parse(data.server_now)-Date.now();
+          online=false;render();notice('Saved sales remain on this device until confirmed. Check Offline & sync for progress or errors.');return;
+        }
       }
+      if(!navigator.onLine)throw new Error(offlineState.snapshot?'Working from the saved Retail data.':'Reconnect to load this Retail inventory.');
       const r = await api('/overview?offline_device_id=' + encodeURIComponent(offline.device())); if (g !== generation || scopeKey() !== context) return;
       if (r.workspace_id !== selected().workspace || r.inventory_id !== selected().inventory) throw new Error('Workspace selection changed. Refresh to load the correct inventory.');
       if(r.platform_supported&&registeredTill()&&!r.registered_tills?.some(t=>t.id===registeredTill()&&t.active!==false&&t.open!==false&&t.licensed!==false&&!t.assigned_to)&&!pending()){localStorage.removeItem(registeredTillKey());return refresh();}
@@ -270,11 +293,16 @@
       if (!quiet || (!$('#retailDialog').open && !platformView() && !(view==='settings'&&($('#retailSettingsForm')?.dataset.dirty==='true'||$('#retailBusinessSettings')?.dataset.dirty==='true')))) render();
       notice(basketChanged ? 'Product details changed. The basket now uses the current prices, VAT details and active products; please review it before taking payment.' : '');
     } catch (e) {
-      if (g !== generation) return;
+      if (g !== generation || scopeKey()!==context) return;
       online = false; $('#retailConnection').textContent = 'Needs refresh'; $('#retailConnection').classList.remove('connected');
-      if (e.status && e.status < 500) { await offline.lock(context, e.message); offlineState = { ...offlineState, snapshot: null }; }
-      else if (offlineState.snapshot) data = offline.project(offlineState);
-      if (data||platformView()||view==='store-location'||view==='help') render(); else $('#retailView').innerHTML = empty('Retail could not be loaded. Install the backend update if you have not done so yet, then refresh.');
+      if (e.status && e.status < 500) {
+        pageAccess={scope:context,active:e.status===402?false:null,message:e.message};data=null;
+        await offline.lock(context,e.message,{access_denied:e.status===402});
+        if(g!==generation||scopeKey()!==context)return;
+        offlineState={...offlineState,snapshot:null,locked_reason:e.message,access_denied:e.status===402};
+      }else if(offlineState.snapshot&&!offlineState.locked_reason&&!subscriptionInactive())data=offline.project(offlineState);
+      if(!data&&!subscriptionInactive())pageAccess={scope:context,active:null,message:e.message||'Retail could not be loaded. Reconnect and refresh.'};
+      render();
       notice(e.message, true); syncStatus();
     }
   }

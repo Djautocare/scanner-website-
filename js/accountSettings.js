@@ -5,6 +5,7 @@ const groups=[
  ['billing','Billing & subscriptions',['billingSettingsCard']],
  ['appearance','Appearance',['appearanceSettingsCard']],
  ['devices','Apps & devices',['installSettingsCard']],
+ ['printing','Printing',['printingSettingsCard']],
  ['security','Security',['securitySettingsCard']],
  ['dispatch','Stock & dispatch',['removePreferencesCard','inboundEmailSettingsCard']],
  ['data','Data import',['dataManagementSettingsCard']],
