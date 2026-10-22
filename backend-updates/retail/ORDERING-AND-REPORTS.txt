@@ -1,0 +1,95 @@
+INVENTORYOS RETAIL: ORDERING, PRICE REVIEWS AND REPORTS (v9)
+
+INSTALL ON THE PC THAT RUNS YOUR BACKEND
+1. Download InventoryOS-retail-ordering-update.zip and extract it.
+2. Put the extracted InventoryOS-retail-ordering-update folder INSIDE your
+   current backend folder (the same folder that contains server.js and .env).
+   Keep files inside the update folder. Do not manually copy its files folder.
+3. Stop the existing InventoryOS Backend task in Task Scheduler. Finish any
+   till transactions first. Keep your normal database backup before upgrading.
+4. Open PowerShell in your backend folder and run:
+   node .\InventoryOS-retail-ordering-update\install.cjs
+5. If installation succeeds, run:
+   node .\check-retail.cjs
+6. If the check passes, start InventoryOS Backend again using your normal task.
+7. Refresh the Retail website. Close/reopen any installed Retail or Till app.
+
+No new .env values, npm packages or Stripe prices are required. The check adds
+new Retail tables/columns automatically. It does not change your main inventory
+stock or historic purchase costs. This is a cumulative Retail code update.
+
+The installer backs up changed files and refuses to overwrite unrecognised
+Retail edits. If it stops, keep the message; do not force it or delete live files.
+To restore code, stop the backend and run from the backend folder:
+   node .\InventoryOS-retail-ordering-update\restore.cjs "FULL BACKUP FOLDER"
+Use the exact retail-backup folder printed by installation. Restore does not
+remove database tables, stock events, reports or other recorded transactions.
+
+WHERE TO FIND THE NEW FEATURES
+Products > Supplier links & prices:
+- First save a supplier name and exact PRODUCT link on the product.
+- Configure supplier product code, variant (if needed), units in the supplier
+  pack, price, VAT basis and optional minimum order value.
+- Read code & pack price tries the public product page. Check the size/variant,
+  currency, VAT and pack price, then confirm. Manual entry remains available.
+- Daily checking is optional and runs while your backend is running. A check
+  failure keeps the previous estimate and shows the reason. No price is invented.
+- A supplier unit-cost increase creates one dashboard task for all pending
+  reviews. Review prices shows the link, cost increase, selling price, unit
+  profit impact and recommendation. You choose Apply/edit price or Keep price.
+- Recommendation: current selling price x new estimated unit cost / previous
+  unit cost, rounded up to a penny. This preserves percentage margin when VAT
+  treatment is unchanged. No automatic recommendation if the old cost is missing
+  or the current price is at/below it. Consider your own rounding and margins.
+- Estimates do not overwrite product purchase cost or previous delivery/sale
+  snapshots. Receiving an order still records its confirmed delivery cost.
+
+Reports > Ordering:
+- Live reorder quantities grouped by supplier, with codes and product links.
+- Copy order list for use on the supplier website. This does not submit a basket
+  or purchase anything. You place the actual supplier order yourself.
+- Quantities round up to whole supplier packs. Missing costs and supplier
+  minimums are flagged; totals are estimates and exclude shipping/discounts.
+- Create supplier order records an expected delivery. Outstanding deliveries
+  reduce subsequent suggestions to help avoid ordering the same stock twice.
+
+Reports:
+- Transactions (sales/refunds/search/original receipt), Daily sales and Waste.
+- Retail Pro: Stock-count losses, Biggest waste lines and Management activity.
+- Date presets and custom dates use the store timezone; end date is inclusive.
+- Ordering is live. Historic snapshots remain in your database.
+- Historical counts without a saved cost show unknown/partially priced values;
+  they are never repriced using today's product cost. Gross profit is estimated,
+  using saved transaction costs and VAT information, not a full accounts report.
+
+Admin > Staff access > Store permission:
+- Tick Management controls for people allowed to approve waste at THIS store.
+- In Till, open Management controls when the basket is empty. Select product,
+  quantity and Out of date or Damaged. The authoriser enters their staff code/QR
+  and PIN afresh. Cashier, approver, till, reason and cost are saved.
+- An uncertain write-off can be retried in the same form with the same request.
+  If you close it, check the Waste report before entering it again.
+
+Stock counts:
+- Default large-difference threshold is 10 units OR GBP25 at recorded unit cost.
+- A matching second count or explicit owner/admin approval is required before
+  stock changes. Adjust these thresholds in Retail settings.
+
+Checkout shows all registered tills with their status. Closed, inactive,
+occupied or unlicensed tills remain visible but cannot be chosen for a sale.
+
+SUPPLIER SUPPORT LIMIT
+Public GBP pages with a single identifiable structured product offer can be
+read. Login/member-only prices, anti-bot pages, ambiguous variants and unsupported
+sites need manual entry. Not every supplier exposes usable prices; Costco,
+Bookers and other real supplier pages are not guaranteed. No real supplier
+compatibility was verified in this release environment. Validate each supplier
+with a known product/pack before enabling its daily checks. Private/local URLs,
+unsafe redirects and oversized downloads are blocked.
+
+CHECKS PERFORMED
+Existing Retail regression suites plus new supplier identity/URL safety,
+VAT/pack conversion, price-review/retry, order duplication, recount, fresh-PIN
+waste, historic-cost, report date, tenant and subscription-permission tests.
+Tests use an isolated PostgreSQL-compatible database and controlled supplier
+responses. Your live PostgreSQL, scanner and printer were not accessed.

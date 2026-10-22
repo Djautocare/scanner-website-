@@ -61,7 +61,7 @@ const { createService, money, dayAndTime } = require('../files/utils/retail');
   await assert.rejects(() => run('/counts/' + count.id, { qty: 4, stock_version: count.stock_version, reason: 'Physical count' }, (c, s, b) => R.countStock(c, s, b, count.id)), /Stock changed/);
   overview = await R.overview(request('/overview'));
   const freshCount = overview.counts.find(x => x.id === count.id);
-  await run('/counts/' + count.id, { qty: 4, stock_version: freshCount.stock_version, reason: 'Physical count' }, (c, s, b) => R.countStock(c, s, b, count.id));
+  await run('/counts/' + count.id, { qty: 4, stock_version: freshCount.stock_version, reason: 'Physical count', manager_confirm:true }, (c, s, b) => R.countStock(c, s, b, count.id));
   overview = await R.overview(request('/overview')); assert.equal(overview.products.find(x => x.id === p.id).stock_qty, 4);
   assert.equal(overview.counts.find(x => x.id === count.id).status, 'completed');
   // A shortage is not charged to the next count twice.

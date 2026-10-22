@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='inventoryos-till-v5';const urls=['index.html','install.js?v=2','till.js?v=4','till.css?v=3','manifest.webmanifest','../../pwa/till-192.png','../../pwa/till-512.png','../../css/theme.css?v=5','../../js/theme.js?v=6','../retail.css?v=6','../keyboard-scanner.js?v=3','../scanner.js?v=6','../pricing.js?v=5','../print.js?v=1','../vendor/zxing-browser-0.1.5.min.js'].map(p=>new URL(p,self.location.href).href);
+const CACHE='inventoryos-till-v6';const urls=['index.html','install.js?v=2','till.js?v=5','till.css?v=3','manifest.webmanifest','../../pwa/till-192.png','../../pwa/till-512.png','../../css/theme.css?v=5','../../js/theme.js?v=6','../retail.css?v=6','../keyboard-scanner.js?v=3','../scanner.js?v=6','../pricing.js?v=5','../print.js?v=1','../vendor/zxing-browser-0.1.5.min.js'].map(p=>new URL(p,self.location.href).href);
 self.addEventListener('install',e=>e.waitUntil(
  caches.open(CACHE).then(c=>c.addAll(urls)).then(()=>self.skipWaiting())
 ));

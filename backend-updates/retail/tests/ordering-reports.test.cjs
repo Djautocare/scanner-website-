@@ -1,0 +1,64 @@
+'use strict';
+const assert=require('node:assert/strict'),{randomUUID:uuid}=require('node:crypto'),path=require('node:path');
+const {PGlite}=require(path.join(process.env.RETAIL_TEST_MODULES||'..','@electric-sql/pglite'));
+const {createService}=require('../files/utils/retail'),supplier=require('../files/utils/supplierProduct'),{recommendation,unitCost}=require('../files/utils/retailOrdering'),{range}=require('../files/utils/retailReports');
+(async()=>{
+ assert.equal(recommendation(100,120,200),240);assert.equal(recommendation(0,120,200),null);
+ assert.equal(unitCost(1440,{pack_units:12,supplier_vat_rate:20,price_includes_vat:true,cost_excludes_vat:true}),100);
+ for(const value of ['http://127.0.0.1/','https://10.0.0.1/','http://2130706433/','http://[::1]/','http://[2001:db8::1]/','https://user:password@public.example.com/','http://169.254.169.254/'])assert.throws(()=>supplier.safeURL(value));
+ await assert.rejects(()=>supplier.fetchPage('https://public.example.com/',{lookup:async()=>[{address:'192.168.1.2',family:4}]}),/private/);
+ const json=price=>JSON.stringify({'@type':'Product',name:'Water',sku:'WATER-12',offers:{'@type':'Offer',priceCurrency:'GBP',price,availability:'https://schema.org/InStock'}});
+ assert.equal(supplier.parseProduct(json('14.40'),'https://supplier.example.com/water',{sku:'WATER-12'}).pack_price_pence,1440);
+ assert.throws(()=>supplier.parseProduct(JSON.stringify([JSON.parse(json('14.40')),JSON.parse(json('16.00'))]),'https://supplier.example.com/water'),/unambiguous/);
+ assert.equal(range({period:'last_week'},new Date('2026-10-22T12:00Z'),'Europe/London').start,'2026-10-12');
+ assert.equal(range({period:'last_month'},new Date('2026-10-22T12:00Z'),'Europe/London').end,'2026-09-30');
+ assert.equal(range({period:'today'},new Date('2026-10-21T23:30Z'),'Europe/London').start,'2026-10-22');
+ const db=new PGlite();await db.waitReady;
+ const query=(q,v)=>q.includes('CREATE TABLE IF NOT EXISTS')?db.exec(q).then(a=>a.at(-1)):db.query(q,v),pool={query,connect:async()=>({query,release(){}})};
+ await db.exec(`CREATE TABLE users(id uuid PRIMARY KEY,name text,admin_plan_override text,is_suspended boolean DEFAULT false,email text,email_verified boolean DEFAULT true);CREATE TABLE workspaces(id uuid PRIMARY KEY,owner_user_id uuid REFERENCES users(id),name text,stripe_customer_id text);CREATE TABLE inventories(id uuid PRIMARY KEY,workspace_id uuid REFERENCES workspaces(id),name text,is_default boolean DEFAULT false);CREATE TABLE workspace_members(workspace_id uuid,user_id uuid,role text,status text);CREATE TABLE products(id uuid PRIMARY KEY,workspace_id uuid);`);
+ const owner=uuid(),member=uuid(),workspace=uuid(),inventory=uuid(),other=uuid();
+ for(const u of [owner,member])await db.query("INSERT INTO users(id,name,email)VALUES($1,'Test account','test@example.test')",[u]);
+ await db.query("INSERT INTO workspaces(id,owner_user_id,name)VALUES($1,$2,'Test shop')",[workspace,owner]);for(const i of [inventory,other])await db.query("INSERT INTO inventories(id,workspace_id,name)VALUES($1,$2,'Shop')",[i,workspace]);await db.query("INSERT INTO workspace_members VALUES($1,$2,'member','active')",[workspace,member]);
+ let clock=new Date(),remote=1440,fetchError=false;
+ const R=createService({pool,calculateAccess:()=>({allowed:true,plan_key:'business'}),now:()=>clock,lookupProduct:async()=>{if(fetchError)throw Error('Cannot connect');return {sku:'WATER-12',pack_price_pence:remote,availability:'InStock'};}}),P=R.platform;
+ const req=(route,body={},actor=owner,inv=inventory)=>({user:{id:actor},workspace:{id:workspace},headers:{'x-workspace-id':workspace,'x-inventory-ids':inv},originalUrl:'/retail'+route,query:{},body:{request_id:uuid(),...body}});
+ const run=(route,b,fn,options={admin:true},actor=owner)=>R.transaction(req(route,b,actor),fn,options);
+ await R.ensureSchema();for(const i of [inventory,other]){await P.ownerChange(req('',{action:'create-store',inventory_id:i,name:'Shop'}));const row=(await db.query('SELECT * FROM retail_stores WHERE inventory_id=$1',[i])).rows[0];await P.adminOverride({...req('',{inventory_id:i,version:row.override_version,plan:'pro',extra_pairs:0,features:{},reason:'Regression test'}),params:{id:owner}});}
+ const create=(name,barcode,more={})=>run('/products',{name,barcode,price:'3',cost:'1',minimum_qty:4,target_qty:15,opening_qty:2,supplier:'BOOKERS',supplier_url:'https://supplier.example.com/'+barcode,...more},R.saveProduct);
+ const water=(await create('Water','WATER')).product,cereal=(await create('Cereal','CEREAL',{price:'4',cost:'2'})).product;
+ const config={product_version:water.edit_version,version:0,sku:'WATER-12',variant_id:'',pack_units:12,minimum_order:'100',monitoring:true,confirmed:true,supplier_vat_rate:20,price_includes_vat:true,cost_excludes_vat:false,pack_price:'14.40'};
+ await run('/suppliers/'+water.id,config,(c,s,b)=>R.ordering.configure(c,s,b,water.id));
+ let overview=await R.overview(req('/overview'));assert.equal(overview.ordering.reviews.length,1);assert.equal(overview.ordering.reviews[0].recommended_price_pence,360);assert.equal(overview.products.find(p=>p.id===water.id).cost_pence,100);assert.equal(overview.tasks.filter(t=>t.source_key==='supplier-price-review'&&t.status==='pending').length,1);
+ const review=overview.ordering.reviews[0],apply=req('/price-reviews/'+review.id,{action:'accept',price:'3.60',version:review.version,product_version:review.edit_version});
+ const resolve=(c,s,b)=>R.ordering.resolveReview(c,s,b,review.id);await R.transaction(apply,resolve,{admin:true});assert.equal((await R.transaction(apply,resolve,{admin:true})).replayed,true);assert.equal((await R.overview(req('/overview'))).ordering.reviews.length,0);
+ clock=new Date(clock.getTime()+6*60000);remote=1800;await run('/suppliers/check',{product_ids:[water.id]},R.ordering.queue);await R.ordering.tick();overview=await R.overview(req('/overview'));assert.equal(overview.ordering.reviews[0].latest_cost_pence,150);assert.equal(overview.ordering.reviews[0].baseline_cost_pence,120);
+ // A failed check retains the last known estimate and never modifies actual cost.
+ fetchError=true;clock=new Date(clock.getTime()+6*60000);await run('/suppliers/check',{product_ids:[water.id]},R.ordering.queue);await R.ordering.tick();overview=await R.overview(req('/overview'));assert.equal(overview.ordering.products[0].estimated_unit_cost_pence,150);assert.match(overview.ordering.products[0].status,/could not be reached/);assert.equal(overview.products.find(p=>p.id===water.id).cost_pence,100);
+ const expected=[{product_id:water.id,qty:24,cost_pence:150},{product_id:cereal.id,qty:13,cost_pence:200}],orderBody={supplier:'BOOKERS',expected_items:expected,minimum_confirmed:true,reference:'ORDER-1'};
+ const created=await run('/ordering/order',orderBody,R.ordering.order);assert(created.delivery_id);overview=await R.overview(req('/overview'));assert.equal(overview.reorders.find(p=>p.id===water.id).order_qty,0);await assert.rejects(()=>run('/ordering/order',orderBody,R.ordering.order),/no longer|changed/);
+ // Stock is unchanged until a large discrepancy is counted again.
+ await run('/counts',{product_id:cereal.id},R.requestCount,{});overview=await R.overview(req('/overview'));const count=overview.counts.find(c=>c.product_id===cereal.id),body={qty:20,stock_version:count.stock_version,reason:'Physical count'};
+ const countFn=(c,s,b)=>R.countStock(c,s,b,count.id);const first=await run('/counts/'+count.id,body,countFn,{},member);assert.equal(first.recount_required,true);assert.equal((await db.query('SELECT stock_qty FROM retail_products WHERE id=$1',[cereal.id])).rows[0].stock_qty,2);await run('/counts/'+count.id,{...body,recount:true},countFn,{},member);assert.equal((await db.query('SELECT stock_qty FROM retail_products WHERE id=$1',[cereal.id])).rows[0].stock_qty,20);
+ // Completed count values stay at the original cost after a product edit.
+ await db.query('UPDATE retail_products SET cost_pence=9999 WHERE id=$1',[cereal.id]);
+ const report=async(type,extra={})=>R.reports.read({...req('/reports'),query:{type,period:'today',...extra}});
+ const countReport=await report('count-losses');assert.equal(Number(countReport.rows[0].overage_pence),3600);
+ const t1=(await P.ownerChange(req('',{action:'register-till',inventory_id:inventory,name:'Till 1'}))).till_id,t2=(await P.ownerChange(req('',{action:'register-till',inventory_id:inventory,name:'Till 2'}))).till_id;await P.ownerChange(req('',{action:'open-till',inventory_id:inventory,till_id:t1,amount:'20'}));
+ const st=(await run('/operations/staff',{name:'Alex',commission_percent:'0'},R.operations.saveStaff)).staff;await R.operations.credentials({...req('',{staff_number:'100',pin:'1234'}),params:{id:st.id}});await P.ownerChange(req('',{action:'staff-assignment',inventory_id:inventory,staff_id:st.id,active:true,can_refund:false,can_manage:true}));
+ const pairing=await P.ownerChange(req('',{action:'pair-till',inventory_id:inventory,till_id:t1})),device=(await P.pair({body:{code:pairing.pair_code}})).device_token;
+ const pos=(route,body={},token='')=>({retail_pos:true,headers:{authorization:'Till '+device,...(token?{'x-retail-staff-token':token}:{})},originalUrl:'/retail-pos'+route,query:{},body:{request_id:uuid(),...body}});
+ const login=await P.login(pos('/login',{staff_identifier:'100',pin:'1234',drawer_flow:true})),selection=await P.drawers.select(pos('/select-drawer',{till_id:t1},login.login_token)),session=await P.drawers.confirm(pos('/confirm-drawer',{selection_token:selection.selection_token},login.login_token)),token=session.token;
+ overview=await R.overview(req('/overview'));assert.equal(overview.registered_tills.find(t=>t.id===t2).open,false);assert.equal(overview.registered_tills.find(t=>t.id===t1).assigned_to,'Alex');
+ const waste=pos('/waste',{product_id:water.id,qty:1,reason:'damaged',note:'Test write-off',approval:{staff_identifier:'100',pin:'1234'}},token);assert.equal((await P.posWaste(waste)).recorded,true);assert.equal((await P.posWaste(waste)).replayed,true);assert.equal((await db.query('SELECT stock_qty FROM retail_products WHERE id=$1',[water.id])).rows[0].stock_qty,1);
+ await assert.rejects(()=>P.posWaste(pos('/waste',{...waste.body,request_id:uuid(),approval:{staff_identifier:'100',pin:'0000'}},token)),/approval denied/);
+ assert(!/"(?:pin|pin_hash|pin_salt|approval)"\s*:/.test(JSON.stringify((await db.query('SELECT * FROM retail_requests')).rows)));
+ const tx=await P.state(pos('/state',{},token)),transactionId=uuid();await P.drawers.transaction(pos('/transaction',{action:'save',transaction_id:transactionId,kind:'sale',version:tx.transaction_version,items:[{product_id:water.id,qty:1}]},token));await assert.rejects(()=>P.posWaste(pos('/waste',{...waste.body,request_id:uuid()},token)),/transaction/);const state=await P.state(pos('/state',{},token));await P.drawers.transaction(pos('/transaction',{action:'cancel',transaction_id:transactionId,version:state.transaction_version},token));await P.logout(pos('/logout',{},token));
+ // Real sale/refund snapshots drive reports; product costs are not looked up later.
+ const saleReq=req('/checkout',{payment_method:'cash',tendered:'7.20',items:[{product_id:water.id,qty:2,unit_price_pence:360}]});saleReq.headers['x-retail-till-id']=t1;const sale=(await R.transaction(saleReq,R.checkout)).sale;
+ const returnReq=req('/sales/'+sale.id+'/refund',{reason:'One returned',items:[{product_id:water.id,qty:1,restock:true}]});returnReq.headers['x-retail-till-id']=t1;await R.transaction(returnReq,(c,s,b)=>R.refund(c,s,b,sale.id),{admin:true});
+ const daily=await report('daily-sales');assert.equal(daily.totals.sales_pence,720);assert.equal(daily.totals.refunds_pence,360);assert.equal(daily.totals.net_sales_pence,360);assert.equal(daily.totals.cash_pence,360);assert.equal(daily.totals.gross_profit_pence,260);
+ assert.equal((await report('transactions',{search:'Water'})).total,2);assert.equal((await report('waste')).rows[0].approved_by,'Alex');assert.equal((await report('waste-lines')).rows[0].qty,1);assert((await report('activity')).total>0);
+ const receipt=await R.reports.receipt({...req(''),params:{id:sale.id}});assert.equal(receipt.sale.items[0].name,'Water');await assert.rejects(()=>R.reports.receipt({...req('',{},owner,other),params:{id:sale.id}}),/unavailable/);
+ await db.query("UPDATE retail_stores SET override_plan='starter' WHERE inventory_id=$1",[inventory]);await assert.rejects(()=>report('count-losses'),/Retail Pro/);assert.equal((await report('daily-sales')).totals.gross_profit_pence,undefined);
+ console.log('PASS: supplier URL safety, structured product identity, VAT/pack conversion, grouped orders, cost review idempotency, failed-check retention, recount safeguards, visible till status, fresh store PIN waste, immutable reports, date ranges and tenant/plan isolation.');await db.close();
+})().catch(e=>{console.error(e);process.exit(1);});

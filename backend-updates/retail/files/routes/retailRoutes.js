@@ -18,6 +18,9 @@ const handle = fn => async (req, res) => {
 router.get('/locations',handle(R.platform.locations));
 router.get('/status', handle(R.status));
 router.get('/overview', handle(R.overview));
+router.get('/reports',handle(R.reports.read));
+router.get('/reports/transaction/:id',handle(R.reports.receipt));
+router.post('/suppliers/lookup',handle(R.ordering.lookup));
 router.get('/products/:id/history', handle(R.history));
 router.get('/catalogue/:barcode', handle(async req => {
   await R.ensureSchema();
@@ -28,6 +31,11 @@ function mutate(method, route, fn, options) {
   router[method](route, handle(req => R.transaction(req, (c, s, b) => fn(c, s, b, req.params.id), options)));
 }
 mutate('patch', '/settings', R.settings, { inventory: false, admin: true, enabled: false, entitled: false });
+mutate('patch','/suppliers/:id',R.ordering.configure,{admin:true});
+mutate('post','/suppliers/check',R.ordering.queue,{admin:true});
+mutate('post','/price-reviews/:id',R.ordering.resolveReview,{admin:true});
+mutate('patch','/ordering/settings',R.ordering.settings,{admin:true});
+mutate('post','/ordering/order',R.ordering.order,{admin:true});
 mutate('post', '/products', R.saveProduct, { admin: true });
 mutate('patch', '/products/:id', R.saveProduct, { admin: true });
 mutate('post', '/stock-in', R.receiveStock);

@@ -16,6 +16,7 @@ router.get('/state',handle(R.platform.state));
 router.get('/customers',handle(R.platform.customers));
 router.get('/refund-sale',handle(R.platform.refundSale));
 router.post('/refund',handle(R.platform.posRefund));
+router.post('/waste',handle(R.platform.posWaste));
 router.post('/reconcile',handle(R.platform.reconcile));
 const mutation=(route,fn)=>router.post(route,handle(req=>R.transaction(req,fn)));
 mutation('/checkout',R.checkout);

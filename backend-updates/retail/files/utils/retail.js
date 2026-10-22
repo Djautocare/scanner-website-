@@ -84,7 +84,7 @@ function catalogueDetails(body, barcode, old = {}) {
   return { source, code };
 }
 
-function createService({ pool, calculateAccess, ensureBillingSchema = async () => {}, now = () => new Date(), offlineSecret = process.env.JWT_SECRET, sendEmail, stripeClient }) {
+function createService({ pool, calculateAccess, ensureBillingSchema = async () => {}, now = () => new Date(), offlineSecret = process.env.JWT_SECRET, sendEmail, stripeClient, lookupProduct }) {
   // Offline receipts use authenticated server-issued prices, never client-supplied prices.
   const offlineKey = offlineSecret ? crypto.createHmac('sha256', offlineSecret).update('InventoryOS Retail offline v1').digest() : null;
   function signOffline(value) {
@@ -126,6 +126,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-business.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-operations.sql'), 'utf8'));
         await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-platform.sql'), 'utf8'));
+        await c.query(fs.readFileSync(path.join(__dirname, '../sql/retail-ordering.sql'), 'utf8'));
         await c.query('COMMIT');
       } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
     })().catch(e => { ready = null; throw e; });
@@ -305,6 +306,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     }
     p = await business.productMeta(c, s, b, { ...p, item_kind: productId ? p.item_kind : null });
     p = await operations.meta(c, s, b, p);
+    await ordering.afterProductSave(c,s,p);
     await audit(c, s, productId ? 'product_updated' : 'product_created', { product_id: p.id, name, barcode, price_pence: price, cost_pence: cost, ...tax });
     return { product: p };
   }
@@ -321,7 +323,10 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     const p = await product(c, s, row.product_id);
     if (integer(b.stock_version, 'Stock version', 0, 2147483647) !== p.stock_version) throw fail('Stock changed while you were counting. Refresh, count again and retry', 409);
     const qty = integer(b.qty, 'Counted quantity'), reason = text(b.reason, 'Count note', 300);
+    const review=await ordering.reviewCount(c,s,b,row,p,qty);
+    if(!review.allowed)return review;
     await stock(c, s, p, qty - p.stock_qty, 'count', row.id, reason);
+    await c.query('UPDATE retail_counts SET unit_cost_pence=$2,product_name=$3,approval=$4 WHERE id=$1',[row.id,p.cost_pence,p.name,review.approval?JSON.stringify(review.approval):null]);
     await c.query("UPDATE retail_counts SET status='completed',expected_qty=$4,counted_qty=$5,difference=$6,reason=$7,actor_id=$8,completed_at=now() WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3", [...args(s), row.id, p.stock_qty, qty, qty - p.stock_qty, reason, s.actor_id]);
     return { difference: qty - p.stock_qty };
   }
@@ -474,6 +479,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   }
   async function taskStatus(c, s, b, taskId) {
     if (!['pending', 'completed'].includes(b.status)) throw fail('Choose pending or completed');
+    if((await c.query("SELECT source_key FROM retail_tasks WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3",[...args(s),id(taskId)])).rows[0]?.source_key)throw fail('Open the price review to resolve this automatic task',409);
     const result = await c.query("UPDATE retail_tasks SET status=$4,completed_at=CASE WHEN $4='completed' THEN now() ELSE NULL END WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 RETURNING id", [...args(s), id(taskId), b.status]);
     if (!result.rows.length) throw fail('Task not found', 404); return {};
   }
@@ -496,9 +502,10 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       const t = await till(c, s), reorder = await reorders(c, s);
       const reports = (await c.query('SELECT *,report_date::text AS report_date FROM retail_reports WHERE workspace_id=$1 AND inventory_id=$2 ORDER BY retail_reports.report_date DESC LIMIT 31', args(s))).rows;
       const tools = await business.overview(c, s), counter = await operations.overview(c,s);
+      const registeredTills=(await c.query('SELECT t.id,t.name,t.slot,t.active,(se.id IS NOT NULL) AS open,st.name AS assigned_to,(d.transaction_id IS NOT NULL) AS in_transaction FROM retail_registered_tills t LEFT JOIN retail_till_sessions se ON se.registered_till_id=t.id AND se.closed_at IS NULL LEFT JOIN retail_drawer_assignments d ON d.till_id=t.id LEFT JOIN retail_team st ON st.id=d.staff_id WHERE t.workspace_id=$1 AND t.inventory_id=$2 ORDER BY t.slot,t.name',args(s))).rows.map(t=>({...t,licensed:t.slot<=s.retail_access.till_allowance}));
+      const orderingData=await ordering.overview(c,s);
       await c.query('COMMIT');
-      const registeredTills=(await c.query('SELECT t.id,t.name,t.slot FROM retail_registered_tills t JOIN retail_till_sessions se ON se.registered_till_id=t.id AND se.closed_at IS NULL WHERE t.workspace_id=$1 AND t.inventory_id=$2 AND t.active ORDER BY t.slot',args(s))).rows;
-      return { success: true, registered_tills:registeredTills, platform_supported:true,retail_access:s.retail_access, operations: counter, business_supported: true, business: tools, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id, tools), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
+      return { success: true, ordering:orderingData, registered_tills:registeredTills, platform_supported:true,retail_access:s.retail_access, operations: counter, business_supported: true, business: tools, offline_supported: Boolean(offlineKey), offline: offlineSnapshot(s, products, t, req.query?.offline_device_id, tools), vat_supported: true, catalogue_supported: true, workspace_id: s.workspace_id, inventory_id: s.inventory_id, role: s.role, settings: s.settings, products, deliveries, tasks, counts, sales, daily_sales: daily.map(x => ({ ...x, net_pence: Number(x.net_pence) })), till: t, cash_history: cashHistory, reorders: reorder, reports, server_now: now().toISOString() };
     } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
   }
   async function history(req) {
@@ -524,14 +531,16 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   function start() {
     if (worker) return;
     let running = false;
-    const run = async () => { if (running) return; running = true; try { await tick(); await business.reminderTick(); await platform.tick(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
+    const run = async () => { if (running) return; running = true; try { await tick(); await business.reminderTick(); await platform.tick(); await ordering.tick(); } catch (e) { console.error('Retail report worker:', e.code || e.name); } finally { running = false; } };
     run(); worker = setInterval(run, 60000); worker.unref?.();
   }
   const business = require('./retailBusiness').createBusiness({ pool, now, calculateAccess, sendEmail, args, id, fail, text, integer, money, timestamp, product, stock, till, cash, audit, vatSnapshot, ensureSchema, scope });
   const operations = require('./retailOperations').createOperations({pool,args,id,text,integer,money,fail,now,product,stock,till,cash,audit,ensureSchema,scope,checkout,saveProduct});
   const catalogueTransfer = require('./retailTransfer').createTransfer({pool,args,id,text,fail,ensureSchema,scope,saveProduct});
   const platform = require('./retailPlatform').createPlatform({pool,now,id,text,integer,money,fail,args,audit,ensureSchema,scope,transaction,till,business,operations,checkout,openTill,movement,balance,report,reorders,sendEmail,calculateAccess,stripe:stripeClient});
-  return { platform, operations, catalogueTransfer, business, ensureSchema, scope, status, transaction, settings, saveProduct, receiveStock, countStock, requestCount, openTill, movement, balance, checkout, refund, createDelivery, deliveryStatus, receiveDelivery, createTask, taskStatus, overview, history, report, reorders, tick, start };
+  const ordering = require('./retailOrdering').createOrdering({pool,args,id,text,integer,money,fail,now,product,audit,ensureSchema,scope,createDelivery,reorders,lookupProduct});
+  const reports = require('./retailReports').createReports({pool,args,id,text,integer,fail,now,ensureSchema,scope});
+  return { ordering,reports,platform, operations, catalogueTransfer, business, ensureSchema, scope, status, transaction, settings, saveProduct, receiveStock, countStock, requestCount, openTill, movement, balance, checkout, refund, createDelivery, deliveryStatus, receiveDelivery, createTask, taskStatus, overview, history, report, reorders, tick, start };
 }
 
 let live;
