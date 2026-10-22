@@ -1,4 +1,4 @@
-INVENTORYOS RETAIL — STORE DELETION (v16)
+INVENTORYOS RETAIL — STORE DELETION (v17)
 
 1. Extract the whole InventoryOS-retail-store-deletion-update folder into your
    backend folder, beside server.js. Do not copy individual files by hand.

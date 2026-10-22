@@ -52,7 +52,9 @@ function create(H){
   }
   // Catch future child tables with no inventory_id, before a cascading delete
   // could remove rows that this version does not know how to export.
-  const refs=(await c.query(`SELECT k.oid,child.relname AS child,parent.relname AS parent,ARRAY(SELECT a.attname FROM unnest(k.conkey) WITH ORDINALITY x(n,o) JOIN pg_attribute a ON a.attrelid=k.conrelid AND a.attnum=x.n ORDER BY x.o) AS child_columns,ARRAY(SELECT a.attname FROM unnest(k.confkey) WITH ORDINALITY x(n,o) JOIN pg_attribute a ON a.attrelid=k.confrelid AND a.attnum=x.n ORDER BY x.o) AS parent_columns FROM pg_constraint k JOIN pg_class child ON child.oid=k.conrelid JOIN pg_class parent ON parent.oid=k.confrelid JOIN pg_namespace ns ON ns.oid=child.relnamespace WHERE k.contype='f' AND ns.nspname=current_schema()`)).rows;
+  // Cast catalog identifiers to text: node-postgres decodes text[] as an array,
+  // but its default decoder returns PostgreSQL name[] as a raw string.
+  const refs=(await c.query(`SELECT k.oid,child.relname AS child,parent.relname AS parent,ARRAY(SELECT a.attname::text FROM unnest(k.conkey) WITH ORDINALITY x(n,o) JOIN pg_attribute a ON a.attrelid=k.conrelid AND a.attnum=x.n ORDER BY x.o) AS child_columns,ARRAY(SELECT a.attname::text FROM unnest(k.confkey) WITH ORDINALITY x(n,o) JOIN pg_attribute a ON a.attrelid=k.confrelid AND a.attnum=x.n ORDER BY x.o) AS parent_columns FROM pg_constraint k JOIN pg_class child ON child.oid=k.conrelid JOIN pg_class parent ON parent.oid=k.confrelid JOIN pg_namespace ns ON ns.oid=child.relnamespace WHERE k.contype='f' AND ns.nspname=current_schema()`)).rows;
   for(const r of refs)if((KNOWN.has(r.parent)||r.parent==='inventories')&&!KNOWN.has(r.child)&&r.child!=='retail_store_moves'){
    const join=r.child_columns.map((k,i)=>'ch.'+quote(k)+'=p.'+quote(r.parent_columns[i])).join(' AND ');
    const condition=r.parent==='inventories'?'p.id=$1':map.get(r.parent)?.includes('inventory_id')?'p.inventory_id=$1':null;
@@ -98,7 +100,14 @@ function create(H){
   return {manifest,files:[{filename:'backup-index.csv',content:Buffer.from(csv(info,['setting','value'])).toString('base64')},...snap.sets.map(x=>({filename:x.name+'.csv',content:Buffer.from(csv(x.rows,x.columns)).toString('base64')}))]};
  }
  async function subscriptions(c,r){const receipt=(await c.query('SELECT * FROM retail_receipt_accounts WHERE inventory_id=$1',[r.inventory_id])).rows[0];return [{kind:'shop',id:r.stripe_subscription_id,customer:r.stripe_customer_id,checkout:r.checkout_session_id},{kind:'receipts',id:receipt?.stripe_subscription_id,customer:receipt?.stripe_customer_id,checkout:receipt?.checkout_id}].filter(x=>x.id||x.checkout);}
- async function preview(req){await ensureSchema();return tx(async c=>{const s=await owner(c,req),r=await shop(c,s,id(req.query.inventory_id));const map=await schema(c);await unsupported(c,r.inventory_id,map);const latest=(await c.query("SELECT id,status,sent_at,expires_at FROM retail_store_deletions WHERE workspace_id=$1 AND inventory_id=$2 AND owner_id=$3 AND recipient=$4 AND expires_at>$5 ORDER BY created_at DESC LIMIT 1",[s.workspace_id,r.inventory_id,s.actor_id,s.email,stamp()])).rows[0];return {success:true,store:{id:r.inventory_id,name:r.name},email:s.email,blockers:await blockers(c,r),backup:latest||null,deleting:Boolean(r.deleting_backup_id)};});}
+ async function preview(req){await ensureSchema();return tx(async c=>{
+  const s=await owner(c,req),r=await shop(c,s,id(req.query.inventory_id)),blocked=await blockers(c,r);
+  // Expected safety blockers should explain why the action is unavailable while
+  // still showing the authoritative account email. Unexpected DB errors propagate.
+  try{await unsupported(c,r.inventory_id,await schema(c));}catch(e){if(e.statusCode===409)blocked.push(e.message);else throw e;}
+  const latest=(await c.query("SELECT id,status,sent_at,expires_at FROM retail_store_deletions WHERE workspace_id=$1 AND inventory_id=$2 AND owner_id=$3 AND recipient=$4 AND expires_at>$5 ORDER BY created_at DESC LIMIT 1",[s.workspace_id,r.inventory_id,s.actor_id,s.email,stamp()])).rows[0];
+  return {success:true,store:{id:r.inventory_id,name:r.name},email:s.email,blockers:blocked,backup:latest||null,deleting:Boolean(r.deleting_backup_id)};
+ });}
  async function backup(req){
   await ensureSchema();const requestId=id(req.body.request_id),inventory=id(req.body.inventory_id);
   const job=await tx(async c=>{

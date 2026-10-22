@@ -1,14 +1,23 @@
 'use strict';
 const assert=require('node:assert/strict'),{randomUUID:uuid}=require('node:crypto');
+const path=require('node:path');
 const {create,csv,clean}=require('../files/utils/retailStoreDeletion');
 const fixture=require('./till-fixture.cjs');
 (async()=>{
  const f=await fixture(),{R,P,db,pool,req,inventory,other,workspace,owner,staff,till,water}=f;
+ // Match node-postgres's actual wire decoding, rather than PGlite's more
+ // permissive name[] decoding. An empty legacy child is normal on real installs.
+ const pg=require(path.join(process.env.RETAIL_TEST_MODULES,'pg'));
+ assert.equal(typeof pg.types.getTypeParser(1003)('{id,inventory_id}'),'string');
+ await db.exec('CREATE TABLE legacy_inventory_child(id uuid PRIMARY KEY,inventory_id uuid REFERENCES inventories(id))');
+ await db.query('INSERT INTO legacy_inventory_child VALUES($1,$2)',[uuid(),other]);
+ const query=async(sql,v)=>{const result=await pool.query(sql,v);for(const field of result.fields||[])if([1003,1009].includes(field.dataTypeID))for(const row of result.rows)if(Array.isArray(row[field.name]))row[field.name]=pg.types.getTypeParser(field.dataTypeID)('{'+row[field.name].map(x=>JSON.stringify(x)).join(',')+'}');return result;};
+ const driverPool={query,connect:async()=>({query,release(){}})};
  const sent=[],calls=[];let rejectEmail=false,rejectBilling=false,clock=new Date();
  const api={checkout:{sessions:{retrieve:async id=>({id,status:'expired'}),expire:async()=>{}}},subscriptions:{retrieve:async id=>({id,customer:id==='sub_receipts'?'cus_receipts':'cus_shop',status:'active',livemode:false,metadata:{product_type:id==='sub_receipts'?'inventoryos_retail_receipts':'inventoryos_retail',inventory_id:inventory,workspace_id:workspace,billing_environment:'sandbox'},cancel_at_period_end:false}),update:async(id,body,opts)=>{calls.push({id,body,opts});if(rejectBilling)throw Error('Stripe unavailable');return {id,status:'active',cancel_at_period_end:true};}}};
- const D=create({pool,ensureSchema:R.ensureSchema,scope:R.scope,id:require('../files/utils/retail').id,fail:require('../files/utils/retail').fail,now:()=>clock,stripe:{sandbox:api},sendEmail:async p=>{sent.push(p);if(rejectEmail)throw Error('Email unavailable');return {id:'email_'+sent.length};}});
+ const D=create({pool:driverPool,ensureSchema:R.ensureSchema,scope:R.scope,id:require('../files/utils/retail').id,fail:require('../files/utils/retail').fail,now:()=>clock,stripe:{sandbox:api},sendEmail:async p=>{sent.push(p);if(rejectEmail)throw Error('Email unavailable');return {id:'email_'+sent.length};}});
  const preview=()=>D.preview({...req(''),query:{inventory_id:inventory}}),backup=id=>D.backup(req('',{inventory_id:inventory,request_id:id})),remove=(id,extra={})=>D.remove(req('',{inventory_id:inventory,backup_id:id,confirmation:'Confirm delete',backup_received:true,...extra}));
- assert.match((await preview()).blockers.join(' '),/close every till/);
+ assert.equal((await preview()).email,'owner@example.test');assert.match((await preview()).blockers.join(' '),/close every till/);
  await assert.rejects(backup(uuid()),/close every till/);assert.equal(sent.length,0);
  await P.ownerChange(req('',{inventory_id:inventory,action:'balance-till',till_id:till,amount:'20',close:true}));
  // Assign shared staff to a second shop; those credentials must survive deletion.
@@ -32,7 +41,7 @@ const fixture=require('./till-fixture.cjs');
  await db.query('UPDATE retail_products SET stock_qty=stock_qty+1 WHERE id=$1',[water.id]);await assert.rejects(remove(failureId),/data changed/);assert.equal(calls.length,0);
  const fresh=uuid();await backup(fresh);rejectBilling=true;await assert.rejects(remove(fresh),/Stripe unavailable/);assert.equal((await db.query('SELECT deleting_backup_id FROM retail_stores WHERE inventory_id=$1',[inventory])).rows[0].deleting_backup_id,null);assert.equal((await db.query('SELECT COUNT(*)::int n FROM retail_products WHERE inventory_id=$1',[inventory])).rows[0].n,2);rejectBilling=false;
  // Unknown extension records block deletion rather than being silently lost.
- await db.exec('CREATE TABLE extra_store_data(id uuid PRIMARY KEY,inventory_id uuid REFERENCES inventories(id),value text)');await db.query("INSERT INTO extra_store_data VALUES($1,$2,'do not lose')",[uuid(),inventory]);await assert.rejects(remove(fresh),/additional data/);await db.query('DELETE FROM extra_store_data');
+ await db.exec('CREATE TABLE extra_store_data(id uuid PRIMARY KEY,inventory_id uuid REFERENCES inventories(id),value text)');await db.query("INSERT INTO extra_store_data VALUES($1,$2,'do not lose')",[uuid(),inventory]);const blocked=await preview();assert.equal(blocked.email,'owner@example.test');assert.match(blocked.blockers.join(' '),/additional data/);await assert.rejects(remove(fresh),/additional data/);await db.query('DELETE FROM extra_store_data');
  const result=await remove(fresh);assert.equal(result.deleted,true);assert.deepEqual(calls.slice(-2).map(x=>x.id),['sub_shop','sub_receipts']);assert(calls.every(x=>x.body.cancel_at_period_end===true));
  assert.equal((await db.query('SELECT COUNT(*)::int n FROM inventories WHERE id=$1',[inventory])).rows[0].n,0);assert.equal((await db.query('SELECT COUNT(*)::int n FROM retail_products WHERE inventory_id=$1',[inventory])).rows[0].n,0);
  assert.equal((await db.query('SELECT COUNT(*)::int n FROM retail_stores WHERE inventory_id=$1',[other])).rows[0].n,1);assert.equal((await db.query('SELECT name FROM retail_products WHERE id=$1',[productOther])).rows[0].name,'Other private product');

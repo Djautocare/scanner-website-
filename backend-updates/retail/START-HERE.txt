@@ -1,4 +1,8 @@
-INVENTORYOS RETAIL — STORE DELETION (v16)
+INVENTORYOS RETAIL — STORE DELETION (v17)
+
+This fixes the account email stuck on Loading and the locked deletion controls.
+The database catalog now uses the array format supported by node-postgres.
+The check command also tests the real deletion preview for every existing shop.
 
 Read STORE-DELETION.txt for the full instructions.
 
