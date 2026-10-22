@@ -472,7 +472,7 @@ button{
 <link rel="stylesheet" href="css/appShell.css?v=4">
 <link rel="stylesheet" href="css/inventoryGuide.css?v=guide-2026-10">
 <link rel="stylesheet" href="css/inboundEmail.css?v=2">
-<link rel="stylesheet" href="css/help.css?v=1"><link rel="stylesheet" href="css/accountSettings.css?v=2">
+<link rel="stylesheet" href="css/help.css?v=1"><link rel="stylesheet" href="css/accountSettings.css?v=3">
 <link rel="manifest" href="pwa/manifest.webmanifest"><link rel="apple-touch-icon" href="pwa/main-192.png"></head>
 
 <body>
@@ -597,7 +597,19 @@ button{
 
 <section class="card full" id="printingSettingsCard" aria-label="QZ Tray printing setup">
     <div class="card-title">Printing</div>
-    <p class="helper">Install QZ Tray on the computer connected to your label printer.</p>
+    <p class="helper">Set up secure printing on the computer connected to your printer. Setup installs or updates QZ Tray, adds the InventoryOS public certificate and opens Printer Setup.</p>
+    <div class="printer-download-grid" aria-label="Complete InventoryOS printer setup">
+        <button type="button" class="printer-download" data-printer-installer="windows">Set up printing for Windows <small>Intel, AMD &amp; ARM · 64-bit</small></button>
+        <button type="button" class="printer-download" data-printer-installer="mac">Set up printing for Mac <small>Apple silicon &amp; Intel</small></button>
+    </div>
+    <p id="printerInstallerStatus" class="helper printer-installer-status" role="status" aria-live="polite"></p>
+    <ol class="printer-setup-steps">
+        <li>Connect your printer and check it appears in your computer’s printers. Install the manufacturer’s driver if needed.</li>
+        <li>Download and open the setup file above (on Mac, open the ZIP first, then the command inside). Approve your computer’s security prompts and enter an administrator password if asked. Keep an internet connection while setup runs.</li>
+        <li>Setup opens Printer Setup. Choose your printers, save the settings and print a test label.</li>
+    </ol>
+    <p class="helper">On Mac, if the downloaded command will not open, allow it in System Settings → Privacy &amp; Security, then open it again. If it opens as text, use Open With → Terminal. Setup only restarts QZ Tray, so finish any print jobs first.</p>
+    <details class="printer-other-downloads"><summary>Standard QZ Tray downloads only</summary>
     <div class="printer-download-grid" aria-label="Official QZ Tray installers">
         <a class="printer-download" href="https://github.com/qzind/tray/releases/download/v2.3.0/qz-tray-2.3.0-x86_64.exe" target="_blank" rel="noopener noreferrer">Download for Windows <small>Intel / AMD · 64-bit</small></a>
         <a class="printer-download" href="https://github.com/qzind/tray/releases/download/v2.3.0/qz-tray-2.3.0-arm64.pkg" target="_blank" rel="noopener noreferrer">Download for Mac <small>Apple silicon · M-series</small></a>
@@ -607,11 +619,7 @@ button{
         <a class="printer-download" href="https://github.com/qzind/tray/releases/download/v2.3.0/qz-tray-2.3.0-arm64.exe" target="_blank" rel="noopener noreferrer">Download for Windows ARM <small>ARM64 / Snapdragon</small></a>
         <a href="https://qz.io/download/" target="_blank" rel="noopener noreferrer">QZ Tray download page and other versions</a>
     </details>
-    <ol class="printer-setup-steps">
-        <li>Connect your printer, install its manufacturer’s driver and check that your computer can print.</li>
-        <li>Download and install the QZ Tray version for your computer, then open QZ Tray and keep it running.</li>
-        <li>Open Printer Setup, refresh the printer list, select your printers and print a test label.</li>
-    </ol>
+    </details>
     <a class="printer-download printer-setup-link" href="printer-setup.html">Open Printer Setup &amp; test labels</a>
     <p class="helper">QZ Tray is for desktop computers. On a phone, use the mobile or browser print option.</p>
 </section>
@@ -1243,6 +1251,7 @@ showAdminCard();
 
 <script src="js/removePreferences.js?v=4"></script>
 <script src="js/accountSettings.js?v=2"></script>
+<script src="js/printerInstaller.js?v=1"></script>
 
 
 <script src="js/appShell.js?v=manufacturing-1"></script>
