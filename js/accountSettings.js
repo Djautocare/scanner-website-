@@ -6,6 +6,7 @@ const groups=[
  ['appearance','Appearance',['appearanceSettingsCard']],
  ['devices','Apps & devices',['installSettingsCard']],
  ['printing','Printing',['printingSettingsCard']],
+ ['shop','InventoryOS Shop',['shopSettingsCard']],
  ['security','Security',['securitySettingsCard']],
  ['dispatch','Stock & dispatch',['removePreferencesCard','inboundEmailSettingsCard']],
  ['data','Data import',['dataManagementSettingsCard']],
