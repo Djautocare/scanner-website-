@@ -30,7 +30,56 @@ export const illustrations=Object.freeze({
 });
 export const illustrationRights='Account owner supplied AI-generated product-family illustration; illustrative only, not a photograph of a specific variant.';
 const base='https://inventoryos.co.uk/assets/shop-illustrations/';
+export const originalPrinterMedia=Object.freeze({
+  "gallery": [
+    {
+      "src": "https://inventoryos.co.uk/assets/shop/jadens-668bt-1.webp",
+      "alt": "Black JADENS 668BT thermal label printer with a phone"
+    },
+    {
+      "src": "https://inventoryos.co.uk/assets/shop/jadens-668bt-2.webp",
+      "alt": "Shipping-platform label examples"
+    },
+    {
+      "src": "https://inventoryos.co.uk/assets/shop/jadens-668bt-3.webp",
+      "alt": "Pink JADENS 668BT thermal label printer"
+    },
+    {
+      "src": "https://inventoryos.co.uk/assets/shop/jadens-668bt-4.webp",
+      "alt": "Bluetooth for mobile devices and USB for Windows and macOS"
+    },
+    {
+      "src": "https://inventoryos.co.uk/assets/shop/jadens-668bt-5.webp",
+      "alt": "White JADENS 668BT thermal label printer"
+    },
+    {
+      "src": "https://inventoryos.co.uk/assets/shop/jadens-668bt-6.webp",
+      "alt": "Package contents shown in the listing"
+    },
+    {
+      "src": "https://inventoryos.co.uk/assets/shop/jadens-668bt-7.webp",
+      "alt": "Compact JADENS 668BT printer"
+    },
+    {
+      "src": "https://inventoryos.co.uk/assets/shop/jadens-668bt-8.webp",
+      "alt": "Supported thermal label formats"
+    },
+    {
+      "src": "https://inventoryos.co.uk/assets/shop/jadens-668bt-9.webp",
+      "alt": "Examples of packing and labelling uses"
+    }
+  ],
+  "colours": {
+    "black": "https://inventoryos.co.uk/assets/shop/jadens-668bt-1.webp",
+    "white": "https://inventoryos.co.uk/assets/shop/jadens-668bt-5.webp",
+    "pink": "https://inventoryos.co.uk/assets/shop/jadens-668bt-3.webp"
+  }
+});
 export function productImage(product,variant){
+ if(product.id==='jadens-668bt'){
+  const colour=String(variant?.name||'')+' '+String(variant?.id||'')+' '+String(variant?.sku||'');
+  return {src:originalPrinterMedia.colours[/\bwhite\b/i.test(colour)?'white':/\bpink\b/i.test(colour)?'pink':'black'],illustration:false};
+ }
  const src=variant?.image||product.image_url||(illustrations[product.id]?base+illustrations[product.id]:'');
  return {src,illustration:!!src&&(src.startsWith(base)||src.startsWith('/assets/shop-illustrations/'))};
 }
