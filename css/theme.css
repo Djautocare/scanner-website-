@@ -222,3 +222,51 @@ html[data-appearance="light"] summary{background:var(--panel-2)!important;color:
 html[data-appearance="light"] .link-card{background:var(--panel-2)!important;color:var(--accent)!important}
 html[data-appearance="light"] .ios-shell-content .input-label{color:var(--text)!important}
 html[data-appearance="light"] .ios-shell-content :is(input,select,textarea){background:var(--input)!important;color:var(--text)!important;border-color:var(--border)!important}
+
+/* High-contrast light appearance. Screen-only rules leave printed labels,
+   receipts, QR codes and barcodes in their existing black-on-white format. */
+@media screen{
+ html[data-appearance="light"]{--bg:#f8f7f4;--panel:#fff;--panel-2:#f0edf3;--card:#fff;--input:#fff;--text:#211b29;--muted:#514859;--border:#c7bfce;--control-border:#86758f;--accent-contrast:#fff;--danger:#ac2039;--danger-rgb:172,32,57;--warning:#785100;--warning-rgb:120,81,0;--shadow:0 12px 36px #24182e12}
+ html[data-appearance="light"][data-theme="purple"]{--accent:#6830bf;--accent-rgb:104,48,191;--accent-2:#176b36;--accent-2-rgb:23,107,54}
+ html[data-appearance="light"][data-theme="green"]{--accent:#176b36;--accent-rgb:23,107,54;--accent-2:#155eb0;--accent-2-rgb:21,94,176}
+ html[data-appearance="light"][data-theme="blue"]{--accent:#155eb0;--accent-rgb:21,94,176;--accent-2:#006b65;--accent-2-rgb:0,107,101}
+ html[data-appearance="light"][data-theme="gold"]{--accent:#795400;--accent-rgb:121,84,0;--accent-2:#a23c0b;--accent-2-rgb:162,60,11}
+ html[data-appearance="light"][data-theme="red"]{--accent:#ac2039;--accent-rgb:172,32,57;--accent-2:#795400;--accent-2-rgb:121,84,0}
+ html[data-appearance="light"][data-theme="cyan"]{--accent:#006b65;--accent-rgb:0,107,101;--accent-2:#155eb0;--accent-2-rgb:21,94,176}
+ html[data-appearance="light"] body,html[data-appearance="light"] body.inventoryos-shell-active{background:var(--bg)!important;color:var(--text)!important}
+ html[data-appearance="light"] body.inventoryos-shell-active:before{background:none!important}
+ html[data-appearance="light"] body :is(.ios-shell-sidebar,.ios-shell-user,.retail-sidebar,.retail-person,.inventory-topbar,.inventory-switcher-menu,.inventory-menu-row,.topbar-inventory-menu,.inventory-switcher-popover){background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important;box-shadow:none!important}
+ html[data-appearance="light"] body :is(.ios-shell-brand-name,.ios-shell-heading h1,.ios-shell-user-copy strong,.retail-brand,.retail-header h1,.retail-person strong,h1,h2,h3,h4,h5,h6,label,legend,th,.input-label,.item-name,.product-name,.card-title,.stat-value,.summary-value){color:var(--text)!important}
+ html[data-appearance="light"] body :is(.ios-shell-nav-label,.ios-shell-user-copy span,.ios-shell-heading .subtitle,.retail-nav-label,.retail-person small,.retail-muted,.subtitle,.muted,.helper,.help-text,.hint,.small-note,.retail-empty,.mfg-empty){color:var(--muted)!important}
+ html[data-appearance="light"] body :is(.panel,.card,.form-card,.summary-card,.item-card,.preview-card,.stat-card,.result-card,.bundle-card,.location-card,.box-card,.box-group-card,.selected-bundle-box,.selected-summary,.warehouse-price-card,.voice-card,.toggle-box,.checkbox-card,.highlight-card,.accordion-section,.location-group,.empty-state,.retail-card,.retail-metric,.mfg-card,.mfg-notice,.mfg-component,.mfg-calculator-row,.settings-group,details,.matches-box,.suggest-panel,.contents-list,.sale-card,.result,.helper){background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important;box-shadow:0 4px 20px #21152e07!important}
+ html[data-appearance="light"] body :is(.ios-shell-nav-link,.retail-nav-button){color:var(--text)!important}
+ html[data-appearance="light"] body :is(.ios-shell-nav-link.active,.retail-nav-button.active){color:var(--accent)!important;background:rgba(var(--accent-rgb),.1)!important;border-color:var(--accent)!important}
+ html[data-appearance="light"] body :is(button,.button,.btn,.link-card,.inventory-switcher-btn,.topbar-settings){background:var(--panel-2)!important;color:var(--text)!important;border-color:var(--control-border)!important;box-shadow:none!important;filter:none!important}
+ html[data-appearance="light"] body :is(button,.button,.btn,.link-card):hover{background:#e6dfed!important;border-color:var(--accent)!important;filter:none!important}
+ html[data-appearance="light"] body :is(.confirm-button,.import-button,.password-button,.add-button,.refresh-button,.print-button,.save-button,.primary-button,.refund-button,.search-button,.move-button,.bulk-button,.create-button,.green-button,.refocus-button,.focus-button,.printjob-button,.retail-primary,.mfg-primary,button[type="submit"]){background:var(--accent)!important;color:var(--accent-contrast)!important;border-color:var(--accent)!important}
+ html[data-appearance="light"] body :is(button,.tab-button,.choice-button):is(.active,.selected,[aria-selected="true"],[aria-pressed="true"]){background:rgba(var(--accent-rgb),.12)!important;color:var(--accent)!important;border-color:var(--accent)!important;box-shadow:inset 0 0 0 1px var(--accent)!important}
+ html[data-appearance="light"] body :is(.remove-button,.delete-button,.stop-button,.small-remove,.remove-selected-button,.retail-danger,.danger-button){background:var(--danger)!important;color:#fff!important;border-color:var(--danger)!important}
+ html[data-appearance="light"] body :is(button,.button,.btn) :is(span,strong,small,i){color:inherit!important}
+ html[data-appearance="light"] body :is(button,.button,.btn):disabled{opacity:1!important;background:#ece7f0!important;color:#6b5d75!important;border-color:#b5a8c0!important;box-shadow:none!important;cursor:not-allowed}
+ html[data-appearance="light"] body :is(input,select,textarea){background:var(--input)!important;color:var(--text)!important;border:1px solid var(--control-border)!important;box-shadow:none!important;caret-color:var(--accent)}
+ html[data-appearance="light"] body :is(input,textarea)::placeholder{color:#665a70!important;opacity:1}
+ html[data-appearance="light"] body :is(input,select,textarea):is(:disabled,[readonly]){background:#f0edf3!important;color:#514859!important;opacity:1}
+ html[data-appearance="light"] body :is(input[type="checkbox"],input[type="radio"]){accent-color:var(--accent)}
+ html[data-appearance="light"] body :is(button,a,input,select,textarea,summary):focus-visible{outline:3px solid var(--accent)!important;outline-offset:3px!important;box-shadow:0 0 0 5px #fff!important}
+ html[data-appearance="light"] body :is(dialog,.dialog,.modal-content,.modal-card,.modal-panel,.popup,.dropdown-menu,.retail-dialog,.mfg-dialog,.mfg-pick-dialog){background:var(--panel)!important;color:var(--text)!important;border-color:var(--control-border)!important}
+ html[data-appearance="light"] body dialog::backdrop{background:#140b22a6}
+ html[data-appearance="light"] body :is(table,tbody,td){color:var(--text)!important;border-color:var(--border)!important}
+ html[data-appearance="light"] body :is(thead,th,summary){background:var(--panel-2)!important;color:var(--text)!important;border-color:var(--border)!important}
+ html[data-appearance="light"] body tr:nth-child(even){background:#f7f4fa}
+ html[data-appearance="light"] body :is(.badge,.qty-badge,.bundle-pill,.section-badge,.retail-pill,.mfg-badge,.scanner-mode-pill){background:rgba(var(--accent-rgb),.1)!important;color:var(--accent)!important;border-color:var(--accent)!important}
+ html[data-appearance="light"] body :is(.error,.danger,.retail-negative,.mfg-error,.retail-pill.danger,.mfg-badge.danger){color:var(--danger)!important}
+ html[data-appearance="light"] body :is(.success,.positive,.retail-positive,.match-summary){color:var(--accent)!important}
+ html[data-appearance="light"] body :is(.warning,.retail-tasks-due,.retail-pill.warning,.mfg-badge.warning){color:var(--warning)!important}
+ html[data-appearance="light"] body [data-light-surface]{background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important}
+ html[data-appearance="light"] body [data-contrast-ink]{color:var(--ios-readable-ink)!important}
+}
+@media screen{
+ html[data-appearance="light"] body .ios-shell-content :is(input,select,textarea){border-color:var(--control-border)!important;background:var(--input)!important;color:var(--text)!important}
+ html[data-appearance="light"] body .ios-shell-brand-mark{background:var(--accent)!important;border-color:var(--accent)!important;box-shadow:none!important}
+ html[data-appearance="light"] body .ios-shell-brand-mark span{background:#fff!important}
+}

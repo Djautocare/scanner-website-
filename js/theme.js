@@ -25,6 +25,7 @@ const InventoryTheme = (function(){
         localStorage.setItem(THEME_KEY, finalTheme);
         document.documentElement.setAttribute("data-theme", finalTheme);
         updateThemeControls(finalTheme);
+        window.dispatchEvent(new CustomEvent('inventoryos-theme-changed',{detail:finalTheme}));
         return finalTheme;
     }
 
@@ -128,21 +129,32 @@ document.addEventListener("DOMContentLoaded", function(){
 document.addEventListener('click',event=>{const button=event.target.closest('[data-appearance-choice]');if(button){event.preventDefault();InventoryTheme.setAppearance(button.dataset.appearanceChoice);}});
 window.addEventListener('storage',event=>{if(event.key==='inventoryos_appearance')InventoryTheme.setAppearance(InventoryTheme.appearance());if(event.key==='inventoryos_theme')InventoryTheme.apply(InventoryTheme.current());});
 
-// Older screens contain fixed dark surfaces. Adapt those surfaces without
-// changing their layout or their saved accent, image, barcode or print content.
-(function(){
- let scheduled=false;
- function adapt(){scheduled=false;if(InventoryTheme.appearance()!=='light')return;
-  document.querySelectorAll('body :is(div,section,article,aside,header,footer,nav,main,details,dialog,form,fieldset,table,td,th,label,p,span,strong,small,h1,h2,h3,h4)').forEach(el=>{
-   if(el.closest('svg,canvas,.retail-receipt,[data-theme-choice],button,.badge,.qty-badge,.retail-pill,.counter-count'))return;
-   const style=getComputedStyle(el),bg=style.backgroundColor.match(/[\d.]+/g),fg=style.color.match(/[\d.]+/g);
-   if(bg&&Number(bg[3]??1)>.7&&bg.slice(0,3).every(x=>Number(x)<75))el.setAttribute('data-light-surface','');
-   if(fg&&fg.slice(0,3).every(x=>Number(x)>=150))el.setAttribute('data-light-ink','');
-  });
+// Older screens use fixed colours. Correct their visible screen surfaces and
+// low-contrast text in light mode, including dynamically inserted content.
+// Printing, receipt artwork and barcode/QR output are deliberately excluded.
+const InventoryThemeContrast = (function(){
+ const clamp=x=>Math.max(0,Math.min(255,Number(x)||0));
+ function rgba(value){const m=String(value).match(/^rgba?\(([^)]+)\)/);if(!m)return null;const a=m[1].split(/[,\s/]+/).filter(Boolean).map(Number);return a.length>=3?[clamp(a[0]),clamp(a[1]),clamp(a[2]),a[3]??1]:null;}
+ function luminance(rgb){const c=rgb.slice(0,3).map(v=>{const x=v/255;return x<=.04045?x/12.92:Math.pow((x+.055)/1.055,2.4);});return c[0]*.2126+c[1]*.7152+c[2]*.0722;}
+ function ratio(a,b){const x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
+ function blend(top,bottom){const a=top[3]??1;return top.slice(0,3).map((v,i)=>v*a+bottom[i]*(1-a));}
+ function readable(fg,bg){const solid=blend(fg,bg);if(ratio(solid,bg)>=4.8)return solid;const dark=[18,14,24],light=[255,255,255],target=ratio(dark,bg)>ratio(light,bg)?dark:light;for(let n=1;n<=30;n++){const out=solid.map((v,i)=>Math.round(v+(target[i]-v)*n/30));if(ratio(out,bg)>=4.8)return out;}return target;}
+ const skip='svg,canvas,img,video,iframe,.retail-receipt,.pos-qr,.label-preview,.barcode-preview,.print-area,[data-print-artwork],[data-theme-choice]';
+ const queue=new Set();let scheduled=false,observer;
+ function clearMarks(root){if(root.nodeType!==1)return;for(const el of [root,...root.querySelectorAll('[data-light-surface],[data-contrast-ink],[data-light-ink]')]){el.removeAttribute('data-light-surface');el.removeAttribute('data-light-ink');el.removeAttribute('data-contrast-ink');el.style.removeProperty('--ios-readable-ink');}}
+ function background(el,cache){if(cache.has(el))return cache.get(el);const s=getComputedStyle(el),c=rgba(s.backgroundColor)||[0,0,0,0],parent=el.parentElement;const under=parent?background(parent,cache):[248,247,244];const out=blend(c,under);cache.set(el,out);return out;}
+ function adapt(root){if(root.nodeType!==1||!root.isConnected||root.closest(skip))return;clearMarks(root);
+  const nodes=[root,...root.querySelectorAll('div,section,article,aside,header,footer,nav,main,details,dialog,form,fieldset,table,td,th,label,p,span,strong,small,h1,h2,h3,h4,h5,h6,a,li,button,summary,legend')].filter(el=>!el.closest(skip));
+  for(const el of nodes){if(el.matches('button,.button,.btn,.badge,.qty-badge,.retail-pill,.mfg-badge'))continue;const s=getComputedStyle(el),bg=rgba(s.backgroundColor);const stops=s.backgroundImage.match(/rgba?\([^)]+\)/g)||[];if((bg&&bg[3]>.7&&luminance(bg)<.16)||stops.some(x=>{const c=rgba(x);return c&&c[3]>.75&&luminance(c)<.12;}))el.setAttribute('data-light-surface','');}
+  const cache=new WeakMap();for(const el of nodes){if(![...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim()))continue;const s=getComputedStyle(el),fg=rgba(s.color);if(!fg||s.visibility==='hidden'||s.display==='none')continue;const bg=background(el,cache);if(ratio(blend(fg,bg),bg)>=4.5)continue;const fixed=readable(fg,bg);el.style.setProperty('--ios-readable-ink','rgb('+fixed.join(',')+')');el.setAttribute('data-contrast-ink','');}
  }
- function schedule(){if(!scheduled&&InventoryTheme.appearance()==='light'){scheduled=true;requestAnimationFrame(adapt);}}
- window.addEventListener('inventoryos-appearance-changed',schedule);
- document.addEventListener('DOMContentLoaded',()=>{schedule();new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});});
+ function observe(){observer?.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden','disabled','aria-selected','aria-pressed']});}
+ function flush(){scheduled=false;observer?.disconnect();try{if(InventoryTheme.appearance()==='light'){const roots=[...queue].filter(el=>el.isConnected);for(const root of roots)if(!roots.some(other=>other!==root&&other.contains(root)))adapt(root);}}finally{queue.clear();observe();}}
+ function schedule(root=document.body){if(InventoryTheme.appearance()!=='light'||!root)return;queue.add(root.nodeType===1?root:root.parentElement);if(!scheduled){scheduled=true;requestAnimationFrame(flush);}}
+ function reset(){observer?.disconnect();if(document.body)clearMarks(document.body);queue.clear();schedule();observe();}
+ window.addEventListener('inventoryos-appearance-changed',reset);window.addEventListener('inventoryos-theme-changed',reset);
+ document.addEventListener('DOMContentLoaded',()=>{observer=new MutationObserver(records=>{for(const r of records){schedule(r.target);for(const n of r.addedNodes)if(n.nodeType===1)schedule(n);}});observe();schedule();});
+ return {luminance,ratio,blend,readable,rgba};
 })();
 
 ;(function(){if(!location.pathname.includes("/retail/till/")){const s=document.createElement("script");s.src=new URL("pwa/install.js?v=1",document.baseURI).href;s.defer=true;document.head.append(s);}})();
