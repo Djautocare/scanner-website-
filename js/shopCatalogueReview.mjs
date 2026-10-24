@@ -12,7 +12,7 @@ export function approvalProblems(v){
  const problems=[];
  const price=priceApprovalProblem(v);if(price)problems.push(price);
  if(!Array.isArray(v.dimensions_mm)||v.dimensions_mm.length!==3||v.dimensions_mm.some(n=>!Number.isSafeInteger(n)||n<1||n>10000))problems.push('Pack measurements needed');
- if(!Number.isSafeInteger(v.weight_g)||v.weight_g<1||v.weight_g>20000)problems.push('Pack weight needed');
+ if(!Number.isSafeInteger(v.weight_g)||v.weight_g<1||v.weight_g>70000)problems.push('Pack weight needed');
  return problems;
 }
 export function approvalProblem(v){return approvalProblems(v)[0]||'';}
@@ -27,7 +27,7 @@ export function variantPublicationProblems(v){
  if(v.review_required===true)problems.push('Variant awaiting review');
  if(v.preview_error)problems.push(v.preview_error);
  if(variantMatches(v,'packs'))problems.push('Check supplier minimum and selling pack quantities');
- if(variantMatches(v,'stock'))problems.push('Stock quantity needed');
+ if(v.availability_mode!=='supplier'&&variantMatches(v,'stock'))problems.push('Stock quantity needed');
  if(v.publish_ready===false&&!problems.length)problems.push('Backend approval check failed — install the latest Shop backend update');
  return [...new Set(problems)];
 }
@@ -43,7 +43,7 @@ export const catalogueFilters=Object.freeze([
  ['all','All products'],['blocked','Needs attention'],['price','Missing selling price'],['cost','Missing supplier cost'],
  ['measurements','Missing measurements or weight'],['dimensions','Missing pack dimensions'],['weight','Missing pack weight'],
  ['image','Missing product image'],['rights','Missing image permission'],['supplier','Missing supplier link'],['source','Missing supplier price-check details'],
- ['packs','Invalid pack quantities'],['stock','Missing or invalid stock'],['outofstock','Out of stock / below minimum'],
+ ['packs','Invalid pack quantities'],['stock','Supplier availability needs checking'],['outofstock','Supplier currently unavailable'],
  ['delivery','Delivery or price-check issue'],['review','Awaiting approval'],['draft','Unpublished products'],['ready','Ready to publish'],['published','Published products']
 ]);
 export function variantMatches(v,filter){
@@ -55,8 +55,8 @@ export function variantMatches(v,filter){
  if(filter==='supplier')return !String(v.supplier_url||'').trim();
  if(filter==='source')return !String(v.supplier_url||'').trim()||!String(v.supplier_variant_id||'').trim();
  if(filter==='packs')return ['supplier_price_units','supplier_min_order_qty','sale_units_per_pack'].some(k=>!Number.isSafeInteger(v[k]??1)||(v[k]??1)<1||(v[k]??1)>1000000);
- if(filter==='stock')return !amount(v.stock);
- if(filter==='outofstock'){const min=v.min_order_qty??Math.ceil((v.supplier_price_units??1)*(v.supplier_min_order_qty??1)/(v.sale_units_per_pack??1));return amount(v.stock)&&v.stock<min;}
+ if(filter==='stock')return v.availability_mode==='supplier'?v.availability_status==='unknown':!amount(v.stock);
+ if(filter==='outofstock'){if(v.availability_mode==='supplier')return v.availability_status==='unavailable';const min=v.min_order_qty??Math.ceil((v.supplier_price_units??1)*(v.supplier_min_order_qty??1)/(v.sale_units_per_pack??1));return amount(v.stock)&&v.stock<min;}
  if(filter==='delivery')return !!(v.preview_error||v.check_error);
  if(filter==='review')return needsApproval(v);
  if(filter==='blocked')return variantPublicationProblems(v).length>0||variantMatches(v,'packs')||variantMatches(v,'stock');
