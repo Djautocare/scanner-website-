@@ -15,12 +15,12 @@ export function approvalProblems(v){
  if(!Number.isSafeInteger(v.weight_g)||v.weight_g<1||v.weight_g>70000)problems.push('Pack weight needed');
  return problems;
 }
-export function approvalProblem(v){return approvalProblems(v)[0]||'';}
+export function approvalProblem(v){return priceApprovalProblem(v);}
 export function needsApproval(v){return v.price_estimated===true||v.review_required===true||v.cost_verified!==true||v.shipping_verified!==true;}
 
 export function measurementProblems(v){return approvalProblems(v).filter(p=>p==='Pack measurements needed'||p==='Pack weight needed');}
 export function variantPublicationProblems(v){
- const problems=approvalProblems(v);
+ const problems=approvalProblems(v).filter(p=>p!=='Pack measurements needed'&&p!=='Pack weight needed');
  if(v.price_estimated===true)problems.push('Selling price awaiting approval');
  if(v.cost_verified!==true)problems.push('Supplier cost awaiting approval');
  if(v.shipping_verified!==true)problems.push('Shipping awaiting approval');
