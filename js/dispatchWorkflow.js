@@ -991,7 +991,7 @@ function escapeDispatchHtml(value){
                                         type="text"
                                         value="${escapeDispatchHtml(item.description)}"
                                         placeholder="Type to search active stock"
-                                        oninput="dispatchSearchSuggestions('item',${Number(item.id)},this.value)"
+                                        data-ios-input="h5926b9d12de2844f" data-ios-input-args="${InventoryEvents.encode([Number(item.id)])}"
                                         autocomplete="off"
                                     >
                                     <div
@@ -1009,7 +1009,7 @@ function escapeDispatchHtml(value){
 
                                 <button
                                     type="button"
-                                    onclick="dispatchUseBestMatch(${Number(item.id)})"
+                                    data-ios-click="h8933f2a6efdfcfb9" data-ios-click-args="${InventoryEvents.encode([Number(item.id)])}"
                                 >
                                     Best Match
                                 </button>
@@ -1017,7 +1017,7 @@ function escapeDispatchHtml(value){
                                 <button
                                     class="danger"
                                     type="button"
-                                    onclick="deleteItem(${Number(item.id)})"
+                                    data-ios-click="h3cf8d32733f8d41a" data-ios-click-args="${InventoryEvents.encode([Number(item.id)])}"
                                 >
                                     Delete
                                 </button>
@@ -1074,7 +1074,7 @@ function escapeDispatchHtml(value){
                             id="dispatch-add-search-${Number(pack.id)}"
                             type="text"
                             placeholder="Add another active-stock item"
-                            oninput="dispatchSearchSuggestions('add',${Number(pack.id)},this.value)"
+                            data-ios-input="ha3be29f382332f76" data-ios-input-args="${InventoryEvents.encode([Number(pack.id)])}"
                             autocomplete="off"
                         >
                         <div
@@ -1096,7 +1096,7 @@ function escapeDispatchHtml(value){
 
                     <button
                         type="button"
-                        onclick="dispatchAddMatchedItem(${Number(pack.id)})"
+                        data-ios-click="he6ceb3c0ed4cd0e6" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}"
                     >
                         Add Item
                     </button>
@@ -1108,7 +1108,7 @@ function escapeDispatchHtml(value){
                     <button
                         class="success"
                         type="button"
-                        onclick="startDispatchPacking([${Number(pack.id)}])"
+                        data-ios-click="h01d1ab0843ccc844" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}"
                     >
                         Pack This Label
                     </button>
@@ -1116,7 +1116,7 @@ function escapeDispatchHtml(value){
                     <button
                         class="danger"
                         type="button"
-                        onclick="removePack(${Number(pack.id)})"
+                        data-ios-click="h3be62cda316d64e9" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}"
                     >
                         Remove From Queue
                     </button>
@@ -1333,7 +1333,7 @@ function escapeDispatchHtml(value){
                 <button
                     class="dispatch-suggestion"
                     type="button"
-                    onclick="dispatchChooseSuggestion('${kind}',${Number(id)},${index})"
+                    data-ios-click="hce3fc54817ff2eca" data-ios-click-args="${InventoryEvents.encode([kind,Number(id),index])}"
                 >
                     <strong>${escapeDispatchHtml(item.description)}</strong>
                     <span>
@@ -1734,7 +1734,7 @@ function escapeDispatchHtml(value){
                 <button
                     class="dispatch-check"
                     type="button"
-                    ${dispatchPreferences.dispatch_require_scan ? "disabled" : `onclick="dispatchToggleManualPacked(${Number(item.id)})"`}
+                    ${dispatchPreferences.dispatch_require_scan ? "disabled" : `data-ios-click="h2d53ef52a180949f" data-ios-click-args="${InventoryEvents.encode([Number(item.id)])}"`}
                 >
                     ${complete ? "✓" : "○"}
                 </button>
@@ -1805,7 +1805,7 @@ function escapeDispatchHtml(value){
                 <div class="dispatch-result-card">
                     <h2 style="margin-top:0;">Packing complete</h2>
                     <p class="muted">There are no unfinished packing jobs in this session.</p>
-                    <button type="button" onclick="dispatchExitPackingMode()">Return to Dispatch Centre</button>
+                    <button type="button" data-ios-click="h74326d868921af8f">Return to Dispatch Centre</button>
                 </div>
             `;
             return;
@@ -1833,7 +1833,7 @@ function escapeDispatchHtml(value){
                     <div class="muted small">${escapeDispatchHtml(pack.source_name || "Shipping label")}</div>
                 </div>
 
-                <button class="secondary" type="button" onclick="dispatchExitPackingMode()">
+                <button class="secondary" type="button" data-ios-click="h74326d868921af8f">
                     Exit Packing View
                 </button>
             </div>
@@ -1879,7 +1879,7 @@ function escapeDispatchHtml(value){
                                 min="0"
                                 step="0.001"
                                 value="${escapeDispatchHtml(price)}"
-                                oninput="dispatchPriceChanged(${Number(pack.id)},this.value)"
+                                data-ios-input="h81390225bf329f66" data-ios-input-args="${InventoryEvents.encode([Number(pack.id)])}"
                             >
 
                             ${voiceVisible ? `
@@ -1887,7 +1887,7 @@ function escapeDispatchHtml(value){
                                     <input
                                         id="dispatchVoiceToggle"
                                         type="checkbox"
-                                        onchange="dispatchToggleVoice()"
+                                        data-ios-change="h3ac35383ef072f0d"
                                         ${dispatchVoiceListening ? "checked" : ""}
                                     >
                                     <span>Listen for prices and packing commands</span>
@@ -1910,10 +1910,10 @@ function escapeDispatchHtml(value){
                     ${packingResultHtml()}
 
                     <div class="dispatch-pack-nav">
-                        <button class="secondary" type="button" onclick="dispatchPreviousPack()" ${dispatchCurrentPackIndex <= 0 ? "disabled" : ""}>
+                        <button class="secondary" type="button" data-ios-click="h7d868b792d3beb8f" ${dispatchCurrentPackIndex <= 0 ? "disabled" : ""}>
                             Previous Pick
                         </button>
-                        <button type="button" onclick="dispatchNextPack()" ${dispatchCurrentPackIndex >= packs.length - 1 ? "disabled" : ""}>
+                        <button type="button" data-ios-click="h41fc49cbc40e2d0a" ${dispatchCurrentPackIndex >= packs.length - 1 ? "disabled" : ""}>
                             Next Pick
                         </button>
                     </div>
@@ -1922,7 +1922,7 @@ function escapeDispatchHtml(value){
                         id="dispatchCompleteSalesButton"
                         class="dispatch-complete-button"
                         type="button"
-                        onclick="dispatchCompleteSales()"
+                        data-ios-click="he73e8e34814dd867"
                         ${completionDisabled ? "disabled" : ""}
                     >
                         Complete ${packs.length === 1 ? "Sale" : "Sales"}

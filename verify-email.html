@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script>
 <meta charset="UTF-8">
 <title>Verify Email - InventoryOS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -67,54 +67,7 @@ a{
     <a href="login.html" id="loginLink" style="display:none;">Go to Login</a>
 </div>
 
-<script>
-const API_BASE = "https://api.inventoryos.co.uk";
-
-const params = new URLSearchParams(window.location.search);
-const token = params.get("token");
-
-async function verifyEmail(){
-    const message = document.getElementById("message");
-    const loginLink = document.getElementById("loginLink");
-
-    if(!token){
-        message.className = "message error";
-        message.textContent = "Invalid verification link.";
-        loginLink.style.display = "inline-block";
-        return;
-    }
-
-    try{
-        const res = await fetch(`${API_BASE}/auth/verify-email`, {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body:JSON.stringify({ token })
-        });
-
-        const data = await res.json();
-
-        if(data.success){
-            localStorage.removeItem("inventoryos_token");
-            localStorage.removeItem("inventoryos_user");
-
-            message.className = "message success";
-            message.textContent = "Email verified successfully. You can now log in.";
-            loginLink.style.display = "inline-block";
-        }else{
-            message.className = "message error";
-            message.textContent = data.error || "Verification failed.";
-            loginLink.style.display = "inline-block";
-        }
-
-    }catch(error){
-        message.className = "message error";
-        message.textContent = "Server error. Please try again.";
-        loginLink.style.display = "inline-block";
-    }
-}
-
-verifyEmail();
-</script>
+<script src="/js/pages/verify-email.1.js?v=security-1"></script>
 
 </body>
 </html>

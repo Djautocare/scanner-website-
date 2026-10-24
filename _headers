@@ -1,3 +1,10 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; connect-src 'self' https://api.inventoryos.co.uk https://cloudflareinsights.com http://localhost:* http://127.0.0.1:* ws://localhost:* wss://localhost:* ws://127.0.0.1:* wss://127.0.0.1:* ws://localhost.qz.io:* wss://localhost.qz.io:*; frame-src 'self' https://api.inventoryos.co.uk blob: data:; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(self), geolocation=(), payment=()
+
 /admin
   Cache-Control: no-cache
 /admin.html

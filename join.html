@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script>
 <meta charset="UTF-8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -113,72 +113,15 @@ button.secondary{
     <label>Invite Code</label>
     <input id="inviteCode" placeholder="ABCD1234">
 
-    <button onclick="joinWorkspace()">Join Workspace</button>
-    <button class="secondary" onclick="window.location.href='index.html'">Back to Dashboard</button>
+    <button data-ios-click="h3e56b093346eb458">Join Workspace</button>
+    <button class="secondary" data-ios-click="h7989cb614eafd559">Back to Dashboard</button>
 
     <div class="status" id="status">Waiting for invite code...</div>
 </div>
 </div>
 
 <script src="js/api.js"></script>
-<script>
-if(!InventoryAPI.isLoggedIn()){
-    localStorage.setItem("inventoryos_pending_invite", window.location.href);
-    window.location.href = "login.html";
-}
-
-function setStatus(message, type){
-    const el = document.getElementById("status");
-    el.className = "status " + (type || "");
-    el.textContent = message;
-}
-
-function getCodeFromUrl(){
-    const params = new URLSearchParams(window.location.search);
-    return String(params.get("code") || "").trim().toUpperCase();
-}
-
-async function joinWorkspace(){
-    const code = document.getElementById("inviteCode").value.trim().toUpperCase();
-
-    if(!code){
-        setStatus("Enter an invite code.", "error");
-        return;
-    }
-
-    setStatus("Joining workspace...");
-
-    try{
-        const data = await InventoryAPI.request("/workspaces/join", {
-            method:"POST",
-            body:JSON.stringify({ code })
-        });
-
-        if(!data.success){
-            setStatus(data.error || "Could not join workspace.", "error");
-            return;
-        }
-
-        localStorage.removeItem("inventoryos_workspace");
-
-        setStatus("Joined " + data.workspace.name + ". Redirecting...", "success");
-
-        setTimeout(function(){
-            window.location.href = "index.html";
-        }, 900);
-
-    }catch(error){
-        console.error(error);
-        setStatus("Could not connect to server.", "error");
-    }
-}
-
-const urlCode = getCodeFromUrl();
-if(urlCode){
-    document.getElementById("inviteCode").value = urlCode;
-    joinWorkspace();
-}
-</script>
+<script src="/js/pages/join.1.js?v=security-1"></script>
 
 </body>
 </html>

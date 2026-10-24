@@ -743,7 +743,7 @@ const InventoryTopbar = (function(){
                         class="topbar-settings"
                         type="button"
                         aria-label="Settings"
-                        onclick="window.location.href='settings.html'"
+                        data-ios-click="h4056b34d102c51f5"
                     >
                         ⚙
                     </button>

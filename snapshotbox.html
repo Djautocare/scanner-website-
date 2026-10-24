@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script>
 <meta charset="UTF-8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -313,7 +313,7 @@ Create a new MB profit batch from whatever is currently inside a physical storag
 <div class="form-card">
 
 <div class="input-label">Physical Storage Box</div>
-<select id="boxSelect" onchange="updatePreview()">
+<select id="boxSelect" data-ios-change="h4d958a64fbb0e10a">
 <option value="">Loading storage boxes...</option>
 </select>
 
@@ -325,18 +325,18 @@ Create a new MB profit batch from whatever is currently inside a physical storag
 
     <div>
         <div class="input-label">Cost</div>
-        <input type="number" id="batchCost" placeholder="Cost £" step="0.01" min="0" oninput="updatePreview()">
+        <input type="number" id="batchCost" placeholder="Cost £" step="0.01" min="0" data-ios-input="h8bf914369115ae1e">
     </div>
 </div>
 
 <div class="input-label">Notes</div>
-<textarea id="batchNotes" placeholder="Example: Wholesale lot, Vinted batch, mixed tech/clothes/DIY" oninput="updatePreview()"></textarea>
+<textarea id="batchNotes" placeholder="Example: Wholesale lot, Vinted batch, mixed tech/clothes/DIY" data-ios-input="h8bf914369115ae1e"></textarea>
 
-<button class="snapshot-button" onclick="createSnapshotBatch()">
+<button class="snapshot-button" data-ios-click="h96b5393bbe33edaf">
 Create MB + Snapshot Box
 </button>
 
-<button class="refresh-button" onclick="loadStorageBoxes()">
+<button class="refresh-button" data-ios-click="hce46f71d0d72f822">
 Refresh Storage Boxes
 </button>
 
@@ -374,7 +374,7 @@ Refresh Storage Boxes
 
 <a class="link-card" href="mysteryboxes.html">View Mystery Box Profit →</a>
 <a class="link-card" href="index.html">← Back to Dashboard</a>
-<a class="link-card" href="#" onclick="InventoryAPI.logout(); return false;">Logout</a>
+<a class="link-card" href="#" data-ios-click="h153fb37bcb72a526">Logout</a>
 
 </div>
 
@@ -389,199 +389,7 @@ Refresh Storage Boxes
 
 <script src="js/api.js"></script>
 <script src="js/workspace.js?v=5"></script>
-<script>
-if(!InventoryAPI.requireLogin()){
-    throw new Error("Login required");
-}
-
-
-function showLoading(){
-    document.getElementById("loadingOverlay").style.display = "flex";
-}
-
-function hideLoading(){
-    document.getElementById("loadingOverlay").style.display = "none";
-}
-
-function todayText(){
-    const date = new Date();
-
-    return date.toLocaleDateString("en-GB",{
-        day:"2-digit",
-        month:"2-digit",
-        year:"numeric"
-    });
-}
-
-function money(value){
-    return "£" + Number(value || 0).toFixed(2);
-}
-
-function defaultBatchName(box){
-    if(!box){
-        return "";
-    }
-
-    return box + " - " + todayText();
-}
-
-function updatePreview(){
-    const box =
-    document.getElementById("boxSelect").value;
-
-    const nameInput =
-    document.getElementById("batchName");
-
-    if(box && !nameInput.dataset.userEdited){
-        nameInput.value = defaultBatchName(box);
-    }
-
-    const name =
-    nameInput.value.trim();
-
-    const cost =
-    document.getElementById("batchCost").value;
-
-    document.getElementById("previewBox").innerText =
-    InventoryWorkspace.formatLocationName(box || "—");
-
-    document.getElementById("previewName").innerText =
-    name || "—";
-
-    document.getElementById("previewCost").innerText =
-    money(cost);
-}
-
-document.getElementById("batchName").addEventListener("input",function(){
-    this.dataset.userEdited = "true";
-    updatePreview();
-});
-
-function loadStorageBoxes(){
-    showLoading();
-
-    InventoryAPI.request("/boxes")
-    .then(data=>{
-        hideLoading();
-
-        const select =
-        document.getElementById("boxSelect");
-
-        select.innerHTML =
-        '<option value="">Select Storage Box</option>';
-
-        if(!data.success || data.boxes.length === 0){
-            select.innerHTML =
-            '<option value="">No storage boxes found</option>';
-            updatePreview();
-            return;
-        }
-
-        data.boxes.forEach(item=>{
-            const option =
-            document.createElement("option");
-
-            const boxName = item.box || item.box_name;
-            option.value = boxName;
-            InventoryWorkspace.setLocationName(option, boxName);
-
-            select.appendChild(option);
-        });
-
-        updatePreview();
-    })
-    .catch(error=>{
-        hideLoading();
-        console.error(error);
-
-        document.getElementById("boxSelect").innerHTML =
-        '<option value="">Could not load boxes</option>';
-    });
-}
-
-function createSnapshotBatch(){
-    const box =
-    document.getElementById("boxSelect").value;
-
-    const name =
-    document.getElementById("batchName").value.trim() ||
-    defaultBatchName(box);
-
-    const cost =
-    document.getElementById("batchCost").value || 0;
-
-    const notes =
-    document.getElementById("batchNotes").value.trim();
-
-    if(!box){
-        alert("Select a storage box first");
-        return;
-    }
-
-    if(!confirm("Create a new MB for " + InventoryWorkspace.formatLocationName(box) + " and snapshot the current contents?")){
-        return;
-    }
-
-    document.getElementById("result").innerHTML = "";
-
-    showLoading();
-
-    InventoryAPI.request("/mystery-boxes/snapshot",{
-        method:"POST",
-        body:JSON.stringify({
-            box:box,
-            name:name,
-            cost:Number(cost || 0),
-            notes:notes
-        })
-    })
-    .then(result=>{
-        hideLoading();
-
-        if(!result.success){
-            document.getElementById("result").innerHTML =
-            "<div class='error-card'>" + (result.error || "Snapshot failed") + "</div>";
-            return;
-        }
-
-        document.getElementById("result").innerHTML =
-        `
-        <div class="success-card">
-            Snapshot batch created<br><br>
-            ${result.mysteryBoxId} — ${result.name}<br>
-            Cost: ${money(result.cost)}<br><br>
-            ${InventoryWorkspace.locationNameHtml(result.box)} copied into ${result.mysteryBoxId}<br>
-            Different items: ${result.differentItems}<br>
-            Total quantity: ${result.totalQty}
-        </div>
-        `;
-
-        document.getElementById("batchCost").value = "";
-        document.getElementById("batchNotes").value = "";
-        document.getElementById("batchName").value = "";
-        document.getElementById("batchName").dataset.userEdited = "";
-        document.getElementById("boxSelect").value = "";
-
-        updatePreview();
-    })
-    .catch(error=>{
-        hideLoading();
-        console.error(error);
-
-        document.getElementById("result").innerHTML =
-        "<div class='error-card'>" + error.message + "</div>";
-    });
-}
-
-document.getElementById("batchCost").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        e.preventDefault();
-        createSnapshotBatch();
-    }
-});
-
-loadStorageBoxes();
-</script>
+<script src="/js/pages/snapshotbox.1.js?v=security-1"></script>
 
 </body>
 </html>

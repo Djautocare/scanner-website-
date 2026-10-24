@@ -1,0 +1,1 @@
+location.replace('manufacturing/index.html'+location.search+location.hash);

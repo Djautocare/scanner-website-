@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script>
 <meta charset="UTF-8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0d0d0d">
@@ -15,33 +15,17 @@
 <h1>Discard Stock</h1><p class="subtitle">Remove broken, lost, donated or otherwise unsellable stock without recording a sale.</p>
 <div class="form-card">
 <div class="input-label">Barcode or Item Name</div><input id="barcode" placeholder="Type barcode, number, or item words">
-<button class="suggest-toggle" type="button" onclick="document.getElementById('suggestPanel').classList.toggle('open')">Suggested Items</button>
+<button class="suggest-toggle" type="button" data-ios-click="had2ae2724bdcf0e0">Suggested Items</button>
 <div id="suggestPanel" class="suggest-panel"></div>
-<div class="button-grid"><button class="secondary-button" onclick="addToBundle()">Add to Discard List</button><button class="secondary-button" onclick="clearBundle()">Clear List</button></div>
+<div class="button-grid"><button class="secondary-button" data-ios-click="hc5db30324471be14">Add to Discard List</button><button class="secondary-button" data-ios-click="hc841f4a73236ea77">Clear List</button></div>
 <div id="bundleBox" class="bundle-card" style="display:none"></div>
 <div class="input-label">Quantity</div><input type="number" id="qty" value="1" min="1" step="1">
 <div class="input-label">Reason</div><select id="reason"><option value="">Choose reason</option><option>Broken</option><option>Damaged</option><option>Lost</option><option>Expired</option><option>Donated</option><option>Personal use</option><option>Supplier return</option><option>Theft</option><option>Other</option></select>
 <div class="input-label">Notes (optional)</div><textarea id="notes" rows="3" placeholder="Add details. Required only when reason is Other."></textarea>
 <div class="input-label">Estimated loss £ (optional)</div><input type="number" id="estimatedLoss" min="0" step="0.001" placeholder="Leave blank if unknown">
-<button class="discard-button" onclick="discardPressed()">Discard Stock</button>
+<button class="discard-button" data-ios-click="hff9dc0c8af4c0815">Discard Stock</button>
 <div id="locationChoices"></div><p id="result" data-location-wording-ignore>Ready to discard stock.</p>
 </div><div class="links-grid"><a class="link-card" href="index.html">← Back to Dashboard</a></div>
 </div></div>
 <script src="js/theme.js?v=contrast-1"></script><script src="js/api.js"></script><script src="js/inventoryTopbar.js?v=5"></script><script src="js/workspace.js?v=5"></script><script src="js/appShell.js?v=5"></script>
-<script>
-if(!InventoryAPI.requireLogin()) throw new Error("Login required");
-let suggestions=[], timer=null, bundle=[], pending=[];
-function normaliseBarcode(v){let b=String(v||"").trim().toUpperCase().replace(/\s+/g,"");if(/^\d+$/.test(b))b="ITEM-"+b;if(/^ITEM\d+$/.test(b))b=b.replace("ITEM","ITEM-");return b}
-function esc(v){return String(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
-function renderBundle(){const box=document.getElementById("bundleBox");if(!bundle.length){box.style.display="none";box.innerHTML="";return}box.style.display="block";box.innerHTML="<strong>Discard List ("+bundle.length+")</strong>"+bundle.map((b,i)=>`<div class="bundle-item"><span>${esc(b)}</span><button onclick="bundle.splice(${i},1);renderBundle()">Remove</button></div>`).join("")}
-function addToBundle(){const b=normaliseBarcode(document.getElementById("barcode").value);if(!b)return alert("Enter or choose an item first");bundle.push(b);document.getElementById("barcode").value="";renderBundle()}
-function clearBundle(){bundle=[];pending=[];renderBundle();document.getElementById("locationChoices").innerHTML=""}
-function search(){const q=document.getElementById("barcode").value.trim();clearTimeout(timer);if(q.length<2||/^\d+$/.test(q)){document.getElementById("suggestPanel").innerHTML="";return}timer=setTimeout(async()=>{const d=await InventoryAPI.request("/search?query="+encodeURIComponent(q));suggestions=(d.results||[]).slice(0,12);document.getElementById("suggestPanel").innerHTML=suggestions.map((x,i)=>`<div class="suggest-item" onclick="choose(${i})"><div class="suggest-title">${esc(x.description)}</div><div class="suggest-meta">${esc(x.barcode||x.itemId)} · Qty ${Number(x.totalQty||0)}</div></div>`).join("")||"<div class='suggest-item'>No matches</div>"},250)}
-function choose(i){const x=suggestions[i];if(!x)return;document.getElementById("barcode").value=normaliseBarcode(x.barcode||x.itemId);document.getElementById("suggestPanel").classList.remove("open")}
-async function discardOne(item){const payload={barcode:item.barcode,qty:item.qty,location:item.location||"",reason:document.getElementById("reason").value,notes:document.getElementById("notes").value,estimated_loss:document.getElementById("estimatedLoss").value};const d=await InventoryAPI.request("/discard/remove",{method:"POST",body:JSON.stringify(payload)});if(d.needsLocation){showLocations(item,d.locations);return false}if(!d.success)throw new Error(d.error||"Discard failed");document.getElementById("result").innerText=`Discarded ${d.discardedQty} × ${d.description} from ${InventoryWorkspace.formatLocationName(d.location)}. Remaining: ${d.remainingQty}`;return true}
-function showLocations(item,locations){pending.unshift(item);document.getElementById("locationChoices").innerHTML="<div class='location-card'><strong>Select location for "+esc(item.barcode)+"</strong></div>"+locations.map(l=>`<button class="location-button" onclick="continueLocation('${esc(l.location)}')">${InventoryWorkspace.locationNameHtml(l.location)} — Qty ${l.qty}</button>`).join("")}
-async function continueLocation(location){const item=pending.shift();item.location=location;document.getElementById("locationChoices").innerHTML="";pending.unshift(item);processPending()}
-async function processPending(){if(!pending.length){bundle=[];renderBundle();document.getElementById("barcode").value="";document.getElementById("qty").value="1";return}const item=pending.shift();try{const done=await discardOne(item);if(done)processPending()}catch(e){pending=[];document.getElementById("result").innerText=e.message}}
-function discardPressed(){const reason=document.getElementById("reason").value,notes=document.getElementById("notes").value.trim();if(!reason)return alert("Choose a discard reason");if(reason==="Other"&&!notes)return alert("Add notes for Other");if(bundle.length){pending=bundle.map(b=>({barcode:b,qty:1,location:""}))}else{const b=normaliseBarcode(document.getElementById("barcode").value);if(!b)return alert("Enter or choose an item");pending=[{barcode:b,qty:Number(document.getElementById("qty").value||1),location:""}]}processPending()}
-document.getElementById("barcode").addEventListener("input",search);document.getElementById("barcode").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addToBundle()}});
-</script></body></html>
+<script src="/js/pages/discard.1.js?v=security-1"></script></body></html>

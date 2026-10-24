@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script>
 <meta charset="UTF-8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -172,7 +172,7 @@ h1{
 
         <div class="barcode-display" id="barcodeDisplay"></div>
 
-        <button class="print-button" onclick="window.print()">
+        <button class="print-button" data-ios-click="h44f0c8d99910cf5a">
             Print Label
         </button>
 
@@ -185,41 +185,7 @@ h1{
 <script src="js/api.js"></script>
 <script src="js/inventoryTopbar.js?v=2"></script>
 <script src="js/workspace.js?v=5"></script>
-<script>
-if(!InventoryAPI.requireLogin()){
-    throw new Error("Login required");
-}
-
-const params = new URLSearchParams(window.location.search);
-
-const barcode =
-params.get("barcode") || "NO-BARCODE";
-
-const autoPrint =
-params.get("autoprint") || "";
-
-document.getElementById("barcodeText")
-.innerText = barcode;
-
-document.getElementById("barcodeDisplay")
-.innerText = "Barcode: " + barcode;
-
-JsBarcode("#barcode", barcode, {
-    format:"CODE128",
-    displayValue:false,
-    width:1,
-    height:35,
-    margin:8
-});
-
-if(autoPrint === "1"){
-    window.addEventListener("load", function(){
-        setTimeout(function(){
-            window.print();
-        }, 250);
-    });
-}
-</script>
+<script src="/js/pages/label.1.js?v=security-1"></script>
 
 </body>
 </html>

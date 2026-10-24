@@ -1,0 +1,1 @@
+const destination=new URL('index.html',location.href);destination.search=location.search;const params=new URLSearchParams(location.search);destination.hash=params.has('retail_checkout')||params.has('billing')||/^https:\/\/(billing|checkout)\.stripe\.com(?:\/|$)/.test(document.referrer)?'retail-billing':'tills';location.replace(destination.href);
