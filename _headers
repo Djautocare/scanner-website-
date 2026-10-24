@@ -1,0 +1,10 @@
+/admin
+  Cache-Control: no-cache
+/admin.html
+  Cache-Control: no-cache
+/js/shopCatalogueAdmin.js
+  Cache-Control: no-cache
+/js/shopOrdersAdmin.js
+  Cache-Control: no-cache
+/js/shopCatalogueReview.mjs
+  Cache-Control: no-cache
