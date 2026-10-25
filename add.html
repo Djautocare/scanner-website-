@@ -336,13 +336,14 @@ details[open] summary:after{content:"▲";}
         <div class="small-note">Arrow up/down changes quantity.</div>
     </div>
     <div>
-        <div class="input-label">Box Number</div>
-        <input type="number" id="boxNumberInput" placeholder="Example: 16" inputmode="numeric">
+        <div class="input-label">Location name or number</div>
+        <input type="text" id="boxNumberInput" placeholder="Example: 16 or Garage shelf" autocomplete="off">
         <div class="small-note" id="boxHint">Type a box number and the closest available box will be selected.</div>
     </div>
 </div>
 
-<select id="location" style="display:none;">
+<label class="input-label" for="location">Storage location</label>
+<select id="location">
 <option value="">Loading boxes...</option>
 </select>
 
@@ -414,7 +415,7 @@ details[open] summary:after{content:"▲";}
 <script src="js/qzClient.js?v=2"></script>
 <script src="js/inventoryTopbar.js?v=5"></script>
 <script src="js/workspace.js?v=5"></script>
-<script src="/js/pages/add.1.js?v=security-1"></script>
+<script src="/js/pages/add.1.js?v=location-editor-1"></script>
 
 
 <script src="js/appShell.js?v=5"></script>

@@ -6,6 +6,7 @@ if(!InventoryAPI.requireLogin()){
 
 const BOX_CAPACITY = 50;
 let allBoxes = [];
+let boxesLoadVersion = 0;
 
 function readLocationSettings(){
     try{
@@ -92,7 +93,7 @@ function applyLocationsPageWording(){
     document.getElementById(
         "createNextLocationButton"
     ).textContent =
-        "+ Create Next Available " +
+        "+ Create " +
         words.singular;
 
     document.getElementById(
@@ -196,58 +197,25 @@ function showLoading(){document.getElementById("loadingOverlay").style.display="
 function hideLoading(){document.getElementById("loadingOverlay").style.display="none";}
 function safeText(value){return String(value || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");}
 function boxNumber(box){const match=String(box||"").match(/\d+/);return match?Number(match[0]):999999;}
-function cleanBoxId(box){return String(box || "").replace(/[^A-Z0-9]/gi,"_");}
+function cleanBoxId(box){return Array.from(String(box || ""), c=>c.codePointAt(0).toString(16)).join("_");}
 
 function createNextBox(){
-    const words = locationWords();
-
-    showLoading();
-
-    InventoryAPI.request(
-        "/boxes/next",
-        {
-            method:"POST"
-        }
-    )
-    .then(data=>{
-        hideLoading();
-
-        if(data.success){
-            alert(
-                "Created " +
-                InventoryWorkspace.formatLocationName(data.box)
-            );
-
-            loadBoxes();
-        }else{
-            alert(
-                data.error ||
-                "Could not create " +
-                words.singularLower
-            );
-        }
-    })
-    .catch(error=>{
-        hideLoading();
-        console.error(error);
-
-        alert(
-            "Error creating " +
-            words.singularLower
-        );
-    });
+    InventoryLocationEditor.open();
 }
 
 function loadBoxes(){
     const words = locationWords();
+    const version = ++boxesLoadVersion;
+    const selection = InventoryAPI.getSelectedInventoryHeader();
 
     showLoading();
 
-    InventoryAPI.request(
+    return InventoryAPI.request(
         "/boxes/overview?_t=" +
         Date.now()
     )
     .then(data=>{
+        if(version !== boxesLoadVersion || selection !== InventoryAPI.getSelectedInventoryHeader()) return;
         hideLoading();
 
         if(!data.success){
@@ -285,8 +253,8 @@ function renderBoxes(){
     let empty=allBoxes.filter(b=>Number(b.qty || 0)===0);
 
     if(query){
-        active=active.filter(b=>InventoryWorkspace.formatLocationName(b.box).toUpperCase().includes(query) || String(boxNumber(b.box)).includes(query));
-        empty=empty.filter(b=>InventoryWorkspace.formatLocationName(b.box).toUpperCase().includes(query) || String(boxNumber(b.box)).includes(query));
+        active=active.filter(b=>InventoryWorkspace.formatLocationName(b.box).toUpperCase().includes(query) || String(boxNumber(b.box)).includes(query) || String(b.notes || "").toUpperCase().includes(query));
+        empty=empty.filter(b=>InventoryWorkspace.formatLocationName(b.box).toUpperCase().includes(query) || String(boxNumber(b.box)).includes(query) || String(b.notes || "").toUpperCase().includes(query));
     }
 
     if(sort==="number"){active.sort((a,b)=>boxNumber(a.box)-boxNumber(b.box));empty.sort((a,b)=>boxNumber(a.box)-boxNumber(b.box));}
@@ -404,7 +372,8 @@ function renderActive(active){
                     <div class="badge">${qty} items</div>
                 </div>
 
-                <div class="box-notes">${notes}</div>
+                <div class="box-notes" data-location-wording-ignore>${notes}</div>
+                <button type="button" class="location-edit-button small-button" data-location-edit="${safeText(item.id)}">Edit name &amp; notes</button>
 
                 <div class="capacity-wrap">
                     <div class="capacity-bar" style="width:${percent}%"></div>
@@ -414,7 +383,7 @@ function renderActive(active){
                     ${percent}% full based on ${BOX_CAPACITY} items • ${uniqueItems} unique products
                 </div>
 
-                <button class="blue-button small-button" data-ios-click="h9094675931c35796" data-ios-click-args="${InventoryEvents.encode([box])}">
+                <button class="blue-button small-button" data-ios-click="h9094675931c35796" data-ios-click-args="${InventoryEvents.encode([item.box])}">
                     View Contents
                 </button>
 
@@ -464,9 +433,10 @@ function renderEmpty(empty){
                     <div class="badge">0 items</div>
                 </div>
 
-                <div class="box-notes">${notes}</div>
+                <div class="box-notes" data-location-wording-ignore>${notes}</div>
+                <button type="button" class="location-edit-button small-button" data-location-edit="${safeText(item.id)}">Edit name &amp; notes</button>
 
-                <button class="delete-button small-button" data-ios-click="h9a5fb7c0aca66c52" data-ios-click-args="${InventoryEvents.encode([box])}">
+                <button class="delete-button small-button" data-ios-click="h9a5fb7c0aca66c52" data-ios-click-args="${InventoryEvents.encode([item.box])}">
                     Delete Empty ${safeText(words.singular)}
                 </button>
             </div>

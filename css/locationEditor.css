@@ -1,0 +1,25 @@
+.location-editor{width:min(480px,calc(100% - 28px));max-height:calc(100dvh - 36px);overflow:auto;padding:24px;border:1px solid var(--border);border-radius:18px;background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.location-editor::backdrop{background:rgba(0,0,0,.7)}
+.location-editor h2{margin:0 0 20px;font-size:22px;color:var(--text)}
+.location-editor label{display:block;margin:16px 0 7px;font-weight:700;color:var(--text)}
+.location-editor label span,.location-editor small{color:var(--muted);font-weight:400}
+.location-editor input,.location-editor textarea{box-sizing:border-box;width:100%;margin:0;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--input);color:var(--text);font:inherit}
+.location-editor input::placeholder,.location-editor textarea::placeholder{color:var(--muted);opacity:.8}
+.location-editor input:focus,.location-editor textarea:focus{outline:2px solid var(--accent);outline-offset:2px}
+.location-editor textarea{resize:vertical;min-height:90px}
+.location-editor small{display:block;margin-top:7px;font-size:13px}
+.location-editor [role=alert]{min-height:1.2em;margin:14px 0;color:var(--text);line-height:1.4}
+.location-editor-actions{display:flex;gap:10px;margin-top:8px}
+.location-editor-actions button,.location-edit-button{border:1px solid var(--accent);background:rgba(var(--accent-rgb),.14);color:var(--text);font-weight:700;cursor:pointer}
+.location-editor-actions button{flex:1;width:auto;margin:0;padding:13px;border-radius:10px;font-size:16px}
+.location-editor-actions .location-editor-confirm{background:var(--accent);color:#080909}
+.location-editor-actions .location-editor-cancel{border-color:var(--border);background:var(--panel-2);color:var(--text)}
+.location-editor-actions button:disabled{opacity:.6;cursor:wait}
+.box-notes{white-space:pre-wrap;overflow-wrap:anywhere}
+.box-name{overflow-wrap:anywhere;min-width:0}
+.location-edit-button{border-radius:10px}
+/* Keep the action readable under both shared theme palettes. */
+dialog.location-editor form button.location-editor-confirm{background:var(--accent)!important;color:var(--accent-contrast,#080909)!important;border-color:var(--accent)!important}
+dialog.location-editor form button.location-editor-cancel{background:var(--panel-2)!important;color:var(--text)!important}
+.box-card .box-notes{background:var(--input)!important;color:var(--text)!important;border-color:var(--border)!important}
+dialog.location-editor form button.location-editor-confirm:hover,dialog.location-editor form button.location-editor-confirm:focus-visible{background:var(--accent)!important;color:var(--accent-contrast,#080909)!important}

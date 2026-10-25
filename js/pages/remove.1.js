@@ -1364,7 +1364,7 @@ window.addEventListener("load", function(){
     }
 
     if(location){
-        window.quickSaleLocation = location.toUpperCase();
+        window.quickSaleLocation = location;
     }
 
     setTimeout(function(){

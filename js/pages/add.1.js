@@ -337,7 +337,7 @@ function fillBoxDropdown(boxes){
     if(savedLocation){
         select.value = savedLocation;
         const n = getBoxNumber(savedLocation);
-        if(n !== null) document.getElementById("boxNumberInput").value = n;
+        document.getElementById("boxNumberInput").value = n !== null ? String(n) : savedLocation;
         document.getElementById("boxHint").innerHTML = "Selected " + InventoryWorkspace.locationNameHtml(savedLocation);
     }
 }
@@ -369,11 +369,21 @@ function chooseClosestBox(){
     const select = document.getElementById("location");
 
     if(!raw){
+        if(select.value && allBoxes.some(item=>item.box === select.value)) return;
         select.value = "";
         hint.innerText = "Type a box number and the closest available box will be selected.";
         return;
     }
 
+    if(!/^\d+$/.test(raw)){
+        const matches = allBoxes.filter(item=>item.box.toLocaleLowerCase().includes(raw.toLocaleLowerCase()));
+        const exact = matches.find(item=>item.box.toLocaleLowerCase() === raw.toLocaleLowerCase());
+        const match = exact || (matches.length === 1 ? matches[0] : null);
+        select.value = match ? match.box : "";
+        hint.textContent = match ? "Selected " + InventoryWorkspace.formatLocationName(match.box) : "Choose a location from the list.";
+        if(match) localStorage.setItem("lastAddLocation", match.box);
+        return;
+    }
     const wanted = Number(raw);
     if(!allBoxes.length || isNaN(wanted)){
         hint.innerText = "No boxes available yet.";
@@ -715,6 +725,12 @@ document.addEventListener("keydown",function(e){
 
 document.getElementById("description").addEventListener("input",searchExistingProductsLive);
 document.getElementById("boxNumberInput").addEventListener("input",boxNumberChanged);
+document.getElementById("location").addEventListener("change",function(){
+    clearTimeout(boxSearchTimer);
+    document.getElementById("boxNumberInput").value = "";
+    document.getElementById("boxHint").textContent = this.value ? "Selected " + InventoryWorkspace.formatLocationName(this.value) : "Choose a location from the list.";
+    if(this.value) localStorage.setItem("lastAddLocation",this.value);
+});
 document.getElementById("qty").addEventListener("input",clearErrorOnNewProduct);
 
 document.getElementById("newPrintJobName").addEventListener("keydown",function(e){
