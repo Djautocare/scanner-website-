@@ -35,6 +35,13 @@ function api(u,method,body){const p=u.pathname.slice(4);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.evaluate(()=>document.documentElement.setAttribute('data-appearance','light'));await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>{const b=document.querySelector('.location-editor-confirm'),s=getComputedStyle(b);const probe=document.createElement('div');probe.style.backgroundColor=s.getPropertyValue('--accent');document.body.append(probe);const expected=getComputedStyle(probe).backgroundColor;probe.remove();return s.backgroundColor===expected;}),true,'primary button retains the theme colour on hover in light mode');await page.getByRole('button',{name:'Cancel',exact:true}).click();
   await page.goto(origin+'/add.html');await page.locator('#location option').filter({hasText:custom}).waitFor({state:'attached'});await page.locator('#location').selectOption(custom);assert.equal(await page.locator('#location').isVisible(),true);await page.locator('#description').fill('Demo item');await page.evaluate(()=>window.JsBarcode=()=>{});await page.getByRole('button',{name:'Save Product',exact:false}).click();await page.waitForFunction(()=>document.getElementById('saveStatus').textContent.includes('Saved:'));assert.equal(writes.at(-1).body.box_name,custom);
+  await page.addScriptTag({url:origin+'/retail/vendor/jsbarcode-3.11.6.min.js'});
+  const label=await page.evaluate(()=>buildQzLabelHtml('TEST-123','Printer "test" & labels'));
+  assert(!/<script\b/i.test(label),'QZ print document must not contain inline or external scripts');
+  assert(label.includes('Printer &quot;test&quot; &amp; labels'));
+  await page.evaluate(html=>{const frame=document.createElement('iframe');frame.id='print-label-fixture';frame.srcdoc=html;document.body.append(frame);},label);
+  await page.frameLocator('#print-label-fixture').locator('svg rect').first().waitFor({state:'attached'});
+  assert((await page.frameLocator('#print-label-fixture').locator('svg rect').count())>10,'barcode is rendered before printing');
   assert.equal(await page.evaluate(()=>window.__csp.length),0);assert.deepEqual(errors,[]);console.log('PASS: mobile create, faint suggestion, confirm, cancel, custom quoted names, notes, edit with stock, clearing notes, failed-save retry, duplicate-click prevention, custom Add stock selection and CSP. Synthetic local API only.');
  }finally{await browser.close();await new Promise(r=>server.close(r));}
 })().catch(error=>{console.error(error);process.exitCode=1;});

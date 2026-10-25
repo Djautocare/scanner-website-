@@ -162,13 +162,18 @@ function connectQz(){
 function buildQzLabelHtml(barcode, description){
     const safeBarcode = escapeHtml(barcode);
     const safeDescription = escapeHtml(description);
+    // Render the barcode here so the print document needs no executable script.
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.id = "qzBarcode";
+    JsBarcode(svg, String(barcode || ""), {
+        format:"CODE128", displayValue:false, width:1.55, height:40, margin:0
+    });
 
     return `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
 @page{size:51mm 25mm;margin:0;}
 html,body{margin:0;padding:0;width:51mm;height:25mm;background:white;overflow:hidden;}
@@ -183,20 +188,10 @@ body{font-family:Arial,sans-serif;}
 <body>
 <div class="label">
     <div class="desc">${safeDescription}</div>
-    <svg id="qzBarcode"></svg>
+    ${svg.outerHTML}
     <div class="barcodeNumber">${safeBarcode}</div>
 </div>
-<script>
-window.onload = function(){
-    JsBarcode("#qzBarcode", "${safeBarcode}", {
-        format:"CODE128",
-        displayValue:false,
-        width:1.55,
-        height:40,
-        margin:0
-    });
-};
-<\/script>
+
 </body>
 </html>`;
 }
