@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "include": [
+    "/*"
+  ],
+  "exclude": [
+    "/assets/*",
+    "/tutorial-assets/*",
+    "/docs/*",
+    "/backend-updates/*",
+    "/cdn-cgi/*",
+    "/*.js",
+    "/*.mjs",
+    "/*.cjs",
+    "/*.css",
+    "/*.json",
+    "/*.webmanifest",
+    "/*.png",
+    "/*.jpg",
+    "/*.jpeg",
+    "/*.svg",
+    "/*.webp",
+    "/*.gif",
+    "/*.ico",
+    "/*.woff",
+    "/*.woff2",
+    "/*.ttf",
+    "/*.pdf",
+    "/*.zip",
+    "/*.exe",
+    "/*.msi",
+    "/*.pkg",
+    "/*.dmg",
+    "/*.txt",
+    "/*.map",
+    "/*.xml",
+    "/*.csv",
+    "/*.ps1",
+    "/*.command"
+  ]
+}

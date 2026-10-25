@@ -24,3 +24,26 @@ The separate PC toolkit can check local firewall/listening ports and unauthentic
 ## Maintaining the pages
 
 Use external scripts and `addEventListener` for new controls. Do not reintroduce `onclick="…"`, executable inline `<script>` blocks, eval or user-derived JavaScript. Existing compiled legacy actions are compatibility code; new features should use direct event listeners and data attributes. Keep CSP changes below Cloudflare Pages' line limits. Test both browser policy enforcement and controls affected by the change. Retain the explicit offline app-shell dependencies; do not cache authenticated API responses.
+
+## Cloudflare JavaScript Detection compatibility
+
+Cloudflare's automatic bot-check script is injected after the static app is served.
+`functions/_middleware.js` supplies a fresh 128-bit CSP nonce on each HTML response;
+Cloudflare reads that response header and applies the nonce to its injected scripts.
+The middleware does not add nonce attributes to arbitrary app HTML or user content.
+Inline event handlers and scripts without the matching nonce remain blocked.
+
+Nonce-bearing HTML uses `private, no-store` and has no validators, preventing shared
+HTTP caches from mixing an old body with a new nonce. Explicit Retail PWA shell
+caches retain their matching body and CSP. The API and offline sales queues are
+unchanged. `_headers` remains the strict static fallback. `_routes.json` excludes
+scripts, styles, images, fonts, manifests and installers from Functions invocations;
+HTML page requests use the existing Cloudflare Pages Functions allowance.
+
+Validation: `node --test tests/cloudflare-csp.test.cjs` and
+`node tests/cloudflare-csp.browser.cjs` (Playwright runtime and a Chromium executable
+via `RETAIL_CHROMIUM_EXECUTABLE`). The browser test uses a local simulation of
+Cloudflare's nonce-bearing hidden-frame bootstrap and makes no real bot-check,
+account, email, payment or stock requests.
+
+Reference: https://developers.cloudflare.com/cloudflare-challenges/challenge-types/javascript-detections/#if-you-have-a-content-security-policy-csp
