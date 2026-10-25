@@ -1,3 +1,4 @@
+function uploadSafeText(value){return String(value ?? "").replace(/[&<>"']/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));}
 
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -149,7 +150,7 @@ function createSnapshotBatch(){
 
         if(!result.success){
             document.getElementById("result").innerHTML =
-            "<div class='error-card'>" + (result.error || "Snapshot failed") + "</div>";
+            "<div class='error-card'>" + uploadSafeText(result.error || "Snapshot failed") + "</div>";
             return;
         }
 
@@ -157,9 +158,9 @@ function createSnapshotBatch(){
         `
         <div class="success-card">
             Snapshot batch created<br><br>
-            ${result.mysteryBoxId} — ${result.name}<br>
+            ${uploadSafeText(result.mysteryBoxId)} — ${uploadSafeText(result.name)}<br>
             Cost: ${money(result.cost)}<br><br>
-            ${InventoryWorkspace.locationNameHtml(result.box)} copied into ${result.mysteryBoxId}<br>
+            ${InventoryWorkspace.locationNameHtml(result.box)} copied into ${uploadSafeText(result.mysteryBoxId)}<br>
             Different items: ${result.differentItems}<br>
             Total quantity: ${result.totalQty}
         </div>

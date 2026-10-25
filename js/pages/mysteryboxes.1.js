@@ -1,3 +1,4 @@
+function uploadSafeText(value){return String(value ?? "").replace(/[&<>"']/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));}
 
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -178,7 +179,7 @@ function loadMysteryBoxes(){
 
         if(!data.success){
             document.getElementById("mysteryBoxList").innerHTML =
-            "<div class='empty-state'>" + (data.error || "Could not load mystery boxes") + "</div>";
+            "<div class='empty-state'>" + uploadSafeText(data.error || "Could not load mystery boxes") + "</div>";
             return;
         }
 
@@ -208,15 +209,15 @@ function loadMysteryBoxes(){
 
                     <div class="mb-header">
                         <div>
-                            <div class="mb-name">${box.mysteryBoxId} | ${box.name}</div>
+                            <div class="mb-name">${uploadSafeText(box.mysteryBoxId)} | ${uploadSafeText(box.name)}</div>
                             <div class="mb-sub">Created ${created}</div>
                             <div class="badge-row">
-                                <span class="status ${statusClass}">${status}</span>
+                                <span class="status ${statusClass}">${uploadSafeText(status)}</span>
                                 ${profitBadge(box.profit)}
                             </div>
                         </div>
 
-                        <div class="mb-id">${box.mysteryBoxId}</div>
+                        <div class="mb-id">${uploadSafeText(box.mysteryBoxId)}</div>
                     </div>
 
                     <div class="stat-grid">
@@ -262,7 +263,7 @@ function loadMysteryBoxes(){
                     </div>
 
                     <div class="info-box">
-                        <strong>Notes:</strong> ${box.notes || "No notes added"}
+                        <strong>Notes:</strong> ${uploadSafeText(box.notes || "No notes added")}
                     </div>
 
                     <div class="card-actions">
@@ -270,7 +271,7 @@ function loadMysteryBoxes(){
                         <button class="close-button" data-ios-click="h6225a07a37c577e5" data-ios-click-args="${InventoryEvents.encode([box.mysteryBoxId])}">Close / Bulk Sold</button>
                     </div>
 
-                    <div class="items-list" id="items_${box.mysteryBoxId}">
+                    <div class="items-list" id="items_${uploadSafeText(box.mysteryBoxId)}">
                         ${renderItems(box.items || [])}
                     </div>
 
@@ -308,9 +309,9 @@ function renderItems(items){
         html += `
             <div class="item-row">
                 <div>
-                    <div class="item-name">${item.description || item.barcode}</div>
+                    <div class="item-name">${uploadSafeText(item.description || item.barcode)}</div>
                     <div class="item-meta">
-                        ${item.barcode}<br>
+                        ${uploadSafeText(item.barcode)}<br>
                         Sold ${item.soldQty}/${item.originalQty} • Revenue ${money(item.revenue)} • ${itemSellThrough.toFixed(0)}% sold
                     </div>
                 </div>

@@ -1,3 +1,4 @@
+function uploadSafeText(value){return String(value ?? "").replace(/[&<>"']/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));}
 
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -115,7 +116,7 @@ function loadSalesTracker(){
 
                 monthlyHtml += `
                     <tr>
-                        <td>${row.month}</td>
+                        <td>${uploadSafeText(row.month)}</td>
                         <td>${money(row.income)}</td>
                         <td>${money(row.expenses)}</td>
                         <td class="${profitClass}">${money(row.profit)}</td>
@@ -141,8 +142,8 @@ function loadSalesTracker(){
             lastSales.forEach(sale => {
                 salesHtml += `
                     <div class="sale-card">
-                        <div class="sale-date">${sale.date}</div>
-                        <div class="sale-item">${sale.item}</div>
+                        <div class="sale-date">${uploadSafeText(sale.date)}</div>
+                        <div class="sale-item">${uploadSafeText(sale.item)}</div>
                         <div class="sale-amount">${money(sale.amount)}</div>
                     </div>
                 `;

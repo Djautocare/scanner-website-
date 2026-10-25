@@ -1,3 +1,4 @@
+function uploadSafeText(value){return String(value ?? "").replace(/[&<>"']/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));}
 
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -62,7 +63,7 @@ function loadBoxContents(){
 
         if(!data.success){
             document.getElementById("results").innerHTML =
-            "<div class='empty-state'>" + (data.error || "Could not load box contents") + "</div>";
+            "<div class='empty-state'>" + uploadSafeText(data.error || "Could not load box contents") + "</div>";
             return;
         }
 
@@ -96,14 +97,14 @@ function loadBoxContents(){
         data.results.forEach(item=>{
             html += `
                 <div class="item-card">
-                    <div class="item-name">${item.description}</div>
+                    <div class="item-name">${uploadSafeText(item.description)}</div>
 
                     <div class="badge qty-badge">
                         Qty ${item.qty}
                     </div>
 
                     <div class="badge barcode-badge">
-                        ${item.barcode}
+                        ${uploadSafeText(item.barcode)}
                     </div>
                 </div>
             `;

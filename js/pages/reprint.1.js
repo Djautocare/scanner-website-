@@ -1,3 +1,4 @@
+function uploadSafeText(value){return String(value ?? "").replace(/[&<>"']/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));}
 
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -59,10 +60,10 @@ function searchProduct(){
             html += `
                 <div class="result-card">
 
-                    <div class="result-title">${item.description}</div>
+                    <div class="result-title">${uploadSafeText(item.description)}</div>
 
                     <div class="badge barcode-badge">
-                        ${item.barcode}
+                        ${uploadSafeText(item.barcode)}
                     </div>
 
                     <div class="badge qty-badge">
@@ -102,7 +103,7 @@ function createLabelHtml(barcode, index){
     return `
         <div class="print-label">
             <svg id="barcode_${index}"></svg>
-            <p class="label-text">${barcode}</p>
+            <p class="label-text">${uploadSafeText(barcode)}</p>
         </div>
     `;
 }

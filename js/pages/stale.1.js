@@ -1,3 +1,4 @@
+function uploadSafeText(value){return String(value ?? "").replace(/[&<>"']/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));}
 
 if(!InventoryAPI.requireLogin()){
     throw new Error("Login required");
@@ -33,13 +34,13 @@ function loadStaleStock(){
         data.results.forEach(item=>{
             html += `
             <div class="item-card">
-                <div class="item-name">${item.description || item.barcode}</div>
+                <div class="item-name">${uploadSafeText(item.description || item.barcode)}</div>
                 <div class="badge location-badge">${InventoryWorkspace.locationNameHtml(item.location)}</div>
                 <div class="badge qty-badge">Qty ${item.qty}</div>
                 <div class="badge days-badge">${item.daysOld} Days</div>
                 <div class="barcode-box">
                     <strong>Barcode:</strong><br>
-                    ${item.barcode}
+                    ${uploadSafeText(item.barcode)}
                 </div>
                 <button
                 class="quick-sale"
