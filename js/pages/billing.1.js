@@ -4,6 +4,7 @@ if(!InventoryAPI.requireLogin()){
 }
 
 let currentStatus = null;
+let planRequestPending = false;
 
 function billingRequest(path,options={}){
     const workspace = localStorage.getItem("inventoryos_selected_workspace_id");
@@ -42,6 +43,7 @@ function updateDashboardButtons(){
 }
 
 function goDashboard(){
+    if(planRequestPending) return;
     if(!canAccessDashboard()){
         setMessage("Choose a plan first. Once a plan is selected, your dashboard will unlock.");
         return;
@@ -183,14 +185,18 @@ async function loadBilling(){
 }
 
 async function choosePlan(plan){
-    if(!plan) return;
+    if(!plan || planRequestPending) return;
+    let leavingBilling = false;
+    const firstPlanChoice = currentStatus?.billing?.plan_selected === false;
 
-    if(plan === "free"){
+    if(plan === "free" && !firstPlanChoice){
         if(!confirm("Switch this workspace to the Free plan? Paid features may be locked.")){
             return;
         }
     }
 
+    planRequestPending = true;
+    document.querySelectorAll("[data-plan]").forEach(button=>{button.disabled=true;});
     setMessage("Starting " + plan + " plan...");
 
     try{
@@ -205,12 +211,18 @@ async function choosePlan(plan){
         }
 
         if(data.free_selected){
+            if(firstPlanChoice && window.InventoryGettingStarted?.begin()){
+                leavingBilling = true;
+                setMessage("Free selected. Opening your guided practice workspace...");
+                return;
+            }
             setMessage("Free plan selected. Unlocking dashboard...");
             await loadBilling();
             return;
         }
 
         if(data.url){
+            leavingBilling = true;
             window.location.href = data.url;
             return;
         }
@@ -220,6 +232,11 @@ async function choosePlan(plan){
     }catch(error){
         console.error(error);
         setMessage("Checkout error: " + error.message);
+    }finally{
+        if(!leavingBilling){
+            planRequestPending = false;
+            if(currentStatus) renderPlans(currentStatus.plans || []);
+        }
     }
 }
 
