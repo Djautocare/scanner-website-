@@ -20,12 +20,17 @@ function setMessage(text){
 }
 
 function canAccessDashboard(){
-    return Boolean(
-        currentStatus &&
-        currentStatus.billing &&
-        currentStatus.billing.plan_selected &&
-        currentStatus.billing.access_allowed
-    );
+    const billing = currentStatus?.billing;
+    return Boolean(billing?.plan_selected && (
+        typeof billing.account_access_allowed === "boolean"
+            ? billing.account_access_allowed
+            : billing.access_allowed
+    ));
+}
+
+function isCurrentPlan(plan){
+    return canAccessDashboard() && currentStatus.billing.plan_key === plan.key &&
+        !(plan.key === "business" && currentStatus.billing.is_business_trial);
 }
 
 function updateDashboardButtons(){
@@ -62,15 +67,11 @@ function planDescription(key){
 
 function buttonLabel(plan){
     if(plan.key === "business" && currentStatus?.billing?.is_business_trial) return "Subscribe to Business";
-    if(
-        currentStatus &&
-        currentStatus.billing &&
-        currentStatus.billing.plan_selected &&
-        currentStatus.billing.plan_key === plan.key
-    ){
+    if(isCurrentPlan(plan)){
         return "Current Plan";
     }
 
+    if(plan.key === "free" && currentStatus?.billing?.plan_selected) return "Continue with Free";
     if(plan.key === "free") return "Start Free";
     return "Choose " + plan.name;
 }
@@ -104,9 +105,11 @@ function renderStatus(data){
         title.innerText = "Choose your InventoryOS plan";
         badge.innerText = "PLAN REQUIRED";
         line = "Select Free, Starter, Pro or Business to unlock your dashboard.";
-    }else if(!billing.access_allowed){
-        badge.innerText = (billing.billing_status || "locked").toUpperCase();
-        line += " Choose or update a plan to continue using InventoryOS.";
+    }else if(!canAccessDashboard()){
+        badge.innerText = "PLAN UPDATE NEEDED";
+        line += " Select Continue with Free to restore Free access, or choose a paid plan for its extra features.";
+    }else if(billing.is_free_fallback){
+        line += " Free tools remain available. Higher-plan features have relocked; your saved stock is kept.";
     }
 
     text.innerText = line;
@@ -141,13 +144,7 @@ function renderPlans(plans){
 
         const button = card.querySelector("button");
 
-        if(
-            currentStatus &&
-            currentStatus.billing &&
-            currentStatus.billing.plan_selected &&
-            currentStatus.billing.plan_key === plan.key &&
-            !(plan.key === "business" && currentStatus.billing.is_business_trial)
-        ){
+        if(isCurrentPlan(plan)){
             button.disabled = true;
         }
 
@@ -172,8 +169,10 @@ async function loadBilling(){
 
         if(data.billing && !data.billing.plan_selected){
             setMessage("Choose a plan to unlock your InventoryOS dashboard.");
-        }else if(data.billing && !data.billing.access_allowed){
-            setMessage("Your current billing status is locked. Choose or update a plan to continue.");
+        }else if(data.billing && !canAccessDashboard()){
+            setMessage("Continue with Free to restore access, or choose a paid plan for its extra features.");
+        }else if(data.billing?.is_free_fallback){
+            setMessage("Your account is available on Free. Only higher-plan features are locked.");
         }else{
             setMessage("Plan active. You can open the dashboard.");
         }
@@ -189,7 +188,7 @@ async function choosePlan(plan){
     let leavingBilling = false;
     const firstPlanChoice = currentStatus?.billing?.plan_selected === false;
 
-    if(plan === "free" && !firstPlanChoice){
+    if(plan === "free" && !firstPlanChoice && currentStatus?.billing?.plan_key !== "free"){
         if(!confirm("Switch this workspace to the Free plan? Paid features may be locked.")){
             return;
         }

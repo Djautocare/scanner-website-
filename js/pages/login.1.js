@@ -85,7 +85,10 @@ async function redirectAfterLogin(){
         if(data && data.success && data.billing){
             const billing = data.billing;
 
-            if(!billing.plan_selected || !billing.access_allowed){
+            const accountAllowed = typeof billing.account_access_allowed === "boolean"
+                ? billing.account_access_allowed
+                : billing.access_allowed;
+            if(!billing.plan_selected || !accountAllowed){
                 window.location.href = "billing.html";
                 return;
             }
