@@ -1,5 +1,6 @@
 'use strict';
 (()=>{
+ if(!document.getElementById('mi-filters'))return;
  const $=id=>document.getElementById(id),labels={buyer:'Buyer','private-seller':'Private seller',reseller:'Reseller',business:'Business',unsure:'Just curious'};
  let page=1,pages=1,busy=false,loaded=false;const status=$('mi-status');
  function controls(value){for(const id of ['mi-refresh','mi-export'])$(id).disabled=value;$('mi-prev').disabled=value||page<=1;$('mi-next').disabled=value||page>=pages;document.querySelector('#mi-filters button[type=submit]').disabled=value}
@@ -29,5 +30,6 @@
   if(busy||!loaded)return;busy=true;controls(true);status.textContent='Preparing active-email export…';
   try{const data=await request('/export'),rows=[['Email','Interested as','Consent version','Consented at'],...data.rows.map(x=>[x.email,labels[x.audience]||x.audience,x.consent_version,x.consented_at])],csv='\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='MiMarche-active-launch-interest-'+new Date().toISOString().slice(0,10)+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);status.textContent='Exported '+data.rows.length+' active '+(data.rows.length===1?'entry':'entries')+'. No emails were sent.'}catch(error){status.textContent=error.message}finally{busy=false;controls(false)}
  }
- $('mi-filters').addEventListener('submit',event=>{event.preventDefault();if(busy)return;page=1;load()});$('mi-refresh').addEventListener('click',load);$('mi-export').addEventListener('click',exportCSV);$('mi-prev').addEventListener('click',()=>{if(!busy&&page>1){page--;load()}});$('mi-next').addEventListener('click',()=>{if(!busy&&page<pages){page++;load()}});load();
+ $('mi-filters').addEventListener('submit',event=>{event.preventDefault();if(busy)return;page=1;load()});$('mi-refresh').addEventListener('click',load);$('mi-export').addEventListener('click',exportCSV);$('mi-prev').addEventListener('click',()=>{if(!busy&&page>1){page--;load()}});$('mi-next').addEventListener('click',()=>{if(!busy&&page<pages){page++;load()}});window.InventoryMarketplaceAdmin={load};if(!document.getElementById('adminApp'))load();
 })();
+

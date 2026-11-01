@@ -28,3 +28,15 @@
   Cache-Control: no-cache
 /billing.html
   Cache-Control: no-cache
+
+
+/js/adminConsole.js
+  Cache-Control: no-cache
+/css/adminConsole.css
+  Cache-Control: no-cache
+/js/pages/admin.1.js
+  Cache-Control: no-cache
+/js/marketplace-interest-admin.js
+  Cache-Control: no-cache
+/retail/admin-platform.js
+  Cache-Control: no-cache
