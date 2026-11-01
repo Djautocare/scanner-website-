@@ -18,3 +18,13 @@
 
 /js/shopSettingsAdmin.js
   Cache-Control: no-cache
+
+
+/js/api.js
+  Cache-Control: no-cache
+/js/proTrial.js
+  Cache-Control: no-cache
+/js/pages/billing.1.js
+  Cache-Control: no-cache
+/billing.html
+  Cache-Control: no-cache

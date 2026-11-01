@@ -28,9 +28,16 @@ function canAccessDashboard(){
     ));
 }
 
+function isLocalProTrial(){
+    const b=currentStatus?.billing;
+    return b?.plan_key==="pro" && b.billing_status==="trialing" && !b.stripe_subscription_id && !b.is_admin_plan_override && !b.is_business_trial;
+}
+
 function isCurrentPlan(plan){
     return canAccessDashboard() && currentStatus.billing.plan_key === plan.key &&
-        !(plan.key === "business" && currentStatus.billing.is_business_trial);
+        !(plan.key === "business" && currentStatus.billing.is_business_trial) &&
+        !(plan.key === "pro" && isLocalProTrial()) &&
+        !(plan.key === "free" && currentStatus.billing.is_free_fallback);
 }
 
 function updateDashboardButtons(){
@@ -66,6 +73,7 @@ function planDescription(key){
 }
 
 function buttonLabel(plan){
+    if(plan.key === "pro" && isLocalProTrial()) return "Subscribe to Pro";
     if(plan.key === "business" && currentStatus?.billing?.is_business_trial) return "Subscribe to Business";
     if(isCurrentPlan(plan)){
         return "Current Plan";
@@ -115,6 +123,7 @@ function renderStatus(data){
     text.innerText = line;
     updateDashboardButtons();
     InventoryBusinessTrial.billing(data,loadBilling);
+    window.InventoryProTrial?.billing(data,loadBilling);
 }
 
 function renderPlans(plans){
@@ -262,3 +271,4 @@ async function openPortal(){
 }
 
 loadBilling();
+

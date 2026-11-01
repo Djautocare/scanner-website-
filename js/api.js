@@ -66,3 +66,13 @@ const InventoryAPI=(function(){
 
 
 
+
+
+// Local Pro-trial notices share the existing Business-trial controls layout.
+(function(){
+ function loadProTrial(){
+  if(!InventoryAPI.isLoggedIn()||window.InventoryProTrial||document.getElementById('inventoryos-pro-trial-script'))return;
+  const script=document.createElement('script');script.id='inventoryos-pro-trial-script';script.src='/js/proTrial.js?v=1';script.async=true;document.head.append(script);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadProTrial,{once:true});else loadProTrial();
+})();
