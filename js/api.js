@@ -42,7 +42,7 @@ const InventoryAPI=(function(){
   }
   return {success:false,error:'Too many batch picks for one operation. Split this into smaller operations.'};
  };
- function load(){if(!InventoryAPI.isLoggedIn()||window.InventoryManufacturing)return;const s=document.createElement('script');s.src='js/manufacturingShared.js?v=1';s.async=true;document.head.append(s);}
+ function load(){if(!InventoryAPI.isLoggedIn()||window.InventoryManufacturing)return;const s=document.createElement('script');s.src='js/manufacturingShared.js?v=workspace-20261102';s.async=true;document.head.append(s);}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
 })();
 
@@ -59,7 +59,7 @@ const InventoryAPI=(function(){
 (function(){
  function loadRetail(){
   if(!InventoryAPI.isLoggedIn()||window.InventoryRetail||document.getElementById('inventoryos-retail-script'))return;
-  const script=document.createElement('script');script.id='inventoryos-retail-script';script.src='retail/shared.js?v=7';script.async=true;document.head.append(script);
+  const script=document.createElement('script');script.id='inventoryos-retail-script';script.src='retail/shared.js?v=workspace-20261102';script.async=true;document.head.append(script);
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadRetail,{once:true});else loadRetail();
 })();

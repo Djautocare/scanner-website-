@@ -58,118 +58,42 @@ const InventoryOSAppShell = (function(){
     };
 
     const NAV_GROUPS = [
-        {
-            label:"Workspace",
-            items:[
-                {
-                    key:"dashboard",
-                    href:"index.html",
-                    icon:"⌂",
-                    label:"Dashboard"
-                },
-                {
-                    key:"add",
-                    href:"add.html",
-                    icon:"＋",
-                    label:"Add stock"
-                },
-                {
-                    key:"remove",
-                    href:"remove.html",
-                    icon:"−",
-                    label:"Remove stock"
-                },
-                {
-                    key:"discard",
-                    href:"discard.html",
-                    icon:"×",
-                    label:"Discard stock"
-                },
-                {
-                    key:"refund",
-                    href:"refund.html",
-                    icon:"↶",
-                    label:"Refunds"
-                },
-                {
-                    key:"search",
-                    href:"search.html",
-                    icon:"⌕",
-                    label:"Search stock"
-                },
-                {
-                    key:"move",
-                    href:"move.html",
-                    icon:"↔",
-                    label:"Move stock"
-                },
-                {
-                    key:"boxes",
-                    href:"boxes.html",
-                    icon:"▦",
-                    label:"Locations",
-                    locationPlural:true
-                }
-            ]
-        },
-        {
-            label:"Operations",
-            items:[
-                {
-                    key:"barcode",
-                    href:"barcodeprinting.html",
-                    icon:"▥",
-                    label:"Barcode printing"
-                },
-                {
-                    key:"dispatch",
-                    href:"dispatch-centre.html",
-                    icon:"▣",
-                    label:"Dispatch Centre"
-                },
-                {
-                    key:"corrections",
-                    href:"corrections.html",
-                    icon:"✎",
-                    label:"Corrections"
-                },
-                {
-                    key:"reorders",
-                    href:"reorders.html",
-                    icon:"↻",
-                    label:"Reordering"
-                }
-            ]
-        },
-        {
-            label:"Reports",
-            items:[
-                {
-                    key:"sales",
-                    href:"salestracker.html",
-                    icon:"⌁",
-                    label:"Sales tracker"
-                },
-                {
-                    key:"expenses",
-                    href:"expenses.html",
-                    icon:"£",
-                    label:"Expenses"
-                },
-                {
-                    key:"stale",
-                    href:"stale.html",
-                    icon:"◷",
-                    label:"Stale stock"
-                },
-                {
-                    key:"settings",
-                    href:"settings.html",
-                    icon:"⚙",
-                    label:"Settings"
-                }
-            ]
-        }
+        {label:"Workspace",items:[
+            {key:"dashboard",href:"index.html",icon:"⌂",label:"Dashboard"},
+            {key:"setup",href:"getting-started.html?replay=1",icon:"◇",label:"Start here"}
+        ]},
+        {label:"Stock",collapsible:true,items:[
+            {key:"add",href:"add.html",icon:"＋",label:"Add stock"},
+            {key:"search",href:"search.html",icon:"⌕",label:"Find stock"},
+            {key:"remove",href:"remove.html",icon:"−",label:"Remove stock"},
+            {key:"move",href:"move.html",icon:"↔",label:"Move stock"},
+            {key:"boxes",href:"boxes.html",icon:"▦",label:"Locations",locationPlural:true},
+            {key:"discard",href:"discard.html",icon:"×",label:"Discard stock"},
+            {key:"refund",href:"refund.html",icon:"↶",label:"Returns & refunds"}
+        ]},
+        {label:"Dispatch & ordering",items:[
+            {key:"dispatch",href:"dispatch-centre.html",icon:"▣",label:"Dispatch Centre"},
+            {key:"reorders",href:"reorders.html",icon:"↻",label:"Reordering"}
+        ]},
+        {label:"Sales & finances",collapsible:true,items:[
+            {key:"sales",href:"salestracker.html",icon:"⌁",label:"Sales tracker"},
+            {key:"expenses",href:"expenses.html",icon:"£",label:"Expenses"},
+            {key:"stale",href:"stale.html",icon:"◷",label:"Slow stock"},
+            {key:"corrections",href:"corrections.html",icon:"✎",label:"Activity & corrections"}
+        ]},
+        {label:"Labels & tools",collapsible:true,items:[
+            {key:"barcode",href:"barcodeprinting.html",icon:"▥",label:"Barcode / SKU labels"},
+            {key:"printjobs",href:"printjobs.html",icon:"▤",label:"Print jobs"},
+            {key:"boxlabels",href:"boxlabels.html",icon:"▦",label:"Location labels"},
+            {key:"snapshotbox",href:"snapshotbox.html",icon:"□",label:"Location snapshot"},
+            {key:"mysteryboxes",href:"mysteryboxes.html",icon:"◇",label:"Mystery boxes"}
+        ]},
+        {label:"Your workspace",items:[
+            {key:"settings",href:"settings.html",icon:"⚙",label:"Settings"},
+            {key:"guide",href:"settings.html#guide",icon:"?",label:"Guide & tutorials"},
+            {key:"help",href:"settings.html#help",icon:"◇",label:"Get help"}
+        ]},
+        {label:"Other areas",areaLinks:true,items:[]}
     ];
 
     function currentRouteName(){
@@ -243,6 +167,16 @@ const InventoryOSAppShell = (function(){
 
             "settings":"settings",
 
+            "workspace-settings":"settings",
+            "workspace-members":"settings",
+            "printer-setup":"barcode",
+            "printjobs":"printjobs",
+            "boxlabels":"boxlabels",
+            "snapshotbox":"snapshotbox",
+            "mysteryboxes":"mysteryboxes",
+            "boxcontents":"boxes",
+            "reprint":"barcode",
+            "shipping-labels":"dispatch",
             "corrections":"corrections",
             "correction":"corrections",
             "reorders":"reorders",
@@ -560,18 +494,13 @@ const InventoryOSAppShell = (function(){
                         })
                         .join("");
 
-                return `
-                    <div class="ios-shell-nav-label">
-                        ${escapeHtml(group.label)}
-                    </div>
+                const navigation = `<nav class="ios-shell-nav" aria-label="${escapeHtml(group.label)}" ${group.areaLinks ? 'data-design-area-links' : ''}>${links}</nav>`;
+                if(group.collapsible){
+                    const open = group.items.some(item=>item.key===activeKey);
+                    return `<details class="design-nav-group" ${open ? 'open' : ''}><summary>${escapeHtml(group.label)}</summary>${navigation}</details>`;
+                }
+                return `<div class="ios-shell-nav-label">${escapeHtml(group.label)}</div>${navigation}`;
 
-                    <nav
-                        class="ios-shell-nav"
-                        aria-label="${escapeHtml(group.label)}"
-                    >
-                        ${links}
-                    </nav>
-                `;
             })
             .join("");
     }
@@ -1147,7 +1076,8 @@ const InventoryOSAppShell = (function(){
         initialise,
         openMenu,
         closeMenu,
-        currentPageKey
+        currentPageKey,
+        navigation:buildNavigation
     };
 })();
 

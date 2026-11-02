@@ -120,19 +120,19 @@
             p(shots.manufacturing,727,509,'Enable for this workspace','The switch is off by default. An owner or admin enables it for everyone in this workspace.',[701,490,332,41]),
             p(shots.manufacturing,612,577,'Open Manufacturing','Open the page from this link or the sidebar. Select one inventory for materials, recipes and production.',[547,564,157,27])
         ],'manufacturing'));
-        replace(business,'Receive measured materials',step('materials','Receive measured materials','Create raw materials and packaging, then record their received batches and locations.','manufacturing.html#materials',shots.materials,[
+        replace(business,'Receive measured materials',step('materials','Receive measured materials','Create raw materials and packaging, then record their received batches and locations.','manufacturing/index.html#materials',shots.materials,[
             p(shots.materials,1475,411,'Add a material','Create materials using the appropriate units: each, grams, litres, metres and their compatible units. Whole-item saleable stock is tracked separately.',[1423,390,109,43]),
             p(shots.materials,1595,411,'Receive a batch','Record its quantity, batch number, storage location and optional expiry when receiving stock.',[1533,390,121,43]),
             p(shots.materials,603,548,'Check eligible stock','Cards show what is eligible for production. Expired, held and recalled batches are excluded.',[469,457,288,240]),
             p(shots.materials,622,620,'Keep supplier details','Supplier details support ordering materials. Archive a material only when it is no longer needed.',[560,601,124,41])
         ],'manufacturing'));
-        replace(business,'Create a product recipe',step('recipe','Create a product recipe','A bill of materials records the quantities required for one finished item.','manufacturing.html#recipes',shots.recipeTop,[
+        replace(business,'Create a product recipe',step('recipe','Create a product recipe','A bill of materials records the quantities required for one finished item.','manufacturing/index.html#recipes',shots.recipeTop,[
             p(shots.recipeTop,1442,411,'Create a recipe','Choose Create recipe. Link it to an existing finished product and barcode, or create a new finished product first.',[1387,391,267,40]),
             p(shots.recipeCard,704,619,'Amounts are per finished item','Check every component quantity and unit. Production and the calculator multiply these amounts by the number of finished items.',[483,570,481,107]),
             p(shots.recipeCard,529,737,'Edit or archive a recipe','Edit recipe changes the definition for future work. Archive hides recipes you no longer need.',[483,717,170,43])
         ],'manufacturing'));
         const recipeIndex=business.steps.findIndex(s=>s.id==='recipe');
-        business.steps.splice(recipeIndex+1,0,step('recipe-calculator','Calculate and combine material orders','Plan one or several recipes, combine their shared ingredients and send only the shortage to Reordering.','manufacturing.html#calculate',shots.calculate,[
+        business.steps.splice(recipeIndex+1,0,step('recipe-calculator','Calculate and combine material orders','Plan one or several recipes, combine their shared ingredients and send only the shortage to Reordering.','manufacturing/index.html#calculate',shots.calculate,[
             p(shots.calculate,1002,330,'Choose recipes and finished quantities','Select a recipe and how many finished items you want. Add another recipe to plan several together.',[459,275,1186,91]),
             p(shots.calculate,612,413,'Calculate requirements','The preview combines shared materials and considers eligible available stock and earlier pending plans.',[459,392,325,41]),
             p(shots.calculate,1076,693,'Review the combined order','Compare the required, available and combined-order columns. Calculating does not consume or reserve stock.',[459,576,1186,233]),
@@ -143,20 +143,20 @@
             p(shots.calculate,580,899,'One consolidated material plan','Keep shared ingredients together rather than ordering separately for every recipe. Remove pending plans you no longer need.',[459,880,245,39]),
             p(shots.calculate,1077,517,'Daily reminder for recipe materials','With the optional reorder-email add-on enabled, recipe materials are combined into one daily email. The default is 17:00 UK time unless you change the recipe summary time.',[459,462,1186,97])
         ],'manufacturing'));
-        replace(business,'Preview and complete production',step('production','Preview and complete production','Create the run with its recipe, finished quantity, batch details and destination, then review the material picks.','manufacturing.html#production',shots.production,[
+        replace(business,'Preview and complete production',step('production','Preview and complete production','Create the run with its recipe, finished quantity, batch details and destination, then review the material picks.','manufacturing/index.html#production',shots.production,[
             p(shots.production,859,325,'Check the source batches','The preview names the eligible material batches that will be consumed.',[659,282,585,66]),
             p(shots.production,1004,488,'Follow locations and quantities','Pick the listed amount from each source location. The example includes Holding as a material source.',[659,439,585,68]),
             p(shots.production,933,878,'Wait until the products are ready','Confirm only when the materials have been used and the finished products are ready. Start a ready timer first if they still need time.',[641,852,620,49]),
             p(shots.production,785,960,'Complete production','Completion deducts the materials and adds finished stock together. If the plan changes, review a fresh preview before confirming.',[701,939,167,40])
         ],'manufacturing'));
-        replace(business,'Maintain tools and set timers',step('timer','Set a timer that continues after logout','Use a deadline for product readiness, cleaning or another task. A timer does not automatically complete production.','manufacturing.html#timers',shots.timer,[
+        replace(business,'Maintain tools and set timers',step('timer','Set a timer that continues after logout','Use a deadline for product readiness, cleaning or another task. A timer does not automatically complete production.','manufacturing/index.html#timers',shots.timer,[
             p(shots.timer,951,399,'Name the task and type','Choose a clear name and reminder type, such as Product ready or cleaning.',[641,355,636,142]),
             p(shots.timer,951,546,'Choose a duration','Set the number and time unit. This example is ready in 10 hours.',[641,504,636,65]),
             p(shots.timer,951,666,'Optional email reminder','Choose optional linked equipment and whether to email your verified account when due. The deadline continues while you are logged out.',[641,577,636,106]),
             p(shots.timer,691,847,'Start the timer','Start timer saves the deadline. When it is due, acknowledge it and separately record cleaning or complete production.',[641,827,101,40])
         ],'manufacturing'));
         const trace=business.steps.find(s=>s.title==='Trace, hold or recall batches');trace.audience='manufacturing';
-        business.steps.push({id:'equipment',title:'Track equipment uses and maintenance',description:'Record usage and cleaning thresholds separately from elapsed reminder time.',audience:'manufacturing',demo:'equipment',url:'manufacturing.html#equipment',points:[
+        business.steps.push({id:'equipment',title:'Track equipment uses and maintenance',description:'Record usage and cleaning thresholds separately from elapsed reminder time.',audience:'manufacturing',demo:'equipment',url:'manufacturing/index.html#equipment',points:[
             {x:27,y:24,title:'Register the equipment',detail:'Set a use limit, an operating-hour limit or a cleaning interval for the tool.'},
             {x:40,y:52,title:'Link usage to recipes',detail:'Recipes can record uses or operating hours per batch or per finished item. Completed production records that usage.'},
             {x:70,y:79,title:'Record maintenance',detail:'Record cleaning or replacement when the work is actually done. Timer duration is not automatically treated as operating hours.'}
