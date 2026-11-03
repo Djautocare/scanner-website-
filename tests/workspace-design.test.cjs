@@ -6,7 +6,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const root=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-function element(){return {innerHTML:'',textContent:'',hidden:false,value:'',style:{},classList:{add(){},remove(){},contains(){return false;},toggle(){}},setAttribute(){},removeAttribute(){},addEventListener(){},querySelector(){return element();},querySelectorAll(){return [];},after(){},focus(){}};}
+function element(){return {innerHTML:'',textContent:'',hidden:false,value:'',style:{},children:[],classList:{add(){},remove(){},contains(){return false;},toggle(){}},setAttribute(){},removeAttribute(){},addEventListener(){},querySelector(){return element();},querySelectorAll(){return [];},after(){},focus(){}};}
 function fixture(pathname='/index.html'){
  const nodes=new Map(),values=new Map(),context={console,URL,Date,Intl,JSON,Map,Set,Promise,encodeURIComponent,decodeURIComponent,setInterval(){},clearInterval(){},setTimeout(){},clearTimeout(){},CustomEvent:class{constructor(type,init){this.type=type;this.detail=init?.detail;}},crypto:{randomUUID:()=> 'fixture-id'}};
  context.document={readyState:'loading',hidden:false,body:element(),addEventListener(){},getElementById:id=>nodes.get(id)||nodes.set(id,element()).get(id),querySelector:selector=>nodes.get(selector)||nodes.set(selector,element()).get(selector),querySelectorAll:()=>[]};
@@ -92,7 +92,7 @@ test('Till offline navigation returns the HTML shell rather than a new styleshee
 });
 test('Retail and Till precaches include the exact released shared design assets and changed modules',()=>{
  const retail=read('retail/sw.js'),till=read('retail/till/sw.js');
- for(const sw of [retail,till])for(const file of ['css/workspaceDesign.css?v=20261102','js/workspaceDesign.js?v=20261102'])assert(sw.includes(file));
- for(const file of ['retail.js','counter.js','shared.js'])assert(retail.includes(file+'?v=workspace-20261102'));
+ for(const sw of [retail,till])for(const file of ['css/workspaceDesign.css?v=smooth-20261103','js/workspaceDesign.js?v=smooth-20261103'])assert(sw.includes(file));
+ for(const file of ['retail.js','counter.js'])assert(retail.includes(file+'?v=smooth-20261103'));assert(retail.includes('shared.js?v=workspace-20261102'));
  assert(!/localStorage|indexedDB\.deleteDatabase/.test(retail+till));
 });

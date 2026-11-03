@@ -181,8 +181,14 @@
       `<p>Open the till while connected, then prepare this browser. Cash sales use saved products, prices and VAT details for up to 24 hours. Keep this browser and device until every sale has synced. Login, new product lookups, product edits, deliveries, counts, refunds and till opening/balancing require a connection.</p><p>${prepared ? 'Saved checkout authorisation expires ' + esc(when(prepared.expires_at)) + '.' : 'Connect and open a till to prepare cash checkout.'}</p><p class="retail-help">Do not clear browser data or use private browsing for offline trading. Browser storage can be removed by the device; download a backup of unsynced sales before changing devices. Other tills may change stock while this one is offline; syncing applies sale quantities to current stock rather than replacing it.</p><div class="retail-action-row">${button('Sync now', 'offline-sync')}${button('Download saved sales backup', 'offline-backup', '', !offlineState.operations.length)}</div>` +
       table(['Sale', 'Amount', 'Sync status'], offlineState.operations.map(o => `<tr><td>${esc(o.sale.reference)}<small>${when(o.sale.created_at)}</small>${button('Receipt', 'offline-receipt', 'data-id="' + o.id + '"')}</td><td>${pounds(o.sale.total_pence)}</td><td>${esc(o.status === 'applied' ? 'Confirmed; refreshing stock' : o.status)}${o.error ? '<small>' + esc(o.error) + '</small>' : ''}</td></tr>`), 'No cash sales awaiting sync.'));
   }
-  function render() {
-    if(window.InventoryRetailInteractions?.defer(render))return;
+  function renderNavigation(){
+    const navKey=JSON.stringify([online,data?.role,data?.business?.config.features,data?.counts?.filter(c=>c.status==='pending').length,platformAdminScope]);
+    if(navKey!==lastNavKey){$('#retailNav').innerHTML=counterUI.nav([...nav,...businessUI.nav()],view);lastNavKey=navKey;}
+    else counterUI.selectNavigation(view);
+  }
+  function render(options={}) {
+    if(options?.navigation)window.InventoryRetailInteractions?.settled?.(render);
+    else if(window.InventoryRetailInteractions?.defer(render))return;
     $('#retailNotice').hidden=platformView();
     const tenderedBefore = $('#retailCheckoutForm input[name=tendered]')?.value;
     document.body.classList.toggle('retail-till-mode', tillMode);
@@ -191,8 +197,7 @@
     if (!names[view]) view = 'dashboard';
     $('#retailTitle').textContent = names[view];
     window.dispatchEvent(new CustomEvent('inventoryos-workspace-view',{detail:{area:'retail',view}}));
-    const navKey=JSON.stringify([view,online,data?.role,data?.business?.config.features,data?.counts?.filter(c=>c.status==='pending').length,platformAdminScope]);
-    if(navKey!==lastNavKey){$('#retailNav').innerHTML=counterUI.nav([...nav,...businessUI.nav()],view);lastNavKey=navKey;}
+    renderNavigation();
     if(view==='store-location'){
       $('#retailView').innerHTML='<div id="retailLocationView"></div>';InventoryRetailLocation.mount({refresh,notice,changeBlocked:()=>checkoutBusy||pending()?'Finish or recover the pending transaction before changing store.':basket.length?'Finish, park or clear the basket before changing store.':offlineState.operations.length?'Sync the saved sales before changing store.':''});$('#retailSyncStatus').hidden=true;return;
     }
@@ -206,7 +211,7 @@
       window.InventoryRetailPlatform.mount(view==='staff-access'?'staff':view==='retail-billing'?'billing':'tills',{
        inventory:selected().inventory,
        changeBlocked:()=>checkoutBusy||pending()?'Finish or recover the pending transaction before changing store.':basket.length?'Finish, park or clear the basket before changing store.':offlineState.operations.length?'Sync the saved sales before changing store.':'',
-       authorized:()=>{if(context!==scopeKey())return;platformAdminScope=context;$('#retailConnection').textContent='Connected';$('#retailConnection').classList.add('connected');$('#retailNav').innerHTML=counterUI.nav([...nav,...businessUI.nav()],view);},
+       authorized:()=>{if(context!==scopeKey())return;platformAdminScope=context;$('#retailConnection').textContent='Connected';$('#retailConnection').classList.add('connected');renderNavigation();},
        storeChanged:async()=>{lastNavKey='';await InventoryRetailLocation.init();refresh();}
       });$('#retailSyncStatus').hidden=true;return;
     }
@@ -228,7 +233,7 @@
   function switchView(next) {
     if (checkoutBusy) return;
     window.InventoryRetailScanner?.stop();
-    tillMode = next === 'till'; view = tillMode ? 'checkout' : next; search = ''; history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(tillMode ? 'till' : view)); render();
+    tillMode = next === 'till'; view = tillMode ? 'checkout' : next; search = ''; history.replaceState(null, '', location.pathname + location.search + '#' + encodeURIComponent(tillMode ? 'till' : view)); render({navigation:true});
     setMenu(false);
     if (view === 'checkout') $('#retailSearch')?.focus(); else $('#main').focus({ preventScroll: true });
     if(ready&&navigator.onLine&&!platformView()&&!['help','store-location'].includes(view)&&(!data||subscriptionInactive()))refresh();

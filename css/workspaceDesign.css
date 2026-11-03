@@ -25,6 +25,8 @@ body[data-workspace-design] h1{font-size:clamp(25px,2.2vw,32px)!important;letter
 body[data-workspace-design] :is(.subtitle,.helper,.helper-text,.small-note,.hint,.muted,.retail-muted,.retail-help,.mfg-muted){color:var(--muted)!important;line-height:1.65}
 body[data-workspace-design] :is(.ios-shell-app,.dashboard-app,.retail-layout){grid-template-columns:249px minmax(0,1fr)}
 body[data-workspace-design] :is(.ios-shell-sidebar,.dashboard-sidebar,.retail-sidebar){width:249px;background:var(--sidebar)!important;border-right:1px solid var(--line)!important;box-shadow:none!important;padding:27px 17px 16px}
+/* Navigation targets stay stationary while a touch/click is landing. */
+body[data-workspace-design] :is(.ios-shell-sidebar,.dashboard-sidebar,.retail-sidebar){transition:none!important}
 body[data-workspace-design] :is(.ios-shell-sidebar,.dashboard-sidebar){position:fixed;inset:0 auto 0 0;display:flex;flex-direction:column;height:100dvh}
 body[data-workspace-design] :is(.ios-shell-brand,.sidebar-brand,.retail-brand){font-size:24px;font-weight:750;color:var(--text)!important;letter-spacing:-1px;padding:0 10px 22px;margin:0 0 17px;border-bottom:1px solid var(--line);text-decoration:none}
 body[data-workspace-design] :is(.ios-shell-brand-name>span,.sidebar-brand-name>span,.retail-brand-os){color:var(--accent)!important}
@@ -63,6 +65,9 @@ body[data-workspace-design] :is(.dashboard-avatar,.ios-shell-header-avatar){grid
 body[data-workspace-design] :is(.dashboard-toolbar,.ios-shell-header-tools){grid-column:1/-1;grid-row:2;width:100%;min-width:0;background:none!important;box-shadow:none!important;padding:0;border:0;display:flex;gap:0}
 body[data-workspace-design] .ios-shell-header-tools .ios-shell-header-avatar{display:none}
 body[data-workspace-design] #inventory-topbar{width:100%;margin:0!important}
+body[data-workspace-design][data-topbar-present] #inventory-topbar{min-height:74px}
+body[data-workspace-design][data-topbar-present] #inventory-topbar:empty:before{content:'Loading workspace…';display:flex;align-items:center;min-height:74px;padding:0 16px;color:var(--muted);font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-sizing:border-box}
+body[data-workspace-design] [data-design-theme]{min-width:74px;justify-content:center}
 body[data-workspace-design] :is(.page,.ios-shell-content .page>.panel){max-width:none!important;width:100%;margin:0!important;padding:0!important;border:0!important;background:none!important;box-shadow:none!important}
 body[data-workspace-design] :is(.dashboard-content-grid,.retail-grid){gap:22px}
 body[data-workspace-design] :is(.form-card,.card,.dashboard-panel,.retail-card,.mfg-card,.settings-group,.account-group,.profile-card,.bundle-card,.plan-card,.history-card){background:var(--panel)!important;border:1px solid var(--line)!important;color:var(--text)!important;border-radius:14px!important;box-shadow:none!important;min-width:0}
@@ -114,6 +119,15 @@ body[data-workspace-design] .retail-header-actions :is(a,button){font-size:11px!
 .design-intro h2{font-size:23px;margin:3px 0 9px;letter-spacing:-.5px}.design-intro p{margin:0;color:var(--muted);font-size:12px;max-width:650px}.design-eyebrow{color:var(--accent);font-size:9px;letter-spacing:1.4px;font-weight:750}
 .design-intro .mfg-actions{flex-shrink:0}.design-intro .mfg-actions a{color:var(--accent);font-size:12px;text-underline-offset:3px}
 .design-form-section{color:var(--accent)!important;font-size:11px!important;letter-spacing:.7px;text-transform:uppercase;margin:20px 0 10px!important;border-top:1px solid var(--line);padding-top:16px}
+/* Resolve a Guide/Help deep link before scripts hydrate the tab controls. */
+html[data-settings-view=settingsPanel] #settingsPanel.settings-view,
+html[data-settings-view=guidePanel] #guidePanel.settings-view,
+html[data-settings-view=helpPanel] #helpPanel.settings-view,
+html[data-settings-view=stackPanel] #stackPanel.settings-view{display:block!important}
+html[data-settings-view=settingsPanel] .settings-view:not(#settingsPanel),
+html[data-settings-view=guidePanel] .settings-view:not(#guidePanel),
+html[data-settings-view=helpPanel] .settings-view:not(#helpPanel),
+html[data-settings-view=stackPanel] .settings-view:not(#stackPanel){display:none!important}
 /* Both guided practice and the Settings guide use the workspace palette. */
 .practice-body{--practice-button-ink:var(--accent-ink)}
 .practice-sidebar{width:249px;background:var(--sidebar)!important;border-color:var(--line)!important}.practice-layout{grid-template-columns:249px minmax(0,1fr)}
@@ -144,7 +158,11 @@ body[data-workspace-design] .mfg-grid>.mfg-card:nth-child(2) .mfg-stat{color:var
 body[data-workspace-design] .mfg-grid>.mfg-card:nth-child(3) .mfg-stat{color:var(--design-amber)}
 @media(min-width:901px){body[data-workspace-design] .ios-shell-main{grid-column:2}body[data-workspace-design] .dashboard-main{grid-column:2}}
 @media(max-width:1120px){.design-workflow{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-workspace-design] .retail-header{flex-direction:column}.retail-header-actions{justify-content:flex-start!important}}
-@media(max-width:900px){body[data-workspace-design] :is(.ios-shell-app,.dashboard-app){display:block}body[data-workspace-design] :is(.ios-shell-sidebar,.dashboard-sidebar){width:249px;transform:translateX(-105%);z-index:100}body.ios-shell-menu-open .ios-shell-sidebar,body.sidebar-open .dashboard-sidebar{transform:translateX(0)}body[data-workspace-design] :is(.ios-shell-main,.dashboard-main){margin:0;width:100%;padding-inline:24px}.design-utilitybar{margin-inline:-24px;padding-inline:24px}.design-workflow{gap:12px}}
+@media(max-width:900px){body[data-workspace-design] :is(.ios-shell-app,.dashboard-app){display:block}body[data-workspace-design] :is(.ios-shell-sidebar,.dashboard-sidebar){width:249px;transform:translateX(-105%);z-index:100}body.ios-shell-menu-open .ios-shell-sidebar,body.sidebar-open .dashboard-sidebar{transform:translateX(0)}body[data-workspace-design] :is(.ios-shell-main,.dashboard-main){margin:0;width:100%;padding-inline:24px}.design-utilitybar{margin-inline:-24px;padding-inline:24px}.design-workflow{gap:12px}
+body[data-workspace-design] :is(.ios-shell-header,.dashboard-top){grid-template-columns:38px minmax(0,1fr) 35px}
+body[data-workspace-design] :is(.ios-shell-mobile-menu,.mobile-menu-button){grid-column:1;grid-row:1;display:grid!important;width:38px;min-height:38px;margin:0;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text)}
+body[data-workspace-design] :is(.ios-shell-heading,.dashboard-heading){grid-column:2;grid-row:1}
+body[data-workspace-design] :is(.dashboard-avatar,.ios-shell-header-avatar){grid-column:3;grid-row:1}}
 @media(max-width:760px){body[data-workspace-design] .retail-layout,.practice-layout{display:block}body[data-workspace-design] .retail-sidebar{position:fixed;width:249px;inset:0 auto 0 0;height:100dvh;transform:translateX(-105%);z-index:100}body[data-workspace-design] .retail-sidebar.open{transform:translateX(0)}body[data-workspace-design] :is(.ios-shell-main,.dashboard-main,.retail-main){padding:0 18px 28px}.design-utilitybar{min-height:64px;padding:12px 18px;margin:0 -18px 23px;gap:8px}.design-breadcrumb{gap:7px}.design-breadcrumb>span{display:none}.design-utilities{gap:6px}.design-area-chip{font-size:8px}.design-utilities :is(a,button){font-size:10px!important;padding:7px 9px!important}.design-utilities [data-design-theme]{max-width:74px}.design-utilitybar .design-breadcrumb b{max-width:116px}
 body[data-workspace-design] :is(.stat-grid,.retail-metrics){grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:20px}
 body[data-workspace-design] :is(.stat-card,.retail-metric){padding:16px}.stat-grid .stat-card:last-child:nth-child(odd){grid-column:1/-1}
@@ -163,6 +181,7 @@ body[data-workspace-design] :is(input,select,textarea){font-size:16px!important}
 .design-intro{align-items:flex-start;flex-direction:column;padding:20px}.design-intro h2{font-size:21px}
 .practice-shell main{padding:25px 18px!important}.practice-header,.practice-banner{padding-inline:18px}.practice-header{min-height:64px}.practice-page-heading h1{font-size:25px!important}.practice-body .design-utilitybar{padding-inline:18px}.practice-body .design-utilitybar .design-breadcrumb b{max-width:150px}
 .practice-sidebar{width:100%}.practice-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.practice-stat:last-child:nth-child(odd){grid-column:1/-1}
+body[data-workspace-design][data-topbar-present] #inventory-topbar,body[data-workspace-design][data-topbar-present] #inventory-topbar:empty:before{min-height:91px}
 .settings-tabs{display:flex!important;overflow-x:auto;flex-wrap:nowrap!important;max-width:100%;padding-bottom:7px;gap:8px}.settings-tabs>button{white-space:nowrap;flex-shrink:0}
 .tour-tiers{grid-template-columns:repeat(2,minmax(0,1fr))}.tour-shell{grid-template-columns:1fr}.tour-steps{position:static}
 body[data-workspace-design] :is(.retail-table,.mfg-table){min-width:560px}

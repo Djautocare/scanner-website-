@@ -1,8 +1,299 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Create reorder rule | InventoryOS</title><link rel="stylesheet" href="css/theme.css?v=contrast-1"><link rel="stylesheet" href="css/inventoryTopbar.css"><link rel="stylesheet" href="css/appShell.css?v=3"><style>*{box-sizing:border-box}body{margin:0;padding:18px;background:#0d0d0d;color:#f7f7f8;font-family:Arial,sans-serif}.page{max-width:780px;margin:auto}.panel{background:linear-gradient(180deg,#1d1d1d,#151515);border:1px solid #ffffff14;border-radius:18px;padding:24px}h1{margin:8px 0}.subtitle,.helper{color:#aaa}.field{margin:16px 0;position:relative}.field label{display:block;margin-bottom:6px;color:#ddd;font-weight:700;font-size:14px}.field input{width:100%;padding:12px;background:#101015;border:1px solid #3b3b45;border-radius:10px;color:#fff;font-size:15px}.helper{font-size:12px;margin-top:5px;line-height:1.4}.suggestions{display:none;position:absolute;z-index:20;top:100%;left:0;right:0;max-height:240px;overflow:auto;background:#202027;border:1px solid #4b4b55;border-radius:10px}.suggestions.open{display:block}.suggestion{display:block;width:100%;border:0;border-bottom:1px solid #3c3c44;background:transparent;color:#fff;text-align:left;padding:11px;cursor:pointer}.selected{color:#9be4a1;font-size:13px;margin-top:6px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.actions button,.actions a{border:0;border-radius:10px;padding:12px 16px;background:#7952e8;color:white;font-weight:700;cursor:pointer;text-decoration:none}.actions .secondary{background:#30303a}.status{min-height:22px;color:#aaa;margin-top:10px}.locked{display:none;padding:18px;border:1px solid #ffb84d55;border-radius:14px;background:#ffb84d14}.locked.show{display:block}.hidden{display:none!important}@media(max-width:650px){.panel{padding:17px}}</style><link rel="stylesheet" href="/css/workspaceDesign.css?v=20261102">
-<script src="/js/workspaceDesign.js?v=20261102" defer></script>
+<html lang="en"><head><script src="/js/workspaceBoot.js?v=smooth-20261103"></script><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Create reorder rule | InventoryOS</title><link rel="stylesheet" href="css/theme.css?v=contrast-1"><link rel="stylesheet" href="css/inventoryTopbar.css"><link rel="stylesheet" href="css/appShell.css?v=3"><style>*{box-sizing:border-box}body{margin:0;padding:18px;background:#0d0d0d;color:#f7f7f8;font-family:Arial,sans-serif}.page{max-width:780px;margin:auto}.panel{background:linear-gradient(180deg,#1d1d1d,#151515);border:1px solid #ffffff14;border-radius:18px;padding:24px}h1{margin:8px 0}.subtitle,.helper{color:#aaa}.field{margin:16px 0;position:relative}.field label{display:block;margin-bottom:6px;color:#ddd;font-weight:700;font-size:14px}.field input{width:100%;padding:12px;background:#101015;border:1px solid #3b3b45;border-radius:10px;color:#fff;font-size:15px}.helper{font-size:12px;margin-top:5px;line-height:1.4}.suggestions{display:none;position:absolute;z-index:20;top:100%;left:0;right:0;max-height:240px;overflow:auto;background:#202027;border:1px solid #4b4b55;border-radius:10px}.suggestions.open{display:block}.suggestion{display:block;width:100%;border:0;border-bottom:1px solid #3c3c44;background:transparent;color:#fff;text-align:left;padding:11px;cursor:pointer}.selected{color:#9be4a1;font-size:13px;margin-top:6px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.actions button,.actions a{border:0;border-radius:10px;padding:12px 16px;background:#7952e8;color:white;font-weight:700;cursor:pointer;text-decoration:none}.actions .secondary{background:#30303a}.status{min-height:22px;color:#aaa;margin-top:10px}.locked{display:none;padding:18px;border:1px solid #ffb84d55;border-radius:14px;background:#ffb84d14}.locked.show{display:block}.hidden{display:none!important}@media(max-width:650px){.panel{padding:17px}}</style><link rel="stylesheet" href="/css/workspaceDesign.css?v=smooth-20261103">
+<script src="/js/workspaceDesign.js?v=smooth-20261103" defer></script>
 </head>
-<body><div class="page"><div class="panel"><h1 id="pageTitle">Create item reorder rule</h1><p class="subtitle">Set your minimum stock level, supplier links and the quantity to replenish up to.</p><div id="locked" class="locked"></div>
+<body data-workspace-design="reseller" data-ios-page="reorders" class="inventoryos-shell-active" data-topbar-present=""><div id="iosShellMount" data-static-shell="1"><div class="ios-shell-overlay" id="iosShellOverlay"></div>
+
+            <div class="ios-shell-app">
+                <aside class="ios-shell-sidebar" id="iosShellSidebar">
+                    <a class="ios-shell-brand" href="index.html" aria-label="InventoryOS dashboard">
+                        <span class="ios-shell-brand-mark" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </span>
+
+                        <span class="ios-shell-brand-name">
+                            Inventory<span>OS</span>
+                        </span>
+                    </a>
+
+                    <div class="ios-shell-sidebar-scroll">
+                        <div class="ios-shell-nav-label">Workspace</div><nav class="ios-shell-nav" aria-label="Workspace">
+                                <a class="ios-shell-nav-link" href="index.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⌂
+                                    </span>
+
+                                    <span>
+                                        Dashboard
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="getting-started.html?replay=1">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◇
+                                    </span>
+
+                                    <span>
+                                        Start here
+                                    </span>
+                                </a>
+                            </nav><details class="design-nav-group"><summary>Stock</summary><nav class="ios-shell-nav" aria-label="Stock">
+                                <a class="ios-shell-nav-link" href="add.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ＋
+                                    </span>
+
+                                    <span>
+                                        Add stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="search.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⌕
+                                    </span>
+
+                                    <span>
+                                        Find stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="remove.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        −
+                                    </span>
+
+                                    <span>
+                                        Remove stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="move.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ↔
+                                    </span>
+
+                                    <span>
+                                        Move stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="boxes.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▦
+                                    </span>
+
+                                    <span data-location-plural>
+                                        Locations
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="discard.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ×
+                                    </span>
+
+                                    <span>
+                                        Discard stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="refund.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ↶
+                                    </span>
+
+                                    <span>
+                                        Returns &amp; refunds
+                                    </span>
+                                </a>
+                            </nav></details><div class="ios-shell-nav-label">Dispatch &amp; ordering</div><nav class="ios-shell-nav" aria-label="Dispatch &amp; ordering">
+                                <a class="ios-shell-nav-link" href="dispatch-centre.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▣
+                                    </span>
+
+                                    <span>
+                                        Dispatch Centre
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link active" href="reorders.html" aria-current="page">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ↻
+                                    </span>
+
+                                    <span>
+                                        Reordering
+                                    </span>
+                                </a>
+                            </nav><details class="design-nav-group"><summary>Sales &amp; finances</summary><nav class="ios-shell-nav" aria-label="Sales &amp; finances">
+                                <a class="ios-shell-nav-link" href="salestracker.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⌁
+                                    </span>
+
+                                    <span>
+                                        Sales tracker
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="expenses.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        £
+                                    </span>
+
+                                    <span>
+                                        Expenses
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="stale.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◷
+                                    </span>
+
+                                    <span>
+                                        Slow stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="corrections.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ✎
+                                    </span>
+
+                                    <span>
+                                        Activity &amp; corrections
+                                    </span>
+                                </a>
+                            </nav></details><details class="design-nav-group"><summary>Labels &amp; tools</summary><nav class="ios-shell-nav" aria-label="Labels &amp; tools">
+                                <a class="ios-shell-nav-link" href="barcodeprinting.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▥
+                                    </span>
+
+                                    <span>
+                                        Barcode / SKU labels
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="printjobs.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▤
+                                    </span>
+
+                                    <span>
+                                        Print jobs
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="boxlabels.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▦
+                                    </span>
+
+                                    <span>
+                                        Location labels
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="snapshotbox.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        □
+                                    </span>
+
+                                    <span>
+                                        Location snapshot
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="mysteryboxes.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◇
+                                    </span>
+
+                                    <span>
+                                        Mystery boxes
+                                    </span>
+                                </a>
+                            </nav></details><div class="ios-shell-nav-label">Your workspace</div><nav class="ios-shell-nav" aria-label="Your workspace">
+                                <a class="ios-shell-nav-link" href="settings.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⚙
+                                    </span>
+
+                                    <span>
+                                        Settings
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="settings.html#guide">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ?
+                                    </span>
+
+                                    <span>
+                                        Guide &amp; tutorials
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="settings.html#help">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◇
+                                    </span>
+
+                                    <span>
+                                        Get help
+                                    </span>
+                                </a>
+                            </nav><div class="ios-shell-nav-label">Other areas</div><nav class="ios-shell-nav" aria-label="Other areas" data-design-area-links></nav>
+                    </div>
+
+                    <div class="ios-shell-sidebar-footer">
+                        <div class="ios-shell-user">
+                            <div class="ios-shell-avatar" id="iosShellSidebarAvatar">
+                                YA
+                            </div>
+
+                            <div class="ios-shell-user-copy">
+                                <strong id="iosShellUserName">
+                                    Your account
+                                </strong>
+
+                                <span id="iosShellUserEmail">
+                                    Signed in
+                                </span>
+                            </div>
+
+                            <button class="ios-shell-logout" id="iosShellLogout" type="button" title="Log out" aria-label="Log out">
+                                ↪
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+
+                <main class="ios-shell-main">
+                    <div class="ios-shell-frame">
+                        <div class="design-utilitybar"><div class="design-breadcrumb"><span>Workspace /</span><b>InventoryOS Reseller</b></div><div class="design-utilities"><button type="button" data-design-action="theme" data-design-theme="" aria-label="Change appearance">Theme</button><a href="settings.html#guide">Setup guide ↗</a></div></div><header class="ios-shell-header">
+                            <button class="ios-shell-mobile-menu" id="iosShellMenuButton" type="button" aria-label="Open navigation" aria-expanded="false">
+                                ☰
+                            </button>
+
+                            <div class="ios-shell-heading" id="iosShellHeading"><h1 id="pageTitle">Create item reorder rule</h1><p class="subtitle">Set your minimum stock level, supplier links and the quantity to replenish up to.</p></div>
+
+                            <div class="ios-shell-header-tools">
+                                <div class="ios-shell-topbar-host" id="iosShellTopbarHost"><div id="inventory-topbar"></div></div>
+
+                                </div>
+                        <div class="ios-shell-header-avatar" id="iosShellHeaderAvatar">
+                                    YA
+                                </div>
+                            </header>
+
+                        <div class="ios-shell-content" id="iosShellContent"><div class="page"><div class="panel"><div id="locked" class="locked"></div>
 <form id="ruleForm"><div class="field"><label for="itemName">Item name</label><input id="itemName" name="item_name" autocomplete="off" maxlength="200" required placeholder="Start typing a product name"><div class="helper">Previously used items appear as suggestions. New items become available in Add Stock after saving.</div><div id="suggestions" class="suggestions"></div><div id="selectedItem" class="selected"></div></div>
 <div class="field"><label for="productUrl">Product web link</label><input id="productUrl" name="product_url" type="url" placeholder="https://supplier.co.uk/product"><div class="helper">Link directly to this item. Either this or the supplier website link is required.</div></div>
 <div class="field"><label for="websiteUrl">Supplier website link</label><input id="websiteUrl" name="website_url" type="url" placeholder="https://supplier.co.uk"><div class="helper">Use the supplier homepage if you do not have a product-specific link.</div></div>
@@ -10,7 +301,12 @@
 <div class="field"><label for="minimumStock">Minimum stock to trigger a reminder</label><input id="minimumStock" name="minimum_stock" type="number" min="0" step="1" value="2" required><div class="helper">The reorder appears when available stock reaches this number or lower.</div></div><div class="field"><label for="reorderTo">Reorder up to</label><input id="reorderTo" name="reorder_to" type="number" min="1" step="1" value="10" required><div class="helper">InventoryOS calculates the quantity needed to reach this target.</div></div>
 <div class="field"><label for="unitCost">Estimated cost per unit (£) <span class="helper">(optional)</span></label><input id="unitCost" name="unit_cost" type="number" inputmode="decimal" min="0" max="99999999.99" step="0.0001" placeholder="Leave blank if unknown"><div class="helper">Used to estimate an order total. You can change the total in Ordered before receiving it and creating its expense.</div></div>
 <div class="actions"><button id="saveBtn" type="submit">Save reorder rule</button><a class="secondary" href="reorders.html">Cancel</a></div><div id="status" class="status" role="status"></div></form></div></div>
-<script src="js/theme.js?v=contrast-1"></script><script src="/js/onboarding-gate.js?v=1"></script>
-<script src="js/api.js?v=workspace-20261102"></script><script src="js/workspace.js?v=5"></script><script src="js/inventoryTopbar.js?v=5"></script><script src="/js/pages/reorder-rule.1.js?v=security-1"></script><script src="js/appShell.js?v=workspace-20261102"></script></body></html>
+</div>
+                    </div>
+                </main>
+            </div>
+        </div>
+<script src="js/theme.js?v=smooth-20261103"></script><script src="/js/onboarding-gate.js?v=1"></script>
+<script src="js/api.js?v=workspace-20261102"></script><script src="js/workspace.js?v=5"></script><script src="js/inventoryTopbar.js?v=smooth-20261103"></script><script src="/js/pages/reorder-rule.1.js?v=security-1"></script><script src="js/appShell.js?v=smooth-20261103"></script></body></html>
 
 

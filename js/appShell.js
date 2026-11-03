@@ -783,16 +783,6 @@ const InventoryOSAppShell = (function(){
                 closeMenu
             );
 
-        document
-            .querySelectorAll(
-                ".ios-shell-nav-link"
-            )
-            .forEach(link => {
-                link.addEventListener(
-                    "click",
-                    closeMenu
-                );
-            });
 
         document
             .getElementById(
@@ -908,12 +898,15 @@ const InventoryOSAppShell = (function(){
     }
 
     function initialise(){
-        if(
-            document.body.classList
-                .contains(
-                    "inventoryos-shell-active"
-                )
-        ){
+        if(document.getElementById("iosShellMount")){
+            if(document.body.dataset.iosShellHydrated)return;
+            document.body.dataset.iosShellHydrated="1";
+            applyUserToShell(getUser());
+            ensureTopbar();
+            bindShellEvents();
+            refreshUserProfile();
+            window.InventoryWorkspace?.applyLabels?.();
+            window.dispatchEvent(new CustomEvent("inventoryos-shell-ready",{detail:{page:currentPageKey()}}));
             return;
         }
 
@@ -1031,6 +1024,7 @@ const InventoryOSAppShell = (function(){
 
         ensureTopbar();
         bindShellEvents();
+        document.body.dataset.iosShellHydrated="1";
         refreshUserProfile();
 
         if(
@@ -1055,6 +1049,12 @@ const InventoryOSAppShell = (function(){
     }
 
     function start(){
+        // The pre-rendered shell is complete before this end-of-body script.
+        // Wire its controls immediately rather than waiting for deferred work.
+        if(document.getElementById("iosShellMount")?.dataset?.staticShell==="1"){
+            initialise();
+            return;
+        }
         if(
             document.readyState ===
             "loading"

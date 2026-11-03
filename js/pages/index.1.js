@@ -1109,18 +1109,6 @@ const DashboardPage = (function(){
                 closeSidebar
             );
 
-        document
-            .querySelectorAll(
-                ".sidebar-link"
-            )
-            .forEach(
-                function(link){
-                    link.addEventListener(
-                        "click",
-                        closeSidebar
-                    );
-                }
-            );
 
         window.addEventListener(
             "inventory-selection-changed",
@@ -1160,8 +1148,9 @@ const DashboardPage = (function(){
         }
 
         setUserDetails();
-        await refreshUserDetails();
         bindEvents();
+        // Profile refresh must not delay menu and button wiring.
+        refreshUserDetails().catch(error=>console.warn("Could not refresh account details",error));
 
         try{
             if(

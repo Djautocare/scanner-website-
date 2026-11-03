@@ -425,6 +425,7 @@ async function showAdminCard(){
 }
 
 function showSettingsView(viewId){
+    document.documentElement.dataset.settingsView=viewId;
     document.querySelectorAll(".settings-view").forEach(view=>{
         view.hidden = view.id !== viewId;
     });
@@ -442,7 +443,7 @@ document.querySelectorAll("[data-settings-tab]").forEach(tab=>{
     tab.addEventListener("click",()=>showSettingsView(tab.dataset.settingsTab));
 });
 
-const savedSettingsView = localStorage.getItem("inventoryos_settings_view");
+const savedSettingsView = document.documentElement.dataset.settingsView || localStorage.getItem("inventoryos_settings_view");
 if(["guidePanel","helpPanel","stackPanel"].includes(savedSettingsView)){
     showSettingsView(savedSettingsView);
 }

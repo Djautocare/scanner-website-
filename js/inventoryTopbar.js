@@ -516,9 +516,21 @@ const InventoryTopbar = (function(){
         );
     }
 
-    async function init(
-        containerId =
-            "inventory-topbar"
+    const initialisations = new Map();
+    function init(containerId="inventory-topbar"){
+        const container=document.getElementById(containerId);
+        const identity=getSelectedWorkspaceId()+"|"+getSelectedIds().join(",");
+        const existing=initialisations.get(containerId);
+        if(existing&&existing.container===container&&existing.identity===identity)return existing.promise;
+        const entry={container,identity,promise:null};
+        initialisations.set(containerId,entry);
+        entry.promise=initialiseContainer(containerId,()=>initialisations.get(containerId)===entry&&document.getElementById(containerId)===container).finally(()=>{if(initialisations.get(containerId)===entry)initialisations.delete(containerId);});
+        return entry.promise;
+    }
+
+    async function initialiseContainer(
+        containerId,
+        isCurrent
     ){
         patchApiRequests();
 
@@ -549,7 +561,7 @@ const InventoryTopbar = (function(){
             ]);
         }catch(error){
             console.error(error);
-
+            if(!isCurrent())return false;
             container.innerHTML = `
                 <div class="inventory-topbar">
                     <div class="inventory-topbar-left">
@@ -567,6 +579,7 @@ const InventoryTopbar = (function(){
             return false;
         }
 
+        if(!isCurrent())return false;
         let state =
             ensureWorkspaceAndSelection(
                 inventories,
@@ -600,6 +613,7 @@ const InventoryTopbar = (function(){
             state.groups[0] ||
             null;
 
+        if(!isCurrent())return false;
         controlsEvents?.abort();
         controlsEvents = new AbortController();
         const controlsSignal = controlsEvents.signal;

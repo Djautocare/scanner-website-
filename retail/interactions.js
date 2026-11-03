@@ -4,15 +4,18 @@
  // control in the DOM until its native click/submit has been delivered.
  let pressed=null,timer=null;
  const pending=new Set();
- function release(){clearTimeout(timer);pressed=null;const jobs=[...pending];pending.clear();for(const render of jobs)render();}
+ function release(){clearTimeout(timer);timer=null;pressed=null;const jobs=[...pending];pending.clear();for(const render of jobs)render();}
  document.addEventListener('pointerdown',event=>{
-  release();
+  // Never flush a previous render while the next pointer is landing on a
+  // control: replacing that node here prevents its native click from firing.
+  clearTimeout(timer);timer=null;
   pressed=event.target.closest('button,a,input[type="submit"],input[type="button"]');
   if(pressed?.disabled)pressed=null;
+  if(!pressed)timer=setTimeout(release,0);
  },true);
  document.addEventListener('click',()=>{if(pressed){clearTimeout(timer);timer=setTimeout(release,0);}},true);
- window.addEventListener('pointerup',()=>{if(pressed)timer=setTimeout(release,500);},true);
+ window.addEventListener('pointerup',()=>{if(pressed){clearTimeout(timer);timer=setTimeout(release,150);}},true);
  window.addEventListener('pointercancel',release,true);
  window.addEventListener('blur',release);
- window.InventoryRetailInteractions={defer(render){if(!pressed?.isConnected)return false;pending.add(render);return true;}};
+ window.InventoryRetailInteractions={defer(render){if(!pressed?.isConnected)return false;pending.add(render);return true;},settled(render){pending.delete(render);}};
 })();

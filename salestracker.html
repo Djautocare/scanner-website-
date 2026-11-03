@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script>
+<head><script src="/js/workspaceBoot.js?v=smooth-20261103"></script><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script>
 <meta charset="UTF-8">
     <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -262,20 +262,308 @@ tr:last-child td{
 <link rel="stylesheet" href="css/inventoryTopbar.css">
 
 <link rel="stylesheet" href="css/appShell.css?v=3">
-<link rel="stylesheet" href="/css/workspaceDesign.css?v=20261102">
-<script src="/js/workspaceDesign.js?v=20261102" defer></script>
+<link rel="stylesheet" href="/css/workspaceDesign.css?v=smooth-20261103">
+<script src="/js/workspaceDesign.js?v=smooth-20261103" defer></script>
 </head>
 
-<body>
+<body data-workspace-design="reseller" data-ios-page="sales" class="inventoryos-shell-active" data-topbar-present="">
 
-<div class="page">
+<div id="iosShellMount" data-static-shell="1"><div class="ios-shell-overlay" id="iosShellOverlay"></div>
+
+            <div class="ios-shell-app">
+                <aside class="ios-shell-sidebar" id="iosShellSidebar">
+                    <a class="ios-shell-brand" href="index.html" aria-label="InventoryOS dashboard">
+                        <span class="ios-shell-brand-mark" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </span>
+
+                        <span class="ios-shell-brand-name">
+                            Inventory<span>OS</span>
+                        </span>
+                    </a>
+
+                    <div class="ios-shell-sidebar-scroll">
+                        <div class="ios-shell-nav-label">Workspace</div><nav class="ios-shell-nav" aria-label="Workspace">
+                                <a class="ios-shell-nav-link" href="index.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⌂
+                                    </span>
+
+                                    <span>
+                                        Dashboard
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="getting-started.html?replay=1">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◇
+                                    </span>
+
+                                    <span>
+                                        Start here
+                                    </span>
+                                </a>
+                            </nav><details class="design-nav-group"><summary>Stock</summary><nav class="ios-shell-nav" aria-label="Stock">
+                                <a class="ios-shell-nav-link" href="add.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ＋
+                                    </span>
+
+                                    <span>
+                                        Add stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="search.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⌕
+                                    </span>
+
+                                    <span>
+                                        Find stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="remove.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        −
+                                    </span>
+
+                                    <span>
+                                        Remove stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="move.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ↔
+                                    </span>
+
+                                    <span>
+                                        Move stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="boxes.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▦
+                                    </span>
+
+                                    <span data-location-plural>
+                                        Locations
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="discard.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ×
+                                    </span>
+
+                                    <span>
+                                        Discard stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="refund.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ↶
+                                    </span>
+
+                                    <span>
+                                        Returns &amp; refunds
+                                    </span>
+                                </a>
+                            </nav></details><div class="ios-shell-nav-label">Dispatch &amp; ordering</div><nav class="ios-shell-nav" aria-label="Dispatch &amp; ordering">
+                                <a class="ios-shell-nav-link" href="dispatch-centre.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▣
+                                    </span>
+
+                                    <span>
+                                        Dispatch Centre
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="reorders.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ↻
+                                    </span>
+
+                                    <span>
+                                        Reordering
+                                    </span>
+                                </a>
+                            </nav><details class="design-nav-group" open><summary>Sales &amp; finances</summary><nav class="ios-shell-nav" aria-label="Sales &amp; finances">
+                                <a class="ios-shell-nav-link active" href="salestracker.html" aria-current="page">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⌁
+                                    </span>
+
+                                    <span>
+                                        Sales tracker
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="expenses.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        £
+                                    </span>
+
+                                    <span>
+                                        Expenses
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="stale.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◷
+                                    </span>
+
+                                    <span>
+                                        Slow stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="corrections.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ✎
+                                    </span>
+
+                                    <span>
+                                        Activity &amp; corrections
+                                    </span>
+                                </a>
+                            </nav></details><details class="design-nav-group"><summary>Labels &amp; tools</summary><nav class="ios-shell-nav" aria-label="Labels &amp; tools">
+                                <a class="ios-shell-nav-link" href="barcodeprinting.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▥
+                                    </span>
+
+                                    <span>
+                                        Barcode / SKU labels
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="printjobs.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▤
+                                    </span>
+
+                                    <span>
+                                        Print jobs
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="boxlabels.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▦
+                                    </span>
+
+                                    <span>
+                                        Location labels
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="snapshotbox.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        □
+                                    </span>
+
+                                    <span>
+                                        Location snapshot
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="mysteryboxes.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◇
+                                    </span>
+
+                                    <span>
+                                        Mystery boxes
+                                    </span>
+                                </a>
+                            </nav></details><div class="ios-shell-nav-label">Your workspace</div><nav class="ios-shell-nav" aria-label="Your workspace">
+                                <a class="ios-shell-nav-link" href="settings.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⚙
+                                    </span>
+
+                                    <span>
+                                        Settings
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="settings.html#guide">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ?
+                                    </span>
+
+                                    <span>
+                                        Guide &amp; tutorials
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="settings.html#help">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◇
+                                    </span>
+
+                                    <span>
+                                        Get help
+                                    </span>
+                                </a>
+                            </nav><div class="ios-shell-nav-label">Other areas</div><nav class="ios-shell-nav" aria-label="Other areas" data-design-area-links></nav>
+                    </div>
+
+                    <div class="ios-shell-sidebar-footer">
+                        <div class="ios-shell-user">
+                            <div class="ios-shell-avatar" id="iosShellSidebarAvatar">
+                                YA
+                            </div>
+
+                            <div class="ios-shell-user-copy">
+                                <strong id="iosShellUserName">
+                                    Your account
+                                </strong>
+
+                                <span id="iosShellUserEmail">
+                                    Signed in
+                                </span>
+                            </div>
+
+                            <button class="ios-shell-logout" id="iosShellLogout" type="button" title="Log out" aria-label="Log out">
+                                ↪
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+
+                <main class="ios-shell-main">
+                    <div class="ios-shell-frame">
+                        <div class="design-utilitybar"><div class="design-breadcrumb"><span>Workspace /</span><b>InventoryOS Reseller</b></div><div class="design-utilities"><button type="button" data-design-action="theme" data-design-theme="" aria-label="Change appearance">Theme</button><a href="settings.html#guide">Setup guide ↗</a></div></div><header class="ios-shell-header">
+                            <button class="ios-shell-mobile-menu" id="iosShellMenuButton" type="button" aria-label="Open navigation" aria-expanded="false">
+                                ☰
+                            </button>
+
+                            <div class="ios-shell-heading" id="iosShellHeading"><h1>Sales Tracker</h1><p class="subtitle">Track income, expenses, profit, trends and recent sales</p></div>
+
+                            <div class="ios-shell-header-tools">
+                                <div class="ios-shell-topbar-host" id="iosShellTopbarHost"><div id="inventory-topbar"></div>
+
+</div>
+
+                                </div>
+                        <div class="ios-shell-header-avatar" id="iosShellHeaderAvatar">
+                                    YA
+                                </div>
+                            </header>
+
+                        <div class="ios-shell-content" id="iosShellContent"><div class="page">
 
 <div class="panel">
-
-<div id="inventory-topbar"></div>
-
-<h1>Sales Tracker</h1>
-<p class="subtitle">Track income, expenses, profit, trends and recent sales</p>
 
 <button class="refresh-button" data-ios-click="h101fa5e0daa29992">Refresh Tracker</button>
 
@@ -411,6 +699,12 @@ tr:last-child td{
 
 </div>
 
+</div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
 <div id="loadingOverlay">
     <div class="loaderBox">
         <div class="spinner"></div>
@@ -418,14 +712,14 @@ tr:last-child td{
     </div>
 </div>
 
-<script src="js/theme.js?v=contrast-1"></script>
+<script src="js/theme.js?v=smooth-20261103"></script>
 <script src="/js/onboarding-gate.js?v=1"></script>
 <script src="js/api.js?v=workspace-20261102"></script>
-<script src="js/inventoryTopbar.js?v=3"></script>
+<script src="js/inventoryTopbar.js?v=smooth-20261103"></script>
 <script src="js/workspace.js?v=5"></script>
 <script src="/js/pages/salestracker.1.js?v=upload-safety-1"></script>
 
 
-<script src="js/appShell.js?v=workspace-20261102"></script>
+<script src="js/appShell.js?v=smooth-20261103"></script>
 </body>
 </html>

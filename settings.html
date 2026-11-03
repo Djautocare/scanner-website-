@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script>
+<head><script src="/js/workspaceBoot.js?v=smooth-20261103"></script><script src="/js/security-session.js?v=1"></script><script src="/js/security-events.js?v=1"></script>
 <meta charset="UTF-8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -473,15 +473,306 @@ button{
 <link rel="stylesheet" href="css/inventoryGuide.css?v=guide-2026-10">
 <link rel="stylesheet" href="css/inboundEmail.css?v=2">
 <link rel="stylesheet" href="css/help.css?v=1"><link rel="stylesheet" href="css/accountSettings.css?v=3">
-<link rel="manifest" href="pwa/manifest.webmanifest"><link rel="apple-touch-icon" href="pwa/main-192.png"><link rel="stylesheet" href="/css/security.css?v=1"><script src="/js/security-ui.js?v=1" defer></script><link rel="stylesheet" href="/css/workspaceDesign.css?v=20261102">
-<script src="/js/workspaceDesign.js?v=20261102" defer></script>
+<link rel="manifest" href="pwa/manifest.webmanifest"><link rel="apple-touch-icon" href="pwa/main-192.png"><link rel="stylesheet" href="/css/security.css?v=1"><script src="/js/security-ui.js?v=1" defer></script><link rel="stylesheet" href="/css/workspaceDesign.css?v=smooth-20261103">
+<script src="/js/workspaceDesign.js?v=smooth-20261103" defer></script>
 </head>
 
-<body>
+<body data-workspace-design="reseller" data-ios-page="settings" class="inventoryos-shell-active" data-topbar-present="">
 
-<div class="page">
+<div id="iosShellMount" data-static-shell="1"><div class="ios-shell-overlay" id="iosShellOverlay"></div>
 
-<div id="inventory-topbar" style="margin-bottom:18px;"></div>
+            <div class="ios-shell-app">
+                <aside class="ios-shell-sidebar" id="iosShellSidebar">
+                    <a class="ios-shell-brand" href="index.html" aria-label="InventoryOS dashboard">
+                        <span class="ios-shell-brand-mark" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </span>
+
+                        <span class="ios-shell-brand-name">
+                            Inventory<span>OS</span>
+                        </span>
+                    </a>
+
+                    <div class="ios-shell-sidebar-scroll">
+                        <div class="ios-shell-nav-label">Workspace</div><nav class="ios-shell-nav" aria-label="Workspace">
+                                <a class="ios-shell-nav-link" href="index.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⌂
+                                    </span>
+
+                                    <span>
+                                        Dashboard
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="getting-started.html?replay=1">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◇
+                                    </span>
+
+                                    <span>
+                                        Start here
+                                    </span>
+                                </a>
+                            </nav><details class="design-nav-group"><summary>Stock</summary><nav class="ios-shell-nav" aria-label="Stock">
+                                <a class="ios-shell-nav-link" href="add.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ＋
+                                    </span>
+
+                                    <span>
+                                        Add stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="search.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⌕
+                                    </span>
+
+                                    <span>
+                                        Find stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="remove.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        −
+                                    </span>
+
+                                    <span>
+                                        Remove stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="move.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ↔
+                                    </span>
+
+                                    <span>
+                                        Move stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="boxes.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▦
+                                    </span>
+
+                                    <span data-location-plural>
+                                        Locations
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="discard.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ×
+                                    </span>
+
+                                    <span>
+                                        Discard stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="refund.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ↶
+                                    </span>
+
+                                    <span>
+                                        Returns &amp; refunds
+                                    </span>
+                                </a>
+                            </nav></details><div class="ios-shell-nav-label">Dispatch &amp; ordering</div><nav class="ios-shell-nav" aria-label="Dispatch &amp; ordering">
+                                <a class="ios-shell-nav-link" href="dispatch-centre.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▣
+                                    </span>
+
+                                    <span>
+                                        Dispatch Centre
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="reorders.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ↻
+                                    </span>
+
+                                    <span>
+                                        Reordering
+                                    </span>
+                                </a>
+                            </nav><details class="design-nav-group"><summary>Sales &amp; finances</summary><nav class="ios-shell-nav" aria-label="Sales &amp; finances">
+                                <a class="ios-shell-nav-link" href="salestracker.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⌁
+                                    </span>
+
+                                    <span>
+                                        Sales tracker
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="expenses.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        £
+                                    </span>
+
+                                    <span>
+                                        Expenses
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="stale.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◷
+                                    </span>
+
+                                    <span>
+                                        Slow stock
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="corrections.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ✎
+                                    </span>
+
+                                    <span>
+                                        Activity &amp; corrections
+                                    </span>
+                                </a>
+                            </nav></details><details class="design-nav-group"><summary>Labels &amp; tools</summary><nav class="ios-shell-nav" aria-label="Labels &amp; tools">
+                                <a class="ios-shell-nav-link" href="barcodeprinting.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▥
+                                    </span>
+
+                                    <span>
+                                        Barcode / SKU labels
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="printjobs.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▤
+                                    </span>
+
+                                    <span>
+                                        Print jobs
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="boxlabels.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ▦
+                                    </span>
+
+                                    <span>
+                                        Location labels
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="snapshotbox.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        □
+                                    </span>
+
+                                    <span>
+                                        Location snapshot
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="mysteryboxes.html">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◇
+                                    </span>
+
+                                    <span>
+                                        Mystery boxes
+                                    </span>
+                                </a>
+                            </nav></details><div class="ios-shell-nav-label">Your workspace</div><nav class="ios-shell-nav" aria-label="Your workspace">
+                                <a class="ios-shell-nav-link active" href="settings.html" aria-current="page">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ⚙
+                                    </span>
+
+                                    <span>
+                                        Settings
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="settings.html#guide">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ?
+                                    </span>
+
+                                    <span>
+                                        Guide &amp; tutorials
+                                    </span>
+                                </a>
+
+                                <a class="ios-shell-nav-link" href="settings.html#help">
+                                    <span class="ios-shell-nav-icon" aria-hidden="true">
+                                        ◇
+                                    </span>
+
+                                    <span>
+                                        Get help
+                                    </span>
+                                </a>
+                            </nav><div class="ios-shell-nav-label">Other areas</div><nav class="ios-shell-nav" aria-label="Other areas" data-design-area-links></nav>
+                    </div>
+
+                    <div class="ios-shell-sidebar-footer">
+                        <div class="ios-shell-user">
+                            <div class="ios-shell-avatar" id="iosShellSidebarAvatar">
+                                YA
+                            </div>
+
+                            <div class="ios-shell-user-copy">
+                                <strong id="iosShellUserName">
+                                    Your account
+                                </strong>
+
+                                <span id="iosShellUserEmail">
+                                    Signed in
+                                </span>
+                            </div>
+
+                            <button class="ios-shell-logout" id="iosShellLogout" type="button" title="Log out" aria-label="Log out">
+                                ↪
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+
+                <main class="ios-shell-main">
+                    <div class="ios-shell-frame">
+                        <div class="design-utilitybar"><div class="design-breadcrumb"><span>Workspace /</span><b>InventoryOS Reseller</b></div><div class="design-utilities"><button type="button" data-design-action="theme" data-design-theme="" aria-label="Change appearance">Theme</button><a href="settings.html#guide">Setup guide ↗</a></div></div><header class="ios-shell-header">
+                            <button class="ios-shell-mobile-menu" id="iosShellMenuButton" type="button" aria-label="Open navigation" aria-expanded="false">
+                                ☰
+                            </button>
+
+                            <div class="ios-shell-heading" id="iosShellHeading"><h1>Settings</h1><p class="subtitle">Everything that controls your account, workspace and day-to-day InventoryOS experience.</p></div>
+
+                            <div class="ios-shell-header-tools">
+                                <div class="ios-shell-topbar-host" id="iosShellTopbarHost"><div id="inventory-topbar" style="margin-bottom:18px;"></div>
+
+</div>
+
+                                </div>
+                        <div class="ios-shell-header-avatar" id="iosShellHeaderAvatar">
+                                    YA
+                                </div>
+                            </header>
+
+                        <div class="ios-shell-content" id="iosShellContent"><div class="page">
 
 <div class="settings-tabs" role="tablist" aria-label="Settings sections">
     <button class="settings-tab active" type="button" role="tab" aria-selected="true" aria-controls="settingsPanel" data-settings-tab="settingsPanel">⚙ Settings</button>
@@ -494,11 +785,6 @@ button{
 
 <div class="header-panel">
     <div class="settings-header">
-        <div>
-            <h1>Settings</h1>
-    <p class="subtitle">Everything that controls your account, workspace and day-to-day InventoryOS experience.</p>
-        </div>
-
         <div class="profile-card">
             <div class="profile-user">
                 <div class="profile-icon" id="profileIcon">OS</div>
@@ -532,37 +818,7 @@ button{
     </div>
 </div>
 
-<div class="card" id="workspaceMembersSettingsCard">
-    <div class="card-title"><span class="card-icon">👥</span>Workspace Members</div>
-    <div class="helper">
-        Invite people to share this workspace and its selected inventory. You can manage their roles and remove access at any time.
-    </div>
-
-    <button
-        style="
-            background:linear-gradient(135deg,#8e44ff,#6f42c1);
-            border:1px solid rgba(142,68,255,.45);
-        "
-        data-ios-click="haaa666d08ffb3acd">
-        Manage Workspace Members
-    </button>
-
-    <div class="result">
-        Use this area for invitations, member permissions and access management.
-    </div>
-</div>
-
-<div class="settings-grid">
-
-<div class="card" id="shopSettingsCard">
-    <div class="card-title">InventoryOS Shop</div>
-    <p class="helper">Equipment we recommend, sold by InventoryOS.</p>
-    <a class="link-card" href="https://inventoryos.co.uk/shop.html" target="_blank" rel="noopener noreferrer">Open InventoryOS Shop ↗</a>
-    <p class="helper">Mi Marché · A marketplace for resellers, businesses and second-hand sellers. Coming soon.</p>
-    <a class="link-card" href="https://inventoryos.co.uk/marketplace" target="_blank" rel="noopener noreferrer">Mi Marché — I’m interested ↗</a>
-</div>
-
-<div class="card" id="workspaceSettingsCard">
+<div class="settings-accordion" aria-label="Account settings groups"><details class="settings-group" id="account-settings-workspace"><summary>Workspace &amp; team</summary><div class="settings-group-body"><div class="card" id="workspaceSettingsCard">
     <div class="card-title">
         <span class="card-icon">🏢</span>
         Workspace
@@ -572,12 +828,10 @@ button{
         Choose how locations are described, such as Boxes, Shelves or Racks, and control automatic location creation for the workspace.
     </div>
 
-    <button
-        style="
+    <button style="
             background:linear-gradient(135deg,#8e44ff,#6f42c1);
             border:1px solid rgba(142,68,255,.45);
-        "
-        data-ios-click="hf655f1e5c982c5a4">
+        " data-ios-click="hf655f1e5c982c5a4">
         Open Workspace Settings
     </button>
 
@@ -586,7 +840,25 @@ button{
     </div>
 </div>
 
-<div class="card" id="billingSettingsCard">
+<div class="card" id="workspaceMembersSettingsCard">
+    <div class="card-title"><span class="card-icon">👥</span>Workspace Members</div>
+    <div class="helper">
+        Invite people to share this workspace and its selected inventory. You can manage their roles and remove access at any time.
+    </div>
+
+    <button style="
+            background:linear-gradient(135deg,#8e44ff,#6f42c1);
+            border:1px solid rgba(142,68,255,.45);
+        " data-ios-click="haaa666d08ffb3acd">
+        Manage Workspace Members
+    </button>
+
+    <div class="result">
+        Use this area for invitations, member permissions and access management.
+    </div>
+</div>
+
+</div></details><details class="settings-group" id="account-settings-billing"><summary>Billing &amp; subscriptions</summary><div class="settings-group-body"><div class="card" id="billingSettingsCard">
     <div class="card-title">
         <span class="card-icon">💳</span>
         Billing &amp; subscriptions
@@ -603,9 +875,26 @@ button{
     </div>
 </div>
 
-<section class="inbound-labels card full" data-inbound-labels aria-label="Shipping-label email settings" id="inboundEmailSettingsCard"><p>Loading workspace shipping-label email…</p></section>
+</div></details><details class="settings-group" id="account-settings-appearance"><summary>Appearance</summary><div class="settings-group-body"><div class="card" id="appearanceSettingsCard">
+    <div class="card-title"><span class="card-icon">🎨</span>Appearance</div>
+    <div class="helper">
+        Choose the accent colour used across InventoryOS. Your choice is saved to your account and follows you between devices.
+    </div>
 
-<section class="card full" id="printingSettingsCard" aria-label="QZ Tray printing setup">
+    <div class="appearance-options" role="group" aria-label="Light or dark mode"><button type="button" data-appearance-choice="light">Light</button><button type="button" data-appearance-choice="dark">Dark</button></div>
+    <div class="theme-swatch-grid">
+        <button class="theme-swatch" data-theme-choice="green"><span class="theme-dot" style="background:#45d36a"></span>Emerald</button>
+        <button class="theme-swatch" data-theme-choice="purple"><span class="theme-dot" style="background:#b56cff"></span>Purple</button>
+        <button class="theme-swatch" data-theme-choice="blue"><span class="theme-dot" style="background:#4da3ff"></span>Blue</button>
+        <button class="theme-swatch" data-theme-choice="gold"><span class="theme-dot" style="background:#ffc107"></span>Gold</button>
+        <button class="theme-swatch" data-theme-choice="red"><span class="theme-dot" style="background:#ff5c6c"></span>Red</button>
+        <button class="theme-swatch" data-theme-choice="cyan"><span class="theme-dot" style="background:#20e0d0"></span>Cyan</button>
+    </div>
+
+    <div id="themeResult" class="result">Choose a theme above.</div>
+</div>
+
+</div></details><details class="settings-group" id="account-settings-devices" hidden=""><summary>Apps &amp; devices</summary><div class="settings-group-body"></div></details><details class="settings-group" id="account-settings-printing"><summary>Printing</summary><div class="settings-group-body"><section class="card full" id="printingSettingsCard" aria-label="QZ Tray printing setup">
     <div class="card-title">Printing</div>
     <p class="helper">Set up secure printing on the computer connected to your printer. Setup installs or updates QZ Tray, adds the InventoryOS public certificate and opens Printer Setup.</p>
     <div class="printer-download-grid" aria-label="Complete InventoryOS printer setup">
@@ -639,43 +928,15 @@ button{
     <p class="helper">QZ Tray is for desktop computers. On a phone, use the mobile or browser print option.</p>
 </section>
 
-<div class="card" id="adminCard" style="display:none;">
-    <div class="card-title"><span class="card-icon">🛡️</span>Administration</div>
-    <div class="helper">
-        Authorised administrator tools for account management and system oversight. This card remains hidden unless your account is approved by the backend.
-    </div>
-
-    <button
-        style="background:linear-gradient(135deg,#dc3545,#b02a37);border:1px solid rgba(220,53,69,.45);"
-        data-ios-click="h7da352dbcb69af60">
-        Open Admin Portal
-    </button>
-
-    <div class="result">
-        Only the authorised administrator account can see or open this portal.
-    </div>
+</div></details><details class="settings-group" id="account-settings-shop"><summary>InventoryOS Shop</summary><div class="settings-group-body"><div class="card" id="shopSettingsCard">
+    <div class="card-title">InventoryOS Shop</div>
+    <p class="helper">Equipment we recommend, sold by InventoryOS.</p>
+    <a class="link-card" href="https://inventoryos.co.uk/shop.html" target="_blank" rel="noopener noreferrer">Open InventoryOS Shop ↗</a>
+    <p class="helper">Mi Marché · A marketplace for resellers, businesses and second-hand sellers. Coming soon.</p>
+    <a class="link-card" href="https://inventoryos.co.uk/marketplace" target="_blank" rel="noopener noreferrer">Mi Marché — I’m interested ↗</a>
 </div>
 
-<div class="card" id="appearanceSettingsCard">
-    <div class="card-title"><span class="card-icon">🎨</span>Appearance</div>
-    <div class="helper">
-        Choose the accent colour used across InventoryOS. Your choice is saved to your account and follows you between devices.
-    </div>
-
-    <div class="appearance-options" role="group" aria-label="Light or dark mode"><button type="button" data-appearance-choice="light">Light</button><button type="button" data-appearance-choice="dark">Dark</button></div>
-    <div class="theme-swatch-grid">
-        <button class="theme-swatch" data-theme-choice="green"><span class="theme-dot" style="background:#45d36a"></span>Emerald</button>
-        <button class="theme-swatch" data-theme-choice="purple"><span class="theme-dot" style="background:#b56cff"></span>Purple</button>
-        <button class="theme-swatch" data-theme-choice="blue"><span class="theme-dot" style="background:#4da3ff"></span>Blue</button>
-        <button class="theme-swatch" data-theme-choice="gold"><span class="theme-dot" style="background:#ffc107"></span>Gold</button>
-        <button class="theme-swatch" data-theme-choice="red"><span class="theme-dot" style="background:#ff5c6c"></span>Red</button>
-        <button class="theme-swatch" data-theme-choice="cyan"><span class="theme-dot" style="background:#20e0d0"></span>Cyan</button>
-    </div>
-
-    <div id="themeResult" class="result">Choose a theme above.</div>
-</div>
-
-<div class="card" id="securitySettingsCard">
+</div></details><details class="settings-group" id="account-settings-security"><summary>Security</summary><div class="settings-group-body"><div class="card" id="securitySettingsCard">
     <div class="card-title"><span class="card-icon">🔒</span>Security</div>
     <div class="helper">
         Change your login password. Enter your current password, then choose a new password of at least 8 characters.
@@ -695,7 +956,9 @@ button{
     <div id="passwordResult" class="result">No password change requested.</div>
 </div>
 
-<div class="card full" id="dataManagementSettingsCard">
+</div></details><details class="settings-group" id="account-settings-dispatch"><summary>Stock &amp; dispatch</summary><div class="settings-group-body"><section class="inbound-labels card full" data-inbound-labels aria-label="Shipping-label email settings" id="inboundEmailSettingsCard"><p>Loading workspace shipping-label email…</p></section>
+
+</div></details><details class="settings-group" id="account-settings-data"><summary>Data import</summary><div class="settings-group-body"><div class="card full" id="dataManagementSettingsCard">
     <div class="card-title"><span class="card-icon">☁️</span>Data Management</div>
     <div class="helper">
         Bring existing stock, sales and expenses into the current workspace from Excel files. Nothing is imported until you press Import Data.
@@ -719,7 +982,7 @@ button{
 </div>
 
 
-<div class="card" id="aboutSettingsCard">
+</div></details><details class="settings-group" id="account-settings-about"><summary>About InventoryOS</summary><div class="settings-group-body"><div class="card" id="aboutSettingsCard">
     <div class="card-title"><span class="card-icon">ℹ️</span>About InventoryOS</div>
     <div class="helper">
         Technical details that may help when checking your installation or contacting support.
@@ -736,6 +999,23 @@ button{
         </div>
     </div>
 </div>
+
+</div></details><details class="settings-group" id="account-settings-admin" hidden=""><summary>Administration</summary><div class="settings-group-body"><div class="card" id="adminCard" style="display:none;">
+    <div class="card-title"><span class="card-icon">🛡️</span>Administration</div>
+    <div class="helper">
+        Authorised administrator tools for account management and system oversight. This card remains hidden unless your account is approved by the backend.
+    </div>
+
+    <button style="background:linear-gradient(135deg,#dc3545,#b02a37);border:1px solid rgba(220,53,69,.45);" data-ios-click="h7da352dbcb69af60">
+        Open Admin Portal
+    </button>
+
+    <div class="result">
+        Only the authorised administrator account can see or open this portal.
+    </div>
+</div>
+
+</div></details></div><div class="settings-grid">
 
 </div>
 
@@ -799,6 +1079,12 @@ button{
 
 </div>
 
+</div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
 <div id="loadingOverlay">
     <div class="loaderBox">
         <div class="spinner"></div>
@@ -806,20 +1092,20 @@ button{
     </div>
 </div>
 
-<script src="js/theme.js?v=contrast-1"></script>
+<script src="js/theme.js?v=smooth-20261103"></script>
 <script src="/js/onboarding-gate.js?v=1"></script>
 <script src="js/api.js?v=workspace-20261102"></script>
-<script src="js/inventoryTopbar.js?v=6"></script>
+<script src="js/inventoryTopbar.js?v=smooth-20261103"></script>
 <script src="js/workspace.js?v=5"></script>
 
-<script src="/js/pages/settings.1.js?v=security-1"></script>
+<script src="/js/pages/settings.1.js?v=smooth-20261103"></script>
 
 <script src="js/removePreferences.js?v=4"></script>
-<script src="js/accountSettings.js?v=3"></script>
+<script src="js/accountSettings.js?v=smooth-20261103"></script>
 <script src="js/printerInstaller.js?v=2"></script>
 
 
-<script src="js/appShell.js?v=workspace-20261102"></script>
+<script src="js/appShell.js?v=smooth-20261103"></script>
 <script src="js/inventoryGuideContent.js?v=workspace-20261102"></script>
 <script src="js/inventoryGuide.js?v=workspace-20261102"></script>
 

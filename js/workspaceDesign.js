@@ -24,8 +24,10 @@
   }
   function refreshThemeLabels() {
     document.querySelectorAll('[data-design-action="theme"]').forEach(node => {
-      node.textContent = mode() === 'dark' ? '☀ Light' : '☾ Dark';
-      node.setAttribute('aria-label', mode() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+      const label = mode() === 'dark' ? '☀ Light' : '☾ Dark';
+      const accessible = mode() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+      if (node.textContent !== label) node.textContent = label;
+      if (node.getAttribute('aria-label') !== accessible) node.setAttribute('aria-label', accessible);
     });
   }
   function utilityBar(host, before) {
@@ -77,7 +79,15 @@
     };
     const close = () => { if (isOpen()) { toggle.click(); sync(); toggle.focus({ preventScroll: true }); } };
     shade.addEventListener('click', close);
-    sidebar.addEventListener('click', event => { if (event.target.closest('a[href]')) close(); });
+    // A different page starts with its own closed drawer. Do not hide or
+    // inert the source link while the browser is activating that navigation.
+    sidebar.addEventListener('click', event => {
+      const anchor=event.target.closest('a[href]');
+      if(!anchor)return;
+      const target=new URL(anchor.href,location.href);
+      if(target.pathname===location.pathname&&target.search===location.search&&target.hash===location.hash){event.preventDefault();settingsSection();close();}
+    });
+    window.addEventListener('hashchange',()=>{if(isOpen())close();});
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && !document.querySelector('dialog[open]')) close();
     });
@@ -110,20 +120,21 @@
   }
   function enhance() {
     queued = false; if (!document.body) return;
-    document.body.dataset.workspaceDesign = area;
+    if (document.body.dataset.workspaceDesign !== area) document.body.dataset.workspaceDesign = area;
     dashboardNavigation();
     const headerAvatar = $('#iosShellHeaderAvatar'), shellHeader = $('.ios-shell-header');
     if (headerAvatar && shellHeader && headerAvatar.parentElement !== shellHeader) shellHeader.append(headerAvatar);
     if (area === 'practice') utilityBar($('.practice-shell'), $('.practice-header'));
     else if (area === 'retail' || area === 'manufacturing') utilityBar($('.retail-main'), $('.retail-header'));
     else utilityBar($('.dashboard-frame') || $('.ios-shell-frame'), $('.dashboard-top') || $('.ios-shell-header'));
-    workflowStrip(); bindDrawer(); settingsSection(); refreshThemeLabels();
+    workflowStrip(); bindDrawer(); refreshThemeLabels();
   }
   function schedule() { if (!queued) { queued = true; requestAnimationFrame(enhance); } }
   document.addEventListener('click', event => {
     if (!event.target.closest('[data-design-action="theme"]')) return;
     const next = mode() === 'dark' ? 'light' : 'dark';
-    if (window.InventoryTheme?.setAppearance) window.InventoryTheme.setAppearance(next);
+    const theme = typeof InventoryTheme !== 'undefined' ? InventoryTheme : window.InventoryTheme;
+    if (theme?.setAppearance) theme.setAppearance(next);
     else {
       document.documentElement.dataset.appearance = next;
       document.documentElement.style.colorScheme = next;
@@ -131,8 +142,12 @@
     }
     refreshThemeLabels();
   });
-  for (const event of ['inventoryos-shell-ready', 'inventoryos-manufacturing-view', 'inventoryos-workspace-view', 'inventoryos-practice-rendered', 'inventoryos-appearance-changed']) window.addEventListener(event, schedule);
+  // The live headers are stable. View changes must not move layout nodes or
+  // re-select a Settings tab after the user has chosen another section.
+  for (const event of ['inventoryos-shell-ready', 'inventoryos-practice-rendered']) window.addEventListener(event, schedule);
+  window.addEventListener('inventoryos-appearance-changed', refreshThemeLabels);
   window.addEventListener('hashchange', settingsSection);
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', enhance, { once: true }); else enhance();
+  function start(){enhance();settingsSection();}
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
   window.InventoryWorkspaceDesign = { enhance, schedule };
 })();
