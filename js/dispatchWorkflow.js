@@ -744,7 +744,8 @@ function escapeDispatchHtml(value){
             return;
         }
 
-        const actions = document.getElementById("refreshBtn")?.closest(".actions");
+        const actions = document.getElementById("dispatchPrimaryActions") || document.getElementById("refreshBtn")?.closest(".actions");
+        const queueMenu = document.getElementById("dispatchQueueMenu") || actions;
 
         if(actions && !document.getElementById("dispatchLetsPackBtn")){
             const button = document.createElement("button");
@@ -769,11 +770,12 @@ function escapeDispatchHtml(value){
             button.onclick = function(){
                 window.dispatchClearAllPackingQueue();
             };
-            actions.appendChild(button);
+            queueMenu.appendChild(button);
         }
 
         if(
             actions &&
+            !document.getElementById("clearPendingPrintsBtn") &&
             !document.getElementById(
                 "dispatchClearPendingPrintsBtn"
             )
@@ -974,155 +976,51 @@ function escapeDispatchHtml(value){
 
     function dispatchRenderPackCard(pack){
         const packItems = pack.items || [];
-
         const itemHtml = packItems.map(item => {
+            const needsReview = !dispatchItemBarcode(item) || ["missing","needs_review"].includes(item.status);
             return `
                 <div class="item-row">
-                    <div class="card-head">
-                        <div style="width:100%;">
-                            <strong>${escapeDispatchHtml(item.description)}</strong>
-                            <div class="muted small">Qty needed: ${escapeDispatchHtml(item.qty)}</div>
-                            ${selectedMatchHtml(item)}
-
-                            <div class="dispatch-edit-grid">
-                                <div class="dispatch-search-wrap">
-                                    <input
-                                        id="dispatch-item-search-${Number(item.id)}"
-                                        type="text"
-                                        value="${escapeDispatchHtml(item.description)}"
-                                        placeholder="Type to search active stock"
-                                        data-ios-input="h5926b9d12de2844f" data-ios-input-args="${InventoryEvents.encode([Number(item.id)])}"
-                                        autocomplete="off"
-                                    >
-                                    <div
-                                        id="dispatch-suggestions-item-${Number(item.id)}"
-                                        class="dispatch-suggestions"
-                                    ></div>
-                                </div>
-
-                                <input
-                                    id="dispatch-item-qty-${Number(item.id)}"
-                                    type="number"
-                                    min="1"
-                                    value="${escapeDispatchHtml(item.qty)}"
-                                >
-
-                                <button
-                                    type="button"
-                                    data-ios-click="h8933f2a6efdfcfb9" data-ios-click-args="${InventoryEvents.encode([Number(item.id)])}"
-                                >
-                                    Best Match
-                                </button>
-
-                                <button
-                                    class="danger"
-                                    type="button"
-                                    data-ios-click="h3cf8d32733f8d41a" data-ios-click-args="${InventoryEvents.encode([Number(item.id)])}"
-                                >
-                                    Delete
-                                </button>
-                            </div>
+                    <div class="dispatch-item-summary"><strong>${escapeDispatchHtml(item.description)}</strong><span class="dispatch-quantity">Qty ${escapeDispatchHtml(item.qty)}</span></div>
+                    ${selectedMatchHtml(item)}
+                    <details class="dispatch-item-editor" data-dispatch-detail="item-${Number(item.id)}" ${needsReview ? "open" : ""}>
+                        <summary>${needsReview ? "Review stock match" : "Edit match &amp; quantity"}</summary>
+                        <div class="dispatch-edit-grid">
+                            <label class="dispatch-field-label">Stock item<div class="dispatch-search-wrap">
+                                <input id="dispatch-item-search-${Number(item.id)}" type="text" value="${escapeDispatchHtml(item.description)}" placeholder="Search active stock" data-ios-input="h5926b9d12de2844f" data-ios-input-args="${InventoryEvents.encode([Number(item.id)])}" autocomplete="off">
+                                <div id="dispatch-suggestions-item-${Number(item.id)}" class="dispatch-suggestions"></div>
+                            </div></label>
+                            <label class="dispatch-field-label">Quantity<input id="dispatch-item-qty-${Number(item.id)}" type="number" min="1" value="${escapeDispatchHtml(item.qty)}"></label>
+                            <button type="button" data-ios-click="h8933f2a6efdfcfb9" data-ios-click-args="${InventoryEvents.encode([Number(item.id)])}">Best match</button>
+                            <button class="danger" type="button" data-ios-click="h3cf8d32733f8d41a" data-ios-click-args="${InventoryEvents.encode([Number(item.id)])}">Delete item</button>
                         </div>
-
-                        <span class="status ${escapeDispatchHtml(item.status || "needs_review")}">
-                            ${escapeDispatchHtml(statusLabel(item.status))}
-                        </span>
-                    </div>
-                </div>
-            `;
+                    </details>
+                </div>`;
         }).join("");
-
-        const courierPreview = pack.preview_url
-            ? `<div class="courier-preview">${courierPreviewMedia(
-                resolveInventoryApiUrl(pack.preview_url),
-                pack.preview_type,
-                "Courier label preview"
-            )}</div>`
-            : "";
-
-        const saleStatus = pack.sale_status && pack.sale_status !== "pending"
-            ? `<div class="muted small" style="margin-top:6px;">Sale status: ${escapeDispatchHtml(pack.sale_status)}</div>`
-            : "";
-
+        const courierPreview = pack.preview_url ? `<div class="courier-preview">${courierPreviewMedia(resolveInventoryApiUrl(pack.preview_url),pack.preview_type,"Courier label preview")}</div>` : "";
         return `
             <div class="card dispatch-queue-card">
                 <div class="card-head">
-                    <div>
-                        <div class="card-title">${escapeDispatchHtml(pack.source_name || "Manual pack")}</div>
-                        <div class="muted small">Label ${escapeDispatchHtml(pack.label_order || "")}</div>
-                        ${saleStatus}
-                    </div>
-
-                    <div style="display:flex;gap:10px;align-items:flex-start;">
-                        ${courierPreview}
-                        <div>
-                            <div class="label-number">Label ${escapeDispatchHtml(pack.label_order || "")}</div>
-                            <div style="margin-top:8px;text-align:right;">
-                                <span class="status ${escapeDispatchHtml(pack.status || "needs_review")}">
-                                    ${escapeDispatchHtml(statusLabel(pack.status))}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                    <div><div class="card-title">Label ${escapeDispatchHtml(pack.label_order || pack.id)}</div><div class="dispatch-order-ref">${escapeDispatchHtml(pack.source_name || "Shipping label")}</div></div>
+                    <div class="dispatch-pack-badges">${courierPreview}<span class="status ${escapeDispatchHtml(pack.status || "needs_review")}">${escapeDispatchHtml(statusLabel(pack.status))}</span></div>
                 </div>
-
-                ${itemHtml}
-
-                <div class="dispatch-add-grid">
-                    <div class="dispatch-search-wrap">
-                        <input
-                            id="dispatch-add-search-${Number(pack.id)}"
-                            type="text"
-                            placeholder="Add another active-stock item"
-                            data-ios-input="ha3be29f382332f76" data-ios-input-args="${InventoryEvents.encode([Number(pack.id)])}"
-                            autocomplete="off"
-                        >
-                        <div
-                            id="dispatch-suggestions-add-${Number(pack.id)}"
-                            class="dispatch-suggestions"
-                        ></div>
-                        <div
-                            id="dispatch-add-selected-${Number(pack.id)}"
-                            class="muted small"
-                        ></div>
+                ${itemHtml || '<div class="dispatch-empty">No items found on this label. Add a stock item below.</div>'}
+                <details class="dispatch-add-item" data-dispatch-detail="add-${Number(pack.id)}">
+                    <summary>Add another item</summary>
+                    <div class="dispatch-add-grid">
+                        <label class="dispatch-field-label">Stock item<div class="dispatch-search-wrap">
+                            <input id="dispatch-add-search-${Number(pack.id)}" type="text" placeholder="Search active stock" data-ios-input="ha3be29f382332f76" data-ios-input-args="${InventoryEvents.encode([Number(pack.id)])}" autocomplete="off">
+                            <div id="dispatch-suggestions-add-${Number(pack.id)}" class="dispatch-suggestions"></div><div id="dispatch-add-selected-${Number(pack.id)}" class="muted small"></div>
+                        </div></label>
+                        <label class="dispatch-field-label">Quantity<input id="dispatch-add-qty-${Number(pack.id)}" type="number" min="1" value="1"></label>
+                        <button type="button" data-ios-click="he6ceb3c0ed4cd0e6" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}">Add item</button>
                     </div>
-
-                    <input
-                        id="dispatch-add-qty-${Number(pack.id)}"
-                        type="number"
-                        min="1"
-                        value="1"
-                    >
-
-                    <button
-                        type="button"
-                        data-ios-click="he6ceb3c0ed4cd0e6" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}"
-                    >
-                        Add Item
-                    </button>
-                </div>
-
+                </details>
                 ${pack.sale_error ? `<div class="dispatch-failed">${escapeDispatchHtml(pack.sale_error)}</div>` : ""}
-
-                <div class="dispatch-workflow-actions">
-                    <button
-                        class="success"
-                        type="button"
-                        data-ios-click="h01d1ab0843ccc844" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}"
-                    >
-                        Pack This Label
-                    </button>
-
-                    <button
-                        class="danger"
-                        type="button"
-                        data-ios-click="h3be62cda316d64e9" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}"
-                    >
-                        Remove From Queue
-                    </button>
+                <div class="dispatch-card-footer">
+                    <button type="button" data-ios-click="h01d1ab0843ccc844" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}">Pack this label</button>
+                    <details class="dispatch-menu"><summary>Options <span aria-hidden="true">⌄</span></summary><div class="dispatch-menu-content"><button class="danger" type="button" data-ios-click="h3be62cda316d64e9" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}">Remove from queue</button></div></details>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     function normaliseSuggestionText(value){

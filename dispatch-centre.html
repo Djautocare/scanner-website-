@@ -510,6 +510,7 @@ button:disabled{
 <link rel="stylesheet" href="css/inboundEmail.css?v=2">
 <link rel="stylesheet" href="/css/workspaceDesign.css?v=smooth-20261103">
 <script src="/js/workspaceDesign.js?v=smooth-20261103" defer></script>
+<link rel="stylesheet" href="css/dispatchCentre.css?v=dispatch-review-20261103">
 </head>
 
 <body data-workspace-design="reseller" data-ios-page="dispatch" class="inventoryos-shell-active" data-topbar-present="">
@@ -793,7 +794,7 @@ button:disabled{
                                 ☰
                             </button>
 
-                            <div class="ios-shell-heading" id="iosShellHeading"><h1>Dispatch Centre</h1><p class="subtitle">Upload labels, backend-crop to 4×6, build a packing queue, then pack by location or by printed label order.</p></div>
+                            <div class="ios-shell-heading" id="iosShellHeading"><h1>Dispatch Centre</h1><p class="subtitle">Your labels, stock locations and packing — in one place.</p></div>
 
                             <div class="ios-shell-header-tools">
                                 <div class="ios-shell-topbar-host" id="iosShellTopbarHost"><div id="inventory-topbar"></div></div>
@@ -804,80 +805,52 @@ button:disabled{
                                 </div>
                             </header>
 
-                        <div class="ios-shell-content" id="iosShellContent"><div class="design-flow-strip" aria-label="Workflow"><span><b>01</b>Import shipping labels</span><span><b>02</b>Review &amp; match products</span><span><b>03</b>Pack &amp; print</span><a href="settings.html#guide">Need a hand? Open the guide ↗</a></div><div class="page">
-
-    <section class="inbound-labels" data-inbound-labels aria-label="Shipping-label email import"><p>Loading workspace shipping-label email…</p></section>
-
-    <div class="panel">
-        <div id="dropzone" class="dropzone">
-            <strong>Drop shipping labels here</strong>
-            <span class="muted">PDF, PNG, JPG or JPEG. This will backend auto-crop before upload and will not remove stock.</span>
-            <input id="fileInput" class="hidden" type="file" multiple accept=".pdf,.png,.jpg,.jpeg">
-        </div>
-
-        <div class="checkbox-card">
-            <label>
-                <input type="checkbox" id="autoCropToggle" checked>
-                Backend auto-crop labels to 4×6 before adding to queue
-            </label>
-            <div class="small muted" style="margin-top:8px;">Better for InPost/Vinted style A4 labels because the backend detects the cut-line and label block.</div>
-        </div>
-
-        <div class="actions">
-            <button id="browseBtn">Browse Files</button>
-            <button id="processBtn" class="secondary" disabled>Backend Crop Preview</button>
-            <button id="uploadBtn" class="success" disabled>Upload To Packing Queue</button>
-        </div>
-
-        <div id="selectedFiles" class="muted small"></div>
-        <div id="cropStatus" class="small muted"></div>
-        <div id="previewGrid" class="preview-grid"></div>
+                        <div class="ios-shell-content" id="iosShellContent"><div class="design-flow-strip" aria-label="Workflow"><span><b>01</b>Import shipping labels</span><span><b>02</b>Review &amp; match products</span><span><b>03</b>Pack &amp; print</span><a href="settings.html#guide">Need a hand? Open the guide ↗</a></div><div class="page dispatch-page">
+    <div class="dispatch-overview" aria-label="Packing queue overview">
+        <div class="dispatch-metric"><div class="dispatch-metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="M3 8v9l9 5 9-5V8M12 13v9M7.5 5.5l9 5"/></svg></div><div><strong id="dispatchQueueCount">—</strong><span>Parcels in queue</span></div></div>
+        <div class="dispatch-metric" data-tone="ready"><div class="dispatch-metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 12 3 3 7-7"/><circle cx="12" cy="12" r="9"/></svg></div><div><strong id="dispatchReadyCount">—</strong><span>Ready to pack</span></div></div>
+        <div class="dispatch-metric" data-tone="review"><div class="dispatch-metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 18H2L12 3ZM12 9v4M12 17h.01"/></svg></div><div><strong id="dispatchReviewCount">—</strong><span>Need a review</span></div></div>
     </div>
 
-    <div class="panel">
-        <h2 style="margin:0;">Packing Queue</h2>
-        <div class="muted small">Search locations first. Nothing is removed from stock from this page.</div>
-
-        <div class="actions">
-            <button id="refreshBtn" class="secondary">Refresh Queue</button>
-            <button id="searchBtn">Search Locations</button>
-            <button id="printBtn" class="secondary">Print Pick List</button>
-            <button id="mobileShareQueueLabelsBtn" class="secondary" type="button">📱 Mobile print cropped shipping labels</button>
-        </div>
-
-        <div class="view-tabs">
-            <button id="locationViewBtn" class="active" type="button">Location Order</button>
-            <button id="labelViewBtn" type="button">Label Print Order</button>
-        </div>
-
-        <div id="queue" style="margin-top:14px;"></div>
+    <div class="dispatch-import-options">
+        <details class="dispatch-section" id="dispatchFilePanel">
+            <summary><span class="dispatch-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"/></svg></span><span class="dispatch-section-copy"><strong>Import label files</strong><small>Upload &amp; crop PDF, PNG or JPG labels</small></span><svg class="dispatch-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+            <div class="dispatch-section-body">
+                <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Choose shipping-label files or drag files here">
+                    <svg class="dispatch-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"/></svg><strong>Drop your shipping labels here</strong>
+                    <span class="muted">or choose files below · PDF, PNG, JPG or JPEG</span>
+                    <input id="fileInput" class="hidden" type="file" multiple accept=".pdf,.png,.jpg,.jpeg" aria-label="Shipping-label files">
+                </div>
+                <div class="checkbox-card"><label><input type="checkbox" id="autoCropToggle" checked>Auto-crop labels to 4×6</label><div class="small muted" style="margin-top:6px;">Check the cropped labels before adding them to your queue.</div></div>
+                <div class="dispatch-file-actions"><button id="browseBtn" type="button" class="secondary">Choose files</button><button id="processBtn" type="button" class="secondary" disabled>Preview crop</button><button id="uploadBtn" type="button" disabled>Add to queue</button></div>
+                <div id="selectedFiles" class="muted small" role="status" aria-live="polite"></div><div id="cropStatus" class="small muted" role="status" aria-live="polite"></div><div id="previewGrid" class="preview-grid"></div>
+            </div>
+        </details>
+        <details class="dispatch-section" id="dispatchEmailPanel">
+            <summary><span class="dispatch-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 7 9 6 9-6"/></svg></span><span class="dispatch-section-copy"><strong>Email shipping labels</strong><small>Forward labels directly into this queue</small></span><span id="dispatchEmailStatus" class="dispatch-import-status">Loading</span><svg class="dispatch-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+            <div class="dispatch-section-body"><section class="inbound-labels" data-inbound-labels aria-label="Shipping-label email import"><p>Loading workspace shipping-label email…</p></section></div>
+        </details>
     </div>
 
-    <div class="panel">
-        <h2 style="margin:0;">Cropped Shipping Label Preview (4×6)</h2>
-        <div class="muted small">These are the actual cropped courier labels that will print, shown in Label Print Order.</div>
-
-        <div class="actions">
-            <button id="refreshPrintPreviewBtn" class="secondary" type="button">Refresh Preview</button>
-            <button id="printPreviewLabelsBtn" type="button">Print Shipping Labels</button>
-            <button id="clearPendingPrintsBtn" class="danger" type="button">Clear Pending Prints</button>
-            <button id="mobileShareLabelsBtn" class="secondary" type="button">📱 Share / Mobile Print</button>
+    <section class="panel dispatch-queue-panel" aria-labelledby="dispatchQueueTitle">
+        <div class="dispatch-panel-heading"><div><h2 id="dispatchQueueTitle">Packing queue</h2><p id="dispatchQueueCaption">Loading your packing queue…</p></div><div id="dispatchPrimaryActions" class="actions dispatch-primary-actions"></div></div>
+        <div class="actions dispatch-queue-toolbar">
+            <div class="view-tabs" role="group" aria-label="Queue order"><button id="locationViewBtn" class="active" type="button" aria-pressed="true">By location</button><button id="labelViewBtn" class="secondary" type="button" aria-pressed="false">By label</button></div>
+            <div class="dispatch-tools"><button id="searchBtn" class="secondary" type="button">Find stock locations</button><details class="dispatch-menu"><summary>More actions <svg class="dispatch-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary><div id="dispatchQueueMenu" class="dispatch-menu-content"><button id="refreshBtn" class="secondary" type="button">Refresh queue</button><button id="printBtn" class="secondary" type="button">Print pick list</button><button id="mobileShareQueueLabelsBtn" class="secondary" type="button">Mobile print labels</button><div class="dispatch-menu-divider"></div></div></details></div>
         </div>
+        <div id="queue" aria-label="Packing queue items"><div class="dispatch-empty">Loading packing jobs…</div></div>
+    </section>
 
-        <div id="mobileShareStatus" class="qz-print-status">
-            On mobile, share the combined 4×6 PDF to your Jadens printing app.
+    <details class="dispatch-section dispatch-print-section" id="dispatchPrintPanel">
+        <summary><span class="dispatch-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V3h10v5M7 18H3V9h18v9h-4M7 14h10v8H7v-8ZM17 11h.01"/></svg></span><span class="dispatch-section-copy"><strong>Shipping labels &amp; printing</strong><small>Preview 4×6 labels, print from your phone or use QZ Tray</small></span><svg class="dispatch-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+        <div class="dispatch-section-body">
+            <div class="dispatch-print-actions"><button id="printPreviewLabelsBtn" type="button">Print via QZ Tray</button><button id="mobileShareLabelsBtn" class="secondary" type="button">Mobile print / PDF</button><button id="refreshPrintPreviewBtn" class="secondary" type="button">Refresh previews</button></div>
+            <div id="mobileShareStatus" class="qz-print-status" role="status" aria-live="polite">On your phone, send the 4×6 PDF to your thermal printer app.</div>
+            <div id="printPreviewGrid" class="print-preview-grid"></div>
+            <details class="dispatch-printer-help"><summary>Printer setup &amp; troubleshooting</summary><a href="printer-setup.html">Open printer setup ↗</a><div id="dispatchQzStatus" class="qz-print-status" role="status" aria-live="polite">Checking QZ Tray…</div><div id="dispatchPendingPrintStatus" class="qz-print-status" role="status" aria-live="polite">No InventoryOS print retries are waiting.</div><div class="dispatch-file-actions"><button id="clearPendingPrintsBtn" class="danger" type="button">Clear print retries</button></div></details>
         </div>
-
-        <div style="margin-top:10px;"><a class="link-card" href="printer-setup.html">Open Printer Setup</a></div>
-<div id="dispatchQzStatus" class="qz-print-status">QZ Tray will send each 600-DPI 4×6 shipping label directly to your selected 4×6 printer using Chrome/PDFium-rendered images.</div>
-<div id="dispatchPendingPrintStatus" class="qz-print-status">No InventoryOS print retries are waiting.</div>
-        <div id="printPreviewGrid" class="print-preview-grid"></div>
-    </div>
-
-    <div class="links-grid">
-        <a class="link-card" href="index.html">← Back to Dashboard</a>
-        <a class="link-card" href="search.html">Open Stock Search</a>
-    </div>
+    </details>
+    <div class="links-grid dispatch-footer-links"><a href="index.html">← Back to dashboard</a><a href="settings.html#guide">Dispatch guide ↗</a><a href="search.html">Find stock ↗</a></div>
 </div>
 
 </div>
@@ -900,10 +873,11 @@ button:disabled{
 <script src="js/inventoryTopbar.js?v=smooth-20261103"></script>
 <script src="js/workspace.js?v=5"></script>
 
-<script src="/js/pages/dispatch-centre.1.js?v=security-1"></script>
+<script src="js/dispatchLayout.js?v=dispatch-review-20261103"></script>
+<script src="/js/pages/dispatch-centre.1.js?v=dispatch-review-20261103"></script>
 
 
-<script src="js/dispatchWorkflow.js?v=11"></script>
+<script src="js/dispatchWorkflow.js?v=dispatch-review-20261103"></script>
 
 <script src="js/appShell.js?v=smooth-20261103"></script>
 <script src="js/inboundEmail.js?v=4"></script>

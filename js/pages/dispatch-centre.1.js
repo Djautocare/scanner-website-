@@ -3,6 +3,7 @@ let selectedFiles = [];
 let croppedLabels = [];
 let queueCache = [];
 let currentView = "location";
+let dispatchQueueLoadVersion = 0;
 
 let preparedMobilePrintFile = null;
 let preparedMobilePrintSignature = "";
@@ -1175,7 +1176,15 @@ function setFiles(files){
 }
 
 browseBtn.addEventListener("click", () => fileInput.click());
-dropzone.addEventListener("click", () => fileInput.click());
+dropzone.addEventListener("click", event => {
+    if(event.target !== fileInput) fileInput.click();
+});
+dropzone.addEventListener("keydown", event => {
+    if(event.target === dropzone && (event.key === "Enter" || event.key === " ")){
+        event.preventDefault();
+        fileInput.click();
+    }
+});
 fileInput.addEventListener("change", e => setFiles(e.target.files));
 
 dropzone.addEventListener("dragover", e => {
@@ -1324,7 +1333,7 @@ uploadBtn.addEventListener("click", async () => {
         alert(err.message || "Upload failed");
     }finally{
         hideLoading();
-        uploadBtn.textContent = "Upload To Packing Queue";
+        uploadBtn.textContent = "Add to queue";
         uploadBtn.disabled = true;
         processBtn.disabled = selectedFiles.length === 0;
     }
@@ -1405,14 +1414,14 @@ document.getElementById("refreshPrintPreviewBtn").addEventListener("click", rend
 
 document.getElementById("mobileShareLabelsBtn").addEventListener(
     "click",
-    shareLabelsForMobile
+    () => shareLabelsForMobile("mobileShareLabelsBtn", "Mobile print / PDF")
 );
 
 document.getElementById("mobileShareQueueLabelsBtn").addEventListener(
     "click",
     () => shareLabelsForMobile(
         "mobileShareQueueLabelsBtn",
-        "📱 Mobile print cropped shipping labels"
+        "Mobile print labels"
     )
 );
 
@@ -1588,7 +1597,7 @@ document.getElementById(
 
             button.disabled = false;
             button.textContent =
-                "Print Shipping Labels";
+                "Print via QZ Tray";
         }
     }
 );
@@ -1691,21 +1700,20 @@ function renderPrintPreviewLabels(){
 }
 
 function renderQueue(){
+    const openDetails = window.InventoryDispatchLayout?.rememberQueueDetails();
     const rows = buildPickRows();
 
-    if(!rows.length){
-        queueEl.innerHTML = `<div class="muted">No packing items yet.</div>`;
-        renderPrintPreviewLabels();
-        return;
-    }
-
-    if(currentView === "location"){
+    if(!queueCache.some(pack => pack.status !== "packed")){
+        queueEl.innerHTML = `<div class="dispatch-empty"><strong>Your queue is clear</strong>Open Import label files or Email shipping labels above to get started.</div>`;
+    }else if(currentView === "location" && rows.length){
         renderLocationView(rows);
     }else{
         renderLabelView(rows);
     }
 
     renderPrintPreviewLabels();
+    if(openDetails)window.InventoryDispatchLayout?.restoreQueueDetails(openDetails);
+    window.InventoryDispatchLayout?.updateQueue(queueCache);
 }
 
 function renderLocationView(rows){
@@ -1736,22 +1744,22 @@ function renderLocationView(rows){
                     <div class="muted small">${escapeHtml(row.sourceName)}</div>
                 </div>
                 <div class="${row.location ? "ok" : "error"}">${InventoryWorkspace.locationNameHtml(row.location || "Not found")}</div>
-                <div>${escapeHtml(row.qty)}</div>
+                <div class="dispatch-quantity">${escapeHtml(row.qty)}</div>
             </div>
         `;
     });
 
-    html += `</div><div style="margin-top:12px;">${renderPackCards()}</div>`;
+    html += `</div><details class="dispatch-job-details" data-dispatch-detail="all-jobs"><summary>Review &amp; edit individual labels</summary>${renderPackCards()}</details>`;
     queueEl.innerHTML = html;
 }
 
 function renderLabelView(rows){
-    const sortedPacks = [...queueCache].sort((a,b) => Number(a.label_order || 0) - Number(b.label_order || 0));
+    const sortedPacks = queueCache.filter(pack => pack.status !== "packed").sort((a,b) => Number(a.label_order || 0) - Number(b.label_order || 0));
     queueEl.innerHTML = sortedPacks.map(pack => renderPackCard(pack)).join("");
 }
 
 function renderPackCards(){
-    return [...queueCache]
+    return queueCache.filter(pack => pack.status !== "packed")
         .sort((a,b) => Number(a.label_order || 0) - Number(b.label_order || 0))
         .map(pack => renderPackCard(pack))
         .join("");
@@ -1863,9 +1871,12 @@ function renderPackCard(pack){
 }
 
 async function loadQueue(){
+    const version = ++dispatchQueueLoadVersion;
+    const selection = localStorage.getItem("inventoryos_selected_workspace_id") + ":" + localStorage.getItem("inventoryos_selected_inventory_ids");
     try{
         const res = await apiFetch("/shipping-labels/queue");
         const data = await res.json();
+        if(version !== dispatchQueueLoadVersion || selection !== localStorage.getItem("inventoryos_selected_workspace_id") + ":" + localStorage.getItem("inventoryos_selected_inventory_ids")) return;
 
         if(!data.success) throw new Error(data.error || "Could not load packing queue");
 
@@ -1885,6 +1896,7 @@ async function loadQueue(){
 
         renderQueue();
     }catch(err){
+        if(version !== dispatchQueueLoadVersion) return;
         queueEl.innerHTML = `<div class="error">${escapeHtml(err.message || "Could not load packing queue.")}</div>`;
     }
 }
