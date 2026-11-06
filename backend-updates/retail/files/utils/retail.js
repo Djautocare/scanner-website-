@@ -171,6 +171,14 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     if(s.pos_staff) data={...data,staff_id:s.pos_staff.id,till_id:s.registered_till_id};
     await c.query('INSERT INTO retail_audit(id,workspace_id,inventory_id,actor_id,kind,data) VALUES($1,$2,$3,$4,$5,$6)', [uuid(), s.workspace_id, s.inventory_id, s.actor_id, kind, JSON.stringify(data)]);
   }
+  async function auditProductValues(c, s, before, after, reason, source, referenceId = null) {
+    if (before.price_pence === after.price_pence && before.cost_pence === after.cost_pence) return;
+    await audit(c, s, 'product_value_changed', {
+      product_id: before.id, source, reference_id: referenceId, reason,
+      before: { price_pence: before.price_pence, cost_pence: before.cost_pence },
+      after: { price_pence: after.price_pence, cost_pence: after.cost_pence }
+    });
+  }
   async function transaction(req, fn, options) {
     await ensureSchema();
     if(req.retail_pos){const ps=await platform.posScope(pool,req);req.workspace={id:ps.workspace_id};}
@@ -306,6 +314,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
         if (outstanding.length) throw fail('Complete or cancel this product’s outstanding deliveries first');
       }
       p = (await c.query('UPDATE retail_products SET name=$4,barcode=$5,price_pence=$6,cost_pence=$7,minimum_qty=$8,target_qty=$9,supplier=$10,supplier_url=$11,archived=$12,vat_treatment=$13,vat_rate=$14,catalogue_source=$15,catalogue_code=$16,edit_version=edit_version+1,updated_at=now() WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 RETURNING *', [...args(s), old.id, name, barcode, price, cost, minimum, target, supplier, url, b.archived, tax.vat_treatment, tax.vat_rate, catalogue.source, catalogue.code])).rows[0];
+      await auditProductValues(c, s, old, p, text(b.value_change_reason, 'Price or cost change reason', 300, true) || 'Product edited', 'product_edit');
     } else {
       if (s.settings.vat_receipts && !tax.vat_treatment) throw fail('Choose this product’s VAT treatment before saving');
       const catalogue = catalogueDetails(b, barcode);
@@ -325,7 +334,11 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
     const p = await product(c, s, b.product_id); if (p.archived) throw fail('This product is archived');
     const received = business.receiveQuantity(s, p, b), reason = received.description + text(b.reason, 'Stock-in reason', 300);
     const updated = await stock(c, s, p, received.qty, 'stock_in', null, reason);
-    if (received.cost != null) return { product: (await c.query('UPDATE retail_products SET cost_pence=$4,edit_version=edit_version+1 WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 RETURNING *', [...args(s),p.id,received.cost])).rows[0] };
+    if (received.cost != null) {
+      const priced = (await c.query('UPDATE retail_products SET cost_pence=$4,edit_version=edit_version+1 WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3 RETURNING *', [...args(s),p.id,received.cost])).rows[0];
+      await auditProductValues(c, s, p, priced, reason, 'stock_receipt');
+      return { product: priced };
+    }
     return { product: updated };
   }
   async function countStock(c, s, b, countId) {
@@ -477,6 +490,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
       await stock(c, s, p, qty, 'delivery', d.id, d.reference);
       await c.query('UPDATE retail_delivery_items SET received_qty=received_qty+$5 WHERE workspace_id=$1 AND inventory_id=$2 AND delivery_id=$3 AND id=$4', [...args(s), d.id, line.id, qty]);
       await c.query('UPDATE retail_products SET cost_pence=$4,edit_version=edit_version+1,updated_at=now() WHERE workspace_id=$1 AND inventory_id=$2 AND id=$3', [...args(s), p.id, line.unit_cost_pence]);
+      await auditProductValues(c, s, p, { ...p, cost_pence: line.unit_cost_pence }, 'Supplier delivery received', 'delivery_receipt', d.id);
     }
     if (!total) throw fail('Enter at least one unit received');
     const remaining = Number((await c.query('SELECT SUM(ordered_qty-received_qty)::text AS n FROM retail_delivery_items WHERE workspace_id=$1 AND inventory_id=$2 AND delivery_id=$3', [...args(s), d.id])).rows[0].n);
@@ -521,8 +535,13 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   }
   async function history(req) {
     await ensureSchema(); const s = await scope(pool, req);
-    const events = (await pool.query('SELECT * FROM retail_stock_events WHERE workspace_id=$1 AND inventory_id=$2 AND product_id=$3 ORDER BY created_at DESC LIMIT 200', [...args(s), id(req.params.id)])).rows;
-    return { success: true, events };
+    const productId = id(req.params.id), values = [...args(s), productId];
+    const events = (await pool.query('SELECT * FROM retail_stock_events WHERE workspace_id=$1 AND inventory_id=$2 AND product_id=$3 ORDER BY created_at DESC, id DESC LIMIT 200', values)).rows;
+    if (!['owner', 'admin'].includes(s.role)) return { success: true, events };
+    const value_events = (await pool.query(`SELECT id, actor_id, created_at, data FROM retail_audit
+      WHERE workspace_id=$1 AND inventory_id=$2 AND kind='product_value_changed' AND data->>'product_id'=$3::text
+      ORDER BY created_at DESC, id DESC LIMIT 200`, values)).rows;
+    return { success: true, events, value_events };
   }
   async function tick() {
     await ensureSchema();
@@ -551,7 +570,7 @@ function createService({ pool, calculateAccess, ensureBillingSchema = async () =
   const operations = require('./retailOperations').createOperations({pool,args,id,text,integer,money,fail,now,product,stock,till,cash,audit,ensureSchema,scope,checkout,saveProduct});
   const catalogueTransfer = require('./retailTransfer').createTransfer({pool,args,id,text,fail,ensureSchema,scope,saveProduct});
   const platform = require('./retailPlatform').createPlatform({pool,now,id,text,integer,money,fail,args,audit,ensureSchema,scope,transaction,till,business,operations,checkout,openTill,movement,balance,report,reorders,product,sendEmail,calculateAccess,stripe:stripeClient});
-  const ordering = require('./retailOrdering').createOrdering({pool,args,id,text,integer,money,fail,now,product,audit,ensureSchema,scope,createDelivery,reorders,lookupProduct});
+  const ordering = require('./retailOrdering').createOrdering({pool,args,id,text,integer,money,fail,now,product,audit,ensureSchema,scope,createDelivery,reorders,lookupProduct,auditProductValues});
   const reports = require('./retailReports').createReports({pool,args,id,text,integer,fail,now,ensureSchema,scope});
   const deletions = require('./retailStoreDeletion').create({pool,now,id,fail,ensureSchema,scope,sendEmail,stripe:stripeClient});
   return { deletions,ordering,reports,platform, operations, catalogueTransfer, business, ensureSchema, scope, status, transaction, settings, saveProduct, receiveStock, countStock, requestCount, openTill, movement, balance, checkout, refund, createDelivery, deliveryStatus, receiveDelivery, createTask, taskStatus, overview, history, report, reorders, tick, start };

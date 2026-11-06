@@ -93,6 +93,6 @@ test('Till offline navigation returns the HTML shell rather than a new styleshee
 test('Retail and Till precaches include the exact released shared design assets and changed modules',()=>{
  const retail=read('retail/sw.js'),till=read('retail/till/sw.js');
  for(const sw of [retail,till])for(const file of ['css/workspaceDesign.css?v=smooth-20261103','js/workspaceDesign.js?v=smooth-20261103'])assert(sw.includes(file));
- for(const file of ['retail.js','counter.js'])assert(retail.includes(file+'?v=smooth-20261103'));assert(retail.includes('shared.js?v=workspace-20261102'));
+ for(const file of ['retail.js?v=product-history-1','counter.js?v=smooth-20261103'])assert(retail.includes(file));assert(retail.includes('shared.js?v=workspace-20261102'));
  assert(!/localStorage|indexedDB\.deleteDatabase/.test(retail+till));
 });

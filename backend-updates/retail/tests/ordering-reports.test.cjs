@@ -31,6 +31,10 @@ const {createService}=require('../files/utils/retail'),supplier=require('../file
  let overview=await R.overview(req('/overview'));assert.equal(overview.ordering.reviews.length,1);assert.equal(overview.ordering.reviews[0].recommended_price_pence,360);assert.equal(overview.products.find(p=>p.id===water.id).cost_pence,100);assert.equal(overview.tasks.filter(t=>t.source_key==='supplier-price-review'&&t.status==='pending').length,1);
  const review=overview.ordering.reviews[0],apply=req('/price-reviews/'+review.id,{action:'accept',price:'3.60',version:review.version,product_version:review.edit_version});
  const resolve=(c,s,b)=>R.ordering.resolveReview(c,s,b,review.id);await R.transaction(apply,resolve,{admin:true});assert.equal((await R.transaction(apply,resolve,{admin:true})).replayed,true);assert.equal((await R.overview(req('/overview'))).ordering.reviews.length,0);
+ const valueEvents=(await db.query("SELECT data FROM retail_audit WHERE kind='product_value_changed' AND data->>'product_id'=$1",[water.id])).rows;
+ assert.equal(valueEvents.length,1);assert.equal(valueEvents[0].data.reference_id,review.id);
+ assert.deepEqual(valueEvents[0].data.before,{price_pence:300,cost_pence:100});
+ assert.deepEqual(valueEvents[0].data.after,{price_pence:360,cost_pence:100});
  clock=new Date(clock.getTime()+6*60000);remote=1800;await run('/suppliers/check',{product_ids:[water.id]},R.ordering.queue);await R.ordering.tick();overview=await R.overview(req('/overview'));assert.equal(overview.ordering.reviews[0].latest_cost_pence,150);assert.equal(overview.ordering.reviews[0].baseline_cost_pence,120);
  // A failed check retains the last known estimate and never modifies actual cost.
  fetchError=true;clock=new Date(clock.getTime()+6*60000);await run('/suppliers/check',{product_ids:[water.id]},R.ordering.queue);await R.ordering.tick();overview=await R.overview(req('/overview'));assert.equal(overview.ordering.products[0].estimated_unit_cost_pence,150);assert.match(overview.ordering.products[0].status,/could not be reached/);assert.equal(overview.products.find(p=>p.id===water.id).cost_pence,100);

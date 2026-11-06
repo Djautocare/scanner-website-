@@ -118,3 +118,5 @@ ALTER TABLE retail_products ADD COLUMN IF NOT EXISTS catalogue_code text NOT NUL
 -- Time of sale remains separate from the time a delayed device uploads it.
 ALTER TABLE retail_sales ADD COLUMN IF NOT EXISTS recorded_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE retail_sales ADD COLUMN IF NOT EXISTS offline_device_id uuid;
+
+CREATE INDEX IF NOT EXISTS retail_product_value_history ON retail_audit(workspace_id,inventory_id,(data->>'product_id'),created_at DESC,id DESC) WHERE kind='product_value_changed';

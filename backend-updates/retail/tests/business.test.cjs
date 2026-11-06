@@ -44,6 +44,12 @@ const { createService, money, dayAndTime } = require('../files/utils/retail');
   await assert.rejects(()=>run('/stock-in',{product_id:service.id,qty:1,reason:'Invalid'},R.receiveStock),/Services/);
   await assert.rejects(()=>make({name:'Bad service',item_kind:'service',opening_qty:1}),/Services/);
   await run('/stock-in',{product_id:can.id,qty:3,received_as:'cases',case_cost:'10.00',reason:'Three cases'},R.receiveStock);
+  const receivedCost=(await db.query("SELECT data FROM retail_audit WHERE kind='product_value_changed' AND data->>'product_id'=$1",[can.id])).rows;
+  assert.equal(receivedCost.length,1);
+  assert.equal(receivedCost[0].data.source,'stock_receipt');
+  assert.match(receivedCost[0].data.reason,/Three cases/);
+  assert.equal(receivedCost[0].data.after.cost_pence,Math.round(1000/can.pack_size));
+
   let d=await overview();assert.equal(d.products.find(p=>p.id===can.id).stock_qty,172);assert.equal(d.products.find(p=>p.id===can.id).cost_pence,42);
   const order=await run('/deliveries',{supplier:'Wholesaler',items:[{product_id:can.id,qty:2,unit:'cases',cost:'12.00'}]},R.createDelivery,{admin:true});
   d=await overview();const dl=d.deliveries.find(x=>x.id===order.delivery_id).items[0];assert.equal(dl.ordered_qty,48);assert.equal(dl.unit_cost_pence,50);
