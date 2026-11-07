@@ -2,14 +2,13 @@
 'use strict';
 const {$,esc,money,endpoint,api,status,task,bindForm,input,select,check,table,download,imageData}=PlatformUI;
 const main=$('pf-main'),params=new URLSearchParams(location.search);
-const view=['stock','seller','accounts','admin'].includes(params.get('view'))?params.get('view'):'stock';
+if(params.get('view')==='admin'){location.replace('/admin.html#platformAdmin');return;}
+const view=['stock','seller','accounts'].includes(params.get('view'))?params.get('view'):'stock';
 const views={stock:['Stock links','Keep workspaces separate or see their sellable stock in one pool.'],
  seller:['Seller Centre','Set up a Mi Marché storefront, then review drafts and fulfil orders.'],
- accounts:['Accounts & Tax Centre','Build a dated record pack from your Retail shop.'],
- admin:['Platform administration','Review listings and access scoped financial records.']};
+ accounts:['Accounts & Tax Centre','Build a dated record pack from your Retail shop.']};
 $('pf-title').textContent=views[view][0];$('pf-subtitle').textContent=views[view][1];
 for(const a of document.querySelectorAll('[data-view]')){
- if(a.dataset.view==='admin'&&InventoryAPI.getUser()?.is_admin)a.hidden=false;
  if(a.dataset.view===view)a.setAttribute('aria-current','page');
 }
 function card(title,body){return '<section class="pf-card"><h2>'+esc(title)+'</h2>'+body+'</section>';}
@@ -235,46 +234,15 @@ async function accounts(){
  if(shops.length===1)f.elements.shop.value=shops[0].id;
 }
 
-async function admin(){
- if(!InventoryAPI.getUser()?.is_admin)throw Error('Platform owner access required.');
- const x=await api('/admin/moderation');
- main.innerHTML=card('Listing reviews',x.listings.map(l=>`<article class="pf-choice"><h3>${esc(l.title)} · ${esc(l.shop)}</h3>
-  <p>${esc(l.description)}</p><p class="pf-muted">Text: ${esc(l.text_review)} · Image screening: ${esc(l.photo_reviews.join(', ')||'No photos')}</p>
-  ${l.reports?.length?table(l.reports):''}<div class="pf-grid">${l.photo_ids.map(p=>'<img class="pf-photo mini" loading="lazy" crossorigin="use-credentials" alt="Listing photo for review" src="'+esc(endpoint('/admin/photo/'+encodeURIComponent(p)))+'">').join('')}</div>
-  <form class="pf-form" data-moderate="${esc(l.id)}">${select('Decision','action',[['approved','Approve after review'],['blocked','Block publication'],['hold','Retain photos'],['release','Lift photo retention hold']])}
-   ${input('Reason','reason','','required maxlength="240"')}${submit('Record decision')}</form></article>`).join('')||'<p class="pf-muted">No listings are awaiting review.</p>')+
- card('Compliance & financial records',`<p class="pf-warning">Use this only for an authorised request. Open one shop and period at a time. A fresh authenticator code is required for each access.</p>
-  <form class="pf-form" id="pf-legal">${input('Retail shop inventory ID','inventory_id','','required')}
-   ${input('Case reference','case_ref','','required maxlength="100"')}${area('Lawful purpose','purpose','','required maxlength="300"')}
-   ${input('Start date','start','','type="date" required')}${input('End date','end','','type="date" required')}
-   ${check('Show an access notice to the shop owner','notify',true)}${input('If notice must be withheld, give the reason','suppression_reason','','maxlength="240"')}
-   ${input('New authenticator code','code','','required inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code"')}${submit('Verify and open report')}</form>
-   <div id="pf-legal-report"></div>`)+
- card('Check the access log',`<form id="pf-verify" class="pf-form">${input('New authenticator code','code','','required inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code"')}${submit('Verify signed access history')}</form>`);
- for(const f of main.querySelectorAll('[data-moderate]'))bindForm(f,async v=>{
-  const route='/admin/listing/'+encodeURIComponent(f.dataset.moderate);
-  if(['hold','release'].includes(v.action))await api(route+'/retention',{body:{hold:v.action==='hold',reason:v.reason}});
-  else await api(route,{body:v});
-  await admin();status('Decision saved.');
- });
- const legal=$('pf-legal');
- bindForm(legal,async v=>{
-  $('pf-legal-report').replaceChildren();legal.elements.code.value='';
-  const x=await api('/admin/report',{body:{...v,notify:!!v.notify}});
-  $('pf-legal-report').innerHTML='<div class="pf-space">'+table([x.report.summary])+btn('Save signed case pack','id="pf-case-pack"')+'</div>';
-  $('pf-case-pack').onclick=()=>download('inventoryos-case-'+x.access.id+'.json',JSON.stringify(x,null,2));
-  status('Scoped access recorded.');
- });
- bindForm($('pf-verify'),async(v,f)=>{
-  f.elements.code.value='';const x=await api('/admin/audit/verify',{body:v});status('Verified '+x.entries+' access records. Chain head: '+x.head);
- });
-}
 async function run(){
  if(!InventoryAPI.isLoggedIn()){location.href="/login.html?returnTo="+encodeURIComponent("/platform/?view="+view);return;}
  const s=await api('/status');
  if(!(s.enabled||s.staging))throw Error('These tools are not enabled for your account.');
  if(s.pilot)$('pf-rollout').textContent='Private pilot · Changes affect your selected test inventories. Payments are in test mode.';
- await ({stock,seller,accounts,admin})[view]();
+ await api('/access');
+ await ({stock,seller,accounts})[view]();
 }
-run().catch(e=>status(e.message,true));
+function failed(e){if(!PlatformUI.showAccessGate(main,e,()=>run().catch(failed)))status(e.message,true);}
+document.addEventListener('inventoryos:security-changed',()=>run().catch(failed));
+run().catch(failed);
 })();

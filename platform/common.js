@@ -11,11 +11,28 @@ async function api(path,{body,publicOnly=false}={}){
   const response=await fetch(endpoint(path),{...options,credentials:'omit'});
   r=await response.json().catch(()=>({success:false,error:'Unable to load this page'}));
  }else r=await InventoryAPI.request('/platform'+path,options);
- if(!r?.success)throw Error(r?.error||'Could not complete this request');
+ if(!r?.success)throw Object.assign(Error(r?.error||'Could not complete this request'),{code:r?.code,mfa_required:r?.mfa_required});
  return r;
 }
 function status(s='',error=false){
- const el=$('pf-status');el.textContent=s;el.classList.toggle('pf-error',error);
+ const el=$('pf-status');if(!el)return;el.textContent=s;el.classList.toggle('pf-error',error);
+}
+function showAccessGate(host,error,retry){
+ if(!host||!(error?.mfa_required||String(error?.code||'').startsWith('MFA_')))return false;
+ host.hidden=false;
+ host.innerHTML='<section class="pf-card"><h2>Protect your account</h2><p>'+esc(error.message||error.error||'Two-factor authentication is required.')+'</p><div class="pf-actions"><button type="button" data-mfa-retry>Check access again</button><a class="pf-button" href="/settings.html#account-settings-security">Security settings</a></div></section>';
+ const actions=host.querySelector('.pf-actions');
+ if(error.code==='MFA_SETUP_REQUIRED'&&window.InventorySecurity?.setup){
+  const b=document.createElement('button');b.type='button';b.className='primary';b.textContent='Set up two-factor authentication';
+  b.onclick=()=>window.InventorySecurity.setup();actions.prepend(b);
+ }
+ if(error.code==='MFA_LOGIN_REQUIRED'){
+  const a=document.createElement('a');a.className='pf-button primary';a.textContent='Sign in with your authenticator';
+  const target=location.pathname==='/admin.html'?'/admin.html':location.pathname+location.search;
+  a.href='/login.html?returnTo='+encodeURIComponent(target);actions.prepend(a);
+ }
+ host.querySelector('[data-mfa-retry]').onclick=async()=>{try{await retry();}catch(e){showAccessGate(host,e,retry);}};
+ return true;
 }
 function task(button,fn){
  return async e=>{
@@ -58,5 +75,5 @@ async function imageData(file){
   return canvas.toDataURL('image/jpeg',.84).split(',')[1];
  }finally{bitmap.close();}
 }
-window.PlatformUI={$,esc,money,endpoint,api,status,task,bindForm,input,select,check,table,download,imageData};
+window.PlatformUI={$,esc,money,endpoint,api,status,task,bindForm,input,select,check,table,download,imageData,showAccessGate};
 })();

@@ -6,6 +6,7 @@ const pathSlug=location.hostname.startsWith('marche.')?location.pathname.split('
 const handle=params.get('shop')||pathSlug||'';
 const market=(path,body)=>api('/marche'+path,{body,publicOnly:true});
 const route='/shop/'+encodeURIComponent(handle), KEY='ios-marche-staging-'+handle;
+let checkoutAvailable=false;
 let shop,catalogue=[],branches=[],cart=new Map(),methods=new Map(),quoted,order,search='',page=0;
 function button(label,attr=''){return '<button type="button" '+attr+'>'+esc(label)+'</button>';}
 function save(v){sessionStorage.setItem(KEY,JSON.stringify(v));}
@@ -31,7 +32,7 @@ async function directory(){
 }
 async function loadShop(){
  const d=await market(route);
- shop=d.shop;catalogue=d.listings;branches=d.branches;
+ shop=d.shop;catalogue=d.listings;branches=d.branches;checkoutAvailable=d.checkout==='staging';
  setText('pf-title',shop.name);setText('pf-subtitle',shop.description||'Browse items by branch, with delivery and collection where available.');
  if(/^#[a-f0-9]{6}$/i.test(shop.accent))$('pf-hero').style.borderBottom='4px solid '+shop.accent;
  for(const kind of ['logo','banner']){
@@ -65,13 +66,13 @@ function renderProducts(){
  $('pf-products').innerHTML=`<form class="pf-form pf-card" id="pf-search">
   ${input('Search this shop','search',search)}<button type="submit">Search</button></form>
   <div class="pf-grid">${found.slice(page,page+30).map(x=>{
-   const b=branches.find(s=>s.id===x.branch_id), canAdd=x.available>0&&(cart.get(x.id)||0)<x.available;
+   const b=branches.find(s=>s.id===x.branch_id), canAdd=checkoutAvailable&&x.available>0&&(cart.get(x.id)||0)<x.available;
    return `<article class="pf-card pf-product">
     ${x.photo_id?'<img class="pf-photo" alt="" loading="lazy" src="'+esc(endpoint('/marche/photo/'+encodeURIComponent(x.photo_id)))+'">':''}
     <p class="pf-kicker">${esc(x.category)} · ${esc(b?.name)}</p><h2>${esc(x.title)}</h2>
     <p class="pf-muted">${esc(x.description)}</p><p class="pf-total">${esc(money(x.price_pence))}</p>
     <div class="pf-actions">${canAdd?button('Add to basket','data-add="'+esc(x.id)+'" class="primary"'):
-     '<span class="pf-pill">'+(x.available?'In basket':x.sold_out_at?'Sold':'Unavailable')+'</span>'}</div>
+     '<span class="pf-pill">'+(!checkoutAvailable?'Preview only':x.available?'In basket':x.sold_out_at?'Sold':'Unavailable')+'</span>'}</div>
     <details><summary>Report listing</summary><form class="pf-form" data-report="${esc(x.id)}">
      ${select('Reason','category',[['safety','Safety or prohibited item'],['counterfeit','Possible counterfeit'],['other','Other']])}
      ${input('Details (optional)','detail','','maxlength="350"')}<button type="submit">Send report</button></form></details>
@@ -94,6 +95,7 @@ function renderProducts(){
 }
 function renderBasket(){
  const basket=$('pf-basket');
+ if(!checkoutAvailable){basket.innerHTML='<h2>Storefront preview</h2><p class="pf-muted">Online ordering is not open yet. No stock will be reserved and no payment will be taken.</p>';return;}
  const items=[...cart].map(([id,qty])=>({...catalogue.find(x=>x.id===id),qty})).filter(x=>x.id);
  if(!items.length){basket.innerHTML='<h2>Your basket</h2><p class="pf-muted">Add something from the shop to get started.</p>';return;}
  const byBranch=new Map();
@@ -157,6 +159,7 @@ async function showOrder(){
 }
 async function run(){
  const s=await api('/status',{publicOnly:true});if(!(s.enabled||s.staging))throw Error('Mi Marché is not open for public orders yet.');
+ if(s.mode==='general')$('pf-rollout').textContent='Mi Marché preview · Online checkout is not open yet.';
  if(s.pilot)$('pf-rollout').textContent='Private pilot · Only your account can access this marketplace. Use test stock and test contact details. No live payments.';
  await (handle?loadShop():directory());
 }
