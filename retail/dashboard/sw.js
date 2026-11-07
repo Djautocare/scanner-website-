@@ -1,3 +1,3 @@
 'use strict';
 self.RETAIL_DASHBOARD=true;
-importScripts('../sw.js?v=smooth-20261103');
+importScripts('../sw.js?v=platform-1');

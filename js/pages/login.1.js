@@ -75,7 +75,7 @@ function updateStrength(){
 
 async function redirectAfterLogin(){
     const requested = new URLSearchParams(window.location.search).get("returnTo");
-    if(["/retail/index.html","/retail/dashboard/index.html","/retail/billing.html"].includes(requested)){
+    if(["/retail/index.html","/retail/dashboard/index.html","/retail/billing.html","/platform/?view=stock","/platform/?view=seller","/platform/?view=accounts","/platform/?view=admin"].includes(requested)){
         window.location.href=requested;
         return;
     }
