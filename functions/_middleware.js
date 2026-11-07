@@ -34,6 +34,14 @@ export function secureResponse(response) {
 
 export async function onRequest(context) {
     let request = context.request;
+    const original=new URL(request.url);
+    const prefix=original.hostname==='marche.inventoryos.co.uk'?'': '/marche';
+    const escaped=prefix.replaceAll('/','\\/');
+    const match=original.pathname.match(new RegExp('^'+escaped+'/([a-z0-9][a-z0-9-]{2,39})/?$'));
+    if(match){const rewritten=new URL(request.url);rewritten.pathname='/marche/index.html';rewritten.searchParams.set('shop',match[1]);request=new Request(rewritten,request);}
+    if(original.hostname==='marche.inventoryos.co.uk'&&original.pathname==='/'){
+      const rewritten=new URL(request.url);rewritten.pathname='/marche/index.html';request=new Request(rewritten,request);
+    }
     const pathname = new URL(request.url).pathname;
     const page = pathname.endsWith('/') || !pathname.split('/').pop().includes('.') || /\.html$/i.test(pathname);
     if (page && ['GET','HEAD'].includes(request.method)) {

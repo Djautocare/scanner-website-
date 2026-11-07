@@ -10,12 +10,13 @@ async function admin(){
  if(!InventoryAPI.getUser()?.is_admin)throw Error('Platform owner access required.');
  const ticket=++generation;
  const access=await api('/access');if(!access.admin)throw Error('Admin access required.');
- const x=await api('/admin/moderation');if(!active||ticket!==generation)return;
+ const [x,sellers]=await Promise.all([api('/admin/moderation'),api('/admin/sellers')]);if(!active||ticket!==generation)return;
  main.innerHTML=card('Listing reviews',x.listings.map(l=>`<article class="pf-choice"><h3>${esc(l.title)} · ${esc(l.shop)}</h3>
   <p>${esc(l.description)}</p><p class="pf-muted">Text: ${esc(l.text_review)} · Image screening: ${esc(l.photo_reviews.join(', ')||'No photos')}</p>
   ${l.reports?.length?table(l.reports):''}<div class="pf-grid">${l.photo_ids.map(p=>'<img class="pf-photo mini" loading="lazy" crossorigin="use-credentials" alt="Listing photo for review" src="'+esc(endpoint('/admin/photo/'+encodeURIComponent(p)))+'">').join('')}</div>
   <form class="pf-form" data-moderate="${esc(l.id)}">${select('Decision','action',[['approved','Approve after review'],['blocked','Block publication'],['hold','Retain photos'],['release','Lift photo retention hold']])}
    ${input('Reason','reason','','required maxlength="240"')}${submit('Record decision')}</form></article>`).join('')||'<p class="pf-muted">No listings are awaiting review.</p>')+
+ card('Seller controls',`<details><summary>Warnings, suspension and seller history</summary><form id="pf-seller-action" class="pf-form pf-space">${select('Storefront','shop_id',[["","Choose a seller"],...sellers.sellers.map(s=>[s.id,s.name+(s.suspended?' · Suspended':'')+' · '+s.open_reports+' open reports'])])}${select('Action','action',[['warn','Send a notice to Seller Centre'],['suspend','Suspend storefront'],['restore','Lift suspension (seller must republish)']])}${input('Reason','reason','','required maxlength="400"')}${submit('Record seller decision')}</form>${table(sellers.sellers.map(s=>({storefront:s.name,slug:s.slug,suspended:s.suspended,open_reports:s.open_reports,history:s.history})))}</details>`)+
  card('Compliance & financial records',`<p class="pf-warning">Use this only for an authorised request. Open one shop and period at a time. A fresh authenticator code is required for each access.</p>
   <form class="pf-form" id="pf-legal">${input('Retail shop inventory ID','inventory_id','','required')}
    ${input('Case reference','case_ref','','required maxlength="100"')}${area('Lawful purpose','purpose','','required maxlength="300"')}
@@ -30,6 +31,7 @@ async function admin(){
   else await api(route,{body:v});
   await admin();status('Decision saved.');
  });
+ bindForm($('pf-seller-action'),async v=>{await api('/admin/seller/'+encodeURIComponent(v.shop_id),{body:{action:v.action,reason:v.reason}});await admin();status('Seller decision recorded.');});
  const legal=$('pf-legal');
  bindForm(legal,async v=>{
   $('pf-legal-report').replaceChildren();legal.elements.code.value='';

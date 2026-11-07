@@ -22,7 +22,7 @@ test('marketplace API keeps the signed-in owner credentials in private pilot req
 });
 test('both pilot pages show the private inventory and test-payment boundary',()=>{
  for(const page of ['platform/index.html','marche/index.html']){
-  assert.match(read(page),/id="pf-rollout"/);assert.match(read(page),/common\.js\?v=mfa-1/);
+  assert.match(read(page),/id="pf-rollout"/);assert.match(read(page),/common\.js\?v=commerce-1/);
  }
  assert.match(read('platform/platform.js'),/Payments are in test mode/);
  assert.match(read('marche/store.js'),/No live payments/);
@@ -33,7 +33,7 @@ test('administration is embedded only in the portal and the old standalone URL r
  assert(!read('platform/platform.js').includes('async function admin()'));
  assert(read('platform/platform.js').includes("location.replace('/admin.html#platformAdmin')"));
  assert(read('admin.html').includes('id="platformAdmin"'));
- assert(read('admin.html').includes('/platform/admin.js?v=mfa-1'));
+ assert(read('admin.html').includes('/platform/admin.js?v=commerce-1'));
  assert(read('platform/admin.js').includes("api('/access')"));
  assert(read('platform/admin.js').includes('generation++'));
 });
@@ -41,7 +41,7 @@ test('authenticator setup is reused and management pages request verified access
  assert(read('js/security-ui.js').includes('Object.freeze({loginChallenge,loadStatus,setup})'));
  const source=read('platform/platform.js');assert(source.indexOf("await api('/access')")<source.indexOf('await ({stock,seller,accounts})'));
  assert(read('js/pages/admin.1.js').includes("PlatformUI.showAccessGate($('adminMfaGate')"));
- assert(read('marche/store.js').includes('checkoutAvailable=d.checkout'));
+ assert(read('marche/store.js').includes("checkoutAvailable=['staging','test','live'].includes(d.checkout)"));
 });
 test('leaving the admin panel discards a pending review response',async()=>{
  const events={},main={innerHTML:'',replaceChildren(){this.innerHTML='';},querySelectorAll(){return [];}};

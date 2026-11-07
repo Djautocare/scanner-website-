@@ -2,11 +2,12 @@
 'use strict';
 const {$,esc,money,endpoint,api,status,task,bindForm,input,select}=PlatformUI;
 const main=$('pf-main'), params=new URLSearchParams(location.search);
-const pathSlug=location.hostname.startsWith('marche.')?location.pathname.split('/').filter(Boolean)[0]:'';
+const parts=location.pathname.split('/').filter(Boolean);
+const pathSlug=parts[0]==='marche'&&!parts[1]?.includes('.')?parts[1]:location.hostname==='marche.inventoryos.co.uk'&&!parts[0]?.includes('.')?parts[0]:'';
 const handle=params.get('shop')||pathSlug||'';
 const market=(path,body)=>api('/marche'+path,{body,publicOnly:true});
 const route='/shop/'+encodeURIComponent(handle), KEY='ios-marche-staging-'+handle;
-let checkoutAvailable=false;
+let checkoutAvailable=false,paymentEnvironment;
 let shop,catalogue=[],branches=[],cart=new Map(),methods=new Map(),quoted,order,search='',page=0;
 function button(label,attr=''){return '<button type="button" '+attr+'>'+esc(label)+'</button>';}
 function save(v){sessionStorage.setItem(KEY,JSON.stringify(v));}
@@ -27,12 +28,12 @@ async function directory(){
  main.innerHTML=d.shops.length?'<div class="pf-grid">'+d.shops.map(s=>
   `<article class="pf-card"><p class="pf-kicker">Independent shop</p><h2>${esc(s.name)}</h2>
   <p class="pf-muted">${esc(s.description||'Browse this storefront.')}</p>
-  <a class="pf-button" href="/marche/?shop=${encodeURIComponent(s.slug)}">Visit shop</a></article>`).join('')+'</div>':
-  '<article class="pf-card"><h2>No shops published yet</h2><p class="pf-muted">Create a test storefront in Seller Centre to try the marketplace.</p></article>';
+  <a class="pf-button" href="/marche/${encodeURIComponent(s.slug)}">Visit shop</a></article>`).join('')+'</div>':
+  '<article class="pf-card"><h2>No shops published yet</h2><p class="pf-muted">Sellers can prepare a storefront in Seller Centre.</p></article>';
 }
 async function loadShop(){
  const d=await market(route);
- shop=d.shop;catalogue=d.listings;branches=d.branches;checkoutAvailable=d.checkout==='staging';
+ shop=d.shop;catalogue=d.listings;branches=d.branches;checkoutAvailable=['staging','test','live'].includes(d.checkout);paymentEnvironment=d.checkout;
  setText('pf-title',shop.name);setText('pf-subtitle',shop.description||'Browse items by branch, with delivery and collection where available.');
  if(/^#[a-f0-9]{6}$/i.test(shop.accent))$('pf-hero').style.borderBottom='4px solid '+shop.accent;
  for(const kind of ['logo','banner']){
@@ -40,7 +41,8 @@ async function loadShop(){
   img.onload=()=>{img.hidden=false;};img.src=endpoint('/marche/brand/'+encodeURIComponent(handle)+'/'+kind);
   $('pf-hero').prepend(img);
  }
- const s=saved(), expected=params.get('order')||s?.id;
+ let s=saved();const history=MarcheCart.orders().find(x=>x.id===params.get('order')&&x.slug===handle);if(history&&s?.id!==history.id)s=history;
+ const expected=params.get('order')||s?.id;
  if(s?.id&&expected===s.id&&s.key){
   order=s;await showOrder();return;
  }
@@ -49,7 +51,9 @@ async function loadShop(){
  }
  // Keep a checkout attempt through transient network errors. An unchanged
  // submission repeats the same idempotent server request.
- if(s?.body){
+ const stored=MarcheCart.groups().find(x=>x.slug===handle);
+ if(stored){for(const x of stored.items){const l=catalogue.find(p=>p.id===x.listing_id);if(l){cart.set(l.id,x.qty);methods.set(l.branch_id,x.method);}}}
+ if(!stored&&s?.body){
   for(const x of s.body.items||[]){
    const l=catalogue.find(p=>p.id===x.listing_id);
    if(l){cart.set(l.id,x.qty);methods.set(l.branch_id,x.method);}
@@ -66,7 +70,7 @@ function renderProducts(){
  $('pf-products').innerHTML=`<form class="pf-form pf-card" id="pf-search">
   ${input('Search this shop','search',search)}<button type="submit">Search</button></form>
   <div class="pf-grid">${found.slice(page,page+30).map(x=>{
-   const b=branches.find(s=>s.id===x.branch_id), canAdd=checkoutAvailable&&x.available>0&&(cart.get(x.id)||0)<x.available;
+   const b=branches.find(s=>s.id===x.branch_id), canAdd=checkoutAvailable&&x.available>0&&(cart.get(x.id)||0)<Math.min(1000,x.available);
    return `<article class="pf-card pf-product">
     ${x.photo_id?'<img class="pf-photo" alt="" loading="lazy" src="'+esc(endpoint('/marche/photo/'+encodeURIComponent(x.photo_id)))+'">':''}
     <p class="pf-kicker">${esc(x.category)} · ${esc(b?.name)}</p><h2>${esc(x.title)}</h2>
@@ -84,7 +88,7 @@ function renderProducts(){
  if($('pf-next'))$('pf-next').onclick=()=>{page+=30;renderProducts();};
  for(const b of $('pf-products').querySelectorAll('[data-add]'))b.onclick=()=>{
   const x=catalogue.find(p=>p.id===b.dataset.add);
-  if((cart.get(x.id)||0)>=x.available)return;
+  if((cart.get(x.id)||0)>=Math.min(1000,x.available))return;
   cart.set(x.id,(cart.get(x.id)||0)+1);const branch=branches.find(b=>b.id===x.branch_id);
   if(!methods.has(x.branch_id))methods.set(x.branch_id,branch.collection?'collection':'delivery');
   quoted=null;renderBasket();renderProducts();status(x.title+' added.');
@@ -93,7 +97,9 @@ function renderProducts(){
   await market('/listing/'+encodeURIComponent(f.dataset.report)+'/report',v);f.reset();status('Listing reported for review.');
  });
 }
+function persistCart(){try{MarcheCart.put(handle,shop.name,bodyItems());}catch(e){status(e.message,true);}}
 function renderBasket(){
+ persistCart();
  const basket=$('pf-basket');
  if(!checkoutAvailable){basket.innerHTML='<h2>Storefront preview</h2><p class="pf-muted">Online ordering is not open yet. No stock will be reserved and no payment will be taken.</p>';return;}
  const items=[...cart].map(([id,qty])=>({...catalogue.find(x=>x.id===id),qty})).filter(x=>x.id);
@@ -104,12 +110,12 @@ function renderBasket(){
   ${[...byBranch.values()].map(b=>`<div class="pf-choice"><h3>${esc(b.name)}</h3>
    ${b.items.map(l=>`<div class="pf-actions"><span>${l.qty} × ${esc(l.title)} · ${esc(money(l.qty*l.price_pence))}</span>
     ${button('−','data-quantity="'+esc(l.id)+'" data-by="-1" aria-label="Remove one '+esc(l.title)+'"')}
-    ${button('+','data-quantity="'+esc(l.id)+'" data-by="1" aria-label="Add one '+esc(l.title)+'" '+(l.qty>=l.available?'disabled':''))}</div>`).join('')}
+    ${button('+','data-quantity="'+esc(l.id)+'" data-by="1" aria-label="Add one '+esc(l.title)+'" '+(l.qty>=Math.min(1000,l.available)?'disabled':''))}</div>`).join('')}
    ${select('Fulfilment for '+b.name,b.id,[...(b.collection?[['collection','Free collection']]:[]),...(b.delivery_pence!=null?[['delivery','Delivery · '+money(b.delivery_pence)]]:[])],methods.get(b.id))}
    </div>`).join('')}
   <button type="submit" class="primary">Check total</button></form><div id="pf-quote-result"></div>`;
  const form=$('pf-quote');
- form.onchange=e=>{if(e.target.tagName==='SELECT'){methods.set(e.target.name,e.target.value);quoted=null;$('pf-quote-result').replaceChildren();}};
+ form.onchange=e=>{if(e.target.tagName==='SELECT'){methods.set(e.target.name,e.target.value);persistCart();quoted=null;$('pf-quote-result').replaceChildren();}};
  bindForm(form,async()=>{quoted=await market(route+'/quote',{items:bodyItems()});renderQuote();});
  for(const b of basket.querySelectorAll('[data-quantity]'))b.onclick=()=>{
   const id=b.dataset.quantity,next=(cart.get(id)||0)+Number(b.dataset.by);
@@ -125,14 +131,15 @@ function renderQuote(){
   ${input('Email','email',previous.email,'type="email" required maxlength="254"')}
   ${delivery?input('Street address','address',previous.address,'required maxlength="150"')+input('Town','town',previous.town,'required maxlength="80"')+
     input('UK postcode','postcode',previous.postcode,'required maxlength="9"'):''}
-  <p class="pf-muted">Use test details. This checkout does not accept live payments.</p><button type="submit" class="primary">Reserve and continue</button></form>`;
+  <p class="pf-muted">${paymentEnvironment==='live'?'Pay this seller securely through Stripe. Purchases from other sellers need separate payments.':'Sandbox checkout. Use test details; no real payments.'}</p><button type="submit" class="primary">Reserve and continue</button></form>`;
  bindForm($('pf-pay'),async f=>{
   const body={...f,items:bodyItems(),total_pence:v.total_pence},fingerprint=JSON.stringify(body), existing=saved();
   if(existing?.fingerprint===fingerprint)Object.assign(body,{client_id:existing.body.client_id,lookup_key:existing.key});
   else Object.assign(body,{client_id:crypto.randomUUID(),lookup_key:base64url()});
   const prior={body,key:body.lookup_key,fingerprint};save(prior);
-  const result=await market(route+'/checkout',body);
-  order={...prior,id:result.order_id,provider:result.provider};save(order);
+  if(!InventoryAPI.isLoggedIn()){location.assign('/login.html?returnTo='+encodeURIComponent(location.pathname+location.search));return;}
+  let result;try{result=await market(route+'/checkout',body);}catch(e){if(PlatformUI.showAccessGate(main,e,loadShop))return;throw e;}
+  order={...prior,id:result.order_id,provider:result.provider};save(order);order.cart_revision=MarcheCart.groups().find(x=>x.slug===handle)?.revision;save(order);MarcheCart.record({...order,slug:handle});
   if(result.payment_url){
    const target=new URL(result.payment_url);
    if(target.protocol!=='https:'||target.hostname!=='checkout.stripe.com')throw Error('Unexpected payment address');
@@ -143,25 +150,30 @@ function renderQuote(){
 }
 async function showOrder(){
  const v=await market('/order/'+encodeURIComponent(order.id),{lookup_key:order.key});
- const labels={paid:'Test order confirmed',held:'Stock reserved',review:'Payment needs review',released:'Reservation released'};
+ if(['paid','review'].includes(v.status))MarcheCart.finish({...order,slug:handle});
+ const labels={paid:v.provider==='stripe_live'?'Order confirmed':'Test order confirmed',held:'Stock reserved',review:'Payment needs review',released:'Reservation released'};
  main.innerHTML=`<section class="pf-card"><h2>${esc(labels[v.status]||v.status)}</h2><p class="pf-muted">Reference ${esc(v.order_id)}</p>
-  <p class="pf-total">${esc(money(v.total_pence))}</p>
+  <p class="pf-total">${esc(money(v.total_pence))}</p>${v.refunded_pence?'<p class="pf-warning">Refunded '+esc(money(v.refunded_pence))+'</p>':''}${v.risk_state?'<p class="pf-warning">This payment is under review.</p>':''}
   ${v.branches.map(b=>'<div class="pf-choice"><strong>'+esc(b.branch_name)+'</strong><span>'+esc(b.method)+' · '+esc(b.state)+'</span>'+
    (b.collection_address?'<p>'+esc(b.collection_address)+'</p>':'')+(b.tracking?'<p>Tracking: '+esc(b.tracking)+'</p>':'')+'</div>').join('')}
   <div class="pf-actions">${v.status==='held'&&v.provider==='demo'?button('Confirm test payment','id="pf-demo-pay" class="primary"')+button('Cancel reservation','id="pf-demo-cancel"'):''}
-   ${v.status==='held'&&v.provider==='stripe_test'?button('Check sandbox payment','id="pf-check-pay"'):''}
+   ${v.status==='held'&&v.provider!=='demo'?button('Continue secure payment','id="pf-resume-pay" class="primary"')+button('Refresh payment status','id="pf-check-pay"')+button('Cancel reservation','id="pf-stripe-cancel"'):''}
    ${v.status!=='held'?button('Back to shop','id="pf-shop-back"'):''}</div></section>`;
  for(const [id,action] of [['pf-demo-pay','pay'],['pf-demo-cancel','cancel']])if($(id))$(id).onclick=task($(id),async()=>{
   await market('/order/'+encodeURIComponent(order.id)+'/test',{lookup_key:order.key,action});await showOrder();
  });
- if($('pf-check-pay'))$('pf-check-pay').onclick=task($('pf-check-pay'),showOrder);
+ if($('pf-stripe-cancel'))$('pf-stripe-cancel').onclick=task($('pf-stripe-cancel'),async()=>{await market('/order/'+encodeURIComponent(order.id)+'/cancel',{lookup_key:order.key});await showOrder();});
+ if($('pf-resume-pay'))$('pf-resume-pay').onclick=task($('pf-resume-pay'),async()=>{const x=await market('/order/'+encodeURIComponent(order.id)+'/resume',{lookup_key:order.key});if(x.url)location.assign(x.url);else await showOrder();});
+ if($('pf-check-pay'))$('pf-check-pay').onclick=task($('pf-check-pay'),async()=>{await market('/order/'+encodeURIComponent(order.id)+'/resume',{lookup_key:order.key});await showOrder();});
  if($('pf-shop-back'))$('pf-shop-back').onclick=()=>{removeSaved();location.href=safeReturn();};
 }
 async function run(){
  const s=await api('/status',{publicOnly:true});if(!(s.enabled||s.staging))throw Error('Mi Marché is not open for public orders yet.');
- if(s.mode==='general')$('pf-rollout').textContent='Mi Marché preview · Online checkout is not open yet.';
+ if(s.payments==='test')$('pf-rollout').textContent='Sandbox checkout · No real payments. On the live site, only the storefront owner can test it.';
+ if(s.payments==='unavailable')$('pf-rollout').textContent='Mi Marché preview · Checkout is not open yet.';
  if(s.pilot)$('pf-rollout').textContent='Private pilot · Only your account can access this marketplace. Use test stock and test contact details. No live payments.';
  await (handle?loadShop():directory());
 }
+document.addEventListener('inventoryos:security-changed',()=>{if(handle)loadShop().catch(e=>status(e.message,true));});
 run().catch(e=>status(e.message,true));
 })();

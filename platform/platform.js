@@ -27,7 +27,8 @@ async function stock(){
  <form class="pf-form" id="pf-link-form">${choices.join('')||'<p>No inventories owned by this account.</p>'}
  <div class="pf-actions">${submit('Preview selected inventories')}${btn('Keep stock independent','id="pf-independent"')}</div></form>`)+
  (active.size?card('Current pool',table(d.current.products.slice(0,40).map(x=>({sku:x.sku,name:x.name,quantity:x.quantity,unreserved:x.available})))+
-  '<p class="pf-muted">'+esc(d.current.product_count)+' product groups. Each sale still uses its own branch’s stock.</p>'):'')+'<div id="pf-link-preview"></div>';
+  '<p class="pf-muted">'+esc(d.current.product_count)+' product groups. Each sale still uses its own branch’s stock.</p>'):'')+'<div id="pf-link-preview"></div>'+card('Inspected production returns',`<form id="pf-return-shop" class="pf-form">${select('Retail shop','inventory_id',[["","Choose a shop"],...d.inventories.filter(x=>x.kind==='retail').map(x=>[x.id,invLabel(x)])])}${submit('Find original batch sales')}</form><div id="pf-return-options"></div>`);
+ bindForm($('pf-return-shop'),async v=>{const x=await api('/production/returns?'+new URLSearchParams(v)),host=$('pf-return-options');host.innerHTML=x.options.length?`<form id="pf-return-form" class="pf-form pf-space">${select('Product and original batch sale','choice',x.options.map((o,i)=>[i,o.name+' · '+o.batch_code+' · '+o.returnable_qty+' returnable · '+o.sale_reference]))}${input('Quantity','qty',1,'required type="number" min="1" step="1"')}${input('Inspection / return reason','reason','','required maxlength="240"')}${check('Batch verified, goods inspected and safe to resell','inspected')}${submit('Return to original batch')}</form>`:'<p class="pf-muted">No batch sales are available for a return.</p>';if(!x.options.length)return;const f=$('pf-return-form');let request_id=crypto.randomUUID();const limit=()=>{f.elements.qty.max=x.options[Number(f.elements.choice.value)].returnable_qty;};f.elements.choice.onchange=limit;limit();bindForm(f,async b=>{const o=x.options[Number(b.choice)];await api('/production/return',{body:{request_id,inventory_id:v.inventory_id,lot_id:o.lot_id,original_stock_event_id:o.original_stock_event_id,qty:Number(b.qty),reason:b.reason,inspected:!!b.inspected}});request_id=crypto.randomUUID();await stock();status('Inspected goods returned to their original batch.');});});
  const form=$('pf-link-form');
  form.onchange=()=>{$('pf-link-preview').replaceChildren();};
  const preview=async ids=>{
@@ -60,19 +61,19 @@ async function seller(){
 }
 function renderSeller(){
  const d=sellerData, shop=d.shop;
- const tabs=[['shop','Shop'],['branches','Branches'],['catalogue','Catalogue & photos'],['orders','Orders']];
+ const tabs=[['shop','Shop'],['branches','Branches'],['catalogue','Catalogue & photos'],['orders','Orders'],['cases','Refunds & payment cases']];
  main.innerHTML='<nav class="pf-tabs" aria-label="Seller sections">'+tabs.map(([k,label])=>btn(label,
   'data-seller-tab="'+k+'" '+(sellerTab===k?'aria-current="page"':'')+(shop?'':' disabled'))).join('')+
-  (shop?'<a class="pf-button" href="/marche/?shop='+encodeURIComponent(shop.slug)+'">View storefront</a>':'')+'</nav><div id="pf-seller-view" class="pf-stack"></div>';
+  (shop?'<a class="pf-button" href="/marche/'+encodeURIComponent(shop.slug)+'">View storefront</a>':'')+'</nav><div id="pf-seller-view" class="pf-stack"></div>';
  for(const b of main.querySelectorAll('[data-seller-tab]'))b.onclick=()=>{sellerTab=b.dataset.sellerTab;status();renderSeller();};
- ({shop:shopForm,branches:branchForm,catalogue:catalogue,orders:orders})[sellerTab]();
+ const pending=({shop:shopForm,branches:branchForm,catalogue:catalogue,orders:orders,cases:paymentCases})[sellerTab]();if(pending?.catch)pending.catch(e=>status(e.message,true));
 }
 function shopForm(){
  const d=sellerData.shop, target=$('pf-seller-view');
- target.innerHTML=card(d?'Storefront details':'Create a storefront',`<form id="pf-shop" class="pf-form">
+ target.innerHTML=(sellerData.warnings?.length?card('Platform notices',table(sellerData.warnings)):'')+card(d?'Storefront details':'Create a storefront',`<form id="pf-shop" class="pf-form">
  ${input('Shop name','name',d?.name,'required maxlength="90"')}${input('Shop address','slug',d?.slug,'required maxlength="40" pattern="[a-z0-9][a-z0-9\x2d]{2,39}"')}
  ${area('Shop description','description',d?.description,'maxlength="600"')}${input('Accent colour','accent',d?.accent||'#6d43de','type="color"')}
- ${d?check('Publish this shop in the staging marketplace','published',d.published):''}
+ ${d?check('Publish this storefront','published',d.published):''}
  ${submit(d?'Save storefront':'Create storefront')}</form>`)+
  (d?card('Logo and banner',`<form id="pf-brand" class="pf-form">${select('Image type','kind',[['logo','Logo'],['banner','Banner']])}
  <label>Choose a photo<input type="file" name="file" accept="image/jpeg,image/png,image/webp" required></label>${submit('Upload image')}</form>`)+
@@ -94,14 +95,14 @@ async function paymentsPanel(){
  try{
   const p=await api('/seller/payments');if(!panel.isConnected||generation!==paymentLoad)return;
   const labels={not_configured:'Payments not configured',not_started:'Set up your payments',creation_pending:'Finish setting up payments',
-   incomplete:'More information needed',pending:'Stripe is reviewing your details',ready:'Ready to accept test payments',
+   incomplete:'More information needed',pending:'Stripe is reviewing your details',ready:p.environment==='live'?'Ready for live payments':'Ready for test payments',
    unavailable:'Could not check Stripe status',review_required:'Payment setup needs support review',assigned_test_account:'Operator-assigned test account'};
   const canStart=p.configured&&!['assigned_test_account','review_required','unavailable'].includes(p.status);
   panel.innerHTML='<p><span class="pf-pill">'+esc(labels[p.status]||'Check payment setup')+'</span></p>'+
    '<p class="pf-muted">Stripe collects your business, bank and identity details securely. InventoryOS receives 0.5% of the goods total; Stripe processing fees are separate.</p>'+
-   '<p class="pf-warning">Sandbox setup. This does not enable live payments.</p>'+
+   '<p class="pf-warning">'+(p.environment==='live'?'Live setup: real customer payments when checkout is enabled.':'Sandbox setup: no real payments.')+'</p>'+
    (p.action_needed?'<p>Stripe needs additional information. Continue setup or open your Stripe Dashboard.</p>':'')+
-   (p.status==='not_configured'?'<p class="pf-muted">The platform owner needs to configure the Stripe sandbox before sellers can begin.</p>':'')+
+   (p.status==='not_configured'?'<p class="pf-muted">Payment setup needs to be configured by the platform owner.</p>':'')+
    (params.get('payments')==='refresh'?'<p>The previous Stripe link expired or was already used. Continue setup to open a fresh link.</p>':'')+
    '<div class="pf-actions">'+
    (canStart?btn(p.status==='not_started'?'Set up payments':p.ready?'Review Stripe setup':'Continue setup','id="pf-payment-start" class="primary"'):'')+
@@ -183,19 +184,32 @@ function catalogue(){
 }
 function orders(){
  const target=$('pf-seller-view');
- target.innerHTML=sellerData.orders.map(o=>card(o.branch_name,`<p><span class="pf-pill">${esc(o.provider==='demo'?'Demo payment':'Stripe sandbox')} · ${esc(o.payment_status)}</span> ${esc(o.method)} · ${esc(o.state)}</p>
+ target.innerHTML=sellerData.orders.map(o=>card(o.branch_name,`<p><span class="pf-pill">${esc(o.provider==='demo'?'Demo payment':o.provider==='stripe_live'?'Live payment':'Stripe sandbox')} · ${esc(o.payment_status)}</span> ${esc(o.method)} · ${esc(o.state)}</p>
  <p class="pf-muted">Order ${esc(o.order_reference)}</p><p>${esc(o.contact.name)} · ${esc(o.contact.email)}${o.method==='delivery'?'<br>'+esc([o.contact.address,o.contact.town,o.contact.postcode].join(', ')):''}</p>
- ${table(o.items)}${o.payment_status==='review'?'<p class="pf-warning">Stock needs review. Hold fulfilment.</p>':''}
- ${o.payment_status==='paid'&&((o.method==='delivery'&&o.state==='pending')||(o.method==='collection'&&['pending','ready'].includes(o.state)))?
+ ${table(o.items)}${o.refunded_pence?'<p class="pf-warning">Refunded '+esc(money(o.refunded_pence))+'</p>':''}${o.risk_state?'<p class="pf-warning">Payment case needs review. Do not dispatch.</p>':''}${o.payment_status==='review'?'<p class="pf-warning">Stock needs review. Hold fulfilment.</p>':''}
+ ${o.payment_status==='review'&&o.refunded_pence?btn('Release fully refunded reservation','data-release-refund="'+esc(o.order_reference)+'"'):''}
+ ${o.payment_status==='held'?btn('Cancel unpaid reservation','data-cancel-order="'+esc(o.order_reference)+'"'):''}
+ ${o.payment_status==='paid'&&!o.refunded_pence&&!o.risk_state&&((o.method==='delivery'&&o.state==='pending')||(o.method==='collection'&&['pending','ready'].includes(o.state)))?
   `<form class="pf-form" data-order="${esc(o.id)}">${o.method==='delivery'?input('Tracking reference','tracking','','maxlength="100"'):''}
-  ${submit(o.method==='delivery'?'Mark sent':o.state==='pending'?'Ready for collection':'Mark collected')}</form>`:''}`)).join('')||card('No orders yet','<p class="pf-muted">Paid test orders appear here, split by branch.</p>');
+  ${submit(o.method==='delivery'?'Mark sent':o.state==='pending'?'Ready for collection':'Mark collected')}</form>`:''}`)).join('')||card('No orders yet','<p class="pf-muted">Orders appear here, split by branch.</p>');
+ for(const b of target.querySelectorAll('[data-release-refund]'))b.onclick=task(b,async()=>{await api('/seller/order/'+encodeURIComponent(b.dataset.releaseRefund)+'/release-refunded',{body:{}});await seller();status('Refunded reservation released.');});
+ for(const b of target.querySelectorAll('[data-cancel-order]'))b.onclick=task(b,async()=>{await api('/seller/order/'+encodeURIComponent(b.dataset.cancelOrder)+'/cancel',{body:{}});await seller();status('Reservation updated.');});
  for(const f of target.querySelectorAll('[data-order]'))bindForm(f,async v=>{
   const o=sellerData.orders.find(x=>x.id===f.dataset.order),state=o.method==='delivery'?'sent':o.state==='pending'?'ready':'collected';
   await api('/seller/branch-order/'+encodeURIComponent(o.id),{body:{...v,state}});await seller();status('Order updated.');
  });
 }
 
-const reportLabels={summary:'Overview',sales:'Sales statement',refunds:'Returns',cash:'Cash reconciliation',valuation:'Stock valuation',vat:'VAT summary',expenses:'Expenses',history:'Audit history',marketplace:'Marketplace test orders',notices:'Access notices'};
+async function paymentCases(){
+ const host=$('pf-seller-view'),d=await api('/seller/cases');if(!host.isConnected)return;
+ host.innerHTML=card('Refunds & payment cases','<p class="pf-warning">Refunds return money only. Restock returned goods separately after inspection. Handle dispute evidence in your Stripe Dashboard.</p>'+table(d.refunds)+table(d.risks))+
+ card('Refund an order',`<form id="pf-refund" class="pf-form">${select('Paid order','order_id',[['','Choose an order'],...[...new Map(sellerData.orders.map(x=>[x.order_reference,x])).values()].filter(x=>x.provider!=='demo'&&['paid','review'].includes(x.payment_status)&&!x.risk_state).map(x=>[x.order_reference,x.order_reference])])}
+ ${input('Reason','reason','','required maxlength="240"')}${check('Refund the entire remaining payment; stock stays unchanged','confirmed')}${submit('Confirm full refund')}</form>`)+card('Review a won dispute',`<form id="pf-dispute" class="pf-form">${select('Order','order_id',[["","Choose an order"],...[...new Map(sellerData.orders.filter(x=>x.risk_state==='review_dispute').map(x=>[x.order_reference,x])).values()].map(x=>[x.order_reference,x.order_reference])])}${submit('Recheck dispute with Stripe')}</form><p class="pf-muted">Only disputes confirmed as won can be cleared for fulfilment.</p>`);
+ bindForm($('pf-dispute'),async v=>{await api('/seller/order/'+encodeURIComponent(v.order_id)+'/review-dispute',{body:{}});await seller();status('Dispute verified with Stripe.');});
+ const form=$('pf-refund');let request_id=crypto.randomUUID();
+ bindForm(form,async v=>{if(!v.confirmed)throw Error('Confirm the refund before proceeding');const r=await api('/seller/order/'+encodeURIComponent(v.order_id)+'/refund',{body:{request_id,reason:v.reason}});status('Refund '+r.state+'. Do not repeat with a new request.');if(['succeeded','failed','canceled'].includes(r.state))request_id=crypto.randomUUID();});
+}
+const reportLabels={summary:'Overview',sales:'Sales statement',refunds:'Returns',cash:'Cash reconciliation',valuation:'Stock valuation',vat:'VAT summary',expenses:'Expenses',history:'Audit history',marketplace:'Marketplace orders',marketplace_financials:'Live marketplace ledger',notices:'Access notices'};
 const localDay=()=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Europe/London'}).formatToParts().map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;};
 async function accounts(){
  const dir=await api('/stock'), shops=dir.inventories.filter(i=>i.kind==='retail');
@@ -222,7 +236,7 @@ async function accounts(){
     const x=await api(base+'?'+new URLSearchParams({...Object.fromEntries(dates),sheet,format:b.dataset.export}));
     download(x.filename,Uint8Array.from(atob(x.base64),c=>c.charCodeAt(0)),b.dataset.export==='pdf'?'application/pdf':'text/csv');
    });
-   $('pf-pack').onclick=()=>download('inventoryos-period-pack-'+report.end+'.json',JSON.stringify(report,null,2));
+   $('pf-pack').onclick=task($('pf-pack'),async()=>{const x=await api(base+'/pack?'+dates);download(x.filename,Uint8Array.from(atob(x.base64),c=>c.charCodeAt(0)),'application/zip');});
    const expense=$('pf-expense');let request_id=crypto.randomUUID();
    bindForm(expense,async v=>{
     await api(base+'/expense',{body:{...v,request_id,total_pence:makePence(v.total),vat_pence:makePence(v.vat)}});
