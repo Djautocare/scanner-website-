@@ -67,6 +67,7 @@ function goDashboard(){
 function planDescription(key){
     if(key === "free") return "For trying InventoryOS, tracking stock and seeing your first sales numbers.";
     if(key === "starter") return "For casual sellers ready to add receipts, labels and dispatch workflows.";
+    if(key === "complete") return "One subscription for stock, expenses, dispatch, purchasing, production, teams and tills. First physical store included; extra stores £10/month.";
     if(key === "pro") return "For serious resellers managing more stock, labels and multiple inventories.";
     if(key === "business") return "For teams and small manufacturers managing shared inventory, materials and production.";
     return "InventoryOS plan.";
@@ -74,7 +75,7 @@ function planDescription(key){
 
 function buttonLabel(plan){
     if(plan.key === "pro" && isLocalProTrial()) return "Subscribe to Pro";
-    if(plan.key === "business" && currentStatus?.billing?.is_business_trial) return "Subscribe to Business";
+    if(plan.key === "complete" && currentStatus?.billing?.is_business_trial) return "Subscribe to Business";
     if(isCurrentPlan(plan)){
         return "Current Plan";
     }
@@ -112,7 +113,7 @@ function renderStatus(data){
     if(!billing.plan_selected){
         title.innerText = "Choose your InventoryOS plan";
         badge.innerText = "PLAN REQUIRED";
-        line = "Select Free, Starter, Pro or Business to unlock your dashboard.";
+        line = "Select Free, Starter or Complete to unlock your dashboard.";
     }else if(!canAccessDashboard()){
         badge.innerText = "PLAN UPDATE NEEDED";
         line += " Select Continue with Free to restore Free access, or choose a paid plan for its extra features.";
@@ -132,29 +133,33 @@ function renderPlans(plans){
 
     plans.forEach(plan=>{
         const card = document.createElement("div");
-        card.className = "plan" + (plan.key === "pro" ? " popular" : "");
+        card.className = "plan" + (plan.key === "complete" ? " popular" : "");
 
         const features = (plan.features || []).map(feature=>
             `<div class="feature"><span class="tick">✓</span><span>${feature}</span></div>`
         ).join("");
 
         card.innerHTML = `
-            ${plan.key === "pro" ? '<div class="popular-tag">MOST POPULAR</div>' : ''}
+            ${plan.key === "complete" ? '<div class="popular-tag">MOST POPULAR</div>' : ''}
             <h2>${plan.name}</h2>
             <div class="plan-desc">${planDescription(plan.key)}</div>
             <div class="price">£${money(plan.monthly_price)} <span>/month</span></div>
             <div class="rule"></div>
             <div class="features">${features}</div>
-            <button class="${plan.key === "pro" ? "primary" : "secondary"}" data-plan="${plan.key}">
+            <button class="${plan.key === "complete" ? "primary" : "secondary"}" data-plan="${plan.key}">
                 ${buttonLabel(plan)}
             </button>
-            ${plan.key === "business" ? InventoryBusinessTrial.requestMarkup(currentStatus) : ""}
+            ${plan.key === "complete" ? InventoryBusinessTrial.requestMarkup(currentStatus) : ""}
         `;
 
         const button = card.querySelector("button");
 
         if(isCurrentPlan(plan)){
             button.disabled = true;
+        }
+        if(plan.key!=="free" && plan.checkout_configured===false && !isCurrentPlan(plan)){
+            button.disabled=true;
+            button.textContent=plan.checkout_checking?"Checking billing setup…":"Billing setup in progress";
         }
 
         button.addEventListener("click",()=>choosePlan(plan.key));
@@ -175,6 +180,7 @@ async function loadBilling(){
 
         renderStatus(data);
         renderPlans(data.plans || []);
+        if(data.plans?.some(p=>p.checkout_checking))setTimeout(loadBilling,2500);
 
         if(data.billing && !data.billing.plan_selected){
             setMessage("Choose a plan to unlock your InventoryOS dashboard.");
@@ -214,6 +220,7 @@ async function choosePlan(plan){
         });
 
         if(!data.success){
+            if(data.manage_billing){await openPortal();return;}
             setMessage(data.error || "Could not start checkout.");
             return;
         }

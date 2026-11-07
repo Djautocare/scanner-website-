@@ -115,8 +115,8 @@
             p(shots.workspace,936,549,'Name the workspace','Owners and admins can rename the workspace. This changes its display name.',[529,509,845,63]),
             p(shots.workspace,824,846,'Create or manage inventories','Use a separate inventory for each stock holding. Select the correct one in the top bar before stock actions. Default inventories cannot be deleted.',[529,742,845,275])
         ]));
-        replace(business,'Enable Manufacturing mode',step('manufacturing-mode','Enable Manufacturing mode','Business includes manufacturing tools. Enable them per workspace in Settings.','settings.html',shots.manufacturing,[
-            p(shots.manufacturing,692,425,'Business manufacturing card','Open Settings and find Manufacturing mode. The tools require Business access.',[529,390,519,241]),
+        replace(business,'Enable Manufacturing mode',step('manufacturing-mode','Enable Manufacturing mode','Complete includes manufacturing tools. Enable them per workspace in Settings.','settings.html',shots.manufacturing,[
+            p(shots.manufacturing,692,425,'Production tools card','Open Settings and find Manufacturing mode. The tools require Complete or existing Business access.',[529,390,519,241]),
             p(shots.manufacturing,727,509,'Enable for this workspace','The switch is off by default. An owner or admin enables it for everyone in this workspace.',[701,490,332,41]),
             p(shots.manufacturing,612,577,'Open Manufacturing','Open the page from this link or the sidebar. Select one inventory for materials, recipes and production.',[547,564,157,27])
         ],'manufacturing'));

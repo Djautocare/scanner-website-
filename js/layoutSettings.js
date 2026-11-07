@@ -1,0 +1,10 @@
+(function(){'use strict';
+async function mount(){if(!window.InventoryOSLayout)return;const preference=await InventoryOSLayout.ready;if(!preference||!InventoryOSLayout.available()||document.getElementById('workspaceLayoutSettings'))return;
+ const host=document.querySelector('#account-settings-appearance .settings-group-body')||document.getElementById('appearanceSettingsCard')?.parentElement;if(!host)return;
+ const section=document.createElement('section');section.className='card';section.id='workspaceLayoutSettings';section.innerHTML='<div class="card-title">Workspace layout</div><form><label class="check-row"><input name="unified" type="checkbox"> New workspace layout</label><p class="helper" data-layout-help></p><button type="submit" class="primary-btn">Save layout</button><p class="helper" role="status" data-layout-result></p></form>';
+ const form=section.querySelector('form'),checkbox=form.elements.unified,button=form.querySelector('button');checkbox.checked=preference.layout==='unified';checkbox.disabled=preference.layout_locked;button.disabled=preference.layout_locked;section.querySelector('[data-layout-help]').textContent=preference.layout_locked?'Your administrator manages this account’s layout.':'On uses the new workspace. Off uses Classic. Stock, billing and permissions stay unchanged.';
+ form.onsubmit=async event=>{event.preventDefault();if(button.disabled)return;button.disabled=true;try{const layout=checkbox.checked?'unified':'classic',response=await InventoryAPI.request('/workspace-ui/preferences',{method:'POST',body:JSON.stringify({layout})});if(!response?.success)throw Error(response?.error||'Could not save the layout.');await InventoryOSLayout.reload();window.top.location.assign(layout==='unified'?'/workspace/?view=settings':'/settings.html#account-settings-appearance');}catch(error){section.querySelector('[data-layout-result]').textContent=error.message;button.disabled=false;}};
+ host.append(section);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();

@@ -95,7 +95,11 @@ async function redirectAfterLogin(){
         }
 
         const requested = new URLSearchParams(window.location.search).get("returnTo");
-        window.location.href = requested === "/retail/dashboard/index.html" ? requested : "index.html";
+        let destination="index.html";
+        try { const ui=await InventoryAPI.request("/workspace-ui/preferences");
+            if(ui?.success && ui.preferences?.layout==="unified")destination="/workspace/";
+        } catch { /* Backwards compatible until the backend update is installed. */ }
+        window.location.href = requested === "/retail/dashboard/index.html" ? requested : destination;
 
     }catch(error){
         console.error(error);

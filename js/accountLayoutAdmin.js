@@ -1,0 +1,8 @@
+(function(){'use strict';
+window.InventoryAccountLayoutAdmin={async mount(userId,host){if(!host)return;host.textContent='Loading workspace layout…';try{
+ const r=await InventoryAPI.request('/workspace-ui/admin/accounts/'+encodeURIComponent(userId));if(!host.isConnected)return;if(!r?.success){host.textContent=r?.error||'Layout controls are unavailable until the backend update is installed.';return;}
+ const p=r.preferences;host.innerHTML='<h3>Workspace layout</h3><label>Layout<select data-layout><option value="unified">New unified workspace</option><option value="classic">Classic</option></select></label><label class="check-row"><input data-layout-lock type="checkbox"> Lock this account to its selected layout</label><button type="button" class="good-btn" data-layout-save>Save layout</button><p class="helper" role="status" data-layout-status>Appearance only. Billing, permissions and stock are unchanged.</p>';
+ host.querySelector('[data-layout]').value=p.layout;host.querySelector('[data-layout-lock]').checked=p.layout_locked;
+ host.querySelector('[data-layout-save]').onclick=async e=>{const b=e.currentTarget;if(b.disabled)return;b.disabled=true;try{const result=await InventoryAPI.request('/workspace-ui/admin/accounts/'+encodeURIComponent(userId),{method:'POST',body:JSON.stringify({layout:host.querySelector('[data-layout]').value,layout_locked:host.querySelector('[data-layout-lock]').checked})});host.querySelector('[data-layout-status]').textContent=result?.success?'Account layout saved.':result?.error||'Could not save the layout.';}finally{if(b.isConnected)b.disabled=false;}};
+ }catch{if(host.isConnected)host.textContent='Could not load the account layout.';}}};
+})();

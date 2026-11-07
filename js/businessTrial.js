@@ -21,9 +21,9 @@ function requestMarkup(data){
  const trial=data.billing?.business_trial;
  if(trial?.used)return '';
  const user=InventoryAPI.getUser?.()||{};
- const body='Hi InventoryOS,\n\nPlease could I try Business free for one week?\n\nAccount email: '+(user.email||'')+'\nWorkspace: '+(data.workspace?.name||'')+'\n\nThank you.';
- const url='mailto:hello@inventoryos.co.uk?subject='+encodeURIComponent('Request a 1-week Business trial')+'&body='+encodeURIComponent(body);
- return '<div class="business-trial-request"><a class="link-btn secondary" href="'+esc(url)+'">Try Business free for 1 week</a><p>Email us to request it. We start the seven days after approving your request. No automatic charge. Optional paid add-ons are separate.</p></div>';
+ const body='Hi InventoryOS,\n\nPlease could I try Complete free for one week?\n\nAccount email: '+(user.email||'')+'\nWorkspace: '+(data.workspace?.name||'')+'\n\nThank you.';
+ const url='mailto:hello@inventoryos.co.uk?subject='+encodeURIComponent('Request a 1-week Complete trial')+'&body='+encodeURIComponent(body);
+ return '<div class="business-trial-request"><a class="link-btn secondary" href="'+esc(url)+'">Try Complete free for 1 week</a><p>Email us to request it. We start the seven days after approving your request. No automatic charge. Optional paid add-ons are separate.</p></div>';
 }
 function billing(data,onExpiry){
  clearInterval(billingTimer);
@@ -33,9 +33,9 @@ function billing(data,onExpiry){
  if(trial.active&&!data.billing.is_business_trial){panel.hidden=false;panel.innerHTML='<h2>Business access is active</h2><p>Your current plan already provides Business access. Your trial does not change that plan or its billing.</p>';return;}
  const active=trial.active===true,offset=clockOffset(data);
  panel.hidden=false;
- panel.innerHTML='<h2>'+(active?'Your free Business trial':'Your Business trial has ended')+'</h2>'+
+ panel.innerHTML='<h2>'+(active?'Your free '+esc(trial.plan_name||'Business')+' trial':'Your '+esc(trial.plan_name||'Business')+' trial has ended')+'</h2>'+
   (active?'<p id="businessTrialCountdown" role="timer"></p><p class="business-trial-reversion">'+esc(expiryText(trial))+'</p>':'')+
-  '<p>'+(active?'The trial ends automatically and your existing plan applies again. Subscribe to Business if you want to keep its features.':'Your current plan applies again. Your stock and saved work stay in place. Choose Business to continue using its features.')+' The trial does not create a subscription or charge you.</p>';
+  '<p>'+(active?'The trial ends automatically and your existing plan applies again. Subscribe to Complete if you want to keep these tools.':'Your current plan applies again. Your stock and saved work stay in place. Choose Business to continue using its features.')+' The trial does not create a subscription or charge you.</p>';
  if(active){let expired=false;const tick=()=>{const el=$('businessTrialCountdown');if(!el)return;el.textContent=remaining(trial.ends_at,offset);if(!expired&&Date.parse(trial.ends_at)<=Date.now()+offset){expired=true;clearInterval(billingTimer);onExpiry();}};tick();if(!expired)billingTimer=setInterval(tick,1000);}
 }
 function stopAdmin(){clearInterval(adminTimer);adminTimer=null;}
@@ -43,12 +43,12 @@ function admin(data,callbacks){
  stopAdmin();
  const user=data.user,mount=$('drawerContent');
  const box=document.createElement('div');box.className='billing-box business-trial-admin';
- box.innerHTML='<h3>One-week Business trial</h3><p class="helper">Start this only after receiving the account’s request by email. It lasts exactly seven days, then the workspace’s existing plan applies again. Stripe billing is unchanged.</p>';
+ box.innerHTML='<h3>One-week Complete trial</h3><p class="helper">Start this only after receiving the account’s request by email. It lasts exactly seven days, then the workspace’s existing plan applies again. Stripe billing is unchanged.</p>';
  mount.querySelector('.billing-box')?.before(box);
  if(!Array.isArray(data.trial_workspaces)){box.innerHTML+='<p class="helper">Install the Business trial backend update to enable this control.</p>';return;}
  const spaces=data.trial_workspaces;
  if(!spaces.length){box.innerHTML+='<p class="helper">This account must own a workspace to receive a trial.</p>';return;}
- box.innerHTML+='<label for="businessTrialWorkspace">Workspace</label><select id="businessTrialWorkspace">'+spaces.map(w=>'<option value="'+esc(w.id)+'">'+esc(w.name)+'</option>').join('')+'</select><div id="businessTrialState" class="helper"></div><label class="check-row"><input type="checkbox" id="businessTrialEmailRequest"> I have received this account’s trial request by email</label><div class="actions"><button id="startBusinessTrial" class="good-btn">Start 7-day Business trial</button><button id="endBusinessTrial" class="dark" hidden>End trial now</button></div><p id="businessTrialMessage" class="helper" role="status"></p>';
+ box.innerHTML+='<label for="businessTrialWorkspace">Workspace</label><select id="businessTrialWorkspace">'+spaces.map(w=>'<option value="'+esc(w.id)+'">'+esc(w.name)+'</option>').join('')+'</select><div id="businessTrialState" class="helper"></div><label class="check-row"><input type="checkbox" id="businessTrialEmailRequest"> I have received this account’s trial request by email</label><div class="actions"><button id="startBusinessTrial" class="good-btn">Start 7-day Complete trial</button><button id="endBusinessTrial" class="dark" hidden>End trial now</button></div><p id="businessTrialMessage" class="helper" role="status"></p>';
  const select=$('businessTrialWorkspace'),start=$('startBusinessTrial'),end=$('endBusinessTrial'),consent=$('businessTrialEmailRequest'),state=$('businessTrialState'),message=$('businessTrialMessage'),offset=clockOffset(data);
  if(spaces.some(w=>w.id===user.current_workspace_id))select.value=user.current_workspace_id;
  const chosen=()=>spaces.find(w=>w.id===select.value);
@@ -69,7 +69,7 @@ function admin(data,callbacks){
  async function change(action){
   const w=chosen();
   if(action==='start'&&(!consent.checked||start.disabled))return;
-  if(!window.confirm(action==='start'?'Start seven days of free Business access for '+user.email+' in '+w.name+'? Confirm you received their request by email. Their existing Stripe billing will continue unchanged.':'End the Business trial for '+w.name+' now? Their existing plan will apply again.'))return;
+  if(!window.confirm(action==='start'?'Start seven days of free Complete access for '+user.email+' in '+w.name+'? Confirm you received their request by email. Their existing Stripe billing will continue unchanged.':'End the Business trial for '+w.name+' now? Their existing plan will apply again.'))return;
   busy=true;select.disabled=true;render();message.textContent='Updating trial…';
   try{
    const result=await InventoryAPI.request('/admin/users/'+encodeURIComponent(user.id)+'/business-trial',{method:'POST',body:JSON.stringify({workspace_id:w.id,action,requested_by_email:action==='start'&&consent.checked})});
@@ -96,7 +96,7 @@ async function refreshNotice(){
   if(workspace&&String(data.workspace?.id)!==workspace){clearNotice();return;}
   if(!document.querySelector('link[href*="css/businessTrial.css"]')){const css=document.createElement('link');css.rel='stylesheet';css.href='css/businessTrial.css?v=2';document.head.append(css);}
   clearNotice();const panel=document.createElement('section');panel.id='businessTrialNotice';panel.className='business-trial-topbar';panel.setAttribute('aria-label','Business trial');
-  panel.innerHTML='<a class="business-trial-pill" href="billing.html" title="'+esc(expiryText(data.billing.business_trial))+'">Free Business trial</a><a class="business-trial-pill business-trial-timer" href="billing.html" title="'+esc(expiryText(data.billing.business_trial))+'"><span data-trial-remaining role="timer" aria-label="Business trial time remaining"></span></a>';
+  panel.innerHTML='<a class="business-trial-pill" href="billing.html" title="'+esc(expiryText(data.billing.business_trial))+'">Free '+esc(data.billing.business_trial.plan_name||'Business')+' trial</a><a class="business-trial-pill business-trial-timer" href="billing.html" title="'+esc(expiryText(data.billing.business_trial))+'"><span data-trial-remaining role="timer" aria-label="Business trial time remaining"></span></a>';
   // Billing can finish before the asynchronous topbar renders. Never place
   // the trial beside the host: that squeezes the mobile scrolling controls.
   const host=noticeHost();

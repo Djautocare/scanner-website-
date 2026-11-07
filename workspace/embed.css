@@ -1,0 +1,8 @@
+html[data-workspace-embed] .dashboard-sidebar,html[data-workspace-embed] .ios-shell-sidebar,html[data-workspace-embed] .retail-sidebar,html[data-workspace-embed] .design-utilitybar,html[data-workspace-embed] .retail-header,html[data-workspace-embed] .dashboard-top,html[data-workspace-embed] .ios-shell-header,html[data-workspace-embed] .design-flow-strip,html[data-workspace-embed] .retail-skip{display:none!important}
+html[data-workspace-embed] .retail-layout,html[data-workspace-embed] .dashboard-layout,html[data-workspace-embed] .ios-shell-layout{display:block!important;grid-template-columns:1fr!important}
+html[data-workspace-embed] .retail-main,html[data-workspace-embed] .dashboard-frame,html[data-workspace-embed] .ios-shell-frame{margin:0!important;width:100%!important;max-width:none!important;padding:0!important;min-height:100dvh}
+html[data-workspace-embed] .ios-shell-content,html[data-workspace-embed] .retail-content{padding:18px!important}
+html[data-workspace-embed] .design-backdrop{display:none!important}
+html[data-workspace-embed] body{margin:0!important;padding:0!important;min-width:0!important}
+
+html[data-workspace-embed] .retail-header{display:flex!important;justify-content:flex-end;padding:10px 16px!important;min-height:0!important}html[data-workspace-embed] .retail-header .retail-heading{display:none!important}
