@@ -33,3 +33,11 @@ test('manual onboarding requests return their result from embedded tools without
  vm.createContext(ctx);vm.runInContext(fs.readFileSync(path.join(root,'js/api.js'),'utf8')+'\nglobalThis.TestAPI=InventoryAPI;',ctx);
  const result=await ctx.TestAPI.request('/platform/seller/payments/start',{method:'POST',manualStripeRedirect:true});assert.equal(result.success,true);assert.equal(calls.length,0);assert.equal(headers[0].manualStripeRedirect,undefined);assert.equal(headers[0].headers.Authorization,'Bearer fixture-token');
 });
+test('the country control is checked and locked while setup is pending',async()=>{
+ const panel=load(),e=elements();let finish;
+ const countryInput={value:'GB',disabled:false,isConnected:true,reportValidity:()=>false};
+ let calls=0;panel.bindSetup(e.button,e.feedback,e.link,{countryInput,request:()=>{calls++;return new Promise(r=>finish=r);},navigate(){}});
+ await e.button.onclick();assert.equal(calls,0);countryInput.reportValidity=()=>true;
+ const pending=e.button.onclick();assert.equal(countryInput.disabled,true);assert.equal(calls,1);finish({url:'https://connect.stripe.com/setup/fixture'});await pending;assert.equal(countryInput.disabled,false);
+ assert.match(panel.countryOptions('GB'),/value="GB" selected/);
+});
