@@ -4,13 +4,13 @@ const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g
 const money=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(n)/100);
 const apiBase=InventoryAPI.API_BASE;
 const endpoint=path=>apiBase+'/platform'+path;
-async function api(path,{body,publicOnly=false}={}){
+async function api(path,{body,publicOnly=false,manualStripeRedirect=false}={}){
  const options=body===undefined?{}:{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'application/json'}};
  let r;
  if(publicOnly&&!InventoryAPI.isLoggedIn()){
   const response=await fetch(endpoint(path),{...options,credentials:'omit'});
   r=await response.json().catch(()=>({success:false,error:'Unable to load this page'}));
- }else r=await InventoryAPI.request('/platform'+path,options);
+ }else r=await InventoryAPI.request('/platform'+path,{...options,...(manualStripeRedirect?{manualStripeRedirect:true}:{})});
  if(!r?.success)throw Object.assign(Error(r?.error||'Could not complete this request'),{code:r?.code,mfa_required:r?.mfa_required});
  return r;
 }

@@ -98,27 +98,7 @@ async function paymentsPanel(){
  if(!panel)return;
  try{
   const p=await api('/seller/payments');if(!panel.isConnected||generation!==paymentLoad)return;
-  const labels={not_configured:'Payments not configured',not_started:'Set up your payments',creation_pending:'Finish setting up payments',
-   incomplete:'More information needed',pending:'Stripe is reviewing your details',ready:p.environment==='live'?'Ready for live payments':'Ready for test payments',
-   unavailable:'Could not check Stripe status',review_required:'Payment setup needs support review',assigned_test_account:'Operator-assigned test account'};
-  const canStart=p.configured&&!['assigned_test_account','review_required','unavailable'].includes(p.status);
-  panel.innerHTML='<p><span class="pf-pill">'+esc(labels[p.status]||'Check payment setup')+'</span></p>'+
-   '<p class="pf-muted">Stripe collects your business, bank and identity details securely. InventoryOS receives 0.5% of the goods total; Stripe processing fees are separate.</p>'+
-   '<p class="pf-warning">'+(p.environment==='live'?'Live setup: real customer payments when checkout is enabled.':'Sandbox setup: no real payments.')+'</p>'+
-   (p.action_needed?'<p>Stripe needs additional information. Continue setup or open your Stripe Dashboard.</p>':'')+
-   (p.status==='not_configured'?'<p class="pf-muted">Payment setup needs to be configured by the platform owner.</p>':'')+
-   (params.get('payments')==='refresh'?'<p>The previous Stripe link expired or was already used. Continue setup to open a fresh link.</p>':'')+
-   '<div class="pf-actions">'+
-   (canStart?btn(p.status==='not_started'?'Set up payments':p.ready?'Review Stripe setup':'Continue setup','id="pf-payment-start" class="primary"'):'')+
-   btn('Refresh payment status','id="pf-payment-refresh"')+
-   (p.configured?'<a class="pf-button" href="https://dashboard.stripe.com/" target="_blank" rel="noopener noreferrer">Open Stripe Dashboard</a>':'')+'</div>';
-  const start=$('pf-payment-start');
-  if(start)start.onclick=task(start,async()=>{
-   const x=await api('/seller/payments/start',{body:{}}),u=new URL(x.url);
-   if(u.protocol!=='https:'||u.hostname!=='connect.stripe.com'||u.username||u.password)throw Error('Unexpected Stripe setup address');
-   location.assign(u.href);
-  });
-  $('pf-payment-refresh').onclick=task($('pf-payment-refresh'),paymentsPanel);
+  InventoryPaymentPanel.mount(panel,p,paymentsPanel,{expired:params.get('payments')==='refresh'});
  }catch(e){if(panel.isConnected&&generation===paymentLoad)panel.textContent='Payment status unavailable. '+e.message;}
 }
 function branchForm(){

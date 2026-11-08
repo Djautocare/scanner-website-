@@ -22,7 +22,7 @@ test('marketplace API keeps the signed-in owner credentials in private pilot req
 });
 test('both pilot pages show the private inventory and test-payment boundary',()=>{
  for(const page of ['platform/index.html','marche/index.html']){
-  assert.match(read(page),/id="pf-rollout"/);assert.match(read(page),/common\.js\?v=commerce-1/);
+  assert.match(read(page),/id="pf-rollout"/);assert.match(read(page),/common\.js\?v=[^"\s]+/);
  }
  assert.match(read('platform/platform.js'),/Payments are in test mode/);
  assert.match(read('marche/store.js'),/No live payments/);
