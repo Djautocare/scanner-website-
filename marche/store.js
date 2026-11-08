@@ -8,7 +8,7 @@ const handle=params.get('shop')||pathSlug||'';
 const market=(path,body)=>api('/marche'+path,{body,publicOnly:true});
 const route='/shop/'+encodeURIComponent(handle), KEY='ios-marche-staging-'+handle;
 let checkoutAvailable=false,paymentEnvironment;
-let shop,catalogue=[],branches=[],cart=new Map(),methods=new Map(),quoted,order,search='',page=0;
+let shop,catalogue=[],branches=[],cart=new Map(),methods=new Map(),quoted,order,search='',category='',page=0;
 function button(label,attr=''){return '<button type="button" '+attr+'>'+esc(label)+'</button>';}
 function save(v){sessionStorage.setItem(KEY,JSON.stringify(v));}
 function saved(){try{return JSON.parse(sessionStorage.getItem(KEY)||'null');}catch{return null;}}
@@ -36,11 +36,13 @@ async function loadShop(){
  shop=d.shop;catalogue=d.listings;branches=d.branches;checkoutAvailable=['staging','test','live'].includes(d.checkout);paymentEnvironment=d.checkout;
  setText('pf-title',shop.name);setText('pf-subtitle',shop.description||'Browse items by branch, with delivery and collection where available.');
  if(/^#[a-f0-9]{6}$/i.test(shop.accent))$('pf-hero').style.borderBottom='4px solid '+shop.accent;
- for(const kind of ['logo','banner']){
-  const img=document.createElement('img');img.className='pf-'+kind;img.alt='';img.hidden=true;
-  img.onload=()=>{img.hidden=false;};img.src=endpoint('/marche/brand/'+encodeURIComponent(handle)+'/'+kind);
-  $('pf-hero').prepend(img);
+ $('pf-hero').querySelectorAll('.pf-logo,.pf-banner,.ms-banner').forEach(x=>x.remove());
+ if(Array.isArray(shop.design?.banners)){
+  if(shop.design.banners.length)$('pf-hero').insertAdjacentHTML('afterbegin',MarcheDisplay.banner(shop.design.banners,t=>endpoint('/marche/banner/'+encodeURIComponent(t.id))));
+ }else{
+  const img=document.createElement('img');img.className='pf-banner';img.alt='';img.hidden=true;img.onload=()=>img.hidden=false;img.src=endpoint('/marche/brand/'+encodeURIComponent(handle)+'/banner');$('pf-hero').prepend(img);
  }
+ const logo=document.createElement('img');logo.className='pf-logo';logo.alt='Shop logo';logo.hidden=true;logo.onload=()=>logo.hidden=false;logo.src=endpoint('/marche/brand/'+encodeURIComponent(handle)+'/logo');$('pf-title').before(logo);
  let s=saved();const history=MarcheCart.orders().find(x=>x.id===params.get('order')&&x.slug===handle);if(history&&s?.id!==history.id)s=history;
  const expected=params.get('order')||s?.id;
  if(s?.id&&expected===s.id&&s.key){
@@ -66,8 +68,8 @@ function renderShop(){
  renderProducts();renderBasket();
 }
 function renderProducts(){
- const found=catalogue.filter(x=>[x.title,x.sku,x.category].some(v=>String(v||'').toLowerCase().includes(search.toLowerCase())));
- $('pf-products').innerHTML=`<form class="pf-form pf-card" id="pf-search">
+ const found=catalogue.filter(x=>(!category||String(x.category||'').toLowerCase()===category.toLowerCase())&&[x.title,x.sku,x.category].some(v=>String(v||'').toLowerCase().includes(search.toLowerCase())));
+ $('pf-products').innerHTML=MarcheDisplay.filters(shop.design?.quick_filters||[],category)+`<form class="pf-form pf-card" id="pf-search">
   ${input('Search this shop','search',search)}<button type="submit">Search</button></form>
   <div class="pf-grid">${found.slice(page,page+30).map(x=>{
    const b=branches.find(s=>s.id===x.branch_id), canAdd=checkoutAvailable&&x.available>0&&(cart.get(x.id)||0)<Math.min(1000,x.available);
@@ -83,6 +85,7 @@ function renderProducts(){
    </article>`;
   }).join('')||'<p class="pf-muted">No items match this search.</p>'}</div>
   <div class="pf-actions">${page>0?button('Previous','id="pf-prev"'):''}${page+30<found.length?button('Next','id="pf-next"'):''}</div>`;
+ MarcheDisplay.bindFilters($('pf-products'),value=>{category=value;page=0;renderProducts();});
  bindForm($('pf-search'),async f=>{search=f.search;page=0;renderProducts();});
  if($('pf-prev'))$('pf-prev').onclick=()=>{page=Math.max(0,page-30);renderProducts();};
  if($('pf-next'))$('pf-next').onclick=()=>{page+=30;renderProducts();};

@@ -5,7 +5,7 @@ const main=$('pf-main'),params=new URLSearchParams(location.search);
 if(params.get('view')==='admin'){location.replace('/admin.html#platformAdmin');return;}
 const view=['stock','seller','accounts'].includes(params.get('view'))?params.get('view'):'stock';
 const views={stock:['Stock links','Keep workspaces separate or see their sellable stock in one pool.'],
- seller:['Seller Centre','Set up a Mi Marché storefront, then review drafts and fulfil orders.'],
+ seller:['Your shop','Make it yours, connect your stock and start selling on Mi Marché.'],
  accounts:['Accounts & Tax Centre','Build a dated record pack from your Retail shop.']};
 $('pf-title').textContent=views[view][0];$('pf-subtitle').textContent=views[view][1];
 for(const a of document.querySelectorAll('[data-view]')){
@@ -61,16 +61,20 @@ async function seller(){
 }
 function renderSeller(){
  const d=sellerData, shop=d.shop;
- const tabs=[['shop','Shop'],['branches','Branches'],['catalogue','Catalogue & photos'],['orders','Orders'],['cases','Refunds & payment cases']];
+ const tabs=[['shop','Shop design'],['branches','Stock & delivery'],['catalogue','Products'],['orders','Orders'],['cases','Refunds & payment cases']];
  main.innerHTML='<nav class="pf-tabs" aria-label="Seller sections">'+tabs.map(([k,label])=>btn(label,
   'data-seller-tab="'+k+'" '+(sellerTab===k?'aria-current="page"':'')+(shop?'':' disabled'))).join('')+
-  (shop?'<a class="pf-button" href="/marche/'+encodeURIComponent(shop.slug)+'">View storefront</a>':'')+'</nav><div id="pf-seller-view" class="pf-stack"></div>';
+  (shop?.published?'<a class="pf-button" href="/marche/'+encodeURIComponent(shop.slug)+'">View storefront ↗</a>':shop?'<span class="pf-pill">Unpublished · preview in Shop design</span>':'')+'</nav><div id="pf-seller-view" class="pf-stack"></div>';
  for(const b of main.querySelectorAll('[data-seller-tab]'))b.onclick=()=>{sellerTab=b.dataset.sellerTab;status();renderSeller();};
  const pending=({shop:shopForm,branches:branchForm,catalogue:catalogue,orders:orders,cases:paymentCases})[sellerTab]();if(pending?.catch)pending.catch(e=>status(e.message,true));
 }
 function shopForm(){
  const d=sellerData.shop, target=$('pf-seller-view');
- target.innerHTML=(sellerData.warnings?.length?card('Platform notices',table(sellerData.warnings)):'')+card(d?'Storefront details':'Create a storefront',`<form id="pf-shop" class="pf-form">
+ if(d&&sellerData.appearance_version===1&&window.MarcheShopEditor){
+  target.innerHTML='<div id="ms-designer"></div><details class="pf-card"><summary>Payment settings</summary><div id="pf-payments" class="pf-stack pf-space" role="status">Checking payment setup…</div></details>';
+  MarcheShopEditor.mount($('ms-designer'),sellerData,seller);paymentsPanel();return;
+ }
+ target.innerHTML=(sellerData.warnings?.length?card('Platform notices',table(sellerData.warnings)):'')+card(d?'Storefront details':'A place for your shop to call home.',`<p class="pf-muted">Start with a name and address. Next, personalise your storefront in a live preview, connect your stock and add your products.</p><form id="pf-shop" class="pf-form">
  ${input('Shop name','name',d?.name,'required maxlength="90"')}${input('Shop address','slug',d?.slug,'required maxlength="40" pattern="[a-z0-9][a-z0-9\x2d]{2,39}"')}
  ${area('Shop description','description',d?.description,'maxlength="600"')}${input('Accent colour','accent',d?.accent||'#6d43de','type="color"')}
  ${d?check('Publish this storefront','published',d.published):''}
@@ -148,11 +152,12 @@ function branchForm(){
   sellerTab='catalogue';await seller();status(r.created+' new drafts imported.');
  });
 }
+function listingMessage(r){return r.state==='approved'?'Item ready for your published shop.':r.state==='review'?'This item needs a review before it can appear.':r.state==='blocked'?'Publication blocked: this item contains prohibited terms.':r.reason||'Draft saved. Add a price and photo to list it.';}
 function catalogue(){
  const target=$('pf-seller-view'), found=sellerData.listings.filter(x=>(filter==='all'||x.state===filter)&&
    [x.title,x.sku,x.branch_name].some(v=>String(v||'').toLowerCase().includes(search.toLowerCase())));
  const visible=found.slice(offset,offset+35);
- target.innerHTML=card('Find a product',`<form id="pf-list-filter" class="pf-form">
+ target.innerHTML=card('Your products',`<p class="pf-muted">Add a price and photo, then your item lists automatically. Flagged words or photos go to review. Draft shops stay private until you publish them.</p><form id="pf-list-filter" class="pf-form">
  ${input('Search by product, SKU or branch','search',search)}
  ${select('Status','state',['all','draft','review','approved','blocked','archived'].map(s=>[s,s==='all'?'All statuses':s]),filter)}
  ${submit('Apply filter')}</form><p class="pf-muted">${found.length} results · showing ${visible.length}</p>`)+
@@ -165,7 +170,7 @@ function catalogue(){
  ${select('VAT rate included in price','vat_rate',[[0,'0% / none'],[5,'5%'],[20,'20%']],l.vat_rate)}
  ${check('One-off item: archive photos after it sells','one_off',l.one_off)}${submit('Save details')}</form>
  <div><form class="pf-form" data-photo-form><label>Take or choose a product photo<input name="file" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></label>
- ${submit('Upload photo')}</form><div class="pf-actions pf-space">${btn('Send for review','data-submit-review')}</div></div></div>`}</details>`).join('')+
+ ${submit('Upload photo')}</form><div class="pf-actions pf-space">${btn('List item / recheck','data-submit-review')}</div></div></div>`}</details>`).join('')+
  '</div><div class="pf-actions">'+(offset>0?btn('Previous','id="pf-page-prev"'):'')+(offset+35<found.length?btn('Next','id="pf-page-next"'):'')+'</div>';
  bindForm($('pf-list-filter'),async f=>{search=f.search;filter=f.state;offset=0;catalogue();});
  if($('pf-page-prev'))$('pf-page-prev').onclick=()=>{offset=Math.max(0,offset-35);catalogue();};
@@ -175,11 +180,11 @@ function catalogue(){
   const reopen=async()=>{await seller();const next=[...document.querySelectorAll('[data-listing]')].find(x=>x.dataset.listing===id);if(next)next.open=true;};
   const f=el.querySelector('[data-listing-form]'), img=el.querySelector('[data-photo-form]'), review=el.querySelector('[data-submit-review]');
   if(f)bindForm(f,async v=>{
-   await api(route,{body:{...v,one_off:!!v.one_off,price_pence:makePence(v.price),vat_rate:Number(v.vat_rate)}});
-   await reopen();status('Details saved.');
+   const r=await api(route,{body:{...v,one_off:!!v.one_off,price_pence:makePence(v.price),vat_rate:Number(v.vat_rate)}});
+   await reopen();status(listingMessage(r));
   });
-  if(img)bindForm(img,async (_,form)=>{await api(route+'/photo',{body:{photo:await imageData(form.elements.file.files[0])}});await reopen();status('Photo uploaded.');});
-  if(review)review.onclick=task(review,async()=>{await api(route+'/review',{body:{}});await reopen();status('Listing sent for review.');});
+  if(img)bindForm(img,async (_,form)=>{const r=await api(route+'/photo',{body:{photo:await imageData(form.elements.file.files[0])}});await reopen();status(listingMessage(r));});
+  if(review)review.onclick=task(review,async()=>{const r=await api(route+'/review',{body:{}});await reopen();status(listingMessage(r));});
  }
 }
 function orders(){
