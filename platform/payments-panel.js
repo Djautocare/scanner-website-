@@ -34,7 +34,7 @@ function mount(panel,p,refresh,{expired=false}={}){
  const labels={not_configured:'Payments not configured',not_started:'Set up your payments',creation_pending:'Finish setting up payments',incomplete:'More information needed',pending:'Stripe is reviewing your details',ready:p.environment==='live'?'Ready for live payments':'Ready for test payments',unavailable:'Could not check Stripe status',review_required:'Payment setup needs support review',assigned_test_account:'Operator-assigned test account'};
  const canStart=p.configured&&!['assigned_test_account','review_required','unavailable'].includes(p.status),dashboard=dashboardUrl(p.dashboard_url);
  panel.innerHTML='<p><span class="pf-pill">'+esc(labels[p.status]||'Check payment setup')+'</span></p><p class="pf-muted">Stripe collects your business, bank and identity details securely. InventoryOS receives 0.5% of the goods total; Stripe processing fees are separate.</p>'+
-  '<p class="pf-warning">'+(p.environment==='live'?'Live setup: real customer payments when checkout is enabled.':'Sandbox setup: no real payments.')+'</p>'+
+  (p.environment==='test'?'<p class="pf-warning">Sandbox setup: no real payments.</p>':'')+
   (p.payment_mode_hint?'<p>'+esc(p.payment_mode_hint)+'</p>':'')+
   (p.environment==='live'&&p.configured&&p.checkout_open===false?'<p>Live seller setup is available. Customer checkout is closed on the backend.</p>':'')+
   (p.action_needed?'<p>Stripe needs more information. Continue setup to finish your shop’s payment account.</p>':'')+
