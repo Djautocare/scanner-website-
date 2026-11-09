@@ -53,7 +53,7 @@ async function stock(){
  $('pf-independent').onclick=task($('pf-independent'),()=>preview([]));
 }
 
-let sellerTab='shop',sellerData,search='',filter='all',offset=0;
+let sellerTab=params.get('tab')==='orders'?'orders':'shop',sellerData,search='',filter='all',offset=0;
 async function seller(){
  sellerData=await api('/seller');
  if(!sellerData.shop)sellerTab='shop';
@@ -62,6 +62,8 @@ async function seller(){
 function renderSeller(){
  main.innerHTML=SellerNavigation.render(sellerData,sellerTab)+'<div id="pf-seller-view" class="pf-stack" role="tabpanel" aria-labelledby="seller-tab-'+sellerTab+'" tabindex="-1"></div>';
  SellerNavigation.bind(main,key=>{sellerTab=key;status();renderSeller();});
+ const qr=main.querySelector('[data-print-storefront-qr]');
+ if(qr)qr.onclick=()=>{try{MarcheQrDesigner.open(sellerData);}catch(error){status(error.message,true);}};
  const pending=({shop:shopForm,branches:branchForm,catalogue:catalogue,orders:orders,cases:paymentCases})[sellerTab]();if(pending?.catch)pending.catch(e=>status(e.message,true));
 }
 function shopForm(){
@@ -94,7 +96,7 @@ async function paymentsPanel(){
  if(!panel)return;
  try{
   const p=await api('/seller/payments');if(!panel.isConnected||generation!==paymentLoad)return;
-  InventoryPaymentPanel.mount(panel,p,paymentsPanel,{expired:params.get('payments')==='refresh'});
+  InventoryPaymentPanel.mount(panel,p,paymentsPanel,{expired:params.get('payments')==='refresh',shop:sellerData.shop});
  }catch(e){if(panel.isConnected&&generation===paymentLoad)panel.textContent='Payment status unavailable. '+e.message;}
 }
 function branchForm(){
@@ -184,14 +186,22 @@ function catalogue(){
 }
 function orders(){
  const target=$('pf-seller-view');
- target.innerHTML=sellerData.orders.map(o=>card(o.branch_name,`<p><span class="pf-pill">${esc(o.provider==='demo'?'Demo payment':o.provider==='stripe_live'?'Live payment':'Stripe sandbox')} · ${esc(o.payment_status)}</span> ${esc(o.method)} · ${esc(o.state)}</p>
+ target.innerHTML=sellerData.orders.map(o=>card(o.branch_name,`<p><span class="pf-pill">${esc(o.provider==='demo'?'Test order · Simulated payment':o.provider==='stripe_live'?'Live payment':'Stripe sandbox')} · ${esc(o.payment_status)}</span> ${esc(o.method)} · ${esc(o.state)}</p>
  <p class="pf-muted">Order ${esc(o.order_reference)}</p><p>${esc(o.contact.name)} · ${esc(o.contact.email)}${o.method==='delivery'?'<br>'+esc([o.contact.address,o.contact.town,o.contact.postcode].join(', ')):''}</p>
  ${table(o.items)}${o.refunded_pence?'<p class="pf-warning">Refunded '+esc(money(o.refunded_pence))+'</p>':''}${o.risk_state?'<p class="pf-warning">Payment case needs review. Do not dispatch.</p>':''}${o.payment_status==='review'?'<p class="pf-warning">Stock needs review. Hold fulfilment.</p>':''}
  ${o.payment_status==='review'&&o.refunded_pence?btn('Release fully refunded reservation','data-release-refund="'+esc(o.order_reference)+'"'):''}
+ ${sellerData.invoice_version===1&&(o.payment_status==='paid'||o.paid_at)?btn(o.provider==='stripe_live'?'Invoice':'Sample invoice','data-invoice-order="'+esc(o.order_reference)+'"'):''}
  ${o.payment_status==='held'?btn('Cancel unpaid reservation','data-cancel-order="'+esc(o.order_reference)+'"'):''}
  ${o.payment_status==='paid'&&!o.refunded_pence&&!o.risk_state&&((o.method==='delivery'&&o.state==='pending')||(o.method==='collection'&&['pending','ready'].includes(o.state)))?
   `<form class="pf-form" data-order="${esc(o.id)}">${o.method==='delivery'?input('Tracking reference','tracking','','maxlength="100"'):''}
   ${submit(o.method==='delivery'?'Mark sent':o.state==='pending'?'Ready for collection':'Mark collected')}</form>`:''}`)).join('')||card('No orders yet','<p class="pf-muted">Orders appear here, split by branch.</p>');
+ target.insertAdjacentHTML('afterbegin','<div class="pf-actions">'+btn('Refresh orders','id="pf-refresh-orders"')+'</div>');
+ $('pf-refresh-orders').onclick=task($('pf-refresh-orders'),seller);
+ for(const b of target.querySelectorAll('[data-invoice-order]'))b.onclick=()=>{
+  const route=reference=>'/seller/order/'+encodeURIComponent(reference)+'/invoice';
+  InventorySaleInvoice.open({reference:b.dataset.invoiceOrder,load:reference=>api(route(reference)),
+    submit:(reference,body)=>api(route(reference),{body})});
+ };
  for(const b of target.querySelectorAll('[data-release-refund]'))b.onclick=task(b,async()=>{await api('/seller/order/'+encodeURIComponent(b.dataset.releaseRefund)+'/release-refunded',{body:{}});await seller();status('Refunded reservation released.');});
  for(const b of target.querySelectorAll('[data-cancel-order]'))b.onclick=task(b,async()=>{await api('/seller/order/'+encodeURIComponent(b.dataset.cancelOrder)+'/cancel',{body:{}});await seller();status('Reservation updated.');});
  for(const f of target.querySelectorAll('[data-order]'))bindForm(f,async v=>{

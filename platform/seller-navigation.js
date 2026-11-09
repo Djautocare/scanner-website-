@@ -21,7 +21,7 @@ function icon(name) {
 function render(data, active) {
   const { shop, branches = [], listings = [], orders = [] } = data;
   const live = shop?.published && !shop.suspended;
-  const waiting = orders.some(order => order.payment_status === 'paid' &&
+  const waiting = orders.some(order => order.provider !== 'demo' && order.payment_status === 'paid' &&
     order.state === 'pending' && !order.risk_state && !order.refunded_pence);
   const cases = orders.some(order => order.risk_state || order.payment_status === 'review');
   const tabs = [
@@ -40,6 +40,8 @@ function render(data, active) {
       </div>
       <div class="sn-store-actions">
         <span class="sn-state ${live ? 'is-live' : ''}"><i></i>${state}</span>
+        ${data.storefront_qr_version===1 ? '<button class="sn-storefront" type="button" data-print-storefront-qr>Print QR code</button>' : ''}
+        ${live && data.test_purchase_version===1 ? `<a class="sn-storefront" href="/marche/?shop=${encodeURIComponent(shop.slug)}&amp;test-buy=1" target="_blank" rel="noopener">Test a purchase ${icon('external')}</a>` : ''}
         ${live
           ? `<a class="sn-storefront" href="/marche/${encodeURIComponent(shop.slug)}">View storefront ${icon('external')}</a>`
           : '<span class="sn-draft-note">Preview in Shop design</span>'}
