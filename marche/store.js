@@ -9,6 +9,7 @@ const market=(path,body)=>api('/marche'+path,{body,publicOnly:true});
 const route='/shop/'+encodeURIComponent(handle), KEY='ios-marche-staging-'+handle;
 let checkoutAvailable=false,paymentEnvironment;
 let shop,catalogue=[],branches=[],cart=new Map(),methods=new Map(),quoted,order,search='',category='',page=0;
+const collectionDistances=new Map();
 function button(label,attr=''){return '<button type="button" '+attr+'>'+esc(label)+'</button>';}
 function save(v){sessionStorage.setItem(KEY,JSON.stringify(v));}
 function saved(){try{return JSON.parse(sessionStorage.getItem(KEY)||'null');}catch{return null;}}
@@ -64,8 +65,77 @@ async function loadShop(){
  renderShop();
 }
 function renderShop(){
- main.innerHTML='<div class="pf-split"><section id="pf-products" class="pf-stack"></section><aside id="pf-basket" class="pf-card pf-basket"></aside></div>';
- renderProducts();renderBasket();
+ main.innerHTML='<div class="pf-split"><div class="pf-stack"><div id="pf-collection"></div><section id="pf-products" class="pf-stack"></section></div><aside id="pf-basket" class="pf-card pf-basket"></aside></div>';
+ renderCollection();renderProducts();renderBasket();
+}
+function distanceLabel(miles){
+ if(miles===0)return 'Under 1 mile away';
+ return 'Approx. '+miles+' '+(miles===1?'mile':'miles')+' away';
+}
+function collectionLabel(branchId){
+ return collectionDistances.has(branchId)
+  ? 'Free collection · '+distanceLabel(collectionDistances.get(branchId))
+  : 'Free collection';
+}
+function updateBasketDistances(){
+ for(const select of $('pf-basket').querySelectorAll('#pf-quote select')){
+  const option=select.querySelector('option[value="collection"]');
+  if(option)option.textContent=collectionLabel(select.name);
+ }
+}
+function renderCollection(){
+ const host=$('pf-collection');
+ const available=branches.filter(branch=>branch.collection&&branch.collection_distance);
+ collectionDistances.clear();
+ host.hidden=!available.length;
+ if(host.hidden)return;
+ host.innerHTML=`<section class="pf-card mc-collection" aria-labelledby="mc-collection-title">
+  <div class="mc-collection-heading">
+   <span class="mc-collection-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 21s7-6 7-12a7 7 0 0 0-14 0c0 6 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
+   <div><h2 id="mc-collection-title">Free collection</h2><p class="pf-muted">See how far away you are from a pickup point.</p></div>
+  </div>
+  <form class="pf-form mc-collection-form">
+   ${input('Your UK postcode','postcode','','required maxlength="9" placeholder="e.g. M30 0AA" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="mc-collection-help"')}
+   <button type="submit">Check distance</button>
+  </form>
+  <p class="pf-muted mc-collection-help" id="mc-collection-help">Straight-line estimate to the collection area. Your postcode is sent to Postcodes.io to calculate it.</p>
+  <div class="mc-collection-results" aria-live="polite"></div>
+ </section>`;
+ const form=host.querySelector('form'), field=form.elements.postcode, submit=form.querySelector('button');
+ const results=host.querySelector('.mc-collection-results');
+ field.oninput=()=>{
+  collectionDistances.clear();
+  results.replaceChildren();
+  updateBasketDistances();
+ };
+ form.onsubmit=async event=>{
+  event.preventDefault();
+  if(submit.disabled)return;
+  submit.disabled=true;
+  field.readOnly=true;
+  results.textContent='Checking distance…';
+  try{
+   const data=await market(route+'/collection-distance',{postcode:field.value});
+   if(!host.isConnected)return;
+   const byId=new Map(available.map(branch=>[branch.id,branch]));
+   const distances=data.distances.filter(x=>byId.has(x.branch_id)&&Number.isInteger(x.miles)&&x.miles>=0)
+    .sort((a,b)=>a.miles-b.miles);
+   collectionDistances.clear();
+   for(const {branch_id,miles} of distances)collectionDistances.set(branch_id,miles);
+   results.innerHTML=distances.length?'<ul>'+distances.map(({branch_id,miles})=>
+    '<li><strong>'+esc(byId.get(branch_id).name)+'</strong><span>'+esc(distanceLabel(miles))+'</span></li>').join('')+'</ul>'
+    :'Distance is unavailable for these collection points.';
+  }catch(error){
+   if(host.isConnected){
+    collectionDistances.clear();
+    results.textContent=error.message;
+   }
+  }finally{
+   submit.disabled=false;
+   field.readOnly=false;
+   if(host.isConnected)updateBasketDistances();
+  }
+ };
 }
 function renderProducts(){
  const found=catalogue.filter(x=>(!category||String(x.category||'').toLowerCase()===category.toLowerCase())&&[x.title,x.sku,x.category].some(v=>String(v||'').toLowerCase().includes(search.toLowerCase())));
@@ -114,7 +184,7 @@ function renderBasket(){
    ${b.items.map(l=>`<div class="pf-actions"><span>${l.qty} × ${esc(l.title)} · ${esc(money(l.qty*l.price_pence))}</span>
     ${button('−','data-quantity="'+esc(l.id)+'" data-by="-1" aria-label="Remove one '+esc(l.title)+'"')}
     ${button('+','data-quantity="'+esc(l.id)+'" data-by="1" aria-label="Add one '+esc(l.title)+'" '+(l.qty>=Math.min(1000,l.available)?'disabled':''))}</div>`).join('')}
-   ${select('Fulfilment for '+b.name,b.id,[...(b.collection?[['collection','Free collection']]:[]),...(b.delivery_pence!=null?[['delivery','Delivery · '+money(b.delivery_pence)]]:[])],methods.get(b.id))}
+   ${select('Fulfilment for '+b.name,b.id,[...(b.collection?[['collection',collectionLabel(b.id)]]:[]),...(b.delivery_pence!=null?[['delivery','Delivery · '+money(b.delivery_pence)]]:[])],methods.get(b.id))}
    </div>`).join('')}
   <button type="submit" class="primary">Check total</button></form><div id="pf-quote-result"></div>`;
  const form=$('pf-quote');

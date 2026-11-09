@@ -1,0 +1,39 @@
+.mc-collection-heading {
+ display: flex;
+ align-items: center;
+ gap: 12px;
+}
+.mc-collection-heading h2 { font-size: 1.1rem; }
+.mc-collection-icon {
+ display: grid;
+ place-items: center;
+ flex: 0 0 40px;
+ height: 40px;
+ border-radius: 12px;
+ color: var(--p-accent);
+ background: var(--p-tint);
+}
+.mc-collection-icon svg { width: 23px; height: 23px; }
+.mc-collection-form {
+ grid-template-columns: minmax(0, 12rem) auto;
+ justify-content: start;
+ align-items: end;
+}
+.mc-collection-form button { min-height: 36px; }
+.mc-collection-help { font-size: .8rem; }
+.mc-collection-results { font-size: .88rem; }
+.mc-collection-results:empty { display: none; }
+.mc-collection-results ul {
+ list-style: none;
+ margin: 0;
+ padding: 0;
+}
+.mc-collection-results li {
+ display: flex;
+ flex-wrap: wrap;
+ justify-content: space-between;
+ gap: 3px 12px;
+ padding: 7px 0;
+ border-top: 1px solid var(--p-line);
+}
+.mc-collection-results li span { color: var(--p-muted); }

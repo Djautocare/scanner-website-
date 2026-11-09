@@ -60,12 +60,8 @@ async function seller(){
  renderSeller();
 }
 function renderSeller(){
- const d=sellerData, shop=d.shop;
- const tabs=[['shop','Shop design'],['branches','Stock & delivery'],['catalogue','Products'],['orders','Orders'],['cases','Refunds & payment cases']];
- main.innerHTML='<nav class="pf-tabs" aria-label="Seller sections">'+tabs.map(([k,label])=>btn(label,
-  'data-seller-tab="'+k+'" '+(sellerTab===k?'aria-current="page"':'')+(shop?'':' disabled'))).join('')+
-  (shop?.published?'<a class="pf-button" href="/marche/'+encodeURIComponent(shop.slug)+'">View storefront ↗</a>':shop?'<span class="pf-pill">Unpublished · preview in Shop design</span>':'')+'</nav><div id="pf-seller-view" class="pf-stack"></div>';
- for(const b of main.querySelectorAll('[data-seller-tab]'))b.onclick=()=>{sellerTab=b.dataset.sellerTab;status();renderSeller();};
+ main.innerHTML=SellerNavigation.render(sellerData,sellerTab)+'<div id="pf-seller-view" class="pf-stack" role="tabpanel" aria-labelledby="seller-tab-'+sellerTab+'" tabindex="-1"></div>';
+ SellerNavigation.bind(main,key=>{sellerTab=key;status();renderSeller();});
  const pending=({shop:shopForm,branches:branchForm,catalogue:catalogue,orders:orders,cases:paymentCases})[sellerTab]();if(pending?.catch)pending.catch(e=>status(e.message,true));
 }
 function shopForm(){
@@ -106,23 +102,42 @@ function branchForm(){
  target.innerHTML=card('Branch fulfilment',`<form id="pf-branch" class="pf-form">
  ${select('Inventory','inventory_id',[['','Choose an inventory'],...d.inventories.map(x=>[x.id,invLabel(x)])])}
  ${input('Public branch name','name','','required maxlength="90"')}
- ${check('Offer collection','collection')}${input('Collection address (shared after payment)','collection_address','','maxlength="240"')}
+ ${check('Offer free collection','collection')}
+ <div class="pf-form" id="pf-collection-settings" hidden>
+ ${input('Collection address (shared after payment)','collection_address','','maxlength="240"')}
+ ${d.collection_distance_version===1
+   ? input('Collection postcode area (optional)','collection_outcode','','maxlength="4" placeholder="e.g. M30" autocapitalize="characters" spellcheck="false" aria-describedby="pf-collection-help"')+
+     '<p id="pf-collection-help" class="pf-muted">Enter the first part of the postcode to show customers an approximate collection distance.</p>'
+   : ''}
+ </div>
  ${input('Delivery fee in £ (blank to disable delivery)','delivery','','type="number" min="0" max="1000" step=".01"')}
  ${check('Branch is active','enabled',true)}${check('Create drafts automatically for new products','auto_drafts')}
  ${submit('Save branch')}</form>`)+
- (d.branches.length?'<div class="pf-grid">'+d.branches.map(b=>card(b.name,`<p class="pf-muted">${b.enabled?'Active':'Paused'} · ${b.collection?'Collection available':'No collection'} · ${b.delivery_pence==null?'No delivery':'Delivery '+esc(money(b.delivery_pence))}</p>
+ (d.branches.length?'<div class="pf-grid">'+d.branches.map(b=>card(b.name,`<p class="pf-muted">${b.enabled?'Active':'Paused'} · ${b.collection?'Free collection':'No collection'} · ${b.delivery_pence==null?'No delivery':'Delivery '+esc(money(b.delivery_pence))}</p>
+ ${b.collection&&b.collection_area?.outcode?'<p class="pf-muted">Collection distance from '+esc(b.collection_area.outcode)+'</p>':''}
  <div class="pf-actions">${btn('Edit','data-branch-edit="'+esc(b.inventory_id)+'"')}${btn('Import products','data-import="'+esc(b.id)+'"')}</div>`)).join('')+'</div>':'');
  const form=$('pf-branch'),field=k=>form.elements.namedItem(k);
  field('inventory_id').required=true;
+ function toggleCollection(){
+  const enabled=field('collection').checked;
+  $('pf-collection-settings').hidden=!enabled;
+  field('collection_address').required=enabled;
+ }
+ field('collection').onchange=toggleCollection;
  function fill(id){
   const b=d.branches.find(x=>x.inventory_id===id), inv=d.inventories.find(x=>x.id===id);
   field('inventory_id').value=id;field('name').value=b?.name||inv?.name||'';
   field('collection').checked=b?.collection||false;field('collection_address').value=b?.collection_address||'';
+  if(field('collection_outcode'))field('collection_outcode').value=b?.collection_area?.outcode||'';
   field('delivery').value=b?.delivery_pence==null?'':(b.delivery_pence/100).toFixed(2);
   field('enabled').checked=b?.enabled??true;field('auto_drafts').checked=b?.auto_drafts??false;
+  toggleCollection();
  }
  field('inventory_id').onchange=()=>fill(field('inventory_id').value);
  bindForm(form,async f=>{
+  const branch=d.branches.find(x=>x.inventory_id===f.inventory_id);
+  if(f.collection_outcode?.trim().toUpperCase()===branch?.collection_area?.outcode)delete f.collection_outcode;
+  else if(f.collection_outcode!==undefined)f.collection_outcode=f.collection_outcode.trim();
   await api('/seller/branch',{body:{...f,collection:!!f.collection,enabled:!!f.enabled,auto_drafts:!!f.auto_drafts,delivery_pence:makePence(f.delivery)}});
   await seller();status('Branch saved.');
  });
