@@ -1,21 +1,20 @@
 # Packing and shipping labels
 
-**Find it:** left menu → **Dispatch Centre**. Starter can upload shipping-label PDFs manually. Automatic shipping-label email import is available with Pro and Business.
+**Find it:** left menu → **Dispatch Centre**. Starter and Complete include file uploads and supported 4×6 cropping. Complete also includes a workspace address for forwarding supported label attachments.
 
-## Add a label to the queue
+## Add labels to the packing queue
 
-1. In Dispatch Centre, choose a shipping-label PDF and upload it to the packing queue.
-2. Check the crop preview. The label should fit the **4×6** preview without missing an address or barcode.
-3. Open **Packing Queue**, select **Refresh Queue**, then choose **Search Locations** to find the stock for the queued labels.
-4. Choose **Location Order** to group a pick run by where items are stored, or **Label Print Order** to follow the order of labels.
-5. Use **Print Pick List** for a paper picking list. When ready, use the packing flow to confirm each item against the label.
+1. Open **Import label files** and choose PDF, PNG or JPEG files.
+2. Select **Preview crop**. Check that every address and barcode fits the 4×6 preview.
+3. Select **Add to queue** when the crops are ready.
 
-## Print on a phone
+![Dispatch Centre with Import label files expanded, showing Choose files, Preview crop and Add to queue](../.gitbook/assets/guide-2026-11/dispatch.jpg)
 
-The **Mobile print cropped shipping labels** control is in the Packing Queue controls. It shares the cropped labels so you can open them in the phone's label-printing app. The **Share / Mobile Print** control is also available beside the cropped shipping-label preview.
+## Find the stock and print
 
-## Print from a connected PC
+1. In **Packing queue**, choose **Find stock locations**. Review matches before picking.
+2. Choose **By location** for a grouped pick run or **By label** to follow the label order.
+3. Open **More actions** for **Print pick list** or **Mobile print labels**. Open **Shipping labels & printing** to check 4×6 previews and use **Mobile print / PDF** or **Print via QZ Tray** when available.
+4. Use **Let’s Pack** to check the parcel against its label. The dispatch workflow does not itself remove items from inventory.
 
-Use **Print Shipping Labels** from the 4×6 preview after checking the printer and crop. **Clear Pending Prints** clears queued printing tasks; verify what is selected first.
-
-> **Note:** the older screenshot set showed a Manual Packing Item control that has since been removed, so this page intentionally uses current control names without that image.
+![Dispatch Centre packing queue with More actions open, showing mobile printing and pick list controls](../.gitbook/assets/guide-2026-11/dispatch-actions.jpg)

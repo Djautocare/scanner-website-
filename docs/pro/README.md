@@ -1,6 +1,6 @@
-# Pro: advanced workflows
+# Complete: advanced workflows
 
-Pro includes Starter, removes the active-stock item limit, and adds multiple inventories, automatic shipping-label email import, direct QZ Tray printing, custom workspace location wording, and reorder rules.
+Complete is **£19.99/month** and includes Starter, unlimited active items, multiple inventories, shipping-label email import, QZ Tray printing, reorder reminders, shared workspaces and manufacturing. Your first physical store is included. Each additional physical store is **£10/month**.
 
 ## Keep inventories separate
 
@@ -10,7 +10,7 @@ Use the **inventory selector** in the top bar when you have more than one invent
 
 Open **Settings → Open Workspace Settings → Location Wording**. Choose the preferred singular and plural names, then **Save Settings**. Numeric locations can display with the chosen word; an explicitly saved name such as “Box 1” keeps its saved wording.
 
-<figure><img src="../.gitbook/assets/workspace-settings.jpg" alt=""><figcaption></figcaption></figure>
+![Workspace Settings with location wording, icon and preview](../.gitbook/assets/guide-2026-11/workspace-settings.jpg)
 
 ## Email shipping labels to your workspace
 

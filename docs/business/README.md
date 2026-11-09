@@ -1,6 +1,6 @@
-# Business: work as a team
+# Work together in a shared workspace
 
-Business includes Pro and adds shared team inventory, member accounts, workspace roles and permissions, owner/admin controls, and priority support.
+Complete includes shared team inventories, member accounts, workspace roles and permissions, and owner and admin controls.
 
 ## Invite a teammate
 
@@ -8,6 +8,8 @@ Business includes Pro and adds shared team inventory, member accounts, workspace
 2. Open **Settings → Manage Workspace Members**.
 3. Create an invite or invite link, choose the intended role, and share it with the teammate.
 4. After they join, check that they can see the correct workspace and inventory. Review the member list before changing or removing access.
+
+![Manage Workspace page showing the invite role selector and Create Invite Link](../.gitbook/assets/guide-2026-11/workspace-invites.jpg)
 
 ## Choose access carefully
 

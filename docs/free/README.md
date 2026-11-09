@@ -8,15 +8,15 @@ Open **Dashboard** from the left menu. The cards show active stock and sales fig
 
 **Find it:** left menu → **Dashboard**. **Check:** the workspace and inventory names at the top before adding or removing anything.
 
-<figure><img src="../.gitbook/assets/dashboard (1).jpg" alt=""><figcaption></figcaption></figure>
+![InventoryOS dashboard with workspace and inventory selectors, stock totals and recent sales](../.gitbook/assets/guide-2026-11/dashboard.jpg)
 
 ## 2. Create a location
 
-Open **Boxes** (the name can reflect your chosen location wording) and select **Create Next Available Box**. InventoryOS chooses the next unused number. Use **Active Boxes** to see occupied locations and **Empty Boxes** to check free ones.
+Open **Locations** under **Stock**. The page may be called **Boxes** or **Shelves**, depending on your workspace. Use **Create Box** or **Create Shelf** to name a location or take the next available number. Check the active and empty location lists to see where stock is stored.
 
-**Find it:** left menu → **Boxes**. A location name you type explicitly remains that saved name; the Pro location-wording setting can change how numeric names display.
+**Find it:** left menu → **Stock → Locations**. A location name you type explicitly remains that saved name. Complete lets you change how numeric locations are labelled.
 
-<figure><img src="../.gitbook/assets/boxes.jpg" alt=""><figcaption></figcaption></figure>
+![Shelf locations with Create Shelf and active and empty location counts](../.gitbook/assets/guide-2026-11/locations.jpg)
 
 ## 3. Add one item
 

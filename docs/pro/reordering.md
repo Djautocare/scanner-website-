@@ -1,6 +1,6 @@
 # Reordering and email reminders
 
-**Find it:** left menu → **Reordering**. Reordering requires Pro or Business. It tracks a supplier order separately from receiving the stock and assigning its final location.
+**Find it:** left menu → **Reordering**. Reordering is included in Complete. It tracks a supplier order separately from receiving the stock and assigning its final location.
 
 ## Create a rule
 
@@ -14,16 +14,18 @@
 
 1. On **Needs reordering**, check the item and supplier link, then select **Ordered**.
 2. It moves to **Ordered**. If you clicked by mistake or the order falls through, use **Delete order** before it is received.
-3. Select one or more ordered items and **Mark selected received**; review the confirmation list. Received quantities enter **Holding**.
+3. Select one or more ordered items and choose **Mark selected received**. Check the quantity and confirm the total paid. Received quantities enter **Holding** and the confirmed cost is recorded in Expenses.
 4. Under **Destination assigning**, enter how many units go to each location. Add another row for any remainder. Unassigned units stay in Holding until you assign them.
 5. Use the mobile or QZ Tray product-label actions shown on the received item if labels are needed.
+
+![Confirm stock received dialog showing the total paid for the selected order](../.gitbook/assets/guide-2026-11/reorder-receive.jpg)
 
 ## Edit or delete a rule
 
 Select **Adjustments** to see all rules. Open **Edit rule** to change thresholds or supplier details. **Delete rule** removes a rule after confirmation; open ordered or received entries must be dealt with first. Completed reorder history associated with the deleted rule is also removed, while the product and stock remain.
 
-## Optional email reminders
+## Email reminders
 
-The **Email reminders** panel offers an optional **£1.99/month** add-on (or an account-specific admin testing override). Tick **Send reorder reminders by email**, choose **Instant** or **One daily summary** with a UK time, then **Save reminder preferences**. The email goes to your InventoryOS account email, not the supplier contact.
+Complete includes reorder reminder emails. Open **Email reminders**, tick **Send reorder reminders by email**, then choose **Instant** or **One daily summary** with a UK time and **Save reminder preferences**. Alerts go to your InventoryOS account email. Existing separately billed reminder add-ons retain their agreed billing.
 
 **Send test email** checks the mail connection. **Check alerts now** checks the saved settings and current low-stock rules; it may send any due alert. A successful provider acceptance means the email was submitted, so check the provider's delivery events if it does not reach the inbox.
