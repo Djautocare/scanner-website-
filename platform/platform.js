@@ -150,11 +150,74 @@ function branchForm(){
  });
 }
 function listingMessage(r){return r.state==='approved'?'Item ready for your published shop.':r.state==='review'?'This item needs a review before it can appear.':r.state==='blocked'?'Publication blocked: this item contains prohibited terms.':r.reason||'Draft saved. Add a price and photo to list it.';}
+const draftTotal=n=>n+' draft'+(n===1?'':'s');
+function catalogueActions(d){
+ if(d.catalogue_tools?.version!==1)return '';
+ const {visible,cleared}=d.catalogue_tools;
+ const clear=visible?btn('Clear all drafts','id="pf-drafts-clear"'):'';
+ const restore=cleared?btn('Restore '+cleared+' cleared draft'+(cleared===1?'':'s'),'id="pf-drafts-restore"'):'';
+ return card('Catalogue tools',`<div class="pf-actions">${clear}${restore}</div>
+  ${visible?`<p class="pf-muted">${esc(draftTotal(visible))} can be cleared. Published items, reviews and inventory are kept.</p>`:''}
+  ${d.branches.length?`<details id="pf-csv-panel"><summary>Bulk add from a spreadsheet</summary>
+    <p class="pf-muted">Match SKUs from the chosen branch. Add new catalogue drafts or bring back cleared drafts. You can leave the other columns blank to use your saved product details.</p>
+    <form class="pf-form" id="pf-csv-form">
+     ${select('Branch','branch_id',d.branches.map(b=>[b.id,b.name]))}
+     <label>Upload a CSV<input name="csv_file" type="file" accept=".csv,text/csv"></label>
+     ${area('Or paste CSV data','csv_text','','maxlength="131072" rows="3" placeholder="sku,title,description,category,price,vat_rate"')}
+     <p class="pf-muted">Export your spreadsheet as CSV UTF-8. Format SKUs as text to keep leading zeros. Up to 250 rows and 128 KB per import.</p>
+     <div class="pf-actions">${submit('Preview import')}${btn('Download CSV template','id="pf-csv-template"')}</div>
+    </form><div id="pf-csv-preview" class="pf-space" aria-live="polite"></div></details>`:
+   '<p class="pf-muted">Connect a branch inventory in Stock &amp; delivery to import products.</p>'}`);
+}
+function bindCatalogueActions(){
+ const clear=$('pf-drafts-clear'), restore=$('pf-drafts-restore');
+ const change=async action=>{
+  if(action==='clear'&&!window.confirm('Clear all catalogue drafts and pause automatic draft creation? Cleared drafts can be restored here.'))return;
+  const r=await api('/seller/drafts',{body:{action}});
+  offset=0;await seller();
+  status(action==='clear'?draftTotal(r.count)+' cleared. Automatic draft creation paused.':'Restored '+draftTotal(r.count)+'.');
+ };
+ if(clear)clear.onclick=task(clear,()=>change('clear'));
+ if(restore)restore.onclick=task(restore,()=>change('restore'));
+ const form=$('pf-csv-form');
+ if(!form)return;
+ const preview=$('pf-csv-preview');
+ let generation=0;
+ form.addEventListener('input',()=>{generation++;preview.replaceChildren();});
+ $('pf-csv-template').onclick=()=>download('mi-marche-product-import.csv',
+   'sku,title,description,category,price,vat_rate\r\n001234,Example product,,Accessories,12.50,0\r\n','text/csv;charset=utf-8');
+ bindForm(form,async (fields,active)=>{
+  const current=++generation;
+  preview.textContent='Checking the spreadsheet…';
+  try{
+   const file=active.elements.csv_file.files[0];
+   if(file&&(!/\.csv$/i.test(file.name)||!file.size||file.size>131072))throw Error('Choose a CSV under 128 KB.');
+   if(file&&fields.csv_text.trim())throw Error('Choose a CSV file or paste CSV data.');
+   let csv=fields.csv_text;
+   if(file){
+    try{csv=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());}
+    catch{throw Error('Save the spreadsheet as CSV UTF-8 and upload it again.');}
+   }
+   const route='/seller/branch/'+encodeURIComponent(fields.branch_id)+'/csv/';
+   const r=await api(route+'preview',{body:{csv}});
+   if(current!==generation||!preview.isConnected)return;
+   preview.innerHTML=`<h3>Import preview</h3><p>${esc(r.ready)} ready · ${esc(r.rows.length-r.ready)} skipped</p>`+
+     table(r.rows.map(row=>({row:row.line,sku:row.sku,title:row.title,price:row.price_pence==null?null:money(row.price_pence),result:row.status})))+
+     (r.ready?btn('Import '+draftTotal(r.ready),'id="pf-csv-apply"'):'');
+   const apply=$('pf-csv-apply');
+   if(apply)apply.onclick=task(apply,async()=>{
+    const imported=await api(route+'import',{body:{csv,preview_hash:r.preview_hash}});
+    search='';filter='draft';offset=0;await seller();
+    status(draftTotal(imported.imported)+' added to the catalogue.');
+   });
+  }catch(error){if(current===generation)preview.textContent=error.message;}
+ });
+}
 function catalogue(){
  const target=$('pf-seller-view'), found=sellerData.listings.filter(x=>(filter==='all'||x.state===filter)&&
    [x.title,x.sku,x.branch_name].some(v=>String(v||'').toLowerCase().includes(search.toLowerCase())));
  const visible=found.slice(offset,offset+35);
- target.innerHTML=card('Your products',`<p class="pf-muted">Add a price and photo, then your item lists automatically. Flagged words or photos go to review. Draft shops stay private until you publish them.</p><form id="pf-list-filter" class="pf-form">
+ target.innerHTML=catalogueActions(sellerData)+card('Your products',`<p class="pf-muted">Add a price and photo, then your item lists automatically. Flagged words or photos go to review. Draft shops stay private until you publish them.</p><form id="pf-list-filter" class="pf-form">
  ${input('Search by product, SKU or branch','search',search)}
  ${select('Status','state',['all','draft','review','approved','blocked','archived'].map(s=>[s,s==='all'?'All statuses':s]),filter)}
  ${submit('Apply filter')}</form><p class="pf-muted">${found.length} results · showing ${visible.length}</p>`)+
@@ -169,6 +232,7 @@ function catalogue(){
  <div><form class="pf-form" data-photo-form><label>Take or choose a product photo<input name="file" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required></label>
  ${submit('Upload photo')}</form><div class="pf-actions pf-space">${btn('List item / recheck','data-submit-review')}</div></div></div>`}</details>`).join('')+
  '</div><div class="pf-actions">'+(offset>0?btn('Previous','id="pf-page-prev"'):'')+(offset+35<found.length?btn('Next','id="pf-page-next"'):'')+'</div>';
+ bindCatalogueActions();
  bindForm($('pf-list-filter'),async f=>{search=f.search;filter=f.state;offset=0;catalogue();});
  if($('pf-page-prev'))$('pf-page-prev').onclick=()=>{offset=Math.max(0,offset-35);catalogue();};
  if($('pf-page-next'))$('pf-page-next').onclick=()=>{offset+=35;catalogue();};

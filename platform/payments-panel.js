@@ -5,7 +5,7 @@ function dashboardUrl(value){
  try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='dashboard.stripe.com'&&!u.username&&!u.password&&/^\/acct_[A-Za-z0-9]+\/(?:test\/)?dashboard$/.test(u.pathname)&&!u.search&&!u.hash?u.href:null;}catch{return null;}
 }
 function onboardingUrl(value){
- const u=new URL(value);if(u.protocol!=='https:'||u.hostname!=='connect.stripe.com'||u.username||u.password)throw Error('Stripe returned an unexpected setup address. Please contact support.');return u.href;
+ const u=new URL(value);if(u.protocol!=='https:'||!['connect.stripe.com','accounts.stripe.com'].includes(u.hostname)||u.port||u.username||u.password)throw Error('Stripe returned an unexpected setup address. Please contact support.');return u.href;
 }
 function bindSetup(button,feedback,continueLink,{countryInput,request=()=>api('/seller/payments/start',{body:countryInput?{country:countryInput.value}:{},manualStripeRedirect:true}),navigate=url=>window.top.location.assign(url),accessGate=showAccessGate}={}){
  button.onclick=async event=>{
@@ -35,6 +35,8 @@ function mount(panel,p,refresh,{expired=false}={}){
  const canStart=p.configured&&!['assigned_test_account','review_required','unavailable'].includes(p.status),dashboard=dashboardUrl(p.dashboard_url);
  panel.innerHTML='<p><span class="pf-pill">'+esc(labels[p.status]||'Check payment setup')+'</span></p><p class="pf-muted">Stripe collects your business, bank and identity details securely. InventoryOS receives 0.5% of the goods total; Stripe processing fees are separate.</p>'+
   '<p class="pf-warning">'+(p.environment==='live'?'Live setup: real customer payments when checkout is enabled.':'Sandbox setup: no real payments.')+'</p>'+
+  (p.payment_mode_hint?'<p>'+esc(p.payment_mode_hint)+'</p>':'')+
+  (p.environment==='live'&&p.configured&&p.checkout_open===false?'<p>Live seller setup is available. Customer checkout is closed on the backend.</p>':'')+
   (p.action_needed?'<p>Stripe needs more information. Continue setup to finish your shop’s payment account.</p>':'')+
   (p.status==='not_configured'?'<p>Payment setup needs configuring on the InventoryOS server first.</p>':'')+
   (expired?'<p>Your previous Stripe link expired. Continue setup to open a fresh link.</p>':'')+
