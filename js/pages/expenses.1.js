@@ -30,6 +30,87 @@ function todayInput(){
 }
 
 document.getElementById("expenseDate").value = todayInput();
+const scanReceiptInput = document.getElementById("receipt");
+const scanReceiptButton = document.getElementById("scanExpenseReceipt");
+const scanReceiptStatus = document.getElementById("receiptScanStatus");
+const scanReceiptDraft = document.getElementById("receiptScanDraft");
+const scanReceiptFields = document.getElementById("receiptScanFields");
+const scanFields = [
+    ["supplier", "Supplier", "supplier"],
+    ["amount", "Total (£)", "amount"],
+    ["date", "Date", "expenseDate"],
+    ["reference", "Reference", "referenceNumber"]
+];
+let receiptScanVersion = 0;
+let receiptScanSuggestions = [];
+let expenseDateEdited = false;
+document.getElementById("expenseDate").addEventListener("input", () => { expenseDateEdited = true; });
+
+function resetReceiptScan(){
+    receiptScanVersion++;
+    receiptScanSuggestions = [];
+    scanReceiptDraft.hidden = true;
+    scanReceiptFields.replaceChildren();
+    scanReceiptButton.disabled = !scanReceiptInput.files.length;
+}
+scanReceiptInput.addEventListener("change", () => {
+    resetReceiptScan();
+    scanReceiptStatus.textContent = scanReceiptInput.files.length
+        ? "Ready to scan. Review the suggested details before saving."
+        : "Upload a photo or PDF to scan the first page.";
+});
+scanReceiptButton.addEventListener("click", async () => {
+    const file = scanReceiptInput.files[0];
+    if(!file) return;
+    resetReceiptScan();
+    const version = receiptScanVersion;
+    scanReceiptButton.disabled = true;
+    scanReceiptStatus.textContent = "Reading receipt…";
+    try{
+        const body = new FormData();
+        body.append("receipt",file);
+        const result = await InventoryAPI.request("/expenses/scan-receipt",{method:"POST",body});
+        if(version !== receiptScanVersion) return;
+        if(!result.success) throw new Error(result.error || "Could not scan the receipt.");
+
+        receiptScanSuggestions = scanFields.flatMap(([key,label,id]) => {
+            const value = String(result.draft?.[key] || "").trim();
+            return value ? [{label,id,value}] : [];
+        });
+        if(!receiptScanSuggestions.length){
+            scanReceiptStatus.textContent = "No details could be read. Enter the expense manually and keep the receipt attached.";
+            return;
+        }
+        for(const suggestion of receiptScanSuggestions){
+            const term = document.createElement("dt");
+            const value = document.createElement("dd");
+            term.textContent = suggestion.label;
+            value.textContent = suggestion.value;
+            scanReceiptFields.append(term,value);
+        }
+        scanReceiptDraft.hidden = false;
+        scanReceiptStatus.textContent = "Review these suggestions. Your expense is saved when you choose Add Expense.";
+    }catch(error){
+        if(version === receiptScanVersion) scanReceiptStatus.textContent = error.message || "Could not scan the receipt.";
+    }finally{
+        if(version === receiptScanVersion) scanReceiptButton.disabled = false;
+    }
+});
+document.getElementById("useReceiptScan").addEventListener("click", () => {
+    let filled = 0;
+    for(const {id,value} of receiptScanSuggestions){
+        const input = document.getElementById(id);
+        if(!input.value.trim() || (id === "expenseDate" && !expenseDateEdited && input.value === todayInput())){
+            input.value = value;
+            filled++;
+        }
+    }
+    scanReceiptDraft.hidden = true;
+    scanReceiptStatus.textContent = filled
+        ? "Suggestions added to your draft. Check the details, enter a description and choose Add Expense when ready."
+        : "Your existing entries were kept. Use the suggestions to review the details by hand.";
+});
+
 
 async function addExpense(){
     const description = document.getElementById("description").value.trim();
@@ -95,6 +176,9 @@ async function addExpense(){
         document.getElementById("paymentMethod").value = "";
         document.getElementById("referenceNumber").value = "";
         document.getElementById("receipt").value = "";
+        resetReceiptScan();
+        expenseDateEdited = false;
+        scanReceiptStatus.textContent = "Upload a photo or PDF to scan the first page.";
         document.getElementById("expenseDate").value = todayInput();
 
         setResult("Expense added ✅", "success");

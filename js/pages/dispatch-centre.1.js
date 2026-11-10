@@ -1620,6 +1620,9 @@ function buildPickRows(){
                 description: item.description,
                 qty: item.qty,
                 status: item.status,
+                barcode: item.matched_barcode || locations[0]?.barcode || "",
+                inventoryId: item.matched_inventory_id || locations[0]?.inventory_id || "",
+                productId: item.matched_product_id || locations[0]?.product_id || "",
                 location: firstLocation,
                 locations: locations,
                 courierPreview: pack.preview_url || ""

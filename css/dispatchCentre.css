@@ -147,3 +147,34 @@ body[data-workspace-design][data-ios-page=dispatch] .dispatch-edit-grid{grid-tem
 }
 @media(prefers-reduced-motion:reduce){.dispatch-chevron{transition:none}}
 }
+
+/* The packing setup uses the same theme tokens as the Dispatch page. */
+.dispatch-pack-setup {
+    width:min(540px,calc(100vw - 24px));
+    max-height:calc(100dvh - 32px);
+    margin:auto;
+    padding:22px;
+    color:var(--text,#e8edf4);
+    background:var(--panel,#17202e);
+    border:1px solid var(--border,#39485d);
+    border-radius:16px;
+    box-shadow:0 20px 80px #0007;
+    overflow:auto;
+}
+.dispatch-pack-setup::backdrop { background:#030912b8; }
+.dispatch-pack-setup [hidden] { display:none !important; }
+.dispatch-setup-heading h2 { margin:4px 0 2px; font-size:28px; }
+.dispatch-setup-eyebrow { color:var(--muted,#a7b3c2); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; }
+.dispatch-pack-setup p { margin:4px 0 10px; font-size:14px; line-height:1.45; }
+.dispatch-setup-section { padding:14px; border:1px solid var(--border,#39485d); border-radius:12px; margin-top:12px; }
+.dispatch-setup-section h3 { margin:0 0 5px; font-size:16px; }
+.dispatch-setup-section label { display:block; font-size:14px; margin-top:8px; font-weight:650; }
+.dispatch-setup-section select { width:100%; margin-top:5px; }
+.dispatch-setup-section [data-find] { margin-top:8px; }
+.dispatch-setup-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.dispatch-setup-footer { justify-content:flex-end; }
+.dispatch-setup-checkbox { display:flex !important; align-items:flex-start; gap:8px; }
+.dispatch-setup-checkbox input { width:auto; margin:3px 0 0; }
+.dispatch-setup-status:empty { display:none; }
+.dispatch-setup-status { margin-top:12px !important; }
+.dispatch-reprint-current { margin-top:10px; font-size:13px; padding:7px 10px; }

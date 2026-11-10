@@ -461,11 +461,11 @@ const InventoryOSRemovePreferences = (function(){
                 <label class="remove-pref-row">
                     <span class="remove-pref-copy">
                         <span class="remove-pref-title">
-                            Print labels when Let\u2019s Pack starts
+                            Preselect label auto-print in Let\u2019s Pack
                         </span>
 
                         <span class="remove-pref-help">
-                            Automatically send the queued 4\u00d76 shipping labels to the selected QZ printer before opening the simplified packing screen.
+                            Preselect the desktop option to print one shipping label when its parcel is shown. You can change the option before starting each session.
                         </span>
                     </span>
 

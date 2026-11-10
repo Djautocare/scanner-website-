@@ -199,6 +199,10 @@ button{
     font-weight:bold;
 }
 
+.receipt-scan-controls{margin:8px 0 16px;}
+.receipt-scan-controls dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 12px;margin:8px 0;}
+.receipt-scan-controls dd{margin:0;overflow-wrap:anywhere;}
+
 .receipt-link{
     display:inline-block;
     margin-top:8px;
@@ -660,6 +664,14 @@ button{
 
     <div class="input-label">Receipt / Invoice Image or PDF</div>
     <input type="file" id="receipt" accept="image/jpeg,image/png,image/webp,application/pdf">
+    <div class="receipt-scan-controls">
+        <button class="refresh-button" id="scanExpenseReceipt" type="button" disabled>Scan receipt</button>
+        <p class="helper" id="receiptScanStatus" role="status">Upload a photo or PDF to suggest an expense total, supplier, date and reference. PDFs are scanned from the first page.</p>
+        <div id="receiptScanDraft" hidden>
+            <dl id="receiptScanFields"></dl>
+            <button class="refresh-button" id="useReceiptScan" type="button">Use suggested details</button>
+        </div>
+    </div>
 
     <div class="input-label">Notes</div>
     <textarea id="notes" placeholder="Optional notes"></textarea>
@@ -711,7 +723,7 @@ button{
 <script src="js/inventoryTopbar.js?v=smooth-20261103"></script>
 <script src="js/workspace.js?v=5"></script>
 <script src="js/reorderCosts.js?v=1"></script>
-<script src="/js/pages/expenses.1.js?v=security-1"></script>
+<script src="/js/pages/expenses.1.js?v=receipt-scan-1"></script>
 
 
 <script src="js/appShell.js?v=smooth-20261103"></script>

@@ -78,6 +78,11 @@
     let dispatchSessionPackIds = [];
     let dispatchCurrentPackIndex = 0;
     let dispatchPackingActive = false;
+    let dispatchAutoPrintCurrent = false;
+    let dispatchStarting = false;
+    let dispatchCurrentPrint = false;
+    let dispatchChangingPack = false;
+    let dispatchAttemptedLabels = new Set();
     let dispatchPriceTimers = new Map();
     let dispatchManualPacked = new Set();
     let dispatchSpeechRecognition = null;
@@ -166,6 +171,8 @@ function escapeDispatchHtml(value){
                 ? parsed.pack_ids.map(Number).filter(Number.isInteger)
                 : [];
             dispatchCurrentPackIndex = Number(parsed.current_index || 0);
+            dispatchAutoPrintCurrent = parsed.auto_print_current === true;
+            dispatchAttemptedLabels = new Set(Array.isArray(parsed.attempted_labels) ? parsed.attempted_labels.map(Number) : []);
             dispatchPriceMills = new Map(
                 Object.entries(parsed.prices || {}).map(([key,value]) => [Number(key),Number(value || 0)])
             );
@@ -193,6 +200,8 @@ function escapeDispatchHtml(value){
                 JSON.stringify({
                     pack_ids:dispatchSessionPackIds,
                     current_index:dispatchCurrentPackIndex,
+                    auto_print_current:dispatchAutoPrintCurrent,
+                    attempted_labels:[...dispatchAttemptedLabels],
                     prices:Object.fromEntries(dispatchPriceMills),
                     verified:Object.fromEntries(dispatchVerifiedQty),
                     manual_packed:Array.from(dispatchManualPacked)
@@ -1432,8 +1441,8 @@ function escapeDispatchHtml(value){
             })
             .map(pack => Number(pack.id));
 
-        if(!printablePackIds.length){
-            return;
+        if(printablePackIds.length !== packIds.length){
+            throw new Error("The current parcel no longer has a printable label.");
         }
 
         const data = await InventoryAPI.request(
@@ -1450,8 +1459,8 @@ function escapeDispatchHtml(value){
 
         const labels = Array.isArray(data.labels) ? data.labels : [];
 
-        if(!labels.length){
-            throw new Error("No printable shipping labels were returned");
+        if(labels.length !== packIds.length || labels.some(label => !packIds.includes(Number(label.pack_id)))){
+            throw new Error("The printer did not receive the expected shipping label.");
         }
 
         if(
@@ -1469,6 +1478,8 @@ function escapeDispatchHtml(value){
     }
 
     window.startDispatchPacking = async function(requestedPackIds){
+        if(dispatchStarting || dispatchPackingActive) return;
+        dispatchStarting = true;
         const resultBox = document.getElementById("dispatchWorkflowResult");
         showLoading("Checking active stock matches...");
 
@@ -1494,66 +1505,31 @@ function escapeDispatchHtml(value){
                 throw new Error(errors.join("\n"));
             }
 
-            dispatchSessionPackIds = packIds;
+            hideLoading();
+            const selected = new Set(packIds);
+            const printable = (queueCache || []).filter(pack => selected.has(Number(pack.id)) && pack.preview_url);
+            const choice = await window.InventoryDispatchPackingPrint.setup(
+                buildPickRows().filter(row => selected.has(Number(row.packId))),
+                packIds.length, printable.length, dispatchPreferences.dispatch_auto_print_on_start
+            );
+            if(!choice) return;
+
+            const currentPackIds = packIds.filter(id => {
+                const pack = findPack(id);
+                return pack && String(pack.status || "") !== "packed";
+            });
+            if(currentPackIds.length !== packIds.length){
+                throw new Error("The packing queue changed. Open Let’s Pack again.");
+            }
+            const currentErrors = validateDispatchPacks(currentPackIds);
+            if(currentErrors.length) throw new Error(currentErrors.join("\n"));
+
+            dispatchSessionPackIds = currentPackIds;
             dispatchCurrentPackIndex = 0;
+            dispatchAutoPrintCurrent = choice.autoPrint;
+            dispatchAttemptedLabels.clear();
             dispatchCompletionResults = null;
             writeDispatchState();
-
-            if(dispatchPreferences.dispatch_auto_print_on_start){
-                const unprintedPackIds =
-                    dispatchSessionPackIds.filter(
-                        packId =>
-                            !wasDispatchPackAlreadyPrinted(
-                                packId
-                            )
-                    );
-
-                if(unprintedPackIds.length){
-                    document.getElementById("loadingText").innerText =
-                        unprintedPackIds.length === dispatchSessionPackIds.length
-                            ? "Printing 4×6 shipping labels..."
-                            : "Printing only labels that have not already printed...";
-
-                    try{
-                        if(
-                            window.InventoryOSDispatchPrintQueue &&
-                            typeof window.InventoryOSDispatchPrintQueue.add === "function"
-                        ){
-                            window.InventoryOSDispatchPrintQueue.add(
-                                unprintedPackIds
-                            );
-                        }
-
-                        await printPackingLabels(
-                            unprintedPackIds
-                        );
-
-                        rememberPrintedDispatchPackIds(
-                            unprintedPackIds
-                        );
-
-                        if(
-                            window.InventoryOSDispatchPrintQueue &&
-                            typeof window.InventoryOSDispatchPrintQueue.remove === "function"
-                        ){
-                            window.InventoryOSDispatchPrintQueue.remove(
-                                unprintedPackIds
-                            );
-                        }
-                    }catch(printError){
-                        const continuePacking = confirm(
-                            "The packing jobs are ready, but label printing failed.\n\n" +
-                            (printError.message || "Unknown print error") +
-                            "\n\nContinue to the packing screen anyway?"
-                        );
-
-                        if(!continuePacking){
-                            throw printError;
-                        }
-                    }
-                }
-            }
-
             enterDispatchPackingMode();
 
             if(resultBox){
@@ -1568,9 +1544,67 @@ function escapeDispatchHtml(value){
 
             alert(error.message || "Could not start packing");
         }finally{
+            dispatchStarting = false;
             hideLoading();
         }
     };
+
+    async function printCurrentShippingLabel(manual = false){
+        if(!dispatchPackingActive || dispatchCurrentPrint) return;
+        const desktop = window.InventoryDispatchPackingPrint.isDesktop();
+        const pack = currentDispatchPack();
+        if(!pack?.preview_url) return;
+        const packId = Number(pack.id);
+        if(!manual && (!desktop || !dispatchAutoPrintCurrent || dispatchAttemptedLabels.has(packId) || wasDispatchPackAlreadyPrinted(packId))) return;
+        if(!manual){
+            dispatchAttemptedLabels.add(packId);
+            writeDispatchState();
+        }
+        dispatchCurrentPrint = true;
+        const setPrinting = (active, message) => {
+            const status = document.getElementById("dispatchCurrentPrintStatus");
+            if(status) status.textContent = message;
+            document.querySelectorAll("#dispatchPackingModeContent [data-lock-during-print]").forEach(button => {
+                if(active){
+                    button.dataset.wasDisabled = String(button.disabled);
+                    button.disabled = true;
+                }else if(button.dataset.wasDisabled !== undefined){
+                    button.disabled = button.dataset.wasDisabled === "true";
+                    delete button.dataset.wasDisabled;
+                }
+            });
+        };
+        setPrinting(true, desktop ? "Sending this shipping label to QZ Tray…" : "Preparing this shipping label…");
+        let message;
+        try{
+            if(desktop){
+                const send = async () => {
+                    if(!manual && wasDispatchPackAlreadyPrinted(packId)) return;
+                    await printPackingLabels([packId]);
+                    rememberPrintedDispatchPackIds([packId]);
+                    window.InventoryOSDispatchPrintQueue?.remove?.([packId]);
+                };
+                if(navigator.locks){
+                    await navigator.locks.request("inventoryos-dispatch-label-" + packId, {ifAvailable:true}, async lock => {
+                        if(!lock) throw new Error("Another tab is printing this label.");
+                        await send();
+                    });
+                }else await send();
+                message = "This shipping label was sent to the printer.";
+            }else{
+                const file = await prepareMobilePrintFile([{packId}]);
+                await window.InventoryDispatchPackingPrint.mobilePrint(file);
+                message = "This shipping label is ready to print.";
+            }
+        }catch(error){
+            message = error.name === "NotAllowedError" ? "PDF ready. Tap Reprint shipping label again to open your print options."
+                : error.name === "AbortError" ? "Print sharing cancelled."
+                : "Label print could not be confirmed. " + (error.message || "");
+        }finally{
+            dispatchCurrentPrint = false;
+            setPrinting(false, message);
+        }
+    }
 
     function activeSessionPacks(){
         return dispatchSessionPackIds
@@ -1731,7 +1765,7 @@ function escapeDispatchHtml(value){
                     <div class="muted small">${escapeDispatchHtml(pack.source_name || "Shipping label")}</div>
                 </div>
 
-                <button class="secondary" type="button" data-ios-click="h74326d868921af8f">
+                <button class="secondary" type="button" data-lock-during-print data-ios-click="h74326d868921af8f" ${dispatchCurrentPrint ? 'disabled data-was-disabled="false"' : ""}>
                     Exit Packing View
                 </button>
             </div>
@@ -1808,10 +1842,10 @@ function escapeDispatchHtml(value){
                     ${packingResultHtml()}
 
                     <div class="dispatch-pack-nav">
-                        <button class="secondary" type="button" data-ios-click="h7d868b792d3beb8f" ${dispatchCurrentPackIndex <= 0 ? "disabled" : ""}>
+                        <button class="secondary" type="button" data-ios-click="h7d868b792d3beb8f" data-lock-during-print ${dispatchCurrentPackIndex <= 0 || dispatchCurrentPrint ? "disabled" : ""} ${dispatchCurrentPrint ? 'data-was-disabled="' + (dispatchCurrentPackIndex <= 0) + '"' : ""}>
                             Previous Pick
                         </button>
-                        <button type="button" data-ios-click="h41fc49cbc40e2d0a" ${dispatchCurrentPackIndex >= packs.length - 1 ? "disabled" : ""}>
+                        <button type="button" data-ios-click="h41fc49cbc40e2d0a" data-lock-during-print ${dispatchCurrentPackIndex >= packs.length - 1 || dispatchCurrentPrint ? "disabled" : ""} ${dispatchCurrentPrint ? 'data-was-disabled="' + (dispatchCurrentPackIndex >= packs.length - 1) + '"' : ""}>
                             Next Pick
                         </button>
                     </div>
@@ -1820,8 +1854,8 @@ function escapeDispatchHtml(value){
                         id="dispatchCompleteSalesButton"
                         class="dispatch-complete-button"
                         type="button"
-                        data-ios-click="he73e8e34814dd867"
-                        ${completionDisabled ? "disabled" : ""}
+                        data-ios-click="he73e8e34814dd867" data-lock-during-print
+                        ${completionDisabled || dispatchCurrentPrint ? "disabled" : ""} ${dispatchCurrentPrint ? 'data-was-disabled="' + completionDisabled + '"' : ""}
                     >
                         Complete ${packs.length === 1 ? "Sale" : "Sales"}
                     </button>
@@ -1840,9 +1874,16 @@ function escapeDispatchHtml(value){
                     <div class="dispatch-label-preview" style="margin-top:10px;">
                         ${preview}
                     </div>
+                    ${pack.preview_url ? `
+                        <button id="dispatchReprintCurrentLabel" class="secondary dispatch-reprint-current" type="button"
+                            data-lock-during-print ${dispatchCurrentPrint ? 'disabled data-was-disabled="false"' : ""}>Reprint shipping label</button>
+                        <p id="dispatchCurrentPrintStatus" class="muted small" role="status">${dispatchCurrentPrint ? "Sending this shipping label to QZ Tray…" : ""}</p>
+                    ` : ""}
                 </div>
             </div>
         `;
+
+        document.getElementById("dispatchReprintCurrentLabel")?.addEventListener("click", () => printCurrentShippingLabel(true));
 
         const scannerInput = document.getElementById("dispatchScannerInput");
 
@@ -1895,6 +1936,7 @@ function escapeDispatchHtml(value){
         document.body.classList.add("dispatch-packing-active");
         renderDispatchPackingMode();
         speakCurrentPack();
+        void printCurrentShippingLabel();
 
         if(dispatchPreferences.track_sales_data && dispatchPreferences.dispatch_show_voice_mode){
             startDispatchVoice();
@@ -1902,6 +1944,7 @@ function escapeDispatchHtml(value){
     }
 
     window.dispatchExitPackingMode = function(){
+        if(dispatchCurrentPrint) return;
         dispatchPackingActive = false;
         document.body.classList.remove("dispatch-packing-active");
         stopDispatchVoice();
@@ -2018,30 +2061,29 @@ function escapeDispatchHtml(value){
         }
     }
 
-    window.dispatchNextPack = async function(){
+    async function changeDispatchPack(direction){
+        if(dispatchCurrentPrint || dispatchChangingPack) return;
+        dispatchChangingPack = true;
         try{
             await saveCurrentPrice();
             const packs = activeSessionPacks();
-            dispatchCurrentPackIndex = Math.min(dispatchCurrentPackIndex + 1,packs.length - 1);
+            dispatchCurrentPackIndex = Math.max(0,Math.min(dispatchCurrentPackIndex + direction,packs.length - 1));
+            writeDispatchState();
             renderDispatchPackingMode();
             speakCurrentPack();
+            await printCurrentShippingLabel();
         }catch(error){
             alert(error.message || "Could not save the current price");
+        }finally{
+            dispatchChangingPack = false;
         }
-    };
+    }
 
-    window.dispatchPreviousPack = async function(){
-        try{
-            await saveCurrentPrice();
-            dispatchCurrentPackIndex = Math.max(0,dispatchCurrentPackIndex - 1);
-            renderDispatchPackingMode();
-            speakCurrentPack();
-        }catch(error){
-            alert(error.message || "Could not save the current price");
-        }
-    };
+    window.dispatchNextPack = () => changeDispatchPack(1);
+    window.dispatchPreviousPack = () => changeDispatchPack(-1);
 
     window.dispatchCompleteSales = async function(){
+        if(dispatchCurrentPrint) return;
         if(!allScansComplete()){
             alert("Every required item must be scanned before completing the sales.");
             return;
