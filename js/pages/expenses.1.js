@@ -56,6 +56,8 @@ let appliedReceiptQuantity = null;
 let selectedReceipt = null;
 let receiptScanPending = false;
 let expenseDateEdited = false;
+let reviewedInboxInvoice = null;
+let expenseSavePending = false;
 document.getElementById("expenseDate").addEventListener("input", () => { expenseDateEdited = true; });
 
 function invoiceUnitCost(total,quantity){
@@ -125,6 +127,54 @@ function showReceiptField(label,text){
     scanReceiptFields.append(term,value);
 }
 
+function renderReceiptDraft(draft){
+    receiptScanSuggestions = scanFields.flatMap(([key,label,id]) => {
+        const value = String(draft?.[key] || "").trim();
+        return value ? [{label,id,value}] : [];
+    });
+    receiptItems = (Array.isArray(draft?.items) ? draft.items : []).slice(0,25)
+        .filter(item => typeof item?.description === "string" && item.description.trim())
+        .map(item => ({
+            description:item.description.trim().slice(0,360),
+            quantity:Number.isSafeInteger(item.quantity) && item.quantity > 0 ? item.quantity : null
+        }));
+    if(!receiptScanSuggestions.length && !receiptItems.length){
+        scanReceiptStatus.textContent = "No details could be read. Enter the expense manually and keep the receipt attached.";
+        return;
+    }
+    for(const suggestion of receiptScanSuggestions){
+        showReceiptField(suggestion.label,suggestion.value);
+    }
+    for(const [index,item] of receiptItems.entries()){
+        const row = scanReceiptItems.insertRow();
+        const description = document.createElement("textarea");
+        description.rows = 2;
+        description.maxLength = 360;
+        description.value = item.description;
+        description.setAttribute("aria-label","Description for item " + (index+1));
+        description.addEventListener("input",() => { item.description = description.value.trim(); });
+        row.insertCell().append(description);
+        const quantity = document.createElement("input");
+        quantity.type = "number";
+        quantity.min = "1";
+        quantity.max = "999999";
+        quantity.step = "1";
+        quantity.value = item.quantity ?? "";
+        quantity.placeholder = "Check";
+        quantity.setAttribute("aria-label","Quantity for item " + (index+1));
+        quantity.addEventListener("input",() => {
+            const value = quantity.valueAsNumber;
+            item.quantity = quantity.validity.valid && Number.isSafeInteger(value) ? value : null;
+            refreshScannedUnitCost();
+        });
+        row.insertCell().append(quantity);
+    }
+    scanReceiptItemTable.hidden = !receiptItems.length;
+    refreshScannedUnitCost();
+    scanReceiptDraft.hidden = false;
+    scanReceiptStatus.textContent = "Review these suggestions. Your expense is saved when you choose Add Expense.";
+}
+
 async function scanSelectedReceipt(){
     if(!selectedReceipt || receiptScanPending) return;
     const file = selectedReceipt;
@@ -140,51 +190,7 @@ async function scanSelectedReceipt(){
         if(version !== receiptScanVersion) return;
         if(!result.success) throw new Error(result.error || "Could not scan the receipt.");
 
-        receiptScanSuggestions = scanFields.flatMap(([key,label,id]) => {
-            const value = String(result.draft?.[key] || "").trim();
-            return value ? [{label,id,value}] : [];
-        });
-        receiptItems = (Array.isArray(result.draft?.items) ? result.draft.items : []).slice(0,25)
-            .filter(item => typeof item?.description === "string" && item.description.trim())
-            .map(item => ({
-                description:item.description.trim().slice(0,360),
-                quantity:Number.isSafeInteger(item.quantity) && item.quantity > 0 ? item.quantity : null
-            }));
-        if(!receiptScanSuggestions.length && !receiptItems.length){
-            scanReceiptStatus.textContent = "No details could be read. Enter the expense manually and keep the receipt attached.";
-            return;
-        }
-        for(const suggestion of receiptScanSuggestions){
-            showReceiptField(suggestion.label,suggestion.value);
-        }
-        for(const [index,item] of receiptItems.entries()){
-            const row = scanReceiptItems.insertRow();
-            const description = document.createElement("textarea");
-            description.rows = 2;
-            description.maxLength = 360;
-            description.value = item.description;
-            description.setAttribute("aria-label","Description for item " + (index+1));
-            description.addEventListener("input",() => { item.description = description.value.trim(); });
-            row.insertCell().append(description);
-            const quantity = document.createElement("input");
-            quantity.type = "number";
-            quantity.min = "1";
-            quantity.max = "999999";
-            quantity.step = "1";
-            quantity.value = item.quantity ?? "";
-            quantity.placeholder = "Check";
-            quantity.setAttribute("aria-label","Quantity for item " + (index+1));
-            quantity.addEventListener("input",() => {
-                const value = quantity.valueAsNumber;
-                item.quantity = quantity.validity.valid && Number.isSafeInteger(value) ? value : null;
-                refreshScannedUnitCost();
-            });
-            row.insertCell().append(quantity);
-        }
-        scanReceiptItemTable.hidden = !receiptItems.length;
-        refreshScannedUnitCost();
-        scanReceiptDraft.hidden = false;
-        scanReceiptStatus.textContent = "Review these suggestions. Your expense is saved when you choose Add Expense.";
+        renderReceiptDraft(result.draft);
     }catch(error){
         if(version === receiptScanVersion) scanReceiptStatus.textContent = error.message || "Could not scan the receipt.";
     }finally{
@@ -231,8 +237,74 @@ document.getElementById("useReceiptScan").addEventListener("click", () => {
         : "Your existing entries were kept. Use the suggestions to review the details by hand.";
 });
 
+function resetExpenseForm(){
+    for(const id of ["description","amount","supplier","notes","paymentMethod","referenceNumber"]){
+        document.getElementById(id).value = "";
+    }
+    scanReceiptInput.value = "";
+    receiptCamera.value = "";
+    selectReceipt(null);
+    expenseDateEdited = false;
+    document.getElementById("expenseDate").value = todayInput();
+    reviewedInboxInvoice = null;
+    document.getElementById("invoiceInboxReview").hidden = true;
+    document.getElementById("expenseReceiptPicker").hidden = false;
+    const original = document.getElementById("invoiceInboxOriginal");
+    original.hidden = true;
+    original.removeAttribute("href");
+}
+
+function reviewInboxInvoice(job,inventoryHeader){
+    if(expenseSavePending) return false;
+    const title = document.getElementById("addExpenseTitle");
+    if(reviewedInboxInvoice?.id === job.id){
+        title.focus();
+        return true;
+    }
+    const unsaved = reviewedInboxInvoice || selectedReceipt || expenseDateEdited ||
+        ["description","amount","supplier","notes","paymentMethod","referenceNumber"].some(id =>
+            document.getElementById(id).value.trim());
+    if(unsaved && !window.confirm("Replace the unsaved expense form with this invoice?")) return false;
+    resetExpenseForm();
+    reviewedInboxInvoice = {id:job.id,inventoryHeader};
+    document.getElementById("invoiceInboxReviewName").textContent = "Reviewing " + job.original_name;
+    document.getElementById("invoiceInboxReview").hidden = false;
+    document.getElementById("expenseReceiptPicker").hidden = true;
+    renderReceiptDraft(job.draft);
+    if(job.status === "failed"){
+        scanReceiptStatus.textContent = "Check the original invoice and enter any missing details. The invoice will be attached when you save.";
+    }
+    title.focus();
+    return true;
+}
+
+function setInboxOriginal(id,url){
+    if(reviewedInboxInvoice?.id !== id) return;
+    try{
+        const source = new URL(url);
+        if(source.origin !== new URL(InventoryAPI.API_BASE).origin || !source.pathname.startsWith("/protected-files/")) return;
+        const link = document.getElementById("invoiceInboxOriginal");
+        link.href = source.href;
+        link.hidden = false;
+    }catch{
+        // The draft can still be reviewed if the file link is unavailable.
+    }
+}
+
+function closeInboxReview(inventoryHeader){
+    if(!reviewedInboxInvoice || reviewedInboxInvoice.inventoryHeader === inventoryHeader) return;
+    resetExpenseForm();
+    setResult("Invoice review closed. Your original draft is still in the inbox.");
+}
+function closeInboxReviewForJob(id){
+    if(reviewedInboxInvoice?.id === id) closeInboxReview();
+}
+document.getElementById("invoiceInboxCancelReview").addEventListener("click",() => {
+    if(!expenseSavePending) closeInboxReview();
+});
 
 async function addExpense(){
+    if(expenseSavePending) return;
     const description = document.getElementById("description").value.trim();
     const category = document.getElementById("category").value;
     const amount = Number(document.getElementById("amount").value || 0);
@@ -246,6 +318,7 @@ async function addExpense(){
     const payment_method = document.getElementById("paymentMethod").value;
     const reference_number = document.getElementById("referenceNumber").value.trim();
     const receipt = selectedReceipt;
+    const inboxInvoice = reviewedInboxInvoice;
 
     if(!description){
         alert("Enter a description.");
@@ -273,18 +346,23 @@ async function addExpense(){
 
     showLoading();
     setResult("Adding expense...");
+    expenseSavePending = true;
 
     try{
-        const response = await fetch(InventoryAPI.API_BASE + "/expenses", {
-            method:"POST",
-            headers:{
-                "Authorization":"Bearer " + InventoryAPI.getToken(),
-                "X-Inventory-Ids": (window.InventoryTopbar ? InventoryTopbar.getHeaderValue() : "")
-            },
-            body:formData
-        });
-
-        const data = await response.json();
+        const data = inboxInvoice
+            ? await InventoryAPI.request("/expenses/invoice-inbox/" + inboxInvoice.id + "/save",{
+                method:"POST",
+                headers:{"X-Inventory-Ids":inboxInvoice.inventoryHeader},
+                body:JSON.stringify(Object.fromEntries(formData))
+            })
+            : await fetch(InventoryAPI.API_BASE + "/expenses",{
+                method:"POST",
+                headers:{
+                    "Authorization":"Bearer " + InventoryAPI.getToken(),
+                    "X-Inventory-Ids":(window.InventoryTopbar ? InventoryTopbar.getHeaderValue() : "")
+                },
+                body:formData
+            }).then(response => response.json());
 
         hideLoading();
 
@@ -293,25 +371,18 @@ async function addExpense(){
             return;
         }
 
-        document.getElementById("description").value = "";
-        document.getElementById("amount").value = "";
-        document.getElementById("supplier").value = "";
-        document.getElementById("notes").value = "";
-        document.getElementById("paymentMethod").value = "";
-        document.getElementById("referenceNumber").value = "";
-        scanReceiptInput.value = "";
-        receiptCamera.value = "";
-        selectReceipt(null);
-        expenseDateEdited = false;
-        document.getElementById("expenseDate").value = todayInput();
+        if(reviewedInboxInvoice === inboxInvoice) resetExpenseForm();
 
         setResult("Expense added ✅", "success");
+        if(inboxInvoice) window.dispatchEvent(new Event("invoice-inbox-changed"));
         loadExpenses();
 
     }catch(error){
         hideLoading();
         console.error(error);
         setResult("Error adding expense: " + error.message, "error");
+    }finally{
+        expenseSavePending = false;
     }
 }
 
