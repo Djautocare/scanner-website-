@@ -31,10 +31,18 @@ function todayInput(){
 
 document.getElementById("expenseDate").value = todayInput();
 const scanReceiptInput = document.getElementById("receipt");
+const receiptCamera = document.getElementById("receiptCamera");
+const receiptSelectedName = document.getElementById("receiptSelectedName");
 const scanReceiptButton = document.getElementById("scanExpenseReceipt");
 const scanReceiptStatus = document.getElementById("receiptScanStatus");
 const scanReceiptDraft = document.getElementById("receiptScanDraft");
 const scanReceiptFields = document.getElementById("receiptScanFields");
+const scanReceiptItemTable = document.getElementById("receiptScanItemTable");
+const scanReceiptItems = document.getElementById("receiptScanItems");
+const receiptScanUnitCost = document.getElementById("receiptScanUnitCost");
+const expenseReceiptUnitCost = document.getElementById("expenseReceiptUnitCost");
+const expenseAmountInput = document.getElementById("amount");
+const scanReceiptPrompt = "Take a photo or choose a file to scan it. PDFs are scanned from the first page.";
 const scanFields = [
     ["supplier", "Supplier", "supplier"],
     ["amount", "Total (£)", "amount"],
@@ -43,27 +51,86 @@ const scanFields = [
 ];
 let receiptScanVersion = 0;
 let receiptScanSuggestions = [];
+let receiptItems = [];
+let appliedReceiptQuantity = null;
+let selectedReceipt = null;
+let receiptScanPending = false;
 let expenseDateEdited = false;
 document.getElementById("expenseDate").addEventListener("input", () => { expenseDateEdited = true; });
+
+function invoiceUnitCost(total,quantity){
+    const pence = Math.round(Number(total)*100);
+    return Number.isSafeInteger(pence) && pence > 0 && quantity
+        ? money(Math.round(pence/quantity)/100)
+        : "";
+}
+
+function showUnitCost(target,total,quantity){
+    const cost = invoiceUnitCost(total,quantity);
+    target.hidden = !cost;
+    target.textContent = cost ? "Cost per unit: " + cost + " (total ÷ " + quantity + ")" : "";
+}
+
+function refreshExpenseUnitCost(){
+    showUnitCost(expenseReceiptUnitCost,expenseAmountInput.value,appliedReceiptQuantity);
+}
+expenseAmountInput.addEventListener("input",refreshExpenseUnitCost);
+
+function refreshScannedUnitCost(){
+    const total = receiptScanSuggestions.find(field => field.id === "amount")?.value;
+    showUnitCost(receiptScanUnitCost,total,receiptItems.length === 1 ? receiptItems[0].quantity : null);
+}
 
 function resetReceiptScan(){
     receiptScanVersion++;
     receiptScanSuggestions = [];
+    receiptItems = [];
     scanReceiptDraft.hidden = true;
     scanReceiptFields.replaceChildren();
-    scanReceiptButton.disabled = !scanReceiptInput.files.length;
+    scanReceiptItems.replaceChildren();
+    scanReceiptItemTable.hidden = true;
+    receiptScanUnitCost.hidden = true;
+    scanReceiptButton.disabled = !selectedReceipt || receiptScanPending;
 }
-scanReceiptInput.addEventListener("change", () => {
+
+function selectReceipt(file){
+    selectedReceipt = file || null;
+    appliedReceiptQuantity = null;
+    refreshExpenseUnitCost();
+    receiptSelectedName.hidden = !file;
+    receiptSelectedName.textContent = file ? "Selected file: " + file.name : "";
     resetReceiptScan();
-    scanReceiptStatus.textContent = scanReceiptInput.files.length
-        ? "Ready to scan. Review the suggested details before saving."
-        : "Upload a photo or PDF to scan the first page.";
+    scanReceiptStatus.textContent = file ? "Reading receipt…" : scanReceiptPrompt;
+    if(file) void scanSelectedReceipt();
+}
+
+scanReceiptInput.addEventListener("change", () => {
+    selectReceipt(scanReceiptInput.files[0]);
 });
-scanReceiptButton.addEventListener("click", async () => {
-    const file = scanReceiptInput.files[0];
+document.getElementById("takeReceiptPhoto").addEventListener("click", () => receiptCamera.click());
+receiptCamera.addEventListener("change", () => {
+    const file = receiptCamera.files[0];
     if(!file) return;
+    receiptCamera.value = "";
+    scanReceiptInput.value = "";
+    selectReceipt(file);
+});
+scanReceiptButton.addEventListener("click", scanSelectedReceipt);
+
+function showReceiptField(label,text){
+    const term = document.createElement("dt");
+    const value = document.createElement("dd");
+    term.textContent = label;
+    value.textContent = text;
+    scanReceiptFields.append(term,value);
+}
+
+async function scanSelectedReceipt(){
+    if(!selectedReceipt || receiptScanPending) return;
+    const file = selectedReceipt;
     resetReceiptScan();
     const version = receiptScanVersion;
+    receiptScanPending = true;
     scanReceiptButton.disabled = true;
     scanReceiptStatus.textContent = "Reading receipt…";
     try{
@@ -77,25 +144,56 @@ scanReceiptButton.addEventListener("click", async () => {
             const value = String(result.draft?.[key] || "").trim();
             return value ? [{label,id,value}] : [];
         });
-        if(!receiptScanSuggestions.length){
+        receiptItems = (Array.isArray(result.draft?.items) ? result.draft.items : []).slice(0,25)
+            .filter(item => typeof item?.description === "string" && item.description.trim())
+            .map(item => ({
+                description:item.description.trim().slice(0,360),
+                quantity:Number.isSafeInteger(item.quantity) && item.quantity > 0 ? item.quantity : null
+            }));
+        if(!receiptScanSuggestions.length && !receiptItems.length){
             scanReceiptStatus.textContent = "No details could be read. Enter the expense manually and keep the receipt attached.";
             return;
         }
         for(const suggestion of receiptScanSuggestions){
-            const term = document.createElement("dt");
-            const value = document.createElement("dd");
-            term.textContent = suggestion.label;
-            value.textContent = suggestion.value;
-            scanReceiptFields.append(term,value);
+            showReceiptField(suggestion.label,suggestion.value);
         }
+        for(const [index,item] of receiptItems.entries()){
+            const row = scanReceiptItems.insertRow();
+            const description = document.createElement("textarea");
+            description.rows = 2;
+            description.maxLength = 360;
+            description.value = item.description;
+            description.setAttribute("aria-label","Description for item " + (index+1));
+            description.addEventListener("input",() => { item.description = description.value.trim(); });
+            row.insertCell().append(description);
+            const quantity = document.createElement("input");
+            quantity.type = "number";
+            quantity.min = "1";
+            quantity.max = "999999";
+            quantity.step = "1";
+            quantity.value = item.quantity ?? "";
+            quantity.placeholder = "Check";
+            quantity.setAttribute("aria-label","Quantity for item " + (index+1));
+            quantity.addEventListener("input",() => {
+                const value = quantity.valueAsNumber;
+                item.quantity = quantity.validity.valid && Number.isSafeInteger(value) ? value : null;
+                refreshScannedUnitCost();
+            });
+            row.insertCell().append(quantity);
+        }
+        scanReceiptItemTable.hidden = !receiptItems.length;
+        refreshScannedUnitCost();
         scanReceiptDraft.hidden = false;
         scanReceiptStatus.textContent = "Review these suggestions. Your expense is saved when you choose Add Expense.";
     }catch(error){
         if(version === receiptScanVersion) scanReceiptStatus.textContent = error.message || "Could not scan the receipt.";
     }finally{
-        if(version === receiptScanVersion) scanReceiptButton.disabled = false;
+        receiptScanPending = false;
+        if(version === receiptScanVersion) scanReceiptButton.disabled = !selectedReceipt;
+        else if(selectedReceipt) void scanSelectedReceipt();
     }
-});
+}
+
 document.getElementById("useReceiptScan").addEventListener("click", () => {
     let filled = 0;
     for(const {id,value} of receiptScanSuggestions){
@@ -105,9 +203,31 @@ document.getElementById("useReceiptScan").addEventListener("click", () => {
             filled++;
         }
     }
+    const reviewedItems = receiptItems.filter(item => item.description);
+    if(reviewedItems.length){
+        const lines = reviewedItems.map(item =>
+            (item.quantity ? item.quantity + " × " : "") + item.description);
+        const description = document.getElementById("description");
+        const notes = document.getElementById("notes");
+        const hadDescription = !!description.value.trim();
+        if(!hadDescription){
+            description.value = lines.length === 1 ? lines[0] : lines[0] + " + " + (lines.length-1) + " more";
+            filled++;
+        }
+        if(hadDescription || lines.length > 1){
+            const scannedNotes = "Invoice items:\n" + lines.join("\n");
+            if(!notes.value.includes(scannedNotes)){
+                notes.value = [notes.value.trim(),scannedNotes].filter(Boolean).join("\n\n");
+                filled++;
+            }
+        }
+    }
+    appliedReceiptQuantity = receiptItems.length === 1 && reviewedItems.length === 1
+        ? reviewedItems[0].quantity : null;
+    refreshExpenseUnitCost();
     scanReceiptDraft.hidden = true;
     scanReceiptStatus.textContent = filled
-        ? "Suggestions added to your draft. Check the details, enter a description and choose Add Expense when ready."
+        ? "Suggestions added to your draft. Check the details and choose Add Expense when ready."
         : "Your existing entries were kept. Use the suggestions to review the details by hand.";
 });
 
@@ -118,10 +238,14 @@ async function addExpense(){
     const amount = Number(document.getElementById("amount").value || 0);
     const expense_date = document.getElementById("expenseDate").value;
     const supplier = document.getElementById("supplier").value.trim();
-    const notes = document.getElementById("notes").value.trim();
+    const unitCost = invoiceUnitCost(amount,appliedReceiptQuantity);
+    const notes = [
+        document.getElementById("notes").value.trim(),
+        unitCost ? "Cost per unit: " + unitCost + " (expense total ÷ " + appliedReceiptQuantity + ")" : ""
+    ].filter(Boolean).join("\n\n");
     const payment_method = document.getElementById("paymentMethod").value;
     const reference_number = document.getElementById("referenceNumber").value.trim();
-    const receipt = document.getElementById("receipt").files[0];
+    const receipt = selectedReceipt;
 
     if(!description){
         alert("Enter a description.");
@@ -175,10 +299,10 @@ async function addExpense(){
         document.getElementById("notes").value = "";
         document.getElementById("paymentMethod").value = "";
         document.getElementById("referenceNumber").value = "";
-        document.getElementById("receipt").value = "";
-        resetReceiptScan();
+        scanReceiptInput.value = "";
+        receiptCamera.value = "";
+        selectReceipt(null);
         expenseDateEdited = false;
-        scanReceiptStatus.textContent = "Upload a photo or PDF to scan the first page.";
         document.getElementById("expenseDate").value = todayInput();
 
         setResult("Expense added ✅", "success");

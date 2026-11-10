@@ -200,8 +200,15 @@ button{
 }
 
 .receipt-scan-controls{margin:8px 0 16px;}
+.receipt-scan-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.receipt-scan-actions button{width:auto;min-height:44px;margin:0;}
 .receipt-scan-controls dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 12px;margin:8px 0;}
 .receipt-scan-controls dd{margin:0;overflow-wrap:anywhere;}
+#receiptScanItemTable{width:100%;border-collapse:collapse;margin:10px 0;}
+#receiptScanItemTable th,#receiptScanItemTable td{text-align:left;padding:6px 8px;overflow-wrap:anywhere;}
+#receiptScanItemTable th:last-child,#receiptScanItemTable td:last-child{text-align:right;}
+#receiptScanItemTable textarea{min-height:64px;}
+#receiptScanItemTable input{max-width:8ch;}
 
 .receipt-link{
     display:inline-block;
@@ -607,6 +614,27 @@ button{
     <div class="card-title">Add Expense</div>
     <div class="helper">Add a business cost and optionally attach a receipt, invoice image or PDF.</div>
 
+    <div class="receipt-scan-controls">
+        <label class="input-label" for="receipt">Receipt or invoice</label>
+        <input type="file" id="receipt" accept="image/jpeg,image/png,image/webp,application/pdf">
+        <input type="file" id="receiptCamera" accept="image/jpeg" capture="environment" hidden>
+        <div class="receipt-scan-actions">
+            <button class="refresh-button" id="takeReceiptPhoto" type="button">Take photo</button>
+            <button class="refresh-button" id="scanExpenseReceipt" type="button" disabled>Scan receipt</button>
+        </div>
+        <p class="helper" id="receiptSelectedName" hidden></p>
+        <p class="helper" id="receiptScanStatus" role="status">Take a photo or choose a file to scan it. PDFs are scanned from the first page.</p>
+        <div id="receiptScanDraft" hidden>
+            <dl id="receiptScanFields"></dl>
+            <table id="receiptScanItemTable" aria-label="Items read from the invoice" hidden>
+                <thead><tr><th scope="col">Item description</th><th scope="col">Quantity</th></tr></thead>
+                <tbody id="receiptScanItems"></tbody>
+            </table>
+            <p class="helper" id="receiptScanUnitCost" aria-live="polite" hidden></p>
+            <button class="refresh-button" id="useReceiptScan" type="button">Use suggested details</button>
+        </div>
+    </div>
+
     <div class="input-label">Description</div>
     <input type="text" id="description" placeholder="Example: Trade Outlet stock box">
 
@@ -628,6 +656,7 @@ button{
         <div>
             <div class="input-label">Amount</div>
             <input type="number" id="amount" placeholder="£0.00" step="0.01" min="0">
+            <p class="helper" id="expenseReceiptUnitCost" hidden></p>
         </div>
     </div>
 
@@ -659,17 +688,6 @@ button{
         <div>
             <div class="input-label">Reference / Invoice No.</div>
             <input type="text" id="referenceNumber" placeholder="Optional">
-        </div>
-    </div>
-
-    <div class="input-label">Receipt / Invoice Image or PDF</div>
-    <input type="file" id="receipt" accept="image/jpeg,image/png,image/webp,application/pdf">
-    <div class="receipt-scan-controls">
-        <button class="refresh-button" id="scanExpenseReceipt" type="button" disabled>Scan receipt</button>
-        <p class="helper" id="receiptScanStatus" role="status">Upload a photo or PDF to suggest an expense total, supplier, date and reference. PDFs are scanned from the first page.</p>
-        <div id="receiptScanDraft" hidden>
-            <dl id="receiptScanFields"></dl>
-            <button class="refresh-button" id="useReceiptScan" type="button">Use suggested details</button>
         </div>
     </div>
 
@@ -723,7 +741,7 @@ button{
 <script src="js/inventoryTopbar.js?v=smooth-20261103"></script>
 <script src="js/workspace.js?v=5"></script>
 <script src="js/reorderCosts.js?v=1"></script>
-<script src="/js/pages/expenses.1.js?v=receipt-scan-1"></script>
+<script src="/js/pages/expenses.1.js?v=invoice-scan-2"></script>
 
 
 <script src="js/appShell.js?v=smooth-20261103"></script>
