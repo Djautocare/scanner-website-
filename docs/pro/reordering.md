@@ -1,6 +1,6 @@
 # Reordering and email reminders
 
-**Find it:** left menu → **Reordering**. Reordering is included in Complete. It tracks a supplier order separately from receiving the stock and assigning its final location.
+**Find it:** left menu → **Reordering**. Reordering is included in Pro. It tracks a supplier order separately from receiving the stock and assigning its final location.
 
 ## Create a rule
 
@@ -26,6 +26,6 @@ Select **Adjustments** to see all rules. Open **Edit rule** to change thresholds
 
 ## Email reminders
 
-Complete includes reorder reminder emails. Open **Email reminders**, tick **Send reorder reminders by email**, then choose **Instant** or **One daily summary** with a UK time and **Save reminder preferences**. Alerts go to your InventoryOS account email. Existing separately billed reminder add-ons retain their agreed billing.
+Pro includes reorder reminder emails. Open **Email reminders**, tick **Send reorder reminders by email**, then choose **Instant** or **One daily summary** with a UK time and **Save reminder preferences**. Alerts go to your InventoryOS account email. Existing separately billed reminder add-ons retain their agreed billing.
 
 **Send test email** checks the mail connection. **Check alerts now** checks the saved settings and current low-stock rules; it may send any due alert. A successful provider acceptance means the email was submitted, so check the provider's delivery events if it does not reach the inbox.

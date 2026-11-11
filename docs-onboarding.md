@@ -1,20 +1,20 @@
-# Guided practice for first-time Free selections
+# Guided practice for first-time Intro selections
 
-A first successful Free selection starts `/getting-started.html`. It guides the user through a separate, interactive practice workspace with spotlight popups. Existing selected plans and paid checkout flows do not auto-start the tutorial. A real downgrade retains its confirmation; a first-time Free selection no longer uses the confusing “switch/downgrade” confirmation. Plan actions are protected against duplicate clicks while the request/navigation is pending.
+A first successful Intro selection starts `/getting-started.html`. It guides the user through a separate, interactive practice workspace with spotlight popups. Existing selected plans and paid checkout flows do not auto-start the tutorial. A real downgrade retains its confirmation; a first-time Intro selection no longer uses the confusing “switch/downgrade” confirmation. Plan actions are protected against duplicate clicks while the request/navigation is pending.
 
 ## Required basics
 
-Create a location → add stock → search/select stock → set quantity → consolidate → confirm removal → check the dashboard → find Settings → Inventory Guide. The user can then continue with Free or explore optional examples.
+Create a location → add stock → search/select stock → set quantity → consolidate → confirm removal → check the dashboard → find Settings → Inventory Guide. The user can then continue with Intro or explore optional examples.
 
 ## Optional examples
 
-- Pro/Business email label import: press **Send test email**, follow a simulated email receipt/cropping sequence, review three illustrative labels and try the mobile-print preview. This does not send a real email, process a real attachment or contact a printer.
-- Starter expenses and a sample receipt.
-- Starter barcode print jobs, with an illustrative barcode preview.
+- Pro email label import: press **Send test email**, follow a simulated email receipt/cropping sequence, review three illustrative labels and try the mobile-print preview. This does not send a real email, process a real attachment or contact a printer.
+- Premium expenses and a sample receipt.
+- Premium barcode print jobs, with an illustrative barcode preview.
 - Pro reordering, ordered/received stages and assignment from holding.
-- Business shared-workspace role settings without invitations.
+- Pro shared-workspace role settings without invitations.
 
-Manufacturing and Retail are excluded. Plan labels distinguish the paid workflows. The completion screen links to existing plan comparison and an email request for a manually activated Business week; neither purchases nor activates a subscription.
+Manufacturing and Retail are excluded. Plan labels distinguish the paid workflows. The completion screen links to existing plan comparison and an email request for a manually activated Pro week; neither purchases nor activates a subscription.
 
 ## Isolation and progress
 
@@ -24,7 +24,7 @@ Only `{version,status,step,coreComplete,explored}` is saved under an account-sco
 
 This is a browser-local onboarding preference, not a server-side access control. Clearing browser data removes progress; progress is not shared between devices. Backend plan enforcement remains authoritative. No backend or database update is required. For server-wide completion and conversion analytics in future, add an authenticated account-level onboarding record rather than using the local flag as an entitlement check.
 
-A small external gate on the root application pages redirects an enrolled, unfinished account back to practice before ordinary stock pages. Login, billing and Settings/Help remain reachable. Retail, tills and manufacturing applications are not gated. Other accounts have separate progress. Completion opens the real dashboard on its existing Free plan.
+A small external gate on the root application pages redirects an enrolled, unfinished account back to practice before ordinary stock pages. Login, billing and Settings/Help remain reachable. Retail, tills and manufacturing applications are not gated. Other accounts have separate progress. Completion opens the real dashboard on its existing Intro plan.
 
 Users can replay at Settings → Inventory Guide → **Try guided practice again**, or `/getting-started.html?replay=1`. Replay does not reset a completed onboarding flag. An account with genuinely pending onboarding completes that pending flow even when the replay query is supplied.
 
@@ -33,4 +33,4 @@ Users can replay at Settings → Inventory Guide → **Try guided practice again
 - `node --test tests/onboarding.test.mjs tests/browser-security.test.cjs tests/cloudflare-csp.test.cjs`
 - `node tests/onboarding.browser.cjs` and `node tests/onboarding-billing.browser.cjs` with Playwright available under `CODEX_PRIMARY_RUNTIME_NODE_MODULES`; optionally set `RETAIL_CHROMIUM_EXECUTABLE` to a local Chromium executable.
 
-The browser suite uses a local fixture, strict production CSP, separate test accounts and synthetic data. It completes the required flow and all five optional examples at desktop dark/green and mobile light/purple sizes, checks reload/replay and clean completion, preserves unrelated existing browser data, and asserts that no external or non-GET requests occur. An additional 320px/667px run covers small phones. The billing browser fixture verifies the actual first-Free selection, a real-plan downgrade confirmation and a failed selection, including duplicate-click prevention. No live accounts, messages, stock or subscriptions are created by testing.
+The browser suite uses a local fixture, strict production CSP, separate test accounts and synthetic data. It completes the required flow and all five optional examples at desktop dark/green and mobile light/purple sizes, checks reload/replay and clean completion, preserves unrelated existing browser data, and asserts that no external or non-GET requests occur. An additional 320px/667px run covers small phones. The billing browser fixture verifies the actual first-Intro selection, a real-plan downgrade confirmation and a failed selection, including duplicate-click prevention. No live accounts, messages, stock or subscriptions are created by testing.

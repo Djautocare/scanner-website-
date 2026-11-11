@@ -1,6 +1,6 @@
-# Complete: advanced workflows
+# Pro: advanced workflows
 
-Complete is **£19.99/month** and includes Starter, unlimited active items, multiple inventories, shipping-label email import, QZ Tray printing, reorder reminders, shared workspaces and manufacturing. Your first physical store is included. Each additional physical store is **£10/month**.
+Pro is **£19.99/month** and includes Premium, unlimited active items, multiple inventories, shipping-label email import, QZ Tray printing, reorder reminders, shared workspaces and manufacturing. Your first physical store is included. Each additional physical store is **£10/month**.
 
 ## Keep inventories separate
 

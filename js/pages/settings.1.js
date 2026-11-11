@@ -210,7 +210,7 @@ async function loadStorageStatus(){
         );
 
         document.getElementById("storagePlan").innerText =
-            (storage.plan_name || "Free") + " Plan";
+            (storage.plan_name || "Intro") + " Plan";
 
         document.getElementById("storagePercentage").innerText =
             percentage.toFixed(percentage >= 10 ? 0 : 1) + "% used";

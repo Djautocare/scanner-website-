@@ -107,7 +107,7 @@ test('Retail and Till precaches include the exact released shared design assets 
  assert(!/localStorage|indexedDB\.deleteDatabase/.test(retail+till));
 });
 
-test('shop setup shows Complete pricing for the subscription and the additional store', async () => {
+test('shop setup shows Pro pricing for the subscription and the additional store', async () => {
  const {context}=fixture('/retail/index.html');
  context.InventoryAPI.request=async path=>{
   assert.equal(path,'/retail/workspaces');
@@ -116,7 +116,7 @@ test('shop setup shows Complete pricing for the subscription and the additional 
  vm.runInContext(read('retail/store-location.js'),context);
  await context.InventoryRetailLocation.init();
  const html=context.InventoryRetailLocation.render();
- assert.match(html,/InventoryOS Complete is £19\.99\/month and includes your first physical store/);
+ assert.match(html,/InventoryOS Pro is £19\.99\/month and includes your first physical store/);
  assert.match(html,/Each additional physical store is £10\/month/);
  assert.doesNotMatch(html,/£19\.99 per shop|Choose its subscription/);
 });

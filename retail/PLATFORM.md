@@ -1,7 +1,7 @@
-# Complete store coverage and Till app
+# Pro store coverage and Till app
 
-InventoryOS offers Free, Starter and Complete subscriptions. The £19.99/month
-Complete subscription includes one physical store, unlimited tills and staff.
+InventoryOS offers Intro, Premium and Pro subscriptions. The £19.99/month
+Pro subscription includes one physical store, unlimited tills and staff.
 Each additional physical store is £10/month. Store allowances are managed in
 Plans & billing. Existing separate shop subscriptions are managed in Store billing.
 

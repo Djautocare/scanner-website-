@@ -1,6 +1,6 @@
 # Packing and shipping labels
 
-**Find it:** left menu → **Dispatch Centre**. Starter and Complete include file uploads and supported 4×6 cropping. Complete also includes a workspace address for forwarding supported label attachments.
+**Find it:** left menu → **Dispatch Centre**. Premium and Pro include file uploads and supported 4×6 cropping. Pro also includes a workspace address for forwarding supported label attachments.
 
 ## Add labels to the packing queue
 

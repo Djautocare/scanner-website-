@@ -1,6 +1,6 @@
-# Free: first stock workflow
+# Intro: first stock workflow
 
-The Free plan includes up to **100 active stock items**, one personal workspace, core stock movements, dashboard figures, and basic stale-stock reporting.
+The Intro plan includes up to **100 active stock items**, one personal workspace, core stock movements, dashboard figures, and basic stale-stock reporting.
 
 ## 1. Read the dashboard
 
@@ -14,7 +14,7 @@ Open **Dashboard** from the left menu. The cards show active stock and sales fig
 
 Open **Locations** under **Stock**. The page may be called **Boxes** or **Shelves**, depending on your workspace. Use **Create Box** or **Create Shelf** to name a location or take the next available number. Check the active and empty location lists to see where stock is stored.
 
-**Find it:** left menu → **Stock → Locations**. A location name you type explicitly remains that saved name. Complete lets you change how numeric locations are labelled.
+**Find it:** left menu → **Stock → Locations**. A location name you type explicitly remains that saved name. Pro lets you change how numeric locations are labelled.
 
 ![Shelf locations with Create Shelf and active and empty location counts](../.gitbook/assets/guide-2026-11/locations.jpg)
 

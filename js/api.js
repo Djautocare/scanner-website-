@@ -42,7 +42,7 @@ const InventoryAPI=(function(){
   }
   return {success:false,error:'Too many batch picks for one operation. Split this into smaller operations.'};
  };
- function load(){if(!InventoryAPI.isLoggedIn()||window.InventoryManufacturing)return;const s=document.createElement('script');s.src='js/manufacturingShared.js?v=workspace-20261102';s.async=true;document.head.append(s);}
+ function load(){if(!InventoryAPI.isLoggedIn()||window.InventoryManufacturing)return;const s=document.createElement('script');s.src='js/manufacturingShared.js?v=tier-names-1';s.async=true;document.head.append(s);}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
 })();
 
@@ -50,7 +50,7 @@ const InventoryAPI=(function(){
 (function(){
  function loadBusinessTrial(){
   if(!InventoryAPI.isLoggedIn()||window.InventoryBusinessTrial||document.getElementById('inventoryos-business-trial-script'))return;
-  const script=document.createElement('script');script.id='inventoryos-business-trial-script';script.src='js/businessTrial.js?v=unified-1';script.async=true;document.head.append(script);
+  const script=document.createElement('script');script.id='inventoryos-business-trial-script';script.src='js/businessTrial.js?v=tier-names-1';script.async=true;document.head.append(script);
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadBusinessTrial,{once:true});else loadBusinessTrial();
 })();
@@ -72,7 +72,7 @@ const InventoryAPI=(function(){
 (function(){
  function loadProTrial(){
   if(!InventoryAPI.isLoggedIn()||window.InventoryProTrial||document.getElementById('inventoryos-pro-trial-script'))return;
-  const script=document.createElement('script');script.id='inventoryos-pro-trial-script';script.src='/js/proTrial.js?v=1';script.async=true;document.head.append(script);
+  const script=document.createElement('script');script.id='inventoryos-pro-trial-script';script.src='/js/proTrial.js?v=tier-names-1';script.async=true;document.head.append(script);
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadProTrial,{once:true});else loadProTrial();
 })();

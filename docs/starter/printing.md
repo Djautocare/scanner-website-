@@ -1,6 +1,6 @@
 # Barcode labels and print jobs
 
-**Find it:** left menu → **Barcode Printing**. Product labels are for individual items; box/location labels mark your storage. Printing and print-job access depend on your plan. QZ Tray direct printing is included in Complete.
+**Find it:** left menu → **Barcode Printing**. Product labels are for individual items; box/location labels mark your storage. Printing and print-job access depend on your plan. QZ Tray direct printing is included in Pro.
 
 ## Print a product label
 
@@ -22,4 +22,4 @@ Choose **Box Labels** for a single storage label, or **Bulk Range** when you nee
 4. Select **Print Loaded Labels** when ready. Use **Clear Loaded Labels** to reset the current selection.
 5. For an obsolete saved job, select it and use **Delete Print Job**. Confirm the deletion; removing the job does not remove stock.
 
-**Mobile printing:** if a page offers a share or PDF action, open the file in the mobile printing app associated with your thermal printer. **Direct QZ Tray printing** is included in Complete and requires its local setup.
+**Mobile printing:** if a page offers a share or PDF action, open the file in the mobile printing app associated with your thermal printer. **Direct QZ Tray printing** is included in Pro and requires its local setup.

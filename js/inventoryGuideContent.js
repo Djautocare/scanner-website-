@@ -413,7 +413,7 @@
     const stages = [
   {
     "id": "free",
-    "name": "Free",
+    "name": "Intro",
     "subtitle": "Get your first item in and out",
     "color": "#20c997",
     "steps": [
@@ -864,7 +864,7 @@
   },
   {
     "id": "starter",
-    "name": "Starter",
+    "name": "Premium",
     "subtitle": "Selling, costs, labels and dispatch",
     "color": "#4da3ff",
     "steps": [
@@ -1061,7 +1061,7 @@
   },
   {
     "id": "complete",
-    "name": "Complete",
+    "name": "Pro",
     "subtitle": "Team, production, shops and advanced workflows",
     "color": "#b56cff",
     "steps": [
@@ -1179,7 +1179,7 @@
         ],
         "id": "pro:Email shipping labels to your workspace",
         "title": "Email shipping labels to your workspace",
-        "description": "Forward supported shipping-label attachments to your workspace email address. This is included with Complete.",
+        "description": "Forward supported shipping-label attachments to your workspace email address. This is included with Pro.",
         "url": "dispatch-centre.html",
         "audience": "all",
         "capture": "email-import"
@@ -1478,13 +1478,13 @@
       },
       {
         "title": "Choose email reminder timing",
-        "description": "Complete includes reminder emails, sent immediately or as one daily summary. Existing legacy plans keep their add-on arrangements.",
+        "description": "Pro includes reminder emails, sent immediately or as one daily summary. Existing legacy plans keep their add-on arrangements.",
         "demo": "reminders",
         "url": "reorders.html",
         "points": [
           {
             "title": "Turn reminders on",
-            "detail": "Complete includes reorder emails. Turn the reminders on in Reordering → Email reminders. Alerts go to your account email, not to suppliers.",
+            "detail": "Pro includes reorder emails. Turn the reminders on in Reordering → Email reminders. Alerts go to your account email, not to suppliers.",
             "x": 28,
             "y": 48
           },
@@ -1602,7 +1602,7 @@
         "points": [
           {
             "title": "Production tools card",
-            "detail": "Open Manufacturing → Start here, then use Manufacturing settings to manage access for the workspace. Production tools are included with Complete.",
+            "detail": "Open Manufacturing → Start here, then use Manufacturing settings to manage access for the workspace. Production tools are included with Pro.",
             "x": 85.7,
             "y": 31.7,
             "rect": {
@@ -1631,7 +1631,7 @@
         ],
         "id": "business:manufacturing-mode",
         "title": "Enable Manufacturing mode",
-        "description": "Complete includes manufacturing tools. Enable them per workspace in Settings.",
+        "description": "Pro includes manufacturing tools. Enable them per workspace in Settings.",
         "url": "manufacturing/index.html#setup",
         "audience": "manufacturing",
         "legacyId": "business:Enable Manufacturing mode",
@@ -1813,7 +1813,7 @@
           },
           {
             "title": "Daily reminder for recipe materials",
-            "detail": "Complete includes recipe-material reminder emails. Materials are combined into one daily email at 17:00 UK time by default. Set a different recipe summary time in Email reminders."
+            "detail": "Pro includes recipe-material reminder emails. Materials are combined into one daily email at 17:00 UK time by default. Set a different recipe summary time in Email reminders."
           }
         ],
         "id": "business:recipe-reminders",

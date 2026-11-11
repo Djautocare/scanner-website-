@@ -220,7 +220,7 @@
     // Every navigation must replace the body, including when no overview can be
     // loaded. Subscription gating belongs here, not in one refresh response.
     if(subscriptionInactive()){
-      $('#retailView').innerHTML=view==='offline'&&offlineState.operations.length?offlineView():card(header('Check your store coverage')+'<p>InventoryOS Complete includes the first physical store, with unlimited tills and staff. Check the selected store in Plans &amp; billing.</p><button type="button" data-view="retail-billing">Check Complete coverage</button>');syncStatus();return;
+      $('#retailView').innerHTML=view==='offline'&&offlineState.operations.length?offlineView():card(header('Check your store coverage')+'<p>InventoryOS Pro includes the first physical store, with unlimited tills and staff. Check the selected store in Plans &amp; billing.</p><button type="button" data-view="retail-billing">Check Pro coverage</button>');syncStatus();return;
     }
     if (!data) {$('#retailView').innerHTML=empty(pageAccess.scope===scopeKey()&&pageAccess.message||'Loading this Retail inventory…');return;}
     $('#retailRole').textContent = `${data.role} · Retail`;
@@ -276,7 +276,7 @@
           if(g!==generation||scopeKey()!==context)return;
           offlineState={...offlineState,locked_reason:'Retail is off or no longer entitled.',access_denied:true};
           online=false;data=null;render();
-          if(!platformView()&&!['store-location','help'].includes(view))notice('Check this store’s Complete coverage in Plans & billing.');return;
+          if(!platformView()&&!['store-location','help'].includes(view))notice('Check this store’s Pro coverage in Plans & billing.');return;
         }
       }
       if(offlineState.operations.length){

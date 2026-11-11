@@ -1,6 +1,6 @@
 # Work together in a shared workspace
 
-Complete includes shared team inventories, member accounts, workspace roles and permissions, and owner and admin controls.
+Pro includes shared team inventories, member accounts, workspace roles and permissions, and owner and admin controls.
 
 ## Invite a teammate
 

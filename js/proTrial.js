@@ -20,9 +20,9 @@ function billing(data,onExpiry){
  clearInterval(billingTimer);let panel=$('proTrialInfo');const state=readState(data);
  if(!state){if(panel){panel.hidden=true;panel.innerHTML=''}return}
  if(!panel){const anchor=$('businessTrialInfo')||$('plansGrid');if(!anchor)return;panel=document.createElement('section');panel.id='proTrialInfo';panel.className='business-trial-info';anchor.before(panel)}
- stylesheet();panel.hidden=false;panel.innerHTML='<h2>'+(state.active?'Your free Pro trial':'Your free Pro trial has ended')+'</h2>'+
- (state.active?'<p id="proTrialCountdown" role="timer" class="pro-trial-countdown"></p><p>You’ll return to Free on '+esc(expiry(state))+'.</p>':'')+
- '<p>'+(state.active?'When the countdown ends, Pro features relock and your account continues on Free.':'Your account continues on Free. Pro features have relocked, and your saved stock and work are kept.')+' Choose Free, or subscribe to Starter, Pro or Business below. You will not be charged automatically for this trial. Paid plans start only after you complete checkout.</p>';
+ stylesheet();panel.hidden=false;panel.innerHTML='<h2>'+(state.active?'Your trial':'Your trial has ended')+'</h2>'+
+ (state.active?'<p id="proTrialCountdown" role="timer" class="pro-trial-countdown"></p><p>You’ll return to Intro on '+esc(expiry(state))+'.</p>':'')+
+ '<p>'+(state.active?'When the countdown ends, Trial features become unavailable and your account continues on Intro.':'Your account continues on Intro. Trial features have ended, and your saved stock and work are kept.')+' Choose Intro, Premium or Pro below. You will not be charged automatically for this trial. Paid plans start only after you complete checkout.</p>';
  if(state.active){let ended=false;const tick=()=>{const el=$('proTrialCountdown');if(!el)return;el.textContent=remaining(state);if(!ended&&state.end<=Date.now()+state.offset){ended=true;clearInterval(billingTimer);onExpiry?.()}};tick();if(!ended)billingTimer=setInterval(tick,1000)}
 }
 function clear(){clearInterval(timer);observer?.disconnect();observer=null;$('proTrialNotice')?.remove()}
@@ -35,14 +35,14 @@ async function refresh(){
   const data=await InventoryAPI.request('/billing/status',{headers:selected?{'X-Workspace-Id':selected}:{}});
   if(g!==generation||selected!==workspace())return;const state=data.success&&readState(data);
   if(!state||(selected&&String(data.workspace?.id)!==selected)){clear();return}
-  stylesheet();clear();const panel=document.createElement('section');panel.id='proTrialNotice';panel.className='business-trial-topbar';panel.setAttribute('aria-label',state.active?'Pro trial':'Pro trial ended');
-  const title=state.active?'Free Pro trial ends '+expiry(state)+'. No automatic charge. Choose your next plan.':'Your Pro trial has ended. Continue with Free or choose Starter, Pro or Business.';
-  panel.innerHTML='<a class="business-trial-pill" href="/billing.html#plansGrid" title="'+esc(title)+'">'+(state.active?'Free Pro trial':'Pro trial ended')+'</a><a class="business-trial-pill business-trial-timer" href="/billing.html#plansGrid" title="'+esc(title)+'">'+(state.active?'<span data-pro-trial-remaining role="timer" aria-label="Pro trial time remaining"></span>':'Choose your plan →')+'</a>';
+  stylesheet();clear();const panel=document.createElement('section');panel.id='proTrialNotice';panel.className='business-trial-topbar';panel.setAttribute('aria-label',state.active?'Trial':'Trial ended');
+  const title=state.active?'Your trial ends '+expiry(state)+'. No automatic charge. Choose your next plan.':'Your trial has ended. Continue with Intro or choose Premium or Pro.';
+  panel.innerHTML='<a class="business-trial-pill" href="/billing.html#plansGrid" title="'+esc(title)+'">'+(state.active?'Your trial':'Trial ended')+'</a><a class="business-trial-pill business-trial-timer" href="/billing.html#plansGrid" title="'+esc(title)+'">'+(state.active?'<span data-pro-trial-remaining role="timer" aria-label="Trial time remaining"></span>':'Choose your plan →')+'</a>';
   // Match Business trials exactly: append inside the existing horizontal
   // controls, never beside the host or in a separate mobile-width block.
   const mountHost=host(),mount=()=>{if(g!==generation||selected!==workspace())return;const controls=mountHost.querySelector('.inventory-topbar-right');if(controls&&!controls.contains(panel))controls.append(panel)};
   observer=new MutationObserver(mount);observer.observe(mountHost,{childList:true,subtree:true});mount();
-  if(state.active){let ended=false;const tick=()=>{const el=panel.querySelector('[data-pro-trial-remaining]');if(el)el.textContent=remaining(state);if(!ended&&state.end<=Date.now()+state.offset){ended=true;clearInterval(timer);panel.setAttribute('aria-label','Pro trial ended');panel.querySelector('.business-trial-pill').textContent='Pro trial ended';if(el)el.textContent='Choose your plan →';refresh()}};tick();if(!ended)timer=setInterval(tick,1000)}
+  if(state.active){let ended=false;const tick=()=>{const el=panel.querySelector('[data-pro-trial-remaining]');if(el)el.textContent=remaining(state);if(!ended&&state.end<=Date.now()+state.offset){ended=true;clearInterval(timer);panel.setAttribute('aria-label','Trial ended');panel.querySelector('.business-trial-pill').textContent='Trial ended';if(el)el.textContent='Choose your plan →';refresh()}};tick();if(!ended)timer=setInterval(tick,1000)}
  }catch{if(g===generation)clear()}
 }
 window.InventoryProTrial={readState,billing,refresh};

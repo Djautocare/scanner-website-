@@ -11,7 +11,7 @@ function render(){
  const details=b.subscribed
   ? `<p>${esc(status)} · ${esc(price)} / ${esc(b.interval||'month')}</p><div class="retail-action-row">${btn('Payment details & invoices','portal',s)}${!b.cancel_at_period_end?btn('Cancel shop subscription','cancel',s):''}${btn('Refresh this subscription','refresh',s)}</div>`
   : '';
- if(!sandbox)return `<article class="retail-billing-shop"><header><div><h2>${esc(s.name)}</h2><p>${esc(s.workspace_name)}</p></div></header><p>InventoryOS Complete is £19.99/month with the first physical store included. Extra stores are £10/month each. Tills and staff are included.</p><a href="/billing.html">Manage Complete plan &amp; store allowance</a>${details?'<h3>Existing separate shop subscription</h3>'+details:''}</article>`;
+ if(!sandbox)return `<article class="retail-billing-shop"><header><div><h2>${esc(s.name)}</h2><p>${esc(s.workspace_name)}</p></div></header><p>InventoryOS Pro is £19.99/month with the first physical store included. Extra stores are £10/month each. Tills and staff are included.</p><a href="/billing.html">Manage Pro plan &amp; store allowance</a>${details?'<h3>Existing separate shop subscription</h3>'+details:''}</article>`;
  return `<article class="retail-billing-shop retail-billing-sandbox"><header><div><h2>${esc(s.name)}</h2><p>${esc(s.workspace_name)}</p></div></header><span class="retail-billing-tag">SANDBOX · TEST PAYMENTS ONLY</span>${details||btn('Start sandbox test checkout','checkout',s,!b.checkout_configured)}${!b.checkout_configured?'<p class="retail-billing-note">Sandbox key, price and webhook settings need configuring.</p>':''}</article>`;
 
  }).join('')||'<section class="retail-billing-shop"><h2>No Retail shops yet</h2><p>Create your Retail business and first shop to get started.</p><a href="retail/index.html">Set up your shop</a></section>';
@@ -19,7 +19,7 @@ function render(){
 async function load(){data=await request('/retail/billing-summary');render();}
 async function action(s,kind){
  const sandbox=s.billing.environment==='sandbox';
- if(kind==='checkout'&&!sandbox)throw Error('Open Plans & billing to manage Complete coverage.');
+ if(kind==='checkout'&&!sandbox)throw Error('Open Plans & billing to manage Pro coverage.');
  if(kind==='checkout'&&!confirm('Start sandbox billing for '+s.name+'?'))return;
  if(kind==='cancel'&&!confirm('Open Stripe to cancel the subscription for '+s.name+' at the end of its paid period?'))return;
  const key='inventoryos_retail_flat_billing_'+s.inventory_id;let requestId=sessionStorage.getItem(key);if(!requestId){requestId=crypto.randomUUID();sessionStorage.setItem(key,requestId);}

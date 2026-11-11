@@ -74,14 +74,13 @@ function planDescription(key){
 }
 
 function buttonLabel(plan){
-    if(plan.key === "pro" && isLocalProTrial()) return "Subscribe to Pro";
-    if(plan.key === "complete" && currentStatus?.billing?.is_business_trial) return "Subscribe to Business";
+    if(plan.key === "complete" && currentStatus?.billing?.is_business_trial && isCurrentPlan(plan)) return "Pro trial active";
     if(isCurrentPlan(plan)){
         return "Current Plan";
     }
 
-    if(plan.key === "free" && currentStatus?.billing?.plan_selected) return "Continue with Free";
-    if(plan.key === "free") return "Start Free";
+    if(plan.key === "free" && currentStatus?.billing?.plan_selected) return "Continue with Intro";
+    if(plan.key === "free") return "Choose Intro";
     return "Choose " + plan.name;
 }
 
@@ -113,12 +112,12 @@ function renderStatus(data){
     if(!billing.plan_selected){
         title.innerText = "Choose your InventoryOS plan";
         badge.innerText = "PLAN REQUIRED";
-        line = "Select Free, Starter or Complete to unlock your dashboard.";
+        line = "Select Intro, Premium or Pro to unlock your dashboard.";
     }else if(!canAccessDashboard()){
         badge.innerText = "PLAN UPDATE NEEDED";
-        line += " Select Continue with Free to restore Free access, or choose a paid plan for its extra features.";
+        line += " Select Continue with Intro to restore Intro access, or choose a paid plan for its extra features.";
     }else if(billing.is_free_fallback){
-        line += " Free tools remain available. Higher-plan features have relocked; your saved stock is kept.";
+        line += " Intro tools remain available. Higher-plan features have relocked; your saved stock is kept.";
     }
 
     text.innerText = line;
@@ -185,9 +184,9 @@ async function loadBilling(){
         if(data.billing && !data.billing.plan_selected){
             setMessage("Choose a plan to unlock your InventoryOS dashboard.");
         }else if(data.billing && !canAccessDashboard()){
-            setMessage("Continue with Free to restore access, or choose a paid plan for its extra features.");
+            setMessage("Continue with Intro to restore access, or choose a paid plan for its extra features.");
         }else if(data.billing?.is_free_fallback){
-            setMessage("Your account is available on Free. Only higher-plan features are locked.");
+            setMessage("Your account is available on Intro. Only higher-plan features are locked.");
         }else{
             setMessage("Plan active. You can open the dashboard.");
         }
@@ -204,14 +203,14 @@ async function choosePlan(plan){
     const firstPlanChoice = currentStatus?.billing?.plan_selected === false;
 
     if(plan === "free" && !firstPlanChoice && currentStatus?.billing?.plan_key !== "free"){
-        if(!confirm("Switch this workspace to the Free plan? Paid features may be locked.")){
+        if(!confirm("Switch this workspace to the Intro plan? Paid features may be locked.")){
             return;
         }
     }
 
     planRequestPending = true;
     document.querySelectorAll("[data-plan]").forEach(button=>{button.disabled=true;});
-    setMessage("Starting " + plan + " plan...");
+    setMessage("Preparing your plan...");
 
     try{
         const data = await billingRequest("/billing/create-checkout-session",{
@@ -228,10 +227,10 @@ async function choosePlan(plan){
         if(data.free_selected){
             if(firstPlanChoice && window.InventoryGettingStarted?.begin()){
                 leavingBilling = true;
-                setMessage("Free selected. Opening your guided practice workspace...");
+                setMessage("Intro selected. Opening your guided practice workspace...");
                 return;
             }
-            setMessage("Free plan selected. Unlocking dashboard...");
+            setMessage("Intro plan selected. Unlocking dashboard...");
             await loadBilling();
             return;
         }

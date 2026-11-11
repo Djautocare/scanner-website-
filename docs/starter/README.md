@@ -1,6 +1,6 @@
-# Starter: selling and dispatch
+# Premium: selling and dispatch
 
-Starter includes the Free workflow, increases the active stock limit to **1,000**, and adds full sales history, refunds, corrections, expenses and receipt uploads, barcode labels and print jobs, and shipping-label upload with Dispatch Centre.
+Premium includes the Intro workflow, increases the active stock limit to **1,000**, and adds full sales history, refunds, corrections, expenses and receipt uploads, barcode labels and print jobs, and shipping-label upload with Dispatch Centre.
 
 ## Review performance and record costs
 
