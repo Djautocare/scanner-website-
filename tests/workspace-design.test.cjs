@@ -106,3 +106,38 @@ test('Retail and Till precaches include the exact released shared design assets 
  assert(tillAsset&&till.includes(tillAsset[1]));
  assert(!/localStorage|indexedDB\.deleteDatabase/.test(retail+till));
 });
+
+test('shop setup shows Complete pricing for the subscription and the additional store', async () => {
+ const {context}=fixture('/retail/index.html');
+ context.InventoryAPI.request=async path=>{
+  assert.equal(path,'/retail/workspaces');
+  return {success:true,separate_workspaces:true,workspaces:[],stores:[]};
+ };
+ vm.runInContext(read('retail/store-location.js'),context);
+ await context.InventoryRetailLocation.init();
+ const html=context.InventoryRetailLocation.render();
+ assert.match(html,/InventoryOS Complete is £19\.99\/month and includes your first physical store/);
+ assert.match(html,/Each additional physical store is £10\/month/);
+ assert.doesNotMatch(html,/£19\.99 per shop|Choose its subscription/);
+});
+
+test('store billing labels separate subscriptions and sandbox checkout', async () => {
+ const {context,nodes}=fixture('/retail/billing.html');
+ const store=(inventory_id,name,billing)=>({inventory_id,name,workspace_name:'Example business',billing});
+ const totals={monthly_pence:1799,renewing_monthly_pence:1799,subscribed_shops:1,unknown_prices:0,shops:1};
+ context.location.href='https://app.inventoryos.co.uk/retail/billing.html';
+ context.InventoryAPI.isLoggedIn=()=>true;
+ context.InventoryAPI.request=async path=>{
+  assert.equal(path,'/retail/billing-summary');
+  return {success:true,live:totals,sandbox:{...totals,shops:1},stores:[
+   store('live','Existing shop',{environment:'live',amount_pence:1799,subscribed:true,status:'active'}),
+   store('test','Test shop',{environment:'sandbox',amount_pence:null,subscribed:false,checkout_configured:true})
+  ]};
+ };
+ vm.runInContext(read('retail/billing.js'),context);
+ await new Promise(resolve=>setImmediate(resolve));
+ const html=nodes.get('#billingShops').innerHTML;
+ assert.match(html,/Existing separate shop subscription[\s\S]+£17\.99/);
+ assert.match(html,/SANDBOX · TEST PAYMENTS ONLY[\s\S]+Start sandbox test checkout/);
+ assert.doesNotMatch(html.split('SANDBOX · TEST PAYMENTS ONLY')[1],/£19\.99/);
+});

@@ -1,13 +1,9 @@
-# Retail subscriptions and Till app
+# Complete store coverage and Till app
 
-The main InventoryOS account keeps its existing Free / Starter / Pro / Business
-subscription. Retail is separately licensed per store (one Retail inventory).
-
-- InventoryOS Retail: £19.99 per shop per month, all Retail tools included.
-- Unlimited till licences and staff; no till-pair add-on for new subscriptions.
-- Each shop has its own subscription inside a dedicated Retail workspace.
-- Legacy subscriptions retain their Stripe charges until their owner confirms
-  switching to the flat plan. Switching removes any till-pair item.
+InventoryOS offers Free, Starter and Complete subscriptions. The £19.99/month
+Complete subscription includes one physical store, unlimited tills and staff.
+Each additional physical store is £10/month. Store allowances are managed in
+Plans & billing. Existing separate shop subscriptions are managed in Store billing.
 
 
 Open `retail/manage.html` for store billing, till registration/pairing, separate
@@ -22,7 +18,7 @@ current assignments, PIN version, device generation and subscription. Cashier
 API responses omit product costs and admin settings. Refunds require a fresh
 QR/number plus matching PIN from a refund-authorised person at that store.
 
-Loyalty is a Pro entitlement plus an enabled store tool. Scanning customer
+Loyalty requires store access and the loyalty feature enabled. Scanning customer
 `IO-LC-...` selects the account, while staff use `IO-ST-...`. Customer profiles
 show balance/history and reprint the same QR. Sale completion links the customer
 and clears the selection. Registration does not imply marketing consent.

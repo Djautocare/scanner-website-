@@ -174,4 +174,4 @@ const InventoryThemeContrast = (function(){
  return {luminance,ratio,blend,readable,rgba};
 })();
 
-;(function(){if(!location.pathname.includes("/retail/till/")){const s=document.createElement("script");s.src=new URL("pwa/install.js?v=1",document.baseURI).href;s.defer=true;document.head.append(s);}})();
+;(function(){if(!location.pathname.includes("/retail/till/")){const s=document.createElement("script");s.src=new URL("pwa/install.js?v=complete-pricing-1",document.baseURI).href;s.defer=true;document.head.append(s);}})();
