@@ -67,14 +67,15 @@ test('Retail setup renders a real one-use till pairing path without demo credent
  context.fixtureUI.set({role:'owner',counts:[],operations:{},business:{config:{features:{}}}},'setup',true);context.fixtureUI.render();
  const html=nodes.get('#retailView').innerHTML;
  for(const route of ['store-location','products','tills','cash'])assert(html.includes('data-view="'+route+'"'));
- assert(html.includes('Connect another device'));assert(html.includes('one-use verification code'));assert(html.includes('retail/till/index.html'));
+ assert(html.includes('Get pairing code'));assert(html.includes('one-use code'));assert(html.includes('retail/till/index.html'));
+ assert.equal(nodes.get('#retailManageTills').hidden,false);
  assert(!/482913|1001|1234/.test(html));
 });
 test('unsubscribed Retail cannot retain a previously rendered page, including new setup',()=>{
  const {context,nodes}=retailFixture(),data={role:'owner',counts:[],operations:{},business:{config:{features:{}}}};
  for(const tab of ['setup','products','tasks','dashboard']){
   context.fixtureUI.set(data,tab,false);context.fixtureUI.render();const html=nodes.get('#retailView').innerHTML;
-  assert(html.includes('Activate InventoryOS Retail'),tab);assert(!html.includes('A clear path to your first sale.'),tab);
+  assert(html.includes('Check your store coverage'),tab);assert(!html.includes('A clear path to your first sale.'),tab);
  }
 });
 test('Retail setup and navigation keep management links away from viewer accounts',()=>{
@@ -82,6 +83,7 @@ test('Retail setup and navigation keep management links away from viewer account
  context.fixtureUI.set({role:'viewer',counts:[],operations:{},business:{config:{features:{}}}},'setup',true);context.fixtureUI.render();
  const nav=nodes.get('#retailNav').innerHTML,html=nodes.get('#retailView').innerHTML;
  assert(!nav.includes('data-view="staff-access"'));assert(!nav.includes('data-view="tills"'));assert(!nav.includes('data-view="retail-billing"'));
+ assert.equal(nodes.get('#retailManageTills').hidden,true);
  assert.match(html,/<button[^>]+data-view="tills" disabled/);assert(!html.includes('>Staff access</button>'));
 });
 test('Till offline navigation returns the HTML shell rather than a new stylesheet or script',async()=>{
@@ -93,9 +95,14 @@ test('Till offline navigation returns the HTML shell rather than a new styleshee
 test('Retail and Till precaches include the exact released shared design assets and changed modules',()=>{
  const retail=read('retail/sw.js'),till=read('retail/till/sw.js');
  for(const sw of [retail,till])for(const file of ['css/workspaceDesign.css?v=smooth-20261103','js/workspaceDesign.js?v=smooth-20261103'])assert(sw.includes(file));
- for(const file of ['retail.js?v=product-history-1','counter.js?v=smooth-20261103','../platform/nav.js?v=mfa-1'])assert(retail.includes(file));assert(retail.includes('shared.js?v=workspace-20261102'));
+ for(const file of ['counter.js?v=smooth-20261103','../platform/nav.js?v=mfa-1'])assert(retail.includes(file));assert(retail.includes('shared.js?v=workspace-20261102'));
  assert(read('retail/dashboard/index.html').includes('/platform/nav.js?v=mfa-1'));
- assert(read('retail/till/index.html').includes('retail/till/till.js?v=10'));
- assert(till.includes('till.js?v=10'));
+ for(const page of ['retail/index.html','retail/dashboard/index.html']){
+  const assets=[...read(page).matchAll(/src="retail\/((?:retail|platform)\.js\?v=[^"]+)"/g)];
+  assert.equal(assets.length,2);
+  for(const [,asset] of assets)assert(retail.includes(asset),asset);
+ }
+ const tillAsset=read('retail/till/index.html').match(/src="retail\/till\/(till\.js\?v=[^"]+)"/);
+ assert(tillAsset&&till.includes(tillAsset[1]));
  assert(!/localStorage|indexedDB\.deleteDatabase/.test(retail+till));
 });
