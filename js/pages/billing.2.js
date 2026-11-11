@@ -1,1 +1,1 @@
-document.addEventListener("DOMContentLoaded",()=>{const link=document.createElement("p");link.innerHTML='<a href="retail/manage.html">Retail subscriptions, stores and till licences →</a>';document.querySelector("main,.container,.page")?.prepend(link);});
+document.addEventListener("DOMContentLoaded",()=>{const link=document.createElement("p");link.innerHTML='<a href="retail/manage.html">Manage stores and tills →</a>';document.querySelector("main,.container,.page")?.prepend(link);});

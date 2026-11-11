@@ -6,7 +6,7 @@ const buttons=[...card.querySelectorAll('[data-printer-installer]')],status=docu
 let busy=false;
 function serverCheckError(data,endpoint){
  const error=String(data?.error||'');let message,code;
- if(data?.billing_required||data?.upgrade_required){code='PLAN_ACCESS';message='The server is blocking direct printing for the selected workspace’s subscription. Check its plan or account override. A Retail subscription and an InventoryOS subscription are separate.';}
+ if(data?.billing_required||data?.upgrade_required){code='PLAN_ACCESS';message='The server is blocking direct printing for the selected workspace’s subscription. Check its plan or account override.';}
  else if(/could not connect|failed to fetch|networkerror/i.test(error)){code='CONNECTION';message='Could not connect to your InventoryOS backend. Check that the backend is running, then try again.';}
  else if(/origin.*not allowed/i.test(error)){code='ORIGIN';message='The backend is rejecting this website’s address. Its QZ_ALLOWED_ORIGINS setting needs to include https://app.inventoryos.co.uk.';}
  else if(/QZ_PRIVATE_KEY_PATH.*not configured/i.test(error)){code='KEY_SETTING';message='The backend is missing QZ_PRIVATE_KEY_PATH in its .env file. Restore the path to your existing private signing key, then restart the backend.';}
