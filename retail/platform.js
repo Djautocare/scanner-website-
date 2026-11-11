@@ -27,7 +27,11 @@ function billing(s){
  const receipt='<section class="retail-card" id="platformReceiptBilling"></section>';
  const deletion=data.role==='owner'?`<section class="retail-card store-delete-panel"><h2>Remove an unused store</h2><p>Email a CSV backup before permanently deleting ${esc(s.name)}.</p>${btn(s.deleting_backup_id?'Resume store deletion':'Delete store','delete-store')}</section>`:'';
  if(s.billing?.environment!=='sandbox'){
-  const coverage=a.store_blocked?'An administrator has blocked access for this store.':s.enabled===false?'This store is disabled.':a.complete_covered?'This store is covered by Complete.':a.allowed?'This store already has access.':a.complete_workspace_id?'This store is outside your current Complete store allowance.':'Choose Complete to activate tills and store tools.';
+  const position=Number(a.complete_store_position),allowance=Number(a.complete_store_allowance);
+  const outside=position>allowance&&allowance>0
+   ? `Complete covers ${allowance} ${allowance===1?'store':'stores'} on this account. This is store ${position} in registration order.`
+   : 'This store is outside your current Complete store allowance.';
+  const coverage=a.store_blocked?'An administrator has blocked access for this store.':s.enabled===false?'This store is disabled.':a.complete_covered?'This store is covered by Complete.':a.allowed?'This store already has access.':a.complete_workspace_id?outside:'Choose Complete to activate tills and store tools.';
   const legacy=s.has_subscription?'<p><a href="/retail/billing.html">Manage this store’s existing subscription</a></p>':'';
   return `<section class="retail-card"><h2>InventoryOS Complete</h2><strong>£19.99 / month</strong><p>The first physical store, unlimited tills and staff are included. Additional stores are £10 each per month.</p><p>${coverage}</p><a class="platform-open-till" href="/billing.html">Manage Complete plan &amp; stores</a>${legacy}</section>${receipt}${deletion}`;
  }

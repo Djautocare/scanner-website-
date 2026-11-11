@@ -1,3 +1,3 @@
 'use strict';
 self.RETAIL_DASHBOARD=true;
-importScripts('../sw.js?v=complete-access-1');
+importScripts('../sw.js?v=store-order-1');

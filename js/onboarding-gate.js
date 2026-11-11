@@ -10,10 +10,10 @@
  function read(){const k=key();if(!k)return null;try{const raw=JSON.parse(localStorage.getItem(k)||'null');return raw?.version===1&&['pending','complete'].includes(raw.status)?raw:null;}catch{return memory.get(k)||null;}}
  function write(value,expectedOwner=owner()){
   if(!expectedOwner||expectedOwner!==owner())return false;
-  const progress={version:1,status:value.status==='complete'?'complete':'pending',step:typeof value.step==='string'?value.step.slice(0,60):'location-create',coreComplete:value.coreComplete===true,explored:Array.isArray(value.explored)?value.explored.filter(x=>['dispatch','expenses','barcodes','reorders','team'].includes(x)):[]};
+  const progress={version:1,status:value.status==='complete'?'complete':'pending',step:typeof value.step==='string'?value.step.slice(0,60):'overview-start',coreComplete:value.coreComplete===true,explored:Array.isArray(value.explored)?value.explored.filter(x=>['dispatch','expenses','barcodes','reorders','team'].includes(x)):[]};
   memory.set(key(),progress);try{localStorage.setItem(key(),JSON.stringify(progress));}catch{}return true;
  }
- function begin(){if(!authenticated())return false;if(read()?.status==='complete'){location.assign('/index.html');return true;}write({status:'pending',step:'location-create',coreComplete:false});location.assign('/getting-started.html');return true;}
+ function begin(){if(!authenticated())return false;if(read()?.status==='complete'){location.assign('/index.html');return true;}write({status:'pending',step:'overview-start',coreComplete:false});location.assign('/getting-started.html');return true;}
  function finish(expectedOwner){return write({status:'complete',step:'finished',coreComplete:true,explored:read()?.explored||[]},expectedOwner);}
  function enforce(){
   if(!authenticated()||read()?.status!=='pending')return;

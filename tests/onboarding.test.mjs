@@ -40,7 +40,7 @@ test('practice is noindex, has no live API/email/printing integration, and the g
  assert(html.includes('noindex,nofollow'));assert(!html.includes('/js/api.js'));assert(!html.includes('qz-tray'));assert(!html.includes('security-session.js'));
  assert(!/\b(?:fetch|XMLHttpRequest|WebSocket|sendBeacon)\s*\(/.test(script+model));assert(!/localStorage\.(?:setItem|removeItem)/.test(script+model));assert(!script.includes('manufacturing'));
  assert(script.includes('Send test email'));assert(script.includes('no real email is sent or received'));assert(script.includes('Settings → Help'));assert(read('settings.html').includes('getting-started.html?replay=1'));
- for(const name of ['index','add','remove','boxes','billing','login']){const page=read(name+'.html');assert(page.includes('/js/onboarding-gate.js?v=1'));assert(page.indexOf('/js/onboarding-gate.js')<page.indexOf('js/api.js'));}
+ for(const name of ['index','add','remove','boxes','billing','login']){const page=read(name+'.html');assert(/\/js\/onboarding-gate\.js\?v=[\w-]+/.test(page));assert(page.indexOf('/js/onboarding-gate.js')<page.indexOf('js/api.js'));}
 });
 test('Free selection starts practice only for the first successful selection, with duplicate-click protection',async()=>{
  async function choose({selected=false,plan='free',success=true}={}){

@@ -17,7 +17,7 @@ for(const kind of ['first-free','downgrade','failed-free']){
   return route.fulfill({json:data});
  });
  const page=await context.newPage();page.on('dialog',async dialog=>{confirmations++;await dialog.accept();});await page.goto(origin+'/billing.html');await page.locator('[data-plan="free"]').waitFor();await page.locator('[data-plan="free"]').dblclick();
- if(kind==='first-free'){await page.waitForURL('**/getting-started.html');await page.locator('#practice-create-location').waitFor();assert.equal(confirmations,0);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('inventoryos_getting_started_v1:billing-fixture')).status),'pending');}
+ if(kind==='first-free'){await page.locator('#practice-nav-products').waitFor();assert.match(page.url(),/\/getting-started\.html#dashboard$/);assert.equal(confirmations,0);const progress=await page.evaluate(()=>JSON.parse(localStorage.getItem('inventoryos_getting_started_v1:billing-fixture')));assert.equal(progress.status,'pending');assert.equal(progress.step,'overview-start');}
  else if(kind==='downgrade'){await page.locator('[data-plan="free"][disabled]').waitFor();assert(page.url().endsWith('/billing.html'));assert.equal(confirmations,1);assert.equal(await page.evaluate(()=>localStorage.getItem('inventoryos_getting_started_v1:billing-fixture')),null);}
  else{await page.getByText('Fixture checkout failed',{exact:true}).waitFor();assert.equal(await page.locator('[data-plan="free"]').isEnabled(),true);assert.equal(await page.evaluate(()=>localStorage.getItem('inventoryos_getting_started_v1:billing-fixture')),null);}
  assert.equal(writes,1);console.log('PASS real billing page '+kind+': one plan request, correct tutorial trigger and confirmation behaviour.');await context.close();
