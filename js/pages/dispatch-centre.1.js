@@ -614,7 +614,7 @@ function openMobilePrintFallback(file){
     }
 
     setMobileShareStatus(
-        "The PDF has opened. Use your phone's Share button and choose the Jadens app.",
+        "The PDF has opened. Use your phone's Share button and choose your printer’s app.",
         "ok"
     );
 }
@@ -663,7 +663,7 @@ async function shareLabelsForMobile(buttonId = "mobileShareLabelsBtn", defaultLa
                 await navigator.share(shareData);
 
                 setMobileShareStatus(
-                    "Shared successfully. Choose your Jadens printing app to print the 4×6 labels.",
+                    "Shared successfully. Choose your printer’s app to print the 4×6 labels.",
                     "ok"
                 );
 

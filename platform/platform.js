@@ -108,7 +108,7 @@ function branchForm(){
  <div class="pf-form" id="pf-collection-settings" hidden>
  ${input('Collection address (shared after payment)','collection_address','','maxlength="240"')}
  ${d.collection_distance_version===1
-   ? input('Collection postcode area (optional)','collection_outcode','','maxlength="4" placeholder="e.g. M30" autocapitalize="characters" spellcheck="false" aria-describedby="pf-collection-help"')+
+   ? input('Collection postcode area (optional)','collection_outcode','','maxlength="4" placeholder="e.g. AB1" autocapitalize="characters" spellcheck="false" aria-describedby="pf-collection-help"')+
      '<p id="pf-collection-help" class="pf-muted">Enter the first part of the postcode to show customers an approximate collection distance.</p>'
    : ''}
  </div>

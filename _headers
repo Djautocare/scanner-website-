@@ -40,3 +40,18 @@
   Cache-Control: no-cache
 /retail/admin-platform.js
   Cache-Control: no-cache
+
+/js/inventoryTopbar.js
+  Cache-Control: no-cache
+/js/locationEditor.js
+  Cache-Control: no-cache
+/js/practice.js
+  Cache-Control: no-cache
+/marche/store.js
+  Cache-Control: no-cache
+/platform/platform.js
+  Cache-Control: no-cache
+/retail/store-location.js
+  Cache-Control: no-cache
+/js/pages/dispatch-centre.1.js
+  Cache-Control: no-cache

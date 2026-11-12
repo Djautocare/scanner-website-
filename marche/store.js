@@ -103,7 +103,7 @@ function renderCollection(){
    <div><h2 id="mc-collection-title">Free collection</h2><p class="pf-muted">See how far away you are from a pickup point.</p></div>
   </div>
   <form class="pf-form mc-collection-form">
-   ${input('Your UK postcode','postcode','','required maxlength="9" placeholder="e.g. M30 0AA" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="mc-collection-help"')}
+   ${input('Your UK postcode','postcode','','required maxlength="9" placeholder="e.g. AB1 2CD" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="mc-collection-help"')}
    <button type="submit">Check distance</button>
   </form>
   <p class="pf-muted mc-collection-help" id="mc-collection-help">Straight-line estimate to the collection area. Your postcode is sent to Postcodes.io to calculate it.</p>

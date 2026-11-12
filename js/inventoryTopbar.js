@@ -402,7 +402,7 @@ const InventoryTopbar = (function(){
 
     async function createWorkspace(){
         const name = prompt(
-            "New workspace name, e.g. My Warehouse, Family Stock, Trade Outlet"
+            "New workspace name, e.g. Main stock, Online orders or Workshop"
         );
 
         if(!name || !name.trim()){
