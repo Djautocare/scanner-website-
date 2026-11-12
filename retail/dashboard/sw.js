@@ -1,3 +1,3 @@
 'use strict';
 self.RETAIL_DASHBOARD=true;
-importScripts('../sw.js?v=tier-names-1');
+importScripts('../sw.js?v=maintenance-1');

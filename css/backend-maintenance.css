@@ -1,0 +1,21 @@
+#inventoryos-backend-status {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+    z-index: 12000;
+    pointer-events: none;
+}
+
+#inventoryos-backend-status p {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 12px 16px;
+    border: 1px solid #e3bc6e;
+    border-radius: 10px;
+    background: #fff1cf;
+    color: #372303;
+    box-shadow: 0 5px 18px #0003;
+    font: 600 0.9375rem/1.45 system-ui, sans-serif;
+    text-align: center;
+}

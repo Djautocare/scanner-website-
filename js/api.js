@@ -23,6 +23,13 @@ const InventoryAPI=(function(){
 
 
 
+// The parent page handles service status for embedded workspace tools.
+if(window.top === window && location.protocol !== 'file:'){
+ const statusScript = document.createElement('script');
+ statusScript.src = '/js/backend-maintenance.js?v=1';
+ document.head.append(statusScript);
+}
+
 /* A failed batch-pick transaction changes no stock. Confirmation retries the same request with the reviewed batch hashes. */
 (function(){
  const original=InventoryAPI.request.bind(InventoryAPI);
