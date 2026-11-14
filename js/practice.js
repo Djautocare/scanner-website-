@@ -1,14 +1,18 @@
 import {coreSteps,optionalSteps,createPractice,escapeHTML as esc,positiveInteger,addPracticeStock,removePracticeStock,reorderQuantity,receivePracticeOrder,assignPracticeOrder} from './practice-model.mjs?v=workspace-1';
 
 // This page imports no live InventoryAPI, printers, email client or billing code.
-const gate=window.InventoryGettingStarted,owner=gate?.owner();
-if(!gate?.authenticated()){location.replace('/login.html');}
-const saved=gate?.read(),replay=new URLSearchParams(location.search).get('replay')==='1'&&saved?.status!=='pending';
+const root=document.getElementById('practice-root');
+const guest=root.dataset.practiceMode==='guest';
+const demoHome='https://inventoryos.co.uk/';
+const gate=guest?null:window.InventoryGettingStarted,owner=gate?.owner();
+if(!guest&&!gate?.authenticated()){location.replace('/login.html');}
+const saved=gate?.read(),replay=!guest&&new URLSearchParams(location.search).get('replay')==='1'&&saved?.status!=='pending';
 const persist=!!owner&&!replay&&saved?.status==='pending';
-const finishLabel=persist?'Continue with Intro':'Finish practice';
+const finishLabel=guest?'Create a free account':persist?'Continue with Intro':'Finish practice';
 if(saved?.status==='complete'&&!replay)location.replace('/index.html');
-let progress=persist?saved:{},model=createPractice(progress),modal=null,notice='',positionFrame=0,disposed=false,enrolmentClosed=false;
+let progress=persist?saved:{},model=createPractice(progress),modal=null,notice='',disposed=false,enrolmentClosed=false;
 const timers=new Set();
+let coachHidden=false;
 // In-progress optional examples restart their simulated operation after a reload.
 for(const steps of Object.values(optionalSteps))if(steps.includes(model.step)){model.step=steps[0];break;}
 const resumedAt=coreSteps.indexOf(model.step);
@@ -19,7 +23,6 @@ if(reached('remove-qty')&&!reached('remove-saved'))model.bundle=true;
 if(reached('remove-confirm')&&!reached('remove-saved'))model.consolidated=true;
 if(model.step==='location-confirm')modal='location';
 if(model.step==='remove-approve')modal='remove';
-const root=document.getElementById('practice-root');
 const money=pence=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(pence/100);
 const workspaceNavigation=[
  ['dashboard','Overview','grid'],['products','Products & stock','box'],['sales','Sales & till','till'],
@@ -36,6 +39,7 @@ function screenFor(step){
 }
 const chapterFor=step=>coreSteps.indexOf(step)<=coreSteps.indexOf('location-saved')?1:step.startsWith('add-')?2:step.startsWith('remove-')?3:4;
 function theme(){
+ if(guest){setButtonInk();return;}
  try{const appearance=localStorage.getItem('inventoryos_appearance')==='light'?'light':'dark',colour=localStorage.getItem('inventoryos_theme');document.documentElement.dataset.appearance=appearance;document.documentElement.dataset.theme=['green','purple','blue','gold','red','cyan'].includes(colour)?colour:'green';document.documentElement.style.colorScheme=appearance;}catch{}
  setButtonInk();
 }
@@ -45,7 +49,7 @@ function setButtonInk(){
 }
 theme();
 function remember(){if(persist&&!enrolmentClosed)gate.write({status:'pending',step:model.step,coreComplete:model.coreComplete,explored:[...model.explored]},owner);}
-function setStep(step){model.step=step;notice='';remember();render();}
+function setStep(step){model.step=step;coachHidden=false;notice='';remember();render();}
 function message(text){notice=text;const el=document.getElementById('practice-notice');if(el)el.textContent=text;}
 function clearTimers(){for(const timer of timers)clearTimeout(timer);timers.clear();}
 function later(fn,delay){const timer=setTimeout(()=>{timers.delete(timer);if(!disposed)fn();},delay);timers.add(timer);}
@@ -86,7 +90,7 @@ function barcodes(){return heading('Barcode Printing','Group the labels you need
 function reorders(){const order=model.order;return heading('Reordering','Set a minimum, order up to a target and receive stock.','Pro · reordering')+'<section class="practice-panel"><div class="practice-panel-heading"><h2>Item reorder rules</h2><button id="practice-create-rule" class="practice-primary" data-action="create-rule">Create item reorder rule</button></div>'+(order?'<div class="practice-order"><span class="practice-eyebrow">'+(order.status==='needed'?'NEEDS REORDERING':order.status==='ordered'?'ORDERED':order.status==='holding'?'DESTINATION ASSIGNING':'RECEIVED & ASSIGNED')+'</span><h3>'+esc(model.item.name)+'</h3><p>Example supplier · Target: 10 units · '+order.qty+' units to replenish</p><p>Estimated cost: '+money(order.qty*120)+' (example cost: £1.20 per unit)</p>'+(order.status==='needed'?'<button id="practice-mark-ordered" class="practice-primary" data-action="mark-ordered">Ordered</button>':order.status==='ordered'?'<button id="practice-receive" class="practice-primary" data-action="receive-order">Mark as received</button>':order.status==='holding'?'<label for="practice-assign-location">Destination</label><select id="practice-assign-location"><option>'+esc(model.location?.name)+'</option></select><p>'+order.qty+' units in holding</p><button id="practice-assign" class="practice-primary" data-action="assign-order">Confirm location assignment</button>':'<p class="practice-success">Assigned to '+esc(model.location?.name)+'. Practice holding: '+model.item.qty+' units.</p>')+'</div>':'<div class="practice-empty">Current holding: '+model.item.qty+' units. Create an example rule with a minimum of 3 and a target of 10.</div>')+'</section>';}
 function team(){return heading('Workspace Members','Give colleagues the access they need.','Pro · teams & permissions')+'<section class="practice-panel practice-form-panel"><h2>Example colleague</h2><p>Sample team member. No invitation or email will be sent.</p><label for="practice-role">Workspace role</label><select id="practice-role"><option value="viewer"'+(model.form.role==='viewer'?' selected':'')+'>Viewer — read-only access</option><option value="editor"'+(model.form.role==='editor'?' selected':'')+'>Editor — work with stock</option></select><button id="practice-save-role" class="practice-primary" data-action="save-role">Save practice access</button>'+(model.step==='team-done'?'<p class="practice-success">Example colleague now has '+esc(model.form.role)+' access in practice.</p>':'')+'</section>';}
 const features=[['dispatch','Email import & label cropping','Pro','Press Send test email, follow its arrival and review the cropped labels.'],['expenses','Expenses & receipts','Premium and above','Attach a sample receipt to an expense.'],['barcodes','Barcode print jobs','Premium and above','Create a practice print job and preview its labels.'],['reorders','Reordering & receiving','Pro','Order to a target, receive a delivery and assign the units.'],['team','Shared workspaces','Pro','Try a colleague’s access settings without sending an invitation.']];
-function explore(){return heading(model.coreComplete?'You’ve got the basics.':'Welcome to guided practice','Your real stock and subscription stay unchanged. No practice data will carry over.','Practice complete')+'<section class="practice-complete"><span class="practice-complete-mark" aria-hidden="true">✓</span><div><h2>Location created. Stock in. Stock out.</h2><p>You’ve seen how the dashboard connects it all. Continue to your real inventory, or try a short paid-feature example first.</p><div class="practice-actions"><button class="practice-primary" data-action="finish">'+finishLabel+' →</button><button class="practice-secondary" data-action="compare">Compare plans</button></div></div></section><section><div class="practice-section-title"><h2>See what else could help you.</h2><span>Optional practice · no payment or upgrade</span></div><div class="practice-feature-grid">'+features.map(([key,title,plan,desc])=>'<article class="practice-panel"><span class="practice-eyebrow">'+plan+'</span><h3>'+title+'</h3><p>'+desc+'</p><button class="practice-secondary" data-action="try-'+key+'">'+(model.explored.has(key)?'Try again':'Try it')+' →</button>'+(model.explored.has(key)?'<span class="practice-success">Explored ✓</span>':'')+'</article>').join('')+'</div></section><section class="practice-panel practice-trial"><div><span class="practice-eyebrow">TRY IT WITH YOUR OWN STOCK</span><h2>Ask for one free week of Pro.</h2><p>Create your account, then email hello@inventoryos.co.uk to request activation. No automatic paid upgrade. Pro includes one physical store; additional stores are billed separately.</p></div><a class="practice-secondary" data-action="trial" href="mailto:hello@inventoryos.co.uk?subject=My%20free%20week%20of%20Complete">Request my free week</a></section><p class="practice-hint">For illustrated guides later, open Settings → Inventory Guide. Questions? Use Settings → Help or email hello@inventoryos.co.uk.</p>';}
+function explore(){return heading(model.coreComplete?'You’ve got the basics.':'Welcome to guided practice',guest?'Try the optional examples or create a free account. Practice data resets when you leave.':'Your real stock and subscription stay unchanged. No practice data will carry over.','Practice complete')+'<section class="practice-complete"><span class="practice-complete-mark" aria-hidden="true">✓</span><div><h2>Location created. Stock in. Stock out.</h2><p>You’ve seen how the dashboard connects it all. '+(guest?'Try another example or start with your own stock on a free account.':'Continue to your real inventory, or try a short paid-feature example first.')+'</p><div class="practice-actions"><button class="practice-primary" data-action="finish">'+finishLabel+' →</button><button class="practice-secondary" data-action="compare">Compare plans</button></div></div></section><section><div class="practice-section-title"><h2>See what else could help you.</h2><span>Optional practice · no payment or upgrade</span></div><div class="practice-feature-grid">'+features.map(([key,title,plan,desc])=>'<article class="practice-panel"><span class="practice-eyebrow">'+plan+'</span><h3>'+title+'</h3><p>'+desc+'</p><button class="practice-secondary" data-action="try-'+key+'">'+(model.explored.has(key)?'Try again':'Try it')+' →</button>'+(model.explored.has(key)?'<span class="practice-success">Explored ✓</span>':'')+'</article>').join('')+'</div></section><section class="practice-panel practice-trial"><div><span class="practice-eyebrow">TRY IT WITH YOUR OWN STOCK</span><h2>Ask for one free week of Pro.</h2><p>Create your account, then email hello@inventoryos.co.uk to request activation. No automatic paid upgrade. Pro includes one physical store; additional stores are billed separately.</p></div><a class="practice-secondary" data-action="trial" href="mailto:hello@inventoryos.co.uk?subject=My%20free%20week%20of%20Complete">Request my free week</a></section><p class="practice-hint">For illustrated guides later, open Settings → Inventory Guide. Questions? Use Settings → Help or email hello@inventoryos.co.uk.</p>';}
 function modalMarkup(){if(!modal)return '';let body='';
  if(modal==='location')body='<h2>Create storage location</h2><form id="practice-location-form"><label for="practice-location-name">Suggested name</label><input id="practice-location-name" maxlength="100" value="BOX-1" required><label for="practice-location-notes">Notes <span>(optional)</span></label><textarea id="practice-location-notes" rows="2" maxlength="250" placeholder="For example: stockroom, left wall"></textarea><button id="practice-confirm-location" class="practice-primary" type="submit">Confirm</button></form>';
  if(modal==='remove')body='<h2>Confirm stock removal</h2><p>Remove <strong>'+model.form.removeQty+' × '+esc(model.item.name)+'</strong> from <strong>'+esc(model.location?.name)+'</strong>?</p><p class="practice-hint">Practice stock only. Nothing will be removed from your real account.</p><button id="practice-approve-remove" class="practice-primary" data-action="approve-remove">Confirm removal</button>';
@@ -161,6 +165,7 @@ function render(){
  const featureDone=model.step.endsWith('-done')&&model.step!=='core-done';
  root.innerHTML='<div class="practice-layout">'+sidebar(screen)+'<div class="practice-shell">'+topbar(title)
   +'<div class="practice-banner"><span class="practice-badge">Practice mode</span><p>'+(core?'New workspace layout · Step '+chapterFor(model.step)+' of 4':'Explore with example data')+'</p>'
+  +(guest?'<a href="'+demoHome+'#see-it-in-action">Exit demo</a>':'')
   +(model.coreComplete?'<button data-action="finish">'+finishLabel+' →</button>':'')+'</div><main id="practice-main" tabindex="-1">'+content
   +'<p id="practice-notice" class="practice-notice" role="status" aria-live="polite">'+esc(notice)+'</p>'
   +(featureDone?'<section class="practice-feature-done"><h2>Example complete.</h2><div class="practice-actions"><button class="practice-primary" data-action="explore">Explore more features</button><button class="practice-secondary" data-action="finish">'+finishLabel+'</button></div></section>':'')
@@ -170,42 +175,81 @@ function render(){
  renderCoach();
  if(model.step==='dispatch-working')runImport();
 }
+const coachControlSelector='button,input,select,textarea,a[href]';
+
+function coachTarget(){
+ const selector=getTip()?.[0];
+ return selector?document.querySelector(selector):null;
+}
+
+function revealTarget(focus=false){
+ const target=coachTarget();
+ if(!target)return;
+ const control=target.matches(coachControlSelector)?target:target.querySelector(coachControlSelector);
+ const element=control||target;
+ element.scrollIntoView({block:'nearest',inline:'nearest'});
+ if(focus)control?.focus({preventScroll:true});
+}
+
+function syncCoachViewport(){
+ const height=window.visualViewport?.height;
+ if(height)document.documentElement.style.setProperty('--practice-visible-height',Math.floor(height)+'px');
+}
+
 function renderCoach(){
  document.getElementById('practice-coach-layer')?.remove();
- const tip=getTip();if(!tip){document.documentElement.style.removeProperty('--practice-coach-height');requestAnimationFrame(()=>document.getElementById('practice-main')?.focus({preventScroll:true}));return;}
- const layer=document.createElement('div');layer.id='practice-coach-layer';layer.innerHTML='<div class="practice-shade" data-side="top"></div><div class="practice-shade" data-side="left"></div><div class="practice-shade" data-side="right"></div><div class="practice-shade" data-side="bottom"></div><div class="practice-spotlight" aria-hidden="true"></div><section id="practice-coach" class="practice-coach" role="dialog" aria-modal="false" aria-labelledby="practice-coach-title" aria-describedby="practice-coach-copy"><div class="practice-coach-top"><span>'+(model.coreComplete?'OPTIONAL FEATURE PRACTICE':'YOUR FIRST STOCK WORKFLOW')+'</span><span aria-hidden="true">✦</span></div><h2 id="practice-coach-title">'+tip[1]+'</h2><p id="practice-coach-copy">'+tip[2]+'</p><div class="practice-coach-actions">'+(tip[3]?'<button class="practice-primary" data-action="next">'+tip[3]+' →</button>':'<span class="practice-hint">'+(model.step==='dispatch-working'?'Processing sample files…':'Use the highlighted control')+'</span>')+(model.coreComplete&&model.step!=='dispatch-working'?'<button class="practice-text-button" data-action="explore">Back to features</button>':'')+'<a class="practice-coach-help" href="mailto:hello@inventoryos.co.uk">Need a hand? Email the team</a></div></section>';
+ const tip=getTip();
+ if(!tip){
+  requestAnimationFrame(()=>document.getElementById('practice-main')?.focus({preventScroll:true}));
+  return;
+ }
+ const target=coachTarget();
+ target?.setAttribute('data-practice-highlight','');
+ const layer=document.createElement('div');
+ layer.id='practice-coach-layer';
+ const help=guest?'<a class="practice-coach-help" href="'+demoHome+'#see-it-in-action">Exit demo</a>':'<a class="practice-coach-help" href="mailto:hello@inventoryos.co.uk">Need a hand? Email the team</a>';
+ const back=model.coreComplete&&model.step!=='dispatch-working'?'<button class="practice-text-button" data-action="explore" type="button">Back to features</button>':'';
+ const next=tip[3]?'<button class="practice-primary" data-action="next" type="button">'+tip[3]+' →</button>':'';
+ const hint=tip[3]?'':model.step==='dispatch-working'?'Processing sample files…':'Use the highlighted control';
+ layer.innerHTML='<section id="practice-coach" class="practice-coach" aria-label="Guided instructions">'
+  +'<div class="practice-coach-top"><button id="practice-coach-toggle" class="practice-secondary" data-action="toggle-coach" type="button" aria-controls="practice-coach-copy"></button>'+next+'</div>'
+  +'<div id="practice-coach-copy"><h2 id="practice-coach-title">'+tip[1]+'</h2><p>'+tip[2]+'</p>'
+  +'<div class="practice-coach-actions">'+(hint?'<span class="practice-hint">'+hint+'</span>':'')+back+help+'</div></div></section>';
  document.body.append(layer);
- requestAnimationFrame(()=>{positionCoach(true);const target=tip[0]&&document.querySelector(tip[0]);const focus=target?.matches('button,input,select,textarea,a[href]')?target:target?.querySelector('input,button,select,textarea,a[href]');focus?.focus({preventScroll:true});});
+ updateCoachVisibility();
+ requestAnimationFrame(()=>revealTarget(true));
 }
-function positionCoach(scroll=false){
- const tip=getTip(),coach=document.getElementById('practice-coach'),layer=document.getElementById('practice-coach-layer');if(!tip||!coach||!layer)return;
- const target=tip[0]&&document.querySelector(tip[0]),mobile=innerWidth<760,pad=12,width=Math.min(mobile?innerWidth-24:360,innerWidth-24);
- const inMobileNav=mobile&&target?.closest('.practice-sidebar nav');
- coach.style.width=width+'px';
- const visibleBottom=Math.min(innerHeight,(window.visualViewport?.offsetTop||0)+(window.visualViewport?.height||innerHeight));
- const height=coach.getBoundingClientRect().height;document.documentElement.style.setProperty('--practice-coach-height',height+'px');
- if(scroll&&target&&!inMobileNav){target.scrollIntoView({block:'center',behavior:'instant'});const r=target.getBoundingClientRect(),limit=mobile?visibleBottom-height-40:innerHeight-20;if(r.bottom>limit||r.top<20)window.scrollBy({top:r.top-100,behavior:'instant'});}
- let r=target?.getBoundingClientRect();
- if(r){r={left:Math.max(5,r.left-5),top:Math.max(5,r.top-5),right:Math.min(innerWidth-5,r.right+5),bottom:Math.min(innerHeight-5,r.bottom+5)};}
- const spot=layer.querySelector('.practice-spotlight');spot.hidden=!r;
- const rectangles=r?{top:[0,0,innerWidth,r.top],bottom:[0,r.bottom,innerWidth,Math.max(0,innerHeight-r.bottom)],left:[0,r.top,r.left,Math.max(0,r.bottom-r.top)],right:[r.right,r.top,Math.max(0,innerWidth-r.right),Math.max(0,r.bottom-r.top)]}:{top:[0,0,innerWidth,innerHeight],bottom:[0,0,0,0],left:[0,0,0,0],right:[0,0,0,0]};
- for(const [side,[x,y,w,h]]of Object.entries(rectangles)){const el=layer.querySelector('[data-side="'+side+'"]');Object.assign(el.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});}
- if(r)Object.assign(spot.style,{left:r.left+'px',top:r.top+'px',width:Math.max(0,r.right-r.left)+'px',height:Math.max(0,r.bottom-r.top)+'px'});
- let left=(innerWidth-width)/2,top=(innerHeight-height)/2;
- if(mobile)top=(inMobileNav&&r?Math.min(visibleBottom,r.top):visibleBottom)-height-pad;
- else if(r){left=r.right+width+24<innerWidth?r.right+20:r.left-width-24>0?r.left-width-20:Math.min(innerWidth-width-pad,Math.max(pad,r.left));top=Math.max(pad,Math.min(innerHeight-height-pad,r.bottom+height+20<innerHeight?r.bottom+16:r.top-height-16>0?r.top-height-16:r.top));}
- Object.assign(coach.style,{left:Math.max(pad,left)+'px',top:Math.max(pad,top)+'px'});
+
+function updateCoachVisibility(){
+ const layer=document.getElementById('practice-coach-layer');
+ const button=layer?.querySelector('#practice-coach-toggle');
+ if(!button)return;
+ layer.dataset.collapsed=String(coachHidden);
+ layer.querySelector('#practice-coach-copy').hidden=coachHidden;
+ button.setAttribute('aria-expanded',String(!coachHidden));
+ button.textContent=coachHidden?'Show instructions':'Hide instructions';
+ layer.scrollTop=0;
 }
-function positionSoon(){if(!positionFrame)positionFrame=requestAnimationFrame(()=>{positionFrame=0;positionCoach();});}
-addEventListener('resize',positionSoon);addEventListener('scroll',positionSoon,{passive:true,capture:true});window.visualViewport?.addEventListener('resize',positionSoon);
+
+syncCoachViewport();
+window.visualViewport?.addEventListener('resize',()=>{
+ syncCoachViewport();
+ if(document.activeElement?.matches('input,textarea,select'))requestAnimationFrame(()=>revealTarget());
+});
 document.addEventListener('keydown',event=>{
- const coach=document.getElementById('practice-coach'),tip=getTip();if(!coach||!tip)return;
- if(event.key==='Escape'){event.preventDefault();return;}
- if(event.key!=='Tab')return;
- const target=tip[0]&&document.querySelector(tip[0]);
- const nodes=[...(target?.matches('button,input,select,textarea,a[href]')?[target]:target?[...target.querySelectorAll('button,input,select,textarea,a[href]')]:[]),...coach.querySelectorAll('button,a[href]')].filter(el=>!el.disabled&&el.getBoundingClientRect().width>0);
- if(!nodes.length){event.preventDefault();return;}
- const current=nodes.indexOf(document.activeElement);event.preventDefault();nodes[(current+(event.shiftKey?-1:1)+nodes.length)%nodes.length].focus();
+ if(event.key!=='Tab'||!modal)return;
+ const dialog=document.querySelector('.practice-modal');
+ const coach=document.getElementById('practice-coach');
+ if(!dialog||!coach)return;
+ const controls=[...dialog.querySelectorAll(coachControlSelector),...coach.querySelectorAll('button,a[href]')]
+  .filter(el=>!el.disabled&&el.getClientRects().length);
+ if(!controls.length)return;
+ const current=controls.indexOf(document.activeElement);
+ const goingBack=event.shiftKey;
+ if(current<0||current===(goingBack?0:controls.length-1)){
+  event.preventDefault();
+  controls[goingBack?controls.length-1:0].focus();
+ }
 });
 root.addEventListener('input',event=>{
  const {id,value}=event.target;
@@ -243,7 +287,7 @@ function runImport(){
 }
 function finish(destination='/index.html'){
  if(!model.coreComplete)return;
- if(owner!==gate.owner()){message('The signed-in account changed. Return to login before continuing.');return;}
+ if(!guest&&owner!==gate.owner()){message('The signed-in account changed. Return to login before continuing.');return;}
  // Replay never changes an existing account's mandatory onboarding state.
  if(persist&&!enrolmentClosed&&!gate.finish(owner)){message('Could not confirm your account. Please log in again.');return;}
  enrolmentClosed=true;clearTimers();model=createPractice();location.assign(destination);
@@ -259,9 +303,15 @@ document.addEventListener('click',event=>{
    html.dataset.appearance=appearance;html.style.colorScheme=appearance;setButtonInk();
    button.innerHTML=icon(appearance==='light'?'moon':'sun');return;
   }
+  if(action==='toggle-coach'){
+   coachHidden=!coachHidden;
+   updateCoachVisibility();
+   requestAnimationFrame(()=>revealTarget());
+   return;
+  }
   if(action==='next')return next();
-  if(action==='finish')return finish(replay?'/settings.html#guide':'/index.html');
-  if(action==='compare')return finish('/billing.html');
+  if(action==='finish')return finish(guest?'/login.html?view=register&plan=free':replay?'/settings.html#guide':'/index.html');
+  if(action==='compare')return finish(guest?demoHome+'#pricing':'/billing.html');
   if(action==='explore'){modal=null;return setStep('explore');}
   if(action.startsWith('try-')){if(!model.coreComplete)return;const feature=action.slice(4);if(optionalSteps[feature]){modal=null;if(feature==='expenses')model.form.receipt=false;if(feature==='barcodes')model.printJob=false;if(feature==='reorders'){model.order=null;model.item.qty=2;}return setStep(optionalSteps[feature][0]);}}
   if(action==='nav-products'&&model.step==='overview-start')return setStep('products-start');
@@ -282,11 +332,11 @@ document.addEventListener('click',event=>{
   if(action==='preview-mobile')return completeFeature('dispatch');
   if(action==='attach-receipt'){model.form.receipt=true;return setStep('expenses-save');}
   if(action==='create-job'){model.printJob=true;return setStep('barcodes-preview');}
-  if(action==='preview-job'){modal='job';render();requestAnimationFrame(()=>document.getElementById('practice-close-job')?.focus());return;}
+  if(action==='preview-job'){modal='job';coachHidden=false;render();return;}
   if(action==='close-job')return completeFeature('barcodes');
   if(action==='create-rule'){model.order={qty:reorderQuantity(model),status:'needed'};if(!model.order.qty)throw Error('This example has enough stock. Restart the low-stock example.');return setStep('reorders-order');}
   if(action==='mark-ordered'){model.order.status='ordered';return setStep('reorders-receive');}
-  if(action==='receive-order'){modal='receipt';render();requestAnimationFrame(()=>document.getElementById('practice-confirm-receive')?.focus());return;}
+  if(action==='receive-order'){modal='receipt';coachHidden=false;render();return;}
   if(action==='confirm-receive'){receivePracticeOrder(model);modal=null;return setStep('reorders-assign');}
   if(action==='assign-order'){assignPracticeOrder(model);return completeFeature('reorders');}
   if(action==='save-role')return completeFeature('team');
@@ -300,5 +350,5 @@ function getTip(){
 }
 addEventListener('pagehide',()=>{disposed=true;clearTimers();model=createPractice();modal=null;});
 addEventListener('pageshow',event=>{if(event.persisted)location.reload();});
-addEventListener('storage',event=>{if(['inventoryos_token','inventoryos_user'].includes(event.key)&&(!gate.authenticated()||owner!==gate.owner()))location.replace('/login.html');});
+if(!guest)addEventListener('storage',event=>{if(['inventoryos_token','inventoryos_user'].includes(event.key)&&(!gate.authenticated()||owner!==gate.owner()))location.replace('/login.html');});
 remember();render();
