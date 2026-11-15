@@ -30,8 +30,8 @@ function base64url(){
 async function directory(){
  const d=await market('/directory');
  main.innerHTML=d.shops.length?'<div class="pf-grid">'+d.shops.map(s=>
-  `<article class="pf-card"><p class="pf-kicker">Independent shop</p><h2>${esc(s.name)}</h2>
-  <p class="pf-muted">${esc(s.description||'Browse this storefront.')}</p>
+  `<article class="pf-card"><p class="pf-kicker">Independent shop</p><h2 translate="no">${esc(s.name)}</h2>
+  <p class="pf-muted"${s.description?' translate="no"':''}>${esc(s.description||'Browse this storefront.')}</p>
   <a class="pf-button" href="/marche/${encodeURIComponent(s.slug)}">Visit shop</a></article>`).join('')+'</div>':
   '<article class="pf-card"><h2>No shops published yet</h2><p class="pf-muted">Sellers can prepare a storefront in Seller Centre.</p></article>';
 }
@@ -42,6 +42,8 @@ async function loadShop(){
   try { await api(testRoute); }
   catch(error) { if(PlatformUI.showAccessGate(main,error,loadShop))return; throw error; }
  }
+ $('pf-title').translate=false;
+ $('pf-subtitle').translate=!shop.description;
  setText('pf-title',shop.name);setText('pf-subtitle',shop.description||'Browse items by branch, with delivery and collection where available.');
  if(/^#[a-f0-9]{6}$/i.test(shop.accent))$('pf-hero').style.borderBottom='4px solid '+shop.accent;
  $('pf-hero').querySelectorAll('.pf-logo,.pf-banner,.ms-banner').forEach(x=>x.remove());
@@ -153,8 +155,8 @@ function renderProducts(){
    const b=branches.find(s=>s.id===x.branch_id), canAdd=(testBuy||checkoutAvailable)&&x.available>0&&(cart.get(x.id)||0)<Math.min(1000,x.available);
    return `<article class="pf-card pf-product">
     ${x.photo_id?'<img class="pf-photo" alt="" loading="lazy" src="'+esc(endpoint('/marche/photo/'+encodeURIComponent(x.photo_id)))+'">':''}
-    <p class="pf-kicker">${esc(x.category)} · ${esc(b?.name)}</p><h2>${esc(x.title)}</h2>
-    <p class="pf-muted">${esc(x.description)}</p><p class="pf-total">${esc(money(x.price_pence))}</p>
+    <p class="pf-kicker" translate="no">${esc(x.category)} · ${esc(b?.name)}</p><h2 translate="no">${esc(x.title)}</h2>
+    <p class="pf-muted" translate="no">${esc(x.description)}</p><p class="pf-total">${esc(money(x.price_pence))}</p>
     <div class="pf-actions">${canAdd?button(testBuy?'Buy (test)':'Add to basket','data-add="'+esc(x.id)+'" class="primary"'):
      '<span class="pf-pill">'+(!checkoutAvailable?'Preview only':x.available?'In basket':x.sold_out_at?'Sold':'Unavailable')+'</span>'}</div>
     <details><summary>Report listing</summary><form class="pf-form" data-report="${esc(x.id)}">
