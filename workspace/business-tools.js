@@ -66,11 +66,11 @@
   }
   function serials(){
     return section('Tracked units',list(data.serials,s=>row(s.serial,s.description+' · '+(s.box_name||s.status.replaceAll('_',' ')),
-      btn('History','data-business-history="serial" data-id="'+esc(s.id)+'"')+(s.status==='retired'||data.role==='viewer'?'':btn('Reconcile','data-serial="'+esc(s.id)+'"')+btn('Retire','data-serial-retire="'+esc(s.id)+'"'))),
+      btn('History','data-business-history="serial" data-id="'+esc(s.id)+'"')+(!['needs_reconciliation','in_stock'].includes(s.status)||data.role==='viewer'?'':btn('Reconcile','data-serial="'+esc(s.id)+'"')+btn('Retire','data-serial-retire="'+esc(s.id)+'"'))),
       'Register serial numbers against units already in stock.'))+(data.role!=='viewer'?section('Assign a serial number',form('serial',
       '<input type="hidden" name="id">'+input('serial','Serial number','required maxlength="120"')+
       select('product_id','Product',ids('products'))+select('box_id','Current location',ids('locations'))+
-      '<p class="muted">When a stock move did not identify individual units, reconcile the affected serials here.</p>'+submit('Save serial'))):'');
+      '<p class="muted">Add Stock, Move Stock, Dispatch and Discard can identify the serials they touch.</p>'+submit('Save serial'))):'');
   }
   function batches(){
     const today=new Date().toISOString().slice(0,10);

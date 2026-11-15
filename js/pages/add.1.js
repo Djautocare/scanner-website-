@@ -609,6 +609,7 @@ function saveProduct(){
             barcode:selectedExistingBarcode || "",
             description:description,
             qty:Number(qty || 1),
+            serials:(document.getElementById("stock-serial-numbers")?.value || "").split(/\r?\n/).map(value=>value.trim()).filter(Boolean),
             box_name:finalLocation
         })
     })
@@ -636,6 +637,7 @@ function saveProduct(){
         }
         // Clear saved inputs even when the separate label request fails.
         document.getElementById("description").value = "";
+        if(document.getElementById("stock-serial-numbers"))document.getElementById("stock-serial-numbers").value = "";
         document.getElementById("qty").value = "1";
         clearMatchResults();
         document.getElementById("barcodeText").innerText = data.barcode;
@@ -668,6 +670,7 @@ function saveProduct(){
         }
 
         document.getElementById("description").value = "";
+        if(document.getElementById("stock-serial-numbers"))document.getElementById("stock-serial-numbers").value = "";
         document.getElementById("qty").value = "1";
         clearMatchResults();
 

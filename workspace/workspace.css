@@ -57,3 +57,5 @@ body{background:var(--bg)}.workspace{height:100dvh}.skip-link{position:fixed;top
  .workspace-quote-print table{width:100%;border-collapse:collapse}
  .workspace-quote-print :is(th,td){border-bottom:1px solid #bbbbc2;padding:8px;text-align:left}
 }
+
+.connection-url{overflow-wrap:anywhere;max-width:100%}

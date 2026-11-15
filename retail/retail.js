@@ -137,7 +137,7 @@
   }
   function productView(services = false) {
     const filter = search.toLowerCase(), products = data.products.filter(p => (p.item_kind === 'service') === services && (p.name + ' ' + p.barcode).toLowerCase().includes(filter));
-    return card(header(services ? 'Services' : 'Products & stock', '', '<div class="retail-action-row" style="margin:0">' + (services ? '' : button('Scan to add product', 'product-scan', '', !admin() || !data.catalogue_supported)) + button(services ? 'Add service' : 'Add product', services ? 'service-new' : 'product-new', '', !admin(), true) + '</div>') + `<div class="retail-toolbar"><input id="retailSearch" type="search" aria-label="Search products or barcodes" placeholder="Search products or scan a barcode" value="${esc(search)}"></div>` + table(['Product', 'Price', 'Stock', 'Minimum / target', 'Actions'], products.map(p => `<tr><td><strong>${esc(p.name)} ${p.archived ? badge('Archived') : ''}</strong><small>${esc(p.barcode)}</small>${data.vat_supported ? `<small>${esc(vatLabel(p.vat_treatment, p.vat_rate))}</small>` : ''}</td><td>${pounds(p.price_pence)}<small>Cost ${pounds(p.cost_pence)}</small></td><td class="${p.stock_qty < 0 ? 'retail-negative' : ''}">${p.item_kind === 'service' ? 'Service · ' + p.duration_minutes + ' min' : p.stock_qty + (p.reserved_qty ? '<small>' + p.reserved_qty + ' reserved</small>' : '')}</td><td>${p.minimum_qty} / ${p.target_qty}</td><td>${button('Edit', 'product-edit', `data-id="${p.id}"`, !admin())} ${button('Stock in', 'stock-in', `data-id="${p.id}"`, !writer() || p.archived || p.item_kind === 'service')} ${button('Count', 'request-count', `data-id="${p.id}"`, !writer() || p.archived || p.item_kind === 'service')} ${button('History', 'stock-history', `data-id="${p.id}"`)}</td></tr>`), 'No matching products. Add your first Retail product to get started.') + '<p class="retail-catalogue-credit">Barcode identification searches Open Food Facts, Open Beauty Facts, Open Products Facts and Open Pet Food Facts (<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>). Confirm the product and pack size before saving. Your shop sets its own price and VAT treatment.</p>');
+    return card(header(services ? 'Services' : 'Products & stock', '', '<div class="retail-action-row" style="margin:0">' + (services ? '' : (admin() ? button('Till price lists', 'till-price-lists') : '') + button('Scan to add product', 'product-scan', '', !admin() || !data.catalogue_supported)) + button(services ? 'Add service' : 'Add product', services ? 'service-new' : 'product-new', '', !admin(), true) + '</div>') + `<div class="retail-toolbar"><input id="retailSearch" type="search" aria-label="Search products or barcodes" placeholder="Search products or scan a barcode" value="${esc(search)}"></div>` + table(['Product', 'Price', 'Stock', 'Minimum / target', 'Actions'], products.map(p => `<tr><td><strong>${esc(p.name)} ${p.archived ? badge('Archived') : ''}</strong><small>${esc(p.barcode)}</small>${data.vat_supported ? `<small>${esc(vatLabel(p.vat_treatment, p.vat_rate))}</small>` : ''}</td><td>${pounds(p.price_pence)}<small>Cost ${pounds(p.cost_pence)}</small></td><td class="${p.stock_qty < 0 ? 'retail-negative' : ''}">${p.item_kind === 'service' ? 'Service · ' + p.duration_minutes + ' min' : p.stock_qty + (p.reserved_qty ? '<small>' + p.reserved_qty + ' reserved</small>' : '')}</td><td>${p.minimum_qty} / ${p.target_qty}</td><td>${button('Edit', 'product-edit', `data-id="${p.id}"`, !admin())} ${button('Stock in', 'stock-in', `data-id="${p.id}"`, !writer() || p.archived || p.item_kind === 'service')} ${button('Count', 'request-count', `data-id="${p.id}"`, !writer() || p.archived || p.item_kind === 'service')} ${button('History', 'stock-history', `data-id="${p.id}"`)}</td></tr>`), 'No matching products. Add your first Retail product to get started.') + '<p class="retail-catalogue-credit">Barcode identification searches Open Food Facts, Open Beauty Facts, Open Products Facts and Open Pet Food Facts (<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>). Confirm the product and pack size before saving. Your shop sets its own price and VAT treatment.</p>');
   }
   const tillStatus=t=>t.active===false?'Inactive':t.licensed===false?'Licence required':t.assigned_to?'In use by '+t.assigned_to:t.open===false?'Closed':'Open';
   function checkoutView() {
@@ -354,6 +354,50 @@
       finally { form.removeAttribute('aria-busy');submits.forEach((s,i) => { s.disabled = false;s.textContent=labels[i]; }); }
     });
   }
+  async function tillPriceLists(selected = '') {
+    const source = scopeKey();
+    const { lists } = await api('/price-lists');
+    if (scopeKey() !== source) return;
+    const current = lists.find(list => list.id === selected);
+    const save = async (body, submitted, next = selected) => {
+      if (scopeKey() !== source || submitted.disabled) return;
+      submitted.disabled = true;
+      try {
+        await mutate('/price-lists', body);
+        await tillPriceLists(next);
+      } catch (err) { notice(err.message); }
+      finally { if (submitted.isConnected) submitted.disabled = false; }
+    };
+    const products = data.products.filter(product => !product.archived);
+    dialog('Till price lists', '<p>Choose the active prices for walk-in sales on tills in this store. Items outside a list keep their regular price.</p>' +
+      '<div class="retail-action-row">' + lists.map(list => `<button type="button" data-list-select="${esc(list.id)}">${esc(list.name)}${list.active ? ' · Active' : ''}</button>`).join('') +
+      '<button type="button" id="regular-till-prices">Use regular prices</button></div>' +
+      '<form id="new-till-price-list" class="retail-form"><label>New price list name<input name="name" required maxlength="80"></label><button type="submit">Create price list</button></form>' +
+      (current ? `<hr><h3>${esc(current.name)}</h3><ul>${current.items.map(item => `<li>${esc(item.name)} · ${pounds(item.price_pence)}
+        <button type="button" data-list-remove="${esc(item.product_id)}">Remove</button></li>`).join('')}</ul>
+        <form id="edit-till-price-list" class="retail-form"><label>Product<select name="product_id" required><option value="">Choose product</option>
+        ${products.map(p => `<option value="${esc(p.id)}">${esc(p.name)} · ${pounds(p.price_pence)} regular</option>`).join('')}</select></label>
+        <label>Unit price (£)<input name="price" type="number" min="0" max="1000000" step="0.01" required></label><button type="submit">Save price</button></form>
+        <button type="button" id="activate-till-price-list"${current.active ? ' disabled' : ''}>Use this list on the store’s tills</button>` : ''));
+    document.querySelectorAll('[data-list-select]').forEach(button => button.onclick = () => tillPriceLists(button.dataset.listSelect).catch(err => notice(err.message)));
+    $('#regular-till-prices').onclick = event => save({ action:'regular' }, event.currentTarget);
+    $('#new-till-price-list').onsubmit = event => {
+      event.preventDefault();
+      const id = crypto.randomUUID(), name = new FormData(event.currentTarget).get('name');
+      return save({ action:'create', name, list_id:id }, event.submitter, id);
+    };
+    if (!current) return;
+    const dataFor = body => ({ list_id:current.id, version:current.version, ...body });
+    $('#edit-till-price-list').onsubmit = event => {
+      event.preventDefault();
+      const fields = new FormData(event.currentTarget);
+      return save(dataFor({ action:'set', product_id:fields.get('product_id'), price_pence:Math.round(Number(fields.get('price'))*100) }), event.submitter);
+    };
+    $('#activate-till-price-list').onclick = event => save(dataFor({ action:'activate' }), event.currentTarget);
+    document.querySelectorAll('[data-list-remove]').forEach(button => button.onclick = () =>
+      save(dataFor({ action:'remove', product_id:button.dataset.listRemove }),button));
+  }
+
   function productForm(productId, scanAfterOpen = false, serviceOnly = false) {
     const p = data.products.find(p => p.id === productId), supported = data.vat_supported;
     const catalogueSources = { openfoodfacts: {host:'world.openfoodfacts.org',label:'Open Food Facts'}, openbeautyfacts:{host:'world.openbeautyfacts.org',label:'Open Beauty Facts'}, openproductsfacts:{host:'world.openproductsfacts.org',label:'Open Products Facts'}, openpetfoodfacts:{host:'world.openpetfoodfacts.org',label:'Open Pet Food Facts'} };
@@ -517,6 +561,7 @@
     if (action === 'reorder-all') return deliveryForm(data.reorders.filter(p => p.order_qty > 0).map(p => ({ id: p.id, qty: p.order_qty, cost_pence: p.cost_pence })));
     if (action === 'task-new') return taskForm();
     if (action === 'receipt') return receipt(data.sales.find(s => s.id === recordId));
+    if (action === 'till-price-lists' && admin()) return tillPriceLists();
     if (action === 'invoice' && admin() && data.invoice_version === 1) {
       const context = currentScope;
       const request = (reference, options) => {

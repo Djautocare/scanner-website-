@@ -36,7 +36,10 @@ function camera(kind){return `<div class="retail-camera" id="posCamera" hidden><
 function bindCamera(kind,onCode){InventoryRetailScanner.start($('#posCamera'),(code,error)=>{if(error)notice(error);if(code)onCode(code);},{kind});}
 function render(){
     if(window.InventoryRetailInteractions?.defer(render))return;
- sharedDeviceButton();const main=$('#posMain');$('#posLock').hidden=!token;$('#posIdentity').textContent=state?(state.entitlement?.billing_environment==='sandbox'?'SANDBOX · ':'')+state.store.name+' · '+state.till.name+(state.staff?' · '+state.staff.name:''):device?'Connecting to till…':'Pair your till';
+ sharedDeviceButton();
+ const activeList=$('#posPriceList');
+ if(activeList){activeList.hidden=!state?.active_price_list;activeList.textContent=state?.active_price_list?'Price list · '+state.active_price_list.name:'';}
+ const main=$('#posMain');$('#posLock').hidden=!token;$('#posIdentity').textContent=state?(state.entitlement?.billing_environment==='sandbox'?'SANDBOX · ':'')+state.store.name+' · '+state.till.name+(state.staff?' · '+state.staff.name:''):device?'Connecting to till…':'Pair your till';
  if(!device||needsPair||showConnect){
   $('#posIdentity').textContent=needsPair?'Reconnect this till':'Pair your till';
   main.innerHTML=`<section class="retail-card pos-login"><h1>${needsPair?'Reconnect this till':'Connect to inventory'}</h1>${needsPair?'<p>The saved till connection is no longer valid. Use a new code for the existing till.</p>':''}${pending()?'<p class="retail-note">A payment is awaiting confirmation. Reconnect the same till, then recover the payment. Do not take payment again.</p>':''}<form id="posPairForm"><label>Pairing code<input name="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40"></label>${pending()?'<label class="retail-check-label"><input type="checkbox" required> I am reconnecting the same till for the pending payment</label>':''}<button class="retail-primary">${needsPair?'Reconnect device':'Connect to inventory'}</button></form><p class="retail-help">Ask the owner to open Sales &amp; till → Manage tills, then choose Get pairing code on your till.</p>${websiteSignedIn()?'<p><a href="retail/index.html#tills">Open till management</a></p>':''}${needsPair?button('Check connection again','retry-connection'):''}${showConnect&&device?button('Back','cancel-connect'):''}</section>`;return;
@@ -61,7 +64,7 @@ async function refresh(){
   // An expired cashier login and a revoked device are different. Probe the
   // read-only state without the expired cashier token before asking to pair.
   if(error.status===401&&error.staff&&error.device===device)d=await api('/state');else throw error;
- }state=d;drawerFlow=Boolean(d.drawer_flow);lastTillId=d.till.id;needsPair=false;if(drawerFlow&&!d.locked){currentTx=d.transaction;txVersion=d.transaction_version;restoreDrawerBasket();}render();notice('');}
+ }state=d;drawerFlow=Boolean(d.drawer_flow);lastTillId=d.till.id;needsPair=false;if(drawerFlow&&!d.locked){currentTx=d.transaction;txVersion=d.transaction_version;restoreDrawerBasket();}render();notice('');return true;}
  catch(e){notice(e.message);if(!state||!token)render();}
 }
 function restoreDrawerBasket(){
@@ -120,7 +123,15 @@ document.addEventListener('change',e=>{if(e.target.dataset.qty){const n=Number(e
 document.addEventListener('submit',async e=>{const f=e.target;if(!['posPairForm','posLoginForm','posCustomerSearch','posCustomerForm'].includes(f.id))return;e.preventDefault();if(f.dataset.submitting==='true')return;f.dataset.submitting='true';const submit=e.submitter||f.querySelector('button[type=submit],button:not([type])'),label=submit.textContent;const b=Object.fromEntries(new FormData(f));f.setAttribute('aria-busy','true');submit.disabled=true;submit.textContent='Working…';try{if(f.id==='posPairForm'){if(token)await api('/logout',{body:{}});token='';sessionStorage.removeItem(SESSION);const d=await api('/pair',{body:{code:b.code}});const expected=pending()?.till_id||lastTillId;if((pending()||basket.length)&&expected&&!d.drawer_flow&&d.till_id!==expected)throw Error('This code belongs to a different till. Reconnect the original till before recovering its basket or payment.');if(d.drawer_flow&&pending()?.store_id&&d.inventory_id!==pending().store_id)throw Error('Reconnect the inventory that owns the pending payment.');drawerFlow=Boolean(d.drawer_flow);showConnect=false;loginTicket='';device=d.device_token;localStorage.setItem(DEVICE,device);token='';sessionStorage.removeItem(SESSION);state=null;needsPair=false;lastTillId=d.till_id;await refresh();}else if(f.id==='posLoginForm'){const d=await api('/login',{body:{...b,...(drawerFlow?{drawer_flow:true}:{})}});f.elements.pin.value='';if(d.choose_drawer){loginTicket=d.login_token;loginStaff=d.staff;drawerOptions=d.drawers;drawerSelection=null;render();}else{token=d.token;sessionStorage.setItem(SESSION,token);await refresh();}}else if(f.id==='posCustomerSearch')await searchCustomers(b.query);else{const d=await api('/customers',{body:{...b,request_id:crypto.randomUUID()}});customer=d.customer;redeem=false;$('#retailDialog').close();render();qrCard(customer);}}catch(error){if(f.id==='posLoginForm'&&error.status===401)await refresh();notice(error.message);}finally{delete f.dataset.submitting;f.removeAttribute('aria-busy');submit.disabled=false;submit.textContent=label;}});
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-pos]');if(!b||b.disabled)return;const a=b.dataset.pos;if(busy&&a!=='print')return;e.preventDefault();b.disabled=true;try{
  if(a==='add')return add(b.dataset.id);if(a==='category'){category=b.dataset.value;render();}if(a==='remove')await queueCart(()=>saveDrawerBasket(basket.filter(i=>i.line_id!==b.dataset.id)));if(a==='clear')await queueCart(async()=>{await saveDrawerBasket([]);customer=null;redeem=false;ageChecks=[];});
- if(a==='cash'||a==='card'){await cartChain;if(!isWaste())payment(a);}
+ if(a==='cash'||a==='card'){
+  await cartChain;
+  if(!state||isWaste()||pending()||!basket.length)return;
+  const before=JSON.stringify([grouped(),price().total_pence,state.settings.vat_version,state.active_price_list?.version]);
+  if(!await refresh()||!state||state.locked||!basket.length||isWaste())return;
+  const after=JSON.stringify([grouped(),price().total_pence,state.settings.vat_version,state.active_price_list?.version]);
+  if(before!==after)return notice('Prices or tax settings changed. Review the updated basket before taking payment.');
+  payment(a);
+ }
  if(a==='quantity')quantity();if(a==='waste-start')startWaste();if(a==='waste-confirm')await completeWaste();if(a==='waste-cancel')await cancelWaste();
  if(a==='management')management();
  if(a==='retry-connection')await refresh();
