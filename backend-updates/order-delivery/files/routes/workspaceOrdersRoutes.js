@@ -1,0 +1,10 @@
+'use strict';
+const router=require('express').Router();
+router.use(require('../middleware/authMiddleware'),require('../middleware/workspaceMiddleware').workspaceMiddleware);
+const run=fn=>async(req,res)=>{try{res.set('Cache-Control','no-store').json(await fn(req));}catch(e){if(!e.statusCode)console.error('Workspace orders:',e.code||e.name);res.status(e.statusCode||503).json({success:false,error:e.statusCode?e.message:'Could not load or save this order. Please retry.'});}};
+router.get('/',run(req=>require('../utils/workspaceOrders').service().list(req)));
+router.post('/',run(req=>require('../utils/workspaceOrders').service().createOrder(req)));
+router.post('/:id/dispatch',run(req=>require('../utils/workspaceOrders').service().dispatch(req)));
+router.get('/:id/delivery',run(req=>require('../utils/orderDelivery').service().get(req)));
+router.post('/:id/delivery',run(req=>require('../utils/orderDelivery').service().save(req)));
+module.exports=router;
