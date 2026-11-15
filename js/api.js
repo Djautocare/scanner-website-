@@ -35,19 +35,33 @@ if(window.top === window && location.protocol !== 'file:'){
  const original=InventoryAPI.request.bind(InventoryAPI);
  InventoryAPI.request=async function(path,options={}){
   let current={...options},body;
-  const eligible=/^\/stock\/remove(?:\?|$)/.test(path)||/^\/move\//.test(path)||/^\/reorder\/orders\/assign(?:\?|$)/.test(path)||/^\/shipping-labels\/[^/]+\/packed(?:\?|$)/.test(path);
+  const eligible=/^\/stock\/remove(?:\?|$)/.test(path)||/^\/move\//.test(path)||/^\/reorder\/orders\/assign(?:\?|$)/.test(path)||/^\/shipping-labels\/[^/]+\/packed(?:\?|$)/.test(path)||/^\/(?:discard|corrections)\//.test(path)||/^\/workspace-orders\/business\/transfer\/[^/]+(?:\?|$)/.test(path);
   if(!eligible)return original(path,options);
   try{body=JSON.parse(options.body||'{}');}catch{return original(path,options);}
   const confirmed=Array.isArray(body.manufacturing_confirmed_picks)?[...body.manufacturing_confirmed_picks]:[];
+  const serials=Array.isArray(body.serial_picks)?[...body.serial_picks]:[];
+  const scope=()=>[getScopeWorkspace(),InventoryAPI.getSelectedInventoryHeader()].join('|');
+  const getScopeWorkspace=()=>localStorage.getItem('inventoryos_selected_workspace_id');
+  const initialScope=scope();
   for(let n=0;n<200;n++){
    const result=await original(path,current);
+   if(result?.serial_pick_required&&result.serial_plan){
+    const plan=result.serial_plan;
+    if(serials.some(item=>item.hash===plan.hash))return {success:false,error:'Serial confirmation changed. Refresh and try again.'};
+    const {pickSerials}=await import('/js/serial-pick.mjs?v=1');
+    const ids=await pickSerials(plan);
+    if(ids===null||initialScope!==scope())return {success:false,error:'Serial picking cancelled. Stock was not changed.'};
+    serials.push({hash:plan.hash,ids});
+    current={...options,body:JSON.stringify({...body,manufacturing_confirmed_picks:confirmed,serial_picks:serials})};
+    continue;
+   }
    if(!result?.batch_pick_required||!result.batch_plan)return result;
    const plan=result.batch_plan;if(confirmed.includes(plan.hash))return {success:false,error:'Batch confirmation could not be applied. Refresh and try again.'};
    const accepted=window.InventoryManufacturing?await window.InventoryManufacturing.confirmPick(plan):window.confirm('Pick from '+plan.location+'\n'+plan.picks.map(x=>x.batch_code+': '+x.qty).join('\n')+'\n\nConfirm these batches?');
-   if(!accepted)return {success:false,error:'Batch picking cancelled. Stock was not changed.'};
-   confirmed.push(plan.hash);current={...options,body:JSON.stringify({...body,manufacturing_confirmed_picks:confirmed})};
+   if(!accepted||initialScope!==scope())return {success:false,error:'Batch picking cancelled. Stock was not changed.'};
+   confirmed.push(plan.hash);current={...options,body:JSON.stringify({...body,manufacturing_confirmed_picks:confirmed,serial_picks:serials})};
   }
-  return {success:false,error:'Too many batch picks for one operation. Split this into smaller operations.'};
+  return {success:false,error:'Too many stock positions to confirm in one operation. Split this into smaller operations.'};
  };
  function load(){if(!InventoryAPI.isLoggedIn()||window.InventoryManufacturing)return;const s=document.createElement('script');s.src='js/manufacturingShared.js?v=tier-names-1';s.async=true;document.head.append(s);}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();

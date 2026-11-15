@@ -1027,7 +1027,7 @@ function escapeDispatchHtml(value){
                 ${pack.sale_error ? `<div class="dispatch-failed">${escapeDispatchHtml(pack.sale_error)}</div>` : ""}
                 <div class="dispatch-card-footer">
                     <button type="button" data-ios-click="h01d1ab0843ccc844" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}">Pack this label</button>
-                    <details class="dispatch-menu"><summary>Options <span aria-hidden="true">⌄</span></summary><div class="dispatch-menu-content"><button class="danger" type="button" data-ios-click="h3be62cda316d64e9" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}">Remove from queue</button></div></details>
+                    <details class="dispatch-menu"><summary>Options <span aria-hidden="true">⌄</span></summary><div class="dispatch-menu-content"><button class="secondary" type="button" data-dispatch-invoice="${Number(pack.id)}">Print invoice</button><button class="danger" type="button" data-ios-click="h3be62cda316d64e9" data-ios-click-args="${InventoryEvents.encode([Number(pack.id)])}">Remove from queue</button></div></details>
                 </div>
             </div>`;
     }
@@ -1874,6 +1874,7 @@ function escapeDispatchHtml(value){
                     <div class="dispatch-label-preview" style="margin-top:10px;">
                         ${preview}
                     </div>
+                    <button class="secondary dispatch-reprint-current" type="button" data-dispatch-invoice="${Number(pack.id)}" data-lock-during-print ${dispatchCurrentPrint ? 'disabled data-was-disabled="false"' : ""}>Print invoice</button>
                     ${pack.preview_url ? `
                         <button id="dispatchReprintCurrentLabel" class="secondary dispatch-reprint-current" type="button"
                             data-lock-during-print ${dispatchCurrentPrint ? 'disabled data-was-disabled="false"' : ""}>Reprint shipping label</button>

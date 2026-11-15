@@ -52,3 +52,12 @@
   .io-invoice-paper-output{page:ioInvoice;display:block!important;padding:0;box-shadow:none;font-size:10pt;print-color-adjust:exact;-webkit-print-color-adjust:exact}
   .io-invoice-paper-output .io-invoice-head,.io-invoice-paper-output .io-invoice-items tr{break-inside:avoid}
 }
+
+.io-invoice-dispatch-line{display:grid;gap:.45rem;padding:.5rem 0;border-bottom:1px solid var(--line,#aaa4ba);font-size:.8rem}
+.io-invoice-dispatch-line:last-child{border-bottom:0}
+
+.io-invoice-account{border-top:1px solid var(--line,#aaa4ba);margin-top:.5rem;padding-top:.6rem}
+.io-invoice-account h3{margin:0 0 .4rem}
+.io-invoice-account :is(details,ul){margin:.65rem 0}
+.io-invoice-account form{display:grid;gap:.45rem;margin-top:.5rem}
+.io-invoice-account li{margin:.4rem 0}
