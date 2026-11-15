@@ -28,15 +28,21 @@ test('viewer cannot write before any database work',async()=>{
   await assert.rejects(service.save(request({},'viewer')),e=>e.statusCode===403);
   assert.equal(touched,false);
 });
-test('migrate and test durable, scoped delivery records against local PostgreSQL WASM', {skip:!process.env.INVENTORYOS_PGLITE}, async()=>{
+const loader=process.env.INVENTORYOS_REVIEW_SCHEMA_LOADER;
+test('migrate and test durable, scoped delivery records against local PostgreSQL WASM', {skip:!loader&&!process.env.INVENTORYOS_PGLITE}, async()=>{
   const fs=require('node:fs');
   const path=require('node:path');
-  const {PGlite}=require(process.env.INVENTORYOS_PGLITE);
-  const db=new PGlite();
+  const db=loader ? await require(loader).loadCurrentSchema() : new (require(process.env.INVENTORYOS_PGLITE).PGlite)();
   try{
-    await db.exec('CREATE TABLE users(id UUID PRIMARY KEY); CREATE TABLE workspace_orders(id UUID PRIMARY KEY,workspace_id UUID NOT NULL);');
-    await db.query('INSERT INTO users VALUES($1)',[ids.user]);
-    await db.query('INSERT INTO workspace_orders VALUES($1,$2)',[ids.order,ids.workspace]);
+    if(loader){
+      await db.query('INSERT INTO users(id,email,name,password_hash) VALUES($1,$2,$3,$4)',[ids.user,'courier@example.invalid','Sample Courier','fictional-test-record']);
+      await db.query('INSERT INTO workspaces(id,name,owner_user_id) VALUES($1,$2,$3)',[ids.workspace,'Example Workshop',ids.user]);
+      await db.query('INSERT INTO workspace_orders(id,workspace_id,request_id,request_hash) VALUES($1,$2,$3,$4)',[ids.order,ids.workspace,ids.attempt,'fictional-test-record']);
+    }else{
+      await db.exec('CREATE TABLE users(id UUID PRIMARY KEY); CREATE TABLE workspace_orders(id UUID PRIMARY KEY,workspace_id UUID NOT NULL);');
+      await db.query('INSERT INTO users VALUES($1)',[ids.user]);
+      await db.query('INSERT INTO workspace_orders VALUES($1,$2)',[ids.order,ids.workspace]);
+    }
     const sql=fs.readFileSync(path.join(__dirname,'../files/sql/workspace-order-delivery.sql'),'utf8');
     await db.exec(sql);
     await db.exec(sql);
