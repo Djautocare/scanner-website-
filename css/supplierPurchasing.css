@@ -1,0 +1,33 @@
+#supplier-purchasing-entry[hidden]{display:none}
+#supplier-purchasing{width:min(850px,calc(100% - 24px));max-height:90vh;overflow:auto;box-sizing:border-box;color:var(--text,#eee);background:var(--panel,#171a25);border:1px solid var(--border,#66708d);border-radius:16px;padding:clamp(14px,3vw,26px)}
+#supplier-purchasing::backdrop{background:#0009}
+#supplier-purchasing header,#supplier-purchasing .supplier-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#supplier-purchasing p{margin:10px 0}
+#supplier-purchasing form{display:grid;gap:12px;margin-top:13px}
+#supplier-purchasing :is(input,textarea):not([type=checkbox]){min-height:42px;width:100%;box-sizing:border-box}
+.supplier-orders{list-style:none;padding:0;margin:9px 0}
+.supplier-orders li{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border,#66708d);padding:11px 0;overflow-wrap:anywhere}
+.supplier-orders li span{display:block;font-size:.88rem}
+.supplier-create{margin-top:21px;border-top:1px solid var(--border,#66708d);padding-top:10px}
+.supplier-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.supplier-pick{display:flex;gap:8px;align-items:center;max-width:100%;overflow-wrap:anywhere;padding:6px 0}
+#supplier-purchasing .supplier-pick input{width:20px;height:20px}
+.supplier-pick strong{margin-inline-start:auto;white-space:nowrap}
+.supplier-choices{max-height:240px;overflow:auto}
+.supplier-document{margin:12px 0}
+.supplier-document dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px}
+.supplier-document dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.supplier-table{overflow-x:auto}
+.supplier-table table{width:100%;border-collapse:collapse}
+.supplier-table :is(th,td){padding:8px;text-align:start;border-bottom:1px solid var(--border,#66708d)}
+.supplier-table small{display:block}
+.supplier-total{text-align:end;font-size:1.2rem}
+.supplier-invoice{border:1px solid var(--border,#66708d);border-radius:9px;padding:12px;margin:10px 0}
+@media(max-width:530px){.supplier-grid{grid-template-columns:1fr}}
+@media print{
+ body.print-supplier-order>:not(#supplier-purchasing){display:none!important}
+ body.print-supplier-order #supplier-purchasing{position:static;width:100%;max-width:none;margin:0;padding:0;max-height:none;overflow:visible;background:#fff;color:#111;border:0}
+ body.print-supplier-order #supplier-purchasing::backdrop{background:transparent}
+ body.print-supplier-order #supplier-purchasing>:not([data-purchasing-main]),body.print-supplier-order [data-purchasing-main]>:not(.supplier-document),body.print-supplier-order .supplier-screen{display:none!important}
+ body.print-supplier-order .supplier-document tr{break-inside:avoid}
+}
