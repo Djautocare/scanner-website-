@@ -33,7 +33,37 @@ async function overview(g){const results=await Promise.allSettled([api('/dashboa
 async function products(g){const d=await api('/products');if(g!==state.generation)return;state.products=d.products||[];$('main').innerHTML=title('Products & stock','Find it, move it, sell it.',button(icon('plus')+'Add stock','add','primary')+button('Remove stock','remove')+button('Stock operations','business-stock'))+'<div class="screen-tools" style="margin-bottom:18px">'+[['move','Move stock'],['locations','Locations'],['barcodes','Barcode / SKU labels'],['printjobs','Print jobs'],['discard','Discard stock'],['refund','Returns & refunds']].map(([action,text])=>button(text,action)).join('')+'</div><div class="toolbar"><div class="search-input">'+icon('search')+'<input id="product-search" placeholder="Search names, SKUs or barcodes" aria-label="Search products"></div></div><section class="card"><div class="table-scroll"><table><thead><tr><th>Product</th><th>SKU / barcode</th><th>Stock quantity</th><th></th></tr></thead><tbody id="product-list"></tbody></table></div></section>';
  const render=filter=>{$('product-list').innerHTML=state.products.filter(p=>(p.description+' '+p.barcode).toLowerCase().includes(filter.toLowerCase())).map(p=>'<tr><td><strong>'+esc(p.description)+'</strong></td><td>'+esc(p.barcode)+'</td><td>'+esc(p.total_qty)+'</td><td>'+button('Stock tools','product-tools','quiet small','data-id="'+esc(p.id)+'"')+'</td></tr>').join('')||'<tr><td colspan="4">No matching products. Add your first stock item to get started.</td></tr>';};render('');$('product-search').oninput=e=>render(e.target.value);
 }
-async function orders(g){const d=await api('/workspace-orders');if(g!==state.generation)return;state.orders=d.orders;state.unlinked=d.unlinked_packs;$('main').innerHTML=title('Orders','Manual orders and forwarded shipping labels, together.',button(icon('plus')+'Create order','create-order','primary')+(state.workspace?.role==='owner'?button('Marketplace & couriers','marketplace-connections'):'')+button('Open Dispatch Centre','dispatch')+button('Import order CSV','order-import')+button('Export orders CSV','order-export'))+'<section class="card">'+orderTable(state.orders)+'</section>'+(state.unlinked.length?'<section class="card" style="margin-top:20px"><div class="card-heading"><h2>Existing Dispatch Centre jobs</h2></div><div class="attention">'+state.unlinked.map(p=>'<button type="button" data-action="dispatch"><span><b>'+esc(p.source_name||'Packing job '+p.id)+'</b><small>'+esc(p.status)+' · '+esc(p.item_count)+' item lines</small></span>'+icon('chevron')+'</button>').join('')+'</div></section>':'')+'<p class="muted tiny" style="margin-top:16px">Creating an order does not deduct stock. Dispatch Centre records removal when you confirm it. Label-only emails need product and quantity review.</p>';}
+const deliveryFilters={q:'',stage:'',sort:'oldest',page:1};
+let orderDeliveryView;
+function renderOlderDispatchJobs(packs){
+ state.unlinked=packs;
+ $('older-dispatch-jobs').innerHTML=packs.length?'<section class="card older-dispatch-jobs"><div class="card-heading"><h2>Existing Dispatch Centre jobs</h2></div><div class="attention">'+
+  packs.map(p=>'<button type="button" data-action="dispatch"><span><b>'+esc(p.source_name||'Packing job '+p.id)+'</b><small>'+esc(p.status)+' · '+esc(p.item_count)+' item lines</small></span>'+icon('chevron')+'</button>').join('')+
+  '</div></section>':'';
+}
+async function orders(g){
+ const current=()=>state.generation===g&&state.view==='orders';
+ $('main').innerHTML=title('Orders','Find a shipment, confirm dispatch or record a delivery update.',
+  button(icon('plus')+'Create order','create-order','primary')+
+  (state.workspace?.role==='owner'?button('Marketplace & couriers','marketplace-connections'):'')+
+  button('Open Dispatch Centre','dispatch')+button('Import order CSV','order-import')+button('Export orders CSV','order-export'))+
+  '<section class="card order-delivery-queue" id="order-delivery-queue" aria-label="Orders and delivery stages"></section>'+
+  '<div id="older-dispatch-jobs"></div>';
+ orderDeliveryView=InventoryOrderDelivery.mount($('order-delivery-queue'),{api,dialog,closeDialog,toast,current,filters:deliveryFilters,
+  onData(data){
+   state.orders=data.orders;
+   if(Array.isArray(data.unlinked_packs))renderOlderDispatchJobs(data.unlinked_packs);
+  }
+ });
+ const loaded=await orderDeliveryView.load({legacy:true});
+ if(loaded!==false||!current())return;
+ const previous=await api('/workspace-orders');
+ if(!current())return;
+ state.orders=previous.orders;
+ orderDeliveryView=null;
+ $('order-delivery-queue').innerHTML='<p class="delivery-count muted" role="status">Delivery filters and bulk dispatch are unavailable. Showing your existing orders.</p>'+orderTable(previous.orders);
+ renderOlderDispatchJobs(previous.unlinked_packs||[]);
+}
 function frame(screen,heading){let url;try{url=new URL(screen,location.origin);}catch{return;}if(url.origin!==location.origin||!allowedScreens.has(url.pathname))return toast('This screen is unavailable.');url.searchParams.set('workspaceEmbed','1');$('main').innerHTML='<div class="frame-heading"><h1>'+esc(heading)+'</h1><div class="screen-tools">'+button('Back','back')+button(icon('refresh')+'Refresh','frame-refresh','quiet small')+'</div></div><iframe id="workspace-frame" class="workspace-frame" title="'+esc(heading)+'" src="'+esc(url.pathname+url.search+url.hash)+'" allow="camera; clipboard-write"></iframe>';
  $('workspace-frame').onload=()=>{try{const doc=$('workspace-frame').contentDocument;if(!doc||doc.location.origin!==location.origin)return;if(/\/login\.html$/.test(doc.location.pathname)){location.assign('/login.html?returnTo=%2Fworkspace%2F');return;}if(doc.location.pathname==='/billing.html'){location.assign('/billing.html');return;}doc.documentElement.dataset.workspaceEmbed='true';doc.addEventListener('click',e=>{const a=e.target.closest('a[href]');if(!a)return;const u=new URL(a.href,doc.location.href);if(u.origin===location.origin&&['/','/index.html'].includes(u.pathname)){e.preventDefault();navigate('overview');}else if(u.origin===location.origin&&['/billing.html','/retail/till/index.html','/admin.html'].includes(u.pathname)&&a.target!=='_blank'){e.preventDefault();location.assign(u.pathname+u.search+u.hash);}});doc.querySelectorAll('a[href]').forEach(a=>{const u=new URL(a.href,doc.location.href);if(u.origin===location.origin&&allowedScreens.has(u.pathname)){u.searchParams.set('workspaceEmbed','1');a.href=u.href;}});}catch{}};
 }
@@ -107,8 +137,8 @@ async function openOrderImport(){
  });
 }
 const deliveryLabels={ready:'Ready to send',dispatched:'Dispatched',in_transit:'In transit',delivered:'Delivered',exception:'Delivery issue',returned:'Returned'};
-async function deliveryTracking(id){
- const order=state.orders.find(item=>item.id===id);
+async function deliveryTracking(id,selectedOrder){
+ const order=selectedOrder||state.orders.find(item=>item.id===id);
  if(!order)return;
  const current=orderScope();
  dialog('Courier tracking','<div id="tracking-panel"><p class="muted" role="status">Loading delivery details…</p></div>');
@@ -119,10 +149,10 @@ async function deliveryTracking(id){
   const record=data.delivery;
   const carrier=data.carriers.find(item=>item.id===record?.carrier);
   const carrierURL=carrier?.url&&/^https:\/\/(?:www\.royalmail\.com|www\.evri\.com|tracking\.dpd\.co\.uk|inpost\.co\.uk)\//.test(carrier.url)?carrier.url:null;
-  panel.innerHTML='<p class="muted">Delivery updates are recorded manually. Open the courier’s tracking page to check the parcel.</p>'+
+  panel.innerHTML='<p class="muted">Check the courier’s tracking page, then record the current delivery stage here.</p>'+
    (record?'<div class="bill-row"><span>'+esc(carrier?.name)+' · <strong translate="no">'+esc(record.tracking_number)+'</strong></span><b>'+esc(deliveryLabels[record.status]||'Unknown')+'</b></div>':'<p>No tracking details have been saved.</p>')+
    (carrierURL?'<a class="btn quiet" target="_blank" rel="noopener noreferrer" href="'+esc(carrierURL)+'">Open official tracking page ↗</a>':'')+
-   (data.can_edit?'<form id="order-delivery-form" class="order-delivery-form"><div class="form-grid"><label class="workspace-field">Courier<select name="carrier" required>'+data.carriers.map(item=>'<option value="'+esc(item.id)+'"'+(record?.carrier===item.id?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label><label class="workspace-field">Tracking number<input name="tracking_number" maxlength="60" minlength="6" required value="'+esc(record?.tracking_number||'')+'"></label></div><label class="workspace-field">Status<select name="status">'+Object.entries(deliveryLabels).map(([key,label])=>'<option value="'+key+'"'+(record?.status===key?' selected':'')+'>'+label+'</option>').join('')+'</select></label><label id="delivery-attestation" class="workspace-check" hidden><input type="checkbox" name="delivery_confirmed"> I verified delivery with the courier.</label><label class="workspace-field">Update note (optional)<textarea name="note" maxlength="240"></textarea></label><div class="dialog-actions"><button class="btn primary" type="submit">Save delivery update</button></div></form>':'')+
+   (data.can_edit?'<form id="order-delivery-form" class="order-delivery-form"><div class="form-grid"><label class="workspace-field">Courier<select name="carrier" required>'+data.carriers.map(item=>'<option value="'+esc(item.id)+'"'+(record?.carrier===item.id?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label><label class="workspace-field">Tracking number<input name="tracking_number" maxlength="60" minlength="6" required value="'+esc(record?.tracking_number||'')+'"></label></div><label class="workspace-field">Status<select name="status">'+Object.entries(deliveryLabels).map(([key,label])=>'<option value="'+key+'"'+((record?.status||(Object.hasOwn(deliveryLabels,order.delivery_stage)?order.delivery_stage:'ready'))===key?' selected':'')+'>'+label+'</option>').join('')+'</select></label><label id="delivery-attestation" class="workspace-check" hidden><input type="checkbox" name="delivery_confirmed"> I verified delivery with the courier.</label><label class="workspace-field">Update note (optional)<textarea name="note" maxlength="240"></textarea></label><div class="dialog-actions"><button class="btn primary" type="submit">Save delivery update</button></div></form>':'')+
    (data.events.length?'<h3>Delivery history</h3><div class="order-review-list">'+data.events.map(event=>'<div class="bill-row"><span>'+esc(deliveryLabels[event.status]||'Unknown')+(event.note?'<br><small translate="no">'+esc(event.note)+'</small>':'')+'</span><time datetime="'+esc(event.created_at)+'">'+esc(new Date(event.created_at).toLocaleString(document.documentElement.lang||'en-GB'))+'</time></div>').join('')+'</div>':'')+
    '<p class="muted" role="status" id="order-delivery-status"></p>';
   const form=$('order-delivery-form');
@@ -140,7 +170,7 @@ async function deliveryTracking(id){
    const data=new FormData(form);
    try{
     await api(route,{...Object.fromEntries(data),request_id:request,expected_version:record?.version||0,delivery_confirmed:data.has('delivery_confirmed')});
-    if(current(panel))await deliveryTracking(id);
+    if(current(panel)){await deliveryTracking(id,order);if(state.view==='orders')void orderDeliveryView?.load();}
    }catch(error){if(current(panel))$('order-delivery-status').textContent=error.message;}
    finally{submit.disabled=false;}
   });
@@ -152,13 +182,13 @@ async function business(){const d=await api('/workspaces/');dialog('Your busines
 document.addEventListener('click',async e=>{if(e.target.closest('.skip-link')){e.preventDefault();$('main').focus();return;}const view=e.target.closest('[data-view]');if(view){e.preventDefault();await navigate(view.dataset.view);return;}const b=e.target.closest('[data-action]');if(!b||b.disabled)return;const a=b.dataset.action;try{
  if(a==='close-dialog'){closeDialog();return;}if(a==='menu'){$('workspace').classList.toggle('menu-open');$('nav-overlay').hidden=!$('workspace').classList.contains('menu-open');b.setAttribute('aria-expanded',String(!$('nav-overlay').hidden));syncMenu();return;}if(a==='theme'){InventoryTheme.setAppearance(document.documentElement.dataset.appearance==='light'?'dark':'light');shell();return;}
  if(a==='back'||a==='retry'){if(!state.workspace||!state.preferences){location.reload();return;}await navigate(state.view,false);return;}if(a==='overview'){await navigate('overview');return;}if(a==='business'){await business();return;}if(a==='account'){dialog('Your account','<div class="workspace-tools-menu">'+button('Account settings','settings')+button('Plans & billing','billing')+(InventoryAPI.getUser()?.is_admin===true?'<a class="btn quiet" href="/admin.html">Admin Portal</a>':'')+button('Log out','logout')+'</div>');return;}if(a==='logout'){await InventoryAPI.logout();return;}
- if(a==='select-workspace'){localStorage.setItem('inventoryos_selected_workspace_id',b.dataset.id);localStorage.removeItem('inventoryos_selected_inventory_ids');closeDialog();await context();await navigate('overview');return;}
+ if(a==='select-workspace'){Object.assign(deliveryFilters,{q:'',stage:'',sort:'oldest',page:1});localStorage.setItem('inventoryos_selected_workspace_id',b.dataset.id);localStorage.removeItem('inventoryos_selected_inventory_ids');closeDialog();await context();await navigate('overview');return;}
  if(a==='save-layout'){b.disabled=true;const layout=$('new-workspace-layout').checked?'unified':'classic';const r=await api('/workspace-ui/preferences',{layout});state.preferences=r.preferences;await InventoryOSLayout.reload();if(layout==='classic')location.assign('/index.html');else{b.disabled=false;toast('Workspace layout saved.');}return;}
  if(a==='till'){location.assign('/retail/till/index.html');return;}if(a==='billing'){location.assign('/billing.html');return;}if(a==='product-tools'){dialog('Stock tools','<div class="workspace-tools-menu">'+[['add','Add stock'],['remove','Remove stock'],['move','Move stock'],['locations','Storage locations'],['barcodes','Barcode labels']].map(([a,t])=>button(t,a)).join('')+'</div>');return;}
  if(a==='marketplace-connections'){await InventoryMarketplaceConnections.show({api,dialog,inventories:state.inventories.filter(item=>selectedIds().includes(item.id))});return;}
  if(a==='order-import'){await openOrderImport();return;}
  if(a==='order-import-template'){downloadOrderCsv(InventoryOrderImport.template(),'inventoryos-order-import.csv');return;}
- if(a==='order-export'){downloadOrderCsv(InventoryOrderImport.orderExport(state.orders),'inventoryos-orders.csv');return;}
+ if(a==='order-export'){const data=await api('/workspace-orders');downloadOrderCsv(InventoryOrderImport.orderExport(data.orders),'inventoryos-orders.csv');return;}
  if(a==='order-workflow'){
   const order=state.orders.find(item=>item.id===b.dataset.id);
   if(!order)return;

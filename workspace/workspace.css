@@ -59,3 +59,45 @@ body{background:var(--bg)}.workspace{height:100dvh}.skip-link{position:fixed;top
 }
 
 .connection-url{overflow-wrap:anywhere;max-width:100%}
+
+.order-delivery-queue{overflow:hidden}
+.delivery-filters{display:grid;grid-template-columns:minmax(0,2fr) minmax(132px,1fr) minmax(132px,1fr);gap:12px;padding:18px}
+.delivery-filters .workspace-field,.delivery-confirm-row .workspace-field{margin:0}
+.delivery-bulk,.delivery-pages{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 18px;border-top:1px solid var(--line)}
+.delivery-bulk{background:var(--panel2)}
+.delivery-bulk [data-delivery-selected]{color:var(--accent);font-size:12px}
+.delivery-bulk [data-delivery-confirm]{margin-left:auto}
+.delivery-count{padding:8px 18px;font-size:12px}
+.delivery-checkbox{display:inline-flex;align-items:center;gap:8px;min-height:36px;color:var(--text);font-size:12px;cursor:pointer}
+.delivery-checkbox input{margin:0;width:18px;height:18px;accent-color:var(--accent)}
+.delivery-select-cell{width:48px;min-width:40px;padding-left:18px}
+.delivery-select-cell .delivery-checkbox{min-width:28px}
+.delivery-table tr.delivery-selected td{background:var(--accent-bg)}
+.delivery-table td small,.delivery-confirm-row small{display:block;font-size:11px;line-height:1.3;margin-top:4px}
+.delivery-table .order-row-button{overflow-wrap:anywhere}
+.delivery-order-cell{min-width:160px}
+.delivery-date-cell{white-space:nowrap}
+.delivery-stage{display:inline-block;max-width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:3px 9px;border-radius:20px;line-height:1.4}
+.delivery-stage[data-delivery-stage=ready],.delivery-stage[data-delivery-stage=delivered]{background:var(--accent-bg);color:var(--accent)}
+.delivery-stage[data-delivery-stage=dispatched],.delivery-stage[data-delivery-stage=in_transit]{background:var(--blue-bg);color:var(--blue)}
+.delivery-stage[data-delivery-stage=awaiting_label],.delivery-stage[data-delivery-stage=exception]{background:var(--amber-bg);color:var(--amber)}
+.delivery-confirm-list{margin:14px 0;display:grid;gap:1px}
+.delivery-confirm-row{display:grid;align-items:center;grid-template-columns:minmax(0,1fr) minmax(100px,155px);gap:14px;padding:10px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.delivery-confirm-row small{color:var(--muted)}
+.older-dispatch-jobs{margin-top:20px}
+@media(max-width:680px){
+ .delivery-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:14px}
+ .delivery-filters .workspace-field:first-child{grid-column:1/-1}
+ .delivery-bulk,.delivery-pages{padding:10px 14px}
+ .delivery-bulk [data-delivery-confirm]{margin-left:0;min-height:42px}
+ .delivery-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .delivery-table table,.delivery-table tbody{display:block;width:100%;min-width:0}
+ .delivery-table tr{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(92px,auto);gap:7px;padding:11px 12px;border-top:1px solid var(--line)}
+ .delivery-table tbody td{border:0;padding:0;min-width:0;text-align:left}
+ .delivery-select-cell{grid-column:1;grid-row:1/3}
+ .delivery-order-cell{grid-column:2;grid-row:1}
+ .delivery-stage-cell{grid-column:3;grid-row:1;overflow-wrap:anywhere}
+ .delivery-tracking-cell{grid-column:2;grid-row:2}
+ .delivery-date-cell{grid-column:3;grid-row:2;color:var(--muted);font-size:11px}
+ .delivery-table tr.delivery-selected{background:var(--accent-bg)}
+}
