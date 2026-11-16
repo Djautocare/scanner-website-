@@ -67,6 +67,9 @@ body{background:var(--bg)}.workspace{height:100dvh}.skip-link{position:fixed;top
 .delivery-bulk{background:var(--panel2)}
 .delivery-bulk [data-delivery-selected]{color:var(--accent);font-size:12px}
 .delivery-bulk [data-delivery-confirm]{margin-left:auto}
+.delivery-selection-note{flex-basis:100%;font-size:12px}
+.delivery-selection-skipped{margin-bottom:12px;font-size:12px;color:var(--muted)}
+.delivery-selection-skipped summary{cursor:pointer}
 .delivery-count{padding:8px 18px;font-size:12px}
 .delivery-checkbox{display:inline-flex;align-items:center;gap:8px;min-height:36px;color:var(--text);font-size:12px;cursor:pointer}
 .delivery-checkbox input{margin:0;width:18px;height:18px;accent-color:var(--accent)}
@@ -90,6 +93,7 @@ body{background:var(--bg)}.workspace{height:100dvh}.skip-link{position:fixed;top
  .delivery-filters .workspace-field:first-child{grid-column:1/-1}
  .delivery-bulk,.delivery-pages{padding:10px 14px}
  .delivery-bulk [data-delivery-confirm]{margin-left:0;min-height:42px}
+ .delivery-bulk [data-delivery-select-all]{min-height:42px}
  .delivery-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
  .delivery-table table,.delivery-table tbody{display:block;width:100%;min-width:0}
  .delivery-table tr{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(92px,auto);gap:7px;padding:11px 12px;border-top:1px solid var(--line)}

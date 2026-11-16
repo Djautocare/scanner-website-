@@ -16,18 +16,23 @@
     const options = entries => Object.entries(entries).map(([key,label]) =>
         `<option value="${escape(key)}">${escape(label)}</option>`).join('');
 
-    function available(order, data) {
-        return data.can_confirm && order.delivery_stage === 'ready' && order.has_label && !blocked.has(order.status) &&
-            (order.packing_status === 'packed' || (order.matched_items && !data.require_scan));
+    function dispatchBlock(order, data) {
+        if (blocked.has(order.status)) {
+            return {quote:'Confirm the order first',backorder:'Waiting for stock',cancelled:'Cancelled',returned:'Returned'}[order.status];
+        }
+        if (order.delivery_stage === 'awaiting_label') return 'Add a shipping label';
+        if (order.delivery_stage !== 'ready') return stages[order.delivery_stage] || 'Review the delivery stage';
+        if (!order.has_label) return 'Add a shipping label';
+        if (order.packing_status === 'packed') return '';
+        if (!order.matched_items) return 'Review item matches in Dispatch Centre';
+        if (data.require_scan) return 'Scan items in Dispatch Centre';
+        return '';
     }
 
     function packingNote(order, data) {
         if (order.packing_status === 'packed') return 'Picked and packed';
         if (order.delivery_stage !== 'ready') return '';
-        if (blocked.has(order.status)) return order.status === 'backorder' ? 'Waiting for stock' : 'Confirm the order first';
-        if (!order.matched_items) return 'Review item matches in Dispatch Centre';
-        if (data.require_scan) return 'Scan items in Dispatch Centre';
-        return 'Label and items ready';
+        return dispatchBlock(order,data) || 'Label and items ready';
     }
 
     function saleAmount(lines) {
@@ -43,7 +48,7 @@
         const title = escape(order.lines?.[0]?.description || order.label_name || '');
         const packing = packingNote(order, data);
         return `<tr data-order-row="${id}">
-            <td class="delivery-select-cell">${available(order,data) ? `<label class="delivery-checkbox" title="Select ${reference}">
+            <td class="delivery-select-cell">${data.can_confirm ? `<label class="delivery-checkbox" title="Select ${reference}">
                 <input type="checkbox" data-select-order="${id}" aria-label="Select ${reference}"></label>` : ''}</td>
             <td class="delivery-order-cell"><button type="button" class="order-row-button" data-action="order" data-id="${id}">
                 <strong translate="no">${reference}</strong>${title ? `<small>${title}</small>` : ''}
@@ -71,9 +76,10 @@
             <label class="workspace-field">Sort by<select data-delivery-sort>${options({oldest:'Oldest first',newest:'Newest first',order:'Order number',tracking:'Tracking number'})}</select></label>
         </div>
         <div class="delivery-bulk" data-delivery-bulk hidden>
-            <label class="delivery-checkbox"><input type="checkbox" data-delivery-select-all> Select all ready on this page</label>
+            <button type="button" class="btn quiet" data-delivery-select-all>Select all on this page</button>
             <span data-delivery-selected aria-live="polite"></span>
             <button type="button" class="btn primary" data-delivery-confirm disabled>Confirm picked &amp; dispatched</button>
+            <p class="muted delivery-selection-note" data-delivery-selection-note hidden></p>
         </div>
         <p class="delivery-count muted" data-delivery-count role="status"></p>
         <div class="table-scroll delivery-table" data-delivery-results></div>
@@ -89,13 +95,16 @@
         find('sort').value = filters.sort;
 
         function refreshSelection() {
-            const availableIds = data?.orders.filter(order => available(order,data)).map(order => order.id) || [];
+            const rows = data?.orders || [];
+            const ready = rows.filter(order => chosen.has(order.id) && !dispatchBlock(order,data)).length;
             const all = find('select-all');
-            all.checked = availableIds.length > 0 && availableIds.every(id => chosen.has(id));
-            all.indeterminate = chosen.size > 0 && !all.checked;
-            all.disabled = waiting || confirming || availableIds.length === 0;
-            find('selected').textContent = chosen.size ? `${chosen.size} selected` : '';
-            find('confirm').disabled = waiting || confirming || chosen.size === 0;
+            all.textContent = rows.length > 0 && rows.every(order => chosen.has(order.id)) ? 'Clear selection' : 'Select all on this page';
+            all.disabled = waiting || confirming || !data?.can_confirm || rows.length === 0;
+            find('selected').textContent = chosen.size ? `${chosen.size} selected · ${ready} ready to dispatch` : '';
+            find('confirm').disabled = waiting || confirming || !ready;
+            const note = find('selection-note');
+            note.hidden = chosen.size === 0 || ready > 0;
+            note.textContent = note.hidden ? '' : 'Check delivery stages, labels and packing notes to see which selected orders need attention.';
             tbody()?.querySelectorAll('[data-select-order]').forEach(input => {
                 input.checked = chosen.has(input.dataset.selectOrder);
                 input.disabled = waiting || confirming;
@@ -119,7 +128,7 @@
                     return load({legacy});
                 }
                 data = response;
-                for (const id of chosen) if (!data.orders.some(order => order.id === id && available(order,data))) chosen.delete(id);
+                for (const id of chosen) if (!data.can_confirm || !data.orders.some(order => order.id === id)) chosen.delete(id);
                 onData(data);
                 find('bulk').hidden = !data.can_confirm;
                 find('count').textContent = data.total ? `${(data.page - 1) * data.page_size + 1}–${(data.page - 1) * data.page_size + data.orders.length} of ${data.total} orders` : 'No orders match these filters.';
@@ -165,9 +174,19 @@
         find('search').addEventListener('input', event => changeFilter('q',event.target.value,true));
         find('filter').addEventListener('change', event => changeFilter('stage',event.target.value));
         find('sort').addEventListener('change', event => changeFilter('sort',event.target.value));
-        find('select-all').addEventListener('change', event => {
+        find('select-all').addEventListener('click', () => {
+            if (!data?.can_confirm || waiting || confirming) return;
+            const select = data.orders.some(order => !chosen.has(order.id));
             chosen.clear();
-            if (event.target.checked) data.orders.filter(order => available(order,data)).forEach(order => chosen.add(order.id));
+            if (select) for (const order of data.orders) chosen.add(order.id);
+            refreshSelection();
+        });
+        find('results').addEventListener('click', event => {
+            if (!data?.can_confirm || waiting || confirming || event.target.closest('button,a,input,label')) return;
+            const id = event.target.closest('[data-order-row]')?.dataset.orderRow;
+            if (!id) return;
+            if (chosen.has(id)) chosen.delete(id);
+            else chosen.add(id);
             refreshSelection();
         });
         find('results').addEventListener('change', event => {
@@ -185,9 +204,10 @@
         });
 
         find('confirm').addEventListener('click', () => {
-            if (!data || waiting || confirming) return;
-            const selected = data.orders.filter(order => chosen.has(order.id) && available(order,data));
+            if (!data?.can_confirm || waiting || confirming) return;
+            const selected = data.orders.filter(order => chosen.has(order.id) && !dispatchBlock(order,data));
             if (!selected.length) return;
+            const skipped = data.orders.filter(order => chosen.has(order.id) && dispatchBlock(order,data));
             dialog('Confirm picked and dispatched', `<form id="confirm-order-dispatch">
                 <p class="muted">${selected.length} ${selected.length === 1 ? 'order' : 'orders'}. Stock is deducted for newly packed orders.${data.track_sales ? ' Enter the sale total for any new sale.' : ''}</p>
                 <div class="delivery-confirm-list">${selected.map(order => `<div class="delivery-confirm-row">
@@ -196,6 +216,8 @@
                     ${order.packing_status === 'packed' ? '<small class="muted">Already packed</small>' : data.track_sales ?
                         `<label class="workspace-field">Sale total £<input name="${escape(order.id)}" aria-label="Sale total for ${escape(ref(order))}" type="number" min="0.001" step="0.001" required value="${escape(saleAmount(order.lines))}"></label>` : ''}
                 </div>`).join('')}</div>
+                ${skipped.length ? `<details class="delivery-selection-skipped"><summary>Other selected orders (${skipped.length})</summary><ul>${skipped.map(order =>
+                    `<li><strong translate="no">${escape(ref(order))}</strong> · ${escape(dispatchBlock(order,data))}</li>`).join('')}</ul></details>` : ''}
                 <label class="workspace-check"><input type="checkbox" required> I’ve picked these items and handed the parcels to the courier.</label>
                 <div role="status" data-delivery-confirm-result></div>
                 <div class="dialog-actions"><button type="submit" class="btn primary">Confirm dispatch</button></div>
